@@ -245,14 +245,48 @@ For each entry:
 
 - `uid` comes from the entry, or from the record key when the entry has none. It is the identity used by `id = <book>.<uid>`.
 - Unknown fields survive on the entry object; the raw file is kept separately so an export can round-trip what the schema does not model.
-- Leading `@@` decorator lines are split off `content` into `decorators`. Only `@@activate` and `@@dont_activate` are recognised; `@@@` escapes a decorator so it stays in the text.
+- `null` is accepted wherever SillyTavern writes it: `sticky`, `cooldown`, `delay`, `group`, `groupWeight`, `triggers` and the key lists. It means "unset" and falls back to the SillyTavern default, so an entry saved by the ST editor is never dropped.
+- Leading `@@` decorator lines are split off `content` into `decorators`. Only `@@activate` and `@@dont_activate` are recognised; a line that does not start with `@@` ends the decorator block.
+- `hash` is computed over the raw entry as SillyTavern does, so timed-effect records in an imported chat still match.
 - Records that do not validate as entries are skipped rather than failing the whole book.
 
 ### Scan status
 
-`apps/server/src/worldinfo/scanner.ts` implements the M1 core: constant entries, primary and secondary keys, `scanDepth`, `caseSensitive`, `matchWholeWords`, the four `selectiveLogic` modes, `probability`/`useProbability`, ordering by `order`, the token budget and `ignoreBudget`, opt-in scans of persona/character/scenario fields, generation-type `triggers`, and the before/after/author's-note/at-depth position buckets.
+`apps/server/src/worldinfo/scanner.ts` now covers SillyTavern's full evaluation pipeline:
 
-**Not wired into generation yet.** Recursion, inclusion groups, `sticky`/`cooldown`/`delay`, example-message and outlet positions, the editor and import/export arrive in later M1 slices. Until the prompt pipeline consumes the scan result, files in `data/worlds/` do not change replies.
+- activation: constant, `@@activate` / `@@dont_activate`, primary and secondary keys with all four `selectiveLogic` modes, `scanDepth`, `caseSensitive`, `matchWholeWords`, `/regex/flags` keys, generation-type `triggers`, and character name/tag filters;
+- recursion: the `NONE` / `INITIAL` / `RECURSION` / `MIN_ACTIVATIONS` state machine, `recursive`, `maxRecursionSteps`, `minActivations` with its depth skew, `excludeRecursion`, `preventRecursion` and `delayUntilRecursion` levels;
+- inclusion groups: `group`, `groupOverride`, `groupWeight`, `useGroupScoring`;
+- timed effects: `sticky`, `cooldown` and the stateless `delay`;
+- budgeting: the cumulative token budget with `ignoreBudget` and the one-way overflow latch;
+- output buckets: before/after character, author's note top/bottom, at-depth, example messages, and outlets.
+
+Every entry produces one trace line per scan explaining the outcome and the pass it happened in.
+
+**Not wired into generation yet.** `apps/server/src/prompt/builder.ts` still assembles prompts with the M0 pipeline, so files in `data/worlds/` do not change replies. The Prompt Manager slice consumes the scan result; the editor and import/export follow it.
+
+### Timed effects in the chat header
+
+`sticky` and `cooldown` are persisted per chat in the JSONL header, inside `chat_metadata`, using SillyTavern's exact shape:
+
+```json
+{
+    "chat_metadata": {
+        "timedWorldInfo": {
+            "sticky": { "eldoria.12": { "hash": 3374029573716508, "start": 42, "end": 45, "protected": false } },
+            "cooldown": { "eldoria.12": { "hash": 3374029573716508, "start": 45, "end": 50, "protected": true } }
+        }
+    }
+}
+```
+
+- The record key is `<book>.<uid>`; `book` is the file name without `.json`.
+- `start` and `end` are absolute counts of non-system chat messages, not message ids or timestamps. An effect applies while `start < length < end`.
+- `hash` is SillyTavern's `getStringHash` over the raw entry with decorators stripped. It changes whenever the entry changes, which is how an edited entry stops matching its old record.
+- `protected` is set only on the cooldown spawned when a sticky effect expires, so the hand-off survives a regenerate.
+- `delay` is never persisted: it is recomputed from the entry on every scan as "the chat has fewer than N messages".
+
+Because the clock is the non-system message count, a scan must receive the full conversation. Passing a context-trimmed history would expire effects early.
 
 ## Presets
 

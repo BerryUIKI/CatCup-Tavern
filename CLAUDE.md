@@ -30,6 +30,7 @@ apps/server/            Fastify server
   src/cards/            character card parsing (PNG tEXt / JSON v2-v3)
   src/providers/        OpenAI-compatible / OpenRouter / Anthropic / Ollama
   src/prompt/           prompt assembly and token budgeting
+  src/worldinfo/        world info loader, scanner, timed effects and prompt buckets
   src/routes/           REST + SSE routes
   src/security/         password hashing, session cookies
   src/storage/          ST-compatible file storage

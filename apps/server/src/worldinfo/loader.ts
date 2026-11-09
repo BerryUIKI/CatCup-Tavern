@@ -8,6 +8,7 @@ import { worldInfoEntrySchema } from '@catcup/shared';
 
 import { readJsonFile } from '../storage/jsonFile.js';
 import { assertSimpleName, paths, resolveInside } from '../storage/paths.js';
+import { getStringHash } from './hash.js';
 import { parseDecorators } from './matching.js';
 import type { ScanEntry } from './types.js';
 
@@ -95,6 +96,13 @@ export function parseWorldInfoBook(id: string, raw: unknown): ScanEntry[] {
         const uid = resolveUid(source, key, index);
         const { decorators, content } = parseDecorators(parsed.data.content);
 
+        // SillyTavern hashes `{ uid, world, ...entry }` with `decorators` and
+        // the stripped `content` appended, then uses that hash to match timed
+        // effects stored in imported chats. Key order is part of the payload,
+        // so build it the same way instead of hashing the parsed object.
+        const { uid: _sourceUid, ...rest } = source;
+        const hash = getStringHash(JSON.stringify({ uid, world: id, ...rest, decorators, content }));
+
         entries.push({
             ...parsed.data,
             uid,
@@ -102,6 +110,7 @@ export function parseWorldInfoBook(id: string, raw: unknown): ScanEntry[] {
             id: `${id}.${uid}`,
             decorators,
             content,
+            hash,
         });
         index += 1;
     }

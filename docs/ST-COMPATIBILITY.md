@@ -15,28 +15,29 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 ## Data compatibility matrix
 
-| Feature                            | Status             | Notes                                                                |
-| ---------------------------------- | ------------------ | -------------------------------------------------------------------- |
-| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                          |
-| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                               |
-| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                             |
-| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                    |
-| Character card write/export        | ❌ Planned         | M2                                                                   |
-| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                   |
-| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                                        |
-| Character editing                  | ❌ Planned         | M2                                                                   |
-| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                 |
-| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported           |
-| Chat branches/checkpoints          | ❌ Planned         | M1                                                                   |
-| Group chats                        | ❌ Planned         | M2                                                                   |
-| World Info JSON schema             | ✅ Schema          | Field names and defaults match ST                                    |
-| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split            |
-| World Info scanner (core)          | ✅ Implemented     | Keys, depth, logic, probability, budget; not wired to generation yet |
-| World Info recursion/groups/timing | ❌ Planned         | Next M1 slice                                                        |
-| ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                                         |
-| Themes                             | ❌ Not implemented | Dark tavern theme only                                               |
-| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later                  |
-| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                  |
+| Feature                            | Status             | Notes                                                             |
+| ---------------------------------- | ------------------ | ----------------------------------------------------------------- |
+| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                       |
+| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                            |
+| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                          |
+| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                 |
+| Character card write/export        | ❌ Planned         | M2                                                                |
+| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                |
+| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                                     |
+| Character editing                  | ❌ Planned         | M2                                                                |
+| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`              |
+| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported        |
+| Chat branches/checkpoints          | ❌ Planned         | M1                                                                |
+| Group chats                        | ❌ Planned         | M2                                                                |
+| World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                |
+| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split         |
+| World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects |
+| World Info injection               | ❌ Planned         | The Prompt Manager slice wires the scan result into generation    |
+| Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off       |
+| ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                                      |
+| Themes                             | ❌ Not implemented | Dark tavern theme only                                            |
+| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later               |
+| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                               |
 
 ## Semantic compatibility
 
@@ -49,8 +50,8 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
 | Prompt Manager ordering/injection                                  | ❌ Planned         | M1                                                                                              |
 | Author's note                                                      | ❌ Planned         | M1                                                                                              |
-| World Info scanning (core)                                         | 🟡 Scanner only    | Keys, logic, depth, probability, budget; not injected into prompts yet                          |
-| World Info recursion/groups/injection                              | ❌ Planned         | M1                                                                                              |
+| World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
+| World Info injection                                               | ❌ Planned         | M1: the scan result is not consumed by the prompt builder yet                                   |
 | Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
 | Message editing                                                    | 🟡 API only        | PATCH exists; inline UI planned for M1                                                          |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
@@ -95,7 +96,7 @@ Copy ST chat folders into `data/chats/`. CatCup looks for a folder named after t
 
 ### World info and presets
 
-World info files load from `data/worlds/` and the M1 scanner can evaluate them, but the result is not injected into generation yet, so copying a book in does not change replies. Presets are not wired in at all. M1 adds the prompt-manager integration, the editor and import/export.
+World info files load from `data/worlds/` and are scanned with SillyTavern's full evaluation pipeline, including recursion, inclusion groups and timed effects. The result is still not injected into generation, so copying a book in does not change replies yet; the Prompt Manager slice connects the two. Presets are not wired in at all. M1 adds the prompt-manager integration, the editor and import/export.
 
 ## Known deviations
 
@@ -105,7 +106,10 @@ World info files load from `data/worlds/` and the M1 scanner can evaluate them, 
 - **Prompt construction:** The M0 builder is intentionally small and does not reproduce ST's full Prompt Manager; replies may differ until M1.
 - **Anthropic start marker:** If a prompt starts with an assistant message, CatCup inserts a `[Start of chat]` user message for the Messages API.
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.
-- **World info injection:** the scanner exists, but nothing consumes its result yet, so lorebook keys do not affect replies.
+- **World info injection:** the scanner is complete, but nothing consumes its result yet, so lorebook keys do not affect replies.
+- **World info group removal:** SillyTavern's inclusion-group `removeEntry` calls `splice(indexOf(entry), 1)`; when the entry is already gone this removes the last unrelated candidate. CatCup guards the index instead of reproducing that data loss.
+- **World info missing `position`:** entries without a `position` field default to `0` (before character). SillyTavern drops them from the prompt entirely.
+- **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
 - **Presets:** schemas exist, but the runtime does not use them yet.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
