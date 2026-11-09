@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+*.tsbuildinfo
+
+# local environment
+.env
+.env.local
+.env.*.local
+
+# runtime data (characters, chats, settings, secrets)
+data/
+
+# reference checkouts used only for code study
+.ref/
+
+# tooling
+coverage/
+.vite/
+.turbo/
+*.log
+pnpm-debug.log*
+
+# editors / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
