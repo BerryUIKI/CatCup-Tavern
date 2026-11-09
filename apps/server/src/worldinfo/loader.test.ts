@@ -69,6 +69,57 @@ describe('world info loader', () => {
         expect(entries[0]?.triggers).toEqual([]);
     });
 
+    it('survives the nulls SillyTavern writes for unset fields', () => {
+        // The ST editor template stores null for sticky/cooldown/delay and
+        // exporters do the same for group_weight. Rejecting the record would
+        // silently drop the whole entry.
+        const entries = parseWorldInfoBook('eldoria', {
+            entries: {
+                '0': {
+                    key: ['dragon'],
+                    content: 'Lore',
+                    sticky: null,
+                    cooldown: null,
+                    delay: null,
+                    group: null,
+                    groupWeight: null,
+                    triggers: null,
+                    keysecondary: null,
+                },
+            },
+        });
+
+        expect(entries).toHaveLength(1);
+        expect(entries[0]?.sticky).toBe(0);
+        expect(entries[0]?.group).toBe('');
+        expect(entries[0]?.groupWeight).toBe(100);
+        expect(entries[0]?.keysecondary).toEqual([]);
+    });
+
+    it('derives a stable hash from the raw entry', () => {
+        const raw = { entries: { '0': { key: ['dragon'], content: 'Lore', order: 100 } } };
+
+        const first = parseWorldInfoBook('eldoria', raw)[0];
+        const second = parseWorldInfoBook('eldoria', raw)[0];
+
+        expect(first?.hash).toBe(second?.hash);
+        expect(typeof first?.hash).toBe('number');
+
+        const changed = parseWorldInfoBook('eldoria', {
+            entries: { '0': { key: ['dragon'], content: 'Changed', order: 100 } },
+        })[0];
+
+        expect(changed?.hash).not.toBe(first?.hash);
+    });
+
+    it('loads the SillyTavern sample book end to end', async () => {
+        const book = await readWorldInfoBook('eldoria', path.join(import.meta.dirname, '__fixtures__'));
+
+        expect(book?.entries).toHaveLength(4);
+        expect(book?.entries.map((entry) => entry.comment)).toEqual(['eldoria', 'shadowfang', 'glade', 'power']);
+        expect(book?.entries.every((entry) => entry.hash !== 0)).toBe(true);
+    });
+
     it('skips records that are not entries', () => {
         const entries = parseWorldInfoBook('eldoria', {
             entries: {

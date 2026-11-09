@@ -14,8 +14,10 @@ function isKnownDecorator(line: string): boolean {
  * Split leading `@@decorator` lines from an entry's content.
  *
  * Mirrors SillyTavern's `parseDecorators`: a run of known decorator lines is
- * consumed, unknown lines end the run, and `@@@` escapes a decorator so it is
- * kept as content.
+ * consumed and only a line that does not start with `@@` ends the run. An
+ * `@@@`-prefixed line is skipped rather than consumed, and is left in the
+ * content only when no later line breaks the run, because the original string
+ * is kept in that case.
  */
 export function parseDecorators(content: string): { decorators: string[]; content: string } {
     if (!content.startsWith('@@')) {
@@ -104,10 +106,9 @@ export function matchesKey(haystack: string, needle: string, options: KeyMatchOp
 
     const hay = options.caseSensitive ? haystack : haystack.toLowerCase();
     const key = options.caseSensitive ? needle : needle.toLowerCase();
-    if (!key) {
-        return false;
-    }
 
+    // An empty key matches everything, exactly as `String.includes('')` does.
+    // SillyTavern relies on this for whitespace-only keys after trimming.
     if (!options.matchWholeWords) {
         return hay.includes(key);
     }
