@@ -40,6 +40,15 @@ export const worldInfoEntrySchema = z
         caseSensitive: z.boolean().nullable().default(null),
         matchWholeWords: z.boolean().nullable().default(null),
         useGroupScoring: z.boolean().nullable().default(null),
+        matchPersonaDescription: z.boolean().default(false),
+        matchCharacterDescription: z.boolean().default(false),
+        matchCharacterPersonality: z.boolean().default(false),
+        matchCharacterDepthPrompt: z.boolean().default(false),
+        matchScenario: z.boolean().default(false),
+        matchCreatorNotes: z.boolean().default(false),
+        ignoreBudget: z.boolean().default(false),
+        outletName: z.string().default(''),
+        triggers: z.array(z.string()).default([]),
         automationId: z.string().default(''),
         extensions: z.record(z.string(), z.unknown()).optional(),
     })
@@ -54,11 +63,32 @@ export const worldInfoFileSchema = z
 export type WorldInfoEntry = z.infer<typeof worldInfoEntrySchema>;
 export type WorldInfoFile = z.infer<typeof worldInfoFileSchema>;
 
-/** Positions understood by SillyTavern's prompt builder. */
+/**
+ * Injection positions understood by SillyTavern's prompt builder. The numeric
+ * values are persisted in world info files and must not be renumbered.
+ */
 export const WORLD_INFO_POSITION = {
     BEFORE_CHAR: 0,
     AFTER_CHAR: 1,
     AN_TOP: 2,
     AN_BOTTOM: 3,
     AT_DEPTH: 4,
+    EM_TOP: 5,
+    EM_BOTTOM: 6,
+    OUTLET: 7,
+} as const;
+
+/** Secondary-keyword logic, persisted as `selectiveLogic`. */
+export const WORLD_INFO_LOGIC = {
+    AND_ANY: 0,
+    NOT_ALL: 1,
+    NOT_ANY: 2,
+    AND_ALL: 3,
+} as const;
+
+/** Roles for depth-injected entries. */
+export const PROMPT_ROLE = {
+    SYSTEM: 0,
+    USER: 1,
+    ASSISTANT: 2,
 } as const;
