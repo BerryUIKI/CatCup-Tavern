@@ -11,8 +11,15 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Pull request template and contributing guide.
 - World info loader that reads SillyTavern books from `data/worlds/`, including wrapped `{ entries }` files and bare uid maps, with decorator parsing and per-record validation.
 - World info scanner core: constant entries, primary and secondary keys with all four `selectiveLogic` modes, `scanDepth`, case and whole-word options, regex keys, probability, ordering, token budget, global-scan opt-ins and generation-type triggers.
-- Per-entry activation trace on the scan result, ready for the context inspector.
+- Full world info scan semantics: the `INITIAL` / `RECURSION` / `MIN_ACTIVATIONS` state machine with `minActivations`, `maxRecursionSteps`, `excludeRecursion`, `preventRecursion` and `delayUntilRecursion`; inclusion groups with scoring, overrides and weighted rolls; character name and tag filters; and every position bucket including example messages and outlets.
+- Timed world info effects: `sticky`, `cooldown` and stateless `delay`, persisted as `chat_metadata.timedWorldInfo` with SillyTavern-compatible entry hashes and the sticky-to-cooldown hand-off.
+- World info prompt helper: `buildWorldInfoPrompt`, `wi_format` handling and Author's Note composition.
+- Per-entry activation trace on the scan result, recording the pass and reason, ready for the context inspector.
 - Shared world info schema extended with SillyTavern's full position, logic, role and scan opt-in fields.
+
+### Fixed
+
+- World info entries are no longer dropped when `sticky`, `cooldown`, `delay`, `group`, `groupWeight`, `triggers` or a key list is `null`, which is what the SillyTavern editor and several card exporters write.
 
 ### Changed
 
