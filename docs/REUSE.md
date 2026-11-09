@@ -108,7 +108,10 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `apps/server/src/cards/parse.ts`           | ST `src/character-card-parser.js` + PNG chunk handling | PNG `tEXt` reading, v2/v3 precedence; card writing arrives in M2 |
 | `packages/shared/src/schemas/character.ts` | ST Character Card V2/V3 spec                           | Field names and `character_book` structure                       |
 | `packages/shared/src/schemas/chat.ts`      | ST chat JSONL                                          | Header + message fields                                          |
-| `packages/shared/src/schemas/worldinfo.ts` | ST World Info JSON                                     | Entry field set                                                  |
+| `packages/shared/src/schemas/worldinfo.ts` | ST World Info JSON                                     | Entry field set, positions, logic and role constants             |
+| `apps/server/src/worldinfo/matching.ts`    | ST `public/scripts/world-info.js`                      | Key matching, regex keys, decorator parsing                      |
+| `apps/server/src/worldinfo/loader.ts`      | ST `public/scripts/world-info.js`                      | Book shape handling and entry normalization                      |
+| `apps/server/src/worldinfo/scanner.ts`     | ST `public/scripts/world-info.js`                      | `checkWorldInfo` core: selection, probability, budget, positions |
 | `packages/shared/src/schemas/preset.ts`    | ST OpenAI preset                                       | Preset fields, `prompts` / `prompt_order`                        |
 
 ## 8. Related documentation

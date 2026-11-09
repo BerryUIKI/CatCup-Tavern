@@ -6,34 +6,37 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 ## Compatibility layers
 
-| Layer                | Scope                                                     | Status                                                               |
-| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- |
-| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info/presets have schemas only  |
-| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: basic prompt/macros/swipes; STscript and extensions not yet |
-| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                       |
-| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                    |
+| Layer                | Scope                                                     | Status                                                                               |
+| -------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads and scans; presets have schemas only |
+| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: basic prompt/macros/swipes; STscript and extensions not yet                 |
+| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                       |
+| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                    |
 
 ## Data compatibility matrix
 
-| Feature                            | Status             | Notes                                                      |
-| ---------------------------------- | ------------------ | ---------------------------------------------------------- |
-| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                |
-| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                     |
-| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                   |
-| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                          |
-| Character card write/export        | ❌ Planned         | M2                                                         |
-| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                         |
-| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                              |
-| Character editing                  | ❌ Planned         | M2                                                         |
-| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`       |
-| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported |
-| Chat branches/checkpoints          | ❌ Planned         | M1                                                         |
-| Group chats                        | ❌ Planned         | M2                                                         |
-| World Info JSON schema             | ✅ Schema          | Scanner/editor/import UI planned for M1                    |
-| ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                               |
-| Themes                             | ❌ Not implemented | Dark tavern theme only                                     |
-| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later        |
-| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                        |
+| Feature                            | Status             | Notes                                                                |
+| ---------------------------------- | ------------------ | -------------------------------------------------------------------- |
+| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                          |
+| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                               |
+| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                             |
+| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                    |
+| Character card write/export        | ❌ Planned         | M2                                                                   |
+| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                   |
+| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                                        |
+| Character editing                  | ❌ Planned         | M2                                                                   |
+| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                 |
+| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported           |
+| Chat branches/checkpoints          | ❌ Planned         | M1                                                                   |
+| Group chats                        | ❌ Planned         | M2                                                                   |
+| World Info JSON schema             | ✅ Schema          | Field names and defaults match ST                                    |
+| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split            |
+| World Info scanner (core)          | ✅ Implemented     | Keys, depth, logic, probability, budget; not wired to generation yet |
+| World Info recursion/groups/timing | ❌ Planned         | Next M1 slice                                                        |
+| ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                                         |
+| Themes                             | ❌ Not implemented | Dark tavern theme only                                               |
+| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later                  |
+| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                  |
 
 ## Semantic compatibility
 
@@ -46,7 +49,8 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
 | Prompt Manager ordering/injection                                  | ❌ Planned         | M1                                                                                              |
 | Author's note                                                      | ❌ Planned         | M1                                                                                              |
-| World Info scanning/recursion/injection                            | ❌ Planned         | M1                                                                                              |
+| World Info scanning (core)                                         | 🟡 Scanner only    | Keys, logic, depth, probability, budget; not injected into prompts yet                          |
+| World Info recursion/groups/injection                              | ❌ Planned         | M1                                                                                              |
 | Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
 | Message editing                                                    | 🟡 API only        | PATCH exists; inline UI planned for M1                                                          |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
@@ -91,7 +95,7 @@ Copy ST chat folders into `data/chats/`. CatCup looks for a folder named after t
 
 ### World info and presets
 
-They are not wired into generation yet. The schemas are in place, and M1 adds the scanner, prompt manager and import/export flows. Copying the files into `data/worlds/` or `data/presets/` is safe but currently has no effect.
+World info files load from `data/worlds/` and the M1 scanner can evaluate them, but the result is not injected into generation yet, so copying a book in does not change replies. Presets are not wired in at all. M1 adds the prompt-manager integration, the editor and import/export.
 
 ## Known deviations
 
@@ -101,7 +105,8 @@ They are not wired into generation yet. The schemas are in place, and M1 adds th
 - **Prompt construction:** The M0 builder is intentionally small and does not reproduce ST's full Prompt Manager; replies may differ until M1.
 - **Anthropic start marker:** If a prompt starts with an assistant message, CatCup inserts a `[Start of chat]` user message for the Messages API.
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.
-- **World info/presets:** Schemas exist, but the runtime does not use them yet.
+- **World info injection:** the scanner exists, but nothing consumes its result yet, so lorebook keys do not affect replies.
+- **Presets:** schemas exist, but the runtime does not use them yet.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
 ## Testing compatibility
