@@ -230,9 +230,29 @@ World info files live in `data/worlds/` as JSON objects with an `entries` map ke
 }
 ```
 
-Position constants used by SillyTavern: `0` before character, `1` after character, `2` author's note top, `3` author's note bottom, `4` at depth.
+Position constants used by SillyTavern: `0` before character, `1` after character, `2` author's note top, `3` author's note bottom, `4` at depth, `5` example messages top, `6` example messages bottom, `7` outlet. The numbering is persisted in files and must not be renumbered.
 
-**Status:** the schema is implemented in `packages/shared/src/schemas/worldinfo.ts`, but the scanner, editor and import/export flow arrive in M1. Until then, files in `data/worlds/` are not used by generation.
+Secondary-key logic (`selectiveLogic`): `0` AND ANY, `1` NOT ALL, `2` NOT ANY, `3` AND ALL.
+
+### Loading rules
+
+`apps/server/src/worldinfo/loader.ts` reads a book from either shape:
+
+- the wrapped `{ "entries": { "0": {...} } }` form shown above;
+- a bare `uid -> entry` map, which older exports produce.
+
+For each entry:
+
+- `uid` comes from the entry, or from the record key when the entry has none. It is the identity used by `id = <book>.<uid>`.
+- Unknown fields survive on the entry object; the raw file is kept separately so an export can round-trip what the schema does not model.
+- Leading `@@` decorator lines are split off `content` into `decorators`. Only `@@activate` and `@@dont_activate` are recognised; `@@@` escapes a decorator so it stays in the text.
+- Records that do not validate as entries are skipped rather than failing the whole book.
+
+### Scan status
+
+`apps/server/src/worldinfo/scanner.ts` implements the M1 core: constant entries, primary and secondary keys, `scanDepth`, `caseSensitive`, `matchWholeWords`, the four `selectiveLogic` modes, `probability`/`useProbability`, ordering by `order`, the token budget and `ignoreBudget`, opt-in scans of persona/character/scenario fields, generation-type `triggers`, and the before/after/author's-note/at-depth position buckets.
+
+**Not wired into generation yet.** Recursion, inclusion groups, `sticky`/`cooldown`/`delay`, example-message and outlet positions, the editor and import/export arrive in later M1 slices. Until the prompt pipeline consumes the scan result, files in `data/worlds/` do not change replies.
 
 ## Presets
 

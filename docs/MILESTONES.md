@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0 complete** (2026-11-09). **M1 is next.**
+> Current status: **M0 complete** (2026-11-09). **M1 in progress.**
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -30,14 +30,14 @@ A milestone is complete when all of its acceptance criteria pass and its status 
 
 ## At a glance
 
-| Milestone | Theme                                                                         | Status   | Depends on |
-| --------- | ----------------------------------------------------------------------------- | -------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | Next     | M0         |
-| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | Planned  | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned  | M1, M2     |
-| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | Planned  | M0–M3      |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned  | M0–M4      |
+| Milestone | Theme                                                                         | Status      | Depends on |
+| --------- | ----------------------------------------------------------------------------- | ----------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete    | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | In progress | M0         |
+| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | Planned     | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned     | M1, M2     |
+| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | Planned     | M0–M3      |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned     | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -99,9 +99,18 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - [x] The four required provider families are implemented.
 - [x] The project builds and tests cleanly from a fresh checkout.
 
-## M1 — Core SillyTavern experience (Next)
+## M1 — Core SillyTavern experience (In progress)
 
 **Goal:** make single-character roleplay genuinely useful day to day. This is the milestone that turns the scaffold into a proper SillyTavern-compatible tavern.
+
+### Delivered so far
+
+- World info loader (`apps/server/src/worldinfo/loader.ts`): wrapped `{ entries }` and bare uid maps, uid fallback from the record key, decorator parsing, per-record validation.
+- World info scanner core (`apps/server/src/worldinfo/scanner.ts`): constant entries, primary/secondary keys with all four `selectiveLogic` modes, `scanDepth`, `caseSensitive`, `matchWholeWords`, regex keys, `probability`, ordering, token budget with `ignoreBudget`, global-scan opt-ins, generation-type triggers, position buckets, and a per-entry activation trace.
+- Shared world info schema extended to SillyTavern's full position, logic, role and scan-opt-in field set.
+- 28 unit tests covering matching, loading and scanning.
+
+The scanner is not wired into generation yet; that arrives with the Prompt Manager slice.
 
 ### Scope
 

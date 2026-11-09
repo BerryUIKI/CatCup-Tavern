@@ -9,11 +9,15 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Milestone roadmap with scope, sequencing and acceptance criteria (`docs/MILESTONES.md`).
 - Documentation set: API, data formats, providers, ST compatibility, development, deployment, security, troubleshooting, glossary and documentation index.
 - Pull request template and contributing guide.
+- World info loader that reads SillyTavern books from `data/worlds/`, including wrapped `{ entries }` files and bare uid maps, with decorator parsing and per-record validation.
+- World info scanner core: constant entries, primary and secondary keys with all four `selectiveLogic` modes, `scanDepth`, case and whole-word options, regex keys, probability, ordering, token budget, global-scan opt-ins and generation-type triggers.
+- Per-entry activation trace on the scan result, ready for the context inspector.
+- Shared world info schema extended with SillyTavern's full position, logic, role and scan opt-in fields.
 
 ### Changed
 
 - README now links the full documentation map and the current milestone status.
-- `CLAUDE.md` now points at the documentation set and records M0 as complete.
+- `CLAUDE.md` now points at the documentation set and records M1 as in progress.
 
 ## 0.1.0 — 2026-11-09
 

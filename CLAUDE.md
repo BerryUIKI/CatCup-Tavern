@@ -10,7 +10,7 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **M0 complete (2026-11-09), M1 next**. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`.
+Current status: **M0 complete (2026-11-09), M1 in progress**. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`.
 
 ## Commands
 
@@ -89,7 +89,7 @@ Read before changing behaviour:
 ## Current milestones
 
 - **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
-- **M1** (next): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
+- **M1** (in progress): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
 - **M2** (planned): group chats, summary memory, regex scripts, Quick Replies subset, TTS, image generation, card editing/export, CharX, library polish.
 - **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
 - **M4** (planned): Tauri desktop shell and Node sidecar packaging.
