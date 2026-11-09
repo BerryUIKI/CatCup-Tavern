@@ -2,6 +2,8 @@
 
 > Assessed: 2026-11-09
 > References: SillyTavern `1.19.0` (`.ref/SillyTavern`), RisuAI `2026.10.295` (`.ref/RisuAI`)
+>
+> Scope and status live in [MILESTONES.md](MILESTONES.md); runtime compatibility is tracked in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md). This page records licensing and reuse.
 
 ## 0. License conclusion
 
@@ -26,26 +28,26 @@ Requirements:
 
 ## 2. Direct reuse / small adaptation
 
-| Source | File                                          | Size       | Purpose                                                                 | Approach                                                     |
-| ------ | --------------------------------------------- | ---------- | ----------------------------------------------------------------------- | ------------------------------------------------------------ |
-| ST     | `src/character-card-parser.js`                | 98 lines   | PNG `tEXt` card read/write                                              | Ported to `apps/server/src/cards/`; attribution retained     |
-| ST     | `src/png/encode.js`                           | 68 lines   | PNG chunk re-encoding                                                   | To reuse for card export (MIT origin; keep original note)    |
-| ST     | `src/charx.js`                                | 399 lines  | CharX (ZIP + v3 card + assets)                                          | M1 port                                                      |
-| ST     | `src/prompt-converters.js`                    | 1451 lines | Claude/Google/Mistral message conversion                                | Port as needed per provider                                  |
-| ST     | `src/endpoints/backends/chat-completions.js`  | 2995 lines | Provider parameter matrix, SSE forwarding, reasoning/tool-call handling | Use as a parameter/edge-case reference; rewrite per provider |
-| ST     | `src/endpoints/backends/text-completions.js`  | 646 lines  | Kobold/Ooba text completion                                             | Later, if needed                                             |
-| ST     | `public/scripts/extensions/regex/engine.js`   | small      | Regex script engine                                                     | M2 port to pure TS                                           |
-| ST     | `public/scripts/extensions/quick-reply/`      | medium     | Quick Replies model and commands                                        | M2 port                                                      |
-| ST     | `public/scripts/tokenizers.js`                | 1231 lines | Tokenizer/model mapping                                                 | Reference mapping; wire `tiktoken`/web tokenizer             |
-| RisuAI | `src/ts/pngChunk.ts`                          | 324 lines  | Alternative PNG chunk implementation                                    | Cross-check; do not add a duplicate dependency               |
-| RisuAI | `src/ts/process/request/anthropic.ts`         | 1218 lines | Anthropic request/stream details                                        | Reference, especially thinking/tool use                      |
-| RisuAI | `src/ts/process/request/google.ts`            | 1306 lines | Gemini/Vertex request details                                           | Reference for future providers                               |
-| RisuAI | `src/ts/process/request/openAI/requests.ts`   | large      | OpenAI requests, Responses API, parameter compatibility                 | Reference implementation                                     |
-| RisuAI | `src/ts/characterCards.ts`                    | 2075 lines | JSON/CharX/Risu import/export                                           | Reference for M1 card formats                                |
-| RisuAI | `src/ts/plugins/` + `plugins.md`              | medium     | iframe sandbox plugin API, SafeDOM                                      | Reference for the M3 extension host                          |
-| RisuAI | `server/node/server.cjs`                      | large      | LAN password, sessions, rate limiting, WS proxy                         | Security design reference (we use scrypt + HMAC cookies)     |
-| RisuAI | `src-tauri/tauri.conf.json` + `capabilities/` | config     | Tauri 2 packaging, updater, file associations                           | M4 reference                                                 |
-| RisuAI | `src/lang/*.ts`                               | large      | Terminology and localization reference                                  | Do not copy copy; localization is deferred                   |
+| Source | File                                          | Size       | Purpose                                                                 | Approach                                                        |
+| ------ | --------------------------------------------- | ---------- | ----------------------------------------------------------------------- | --------------------------------------------------------------- |
+| ST     | `src/character-card-parser.js`                | 98 lines   | PNG `tEXt` card read/write                                              | Ported to `apps/server/src/cards/`; attribution retained        |
+| ST     | `src/png/encode.js`                           | 68 lines   | PNG chunk re-encoding                                                   | To reuse for card export in M2 (MIT origin; keep original note) |
+| ST     | `src/charx.js`                                | 399 lines  | CharX (ZIP + v3 card + assets)                                          | M2 port                                                         |
+| ST     | `src/prompt-converters.js`                    | 1451 lines | Claude/Google/Mistral message conversion                                | Port as needed per provider                                     |
+| ST     | `src/endpoints/backends/chat-completions.js`  | 2995 lines | Provider parameter matrix, SSE forwarding, reasoning/tool-call handling | Use as a parameter/edge-case reference; rewrite per provider    |
+| ST     | `src/endpoints/backends/text-completions.js`  | 646 lines  | Kobold/Ooba text completion                                             | Later, if needed                                                |
+| ST     | `public/scripts/extensions/regex/engine.js`   | small      | Regex script engine                                                     | M2 port to pure TS                                              |
+| ST     | `public/scripts/extensions/quick-reply/`      | medium     | Quick Replies model and commands                                        | M2 subset; M3 full                                              |
+| ST     | `public/scripts/tokenizers.js`                | 1231 lines | Tokenizer/model mapping                                                 | Reference mapping; wire `tiktoken`/web tokenizer                |
+| RisuAI | `src/ts/pngChunk.ts`                          | 324 lines  | Alternative PNG chunk implementation                                    | Cross-check; do not add a duplicate dependency                  |
+| RisuAI | `src/ts/process/request/anthropic.ts`         | 1218 lines | Anthropic request/stream details                                        | Reference, especially thinking/tool use                         |
+| RisuAI | `src/ts/process/request/google.ts`            | 1306 lines | Gemini/Vertex request details                                           | Reference for future providers                                  |
+| RisuAI | `src/ts/process/request/openAI/requests.ts`   | large      | OpenAI requests, Responses API, parameter compatibility                 | Reference implementation                                        |
+| RisuAI | `src/ts/characterCards.ts`                    | 2075 lines | JSON/CharX/Risu import/export                                           | Reference for M2 card formats                                   |
+| RisuAI | `src/ts/plugins/` + `plugins.md`              | medium     | iframe sandbox plugin API, SafeDOM                                      | Reference for the M3 extension host                             |
+| RisuAI | `server/node/server.cjs`                      | large      | LAN password, sessions, rate limiting, WS proxy                         | Security design reference (we use scrypt + HMAC cookies)        |
+| RisuAI | `src-tauri/tauri.conf.json` + `capabilities/` | config     | Tauri 2 packaging, updater, file associations                           | M4 reference                                                    |
+| RisuAI | `src/lang/*.ts`                               | large      | Terminology and localization reference                                  | Do not copy copy; localization is deferred                      |
 
 ## 3. Port / rewrite (logic reference only)
 
@@ -79,7 +81,7 @@ Requirements:
 
 ST extensions fall into three groups:
 
-1. **Pure STscript / Quick Replies / regex / prompt injection** — implementable; M1–M2.
+1. **Pure STscript / Quick Replies / regex / prompt injection** — implementable in layers; M1–M3.
 2. **Extensions calling `SillyTavern.getContext()` and `eventSource`** — need a compatibility layer. `st-context.js` exposes ~100 APIs; M3 implements by usage frequency.
 3. **UI extensions that manipulate ST's DOM/jQuery directly** — require a sandboxed iframe or a replica of ST's DOM. This is L4, the highest-risk goal, and is not promised for v1.
 
@@ -103,8 +105,16 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 
 | Location                                   | Source                                                 | Notes                                                            |
 | ------------------------------------------ | ------------------------------------------------------ | ---------------------------------------------------------------- |
-| `apps/server/src/cards/parse.ts`           | ST `src/character-card-parser.js` + PNG chunk handling | PNG `tEXt` reading, v2/v3 precedence; card writing arrives in M1 |
+| `apps/server/src/cards/parse.ts`           | ST `src/character-card-parser.js` + PNG chunk handling | PNG `tEXt` reading, v2/v3 precedence; card writing arrives in M2 |
 | `packages/shared/src/schemas/character.ts` | ST Character Card V2/V3 spec                           | Field names and `character_book` structure                       |
 | `packages/shared/src/schemas/chat.ts`      | ST chat JSONL                                          | Header + message fields                                          |
 | `packages/shared/src/schemas/worldinfo.ts` | ST World Info JSON                                     | Entry field set                                                  |
 | `packages/shared/src/schemas/preset.ts`    | ST OpenAI preset                                       | Preset fields, `prompts` / `prompt_order`                        |
+
+## 8. Related documentation
+
+- [Milestones](MILESTONES.md)
+- [SillyTavern compatibility](ST-COMPATIBILITY.md)
+- [Data formats](DATA-FORMATS.md)
+- [Documentation index](README.md)
+- [NOTICE](../NOTICE)

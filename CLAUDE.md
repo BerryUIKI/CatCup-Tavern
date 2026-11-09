@@ -8,7 +8,9 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 - **LAN**: the same server bound to `0.0.0.0`, single user + access password
 - **Desktop**: Tauri 2 shell (planned) hosting the same server as a Node sidecar
 
-Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON v2/v3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
+Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
+
+Current status: **M0 complete (2026-11-09), M1 next**. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`.
 
 ## Commands
 
@@ -37,10 +39,38 @@ apps/web/               React SPA
   src/lib/              API / SSE clients
   src/store/            Zustand UI state
 packages/shared/        Zod schemas, shared types, ST data models
-docs/                   architecture and reuse notes
+docs/                   handbook (see docs/README.md)
 .ref/                   SillyTavern / RisuAI reference checkouts (gitignored)
 data/                   runtime data (gitignored)
 ```
+
+## Documentation map
+
+Read before changing behaviour:
+
+- `docs/README.md` — documentation index and reading paths.
+- `docs/MILESTONES.md` — source of truth for scope, status and acceptance criteria.
+- `docs/ARCHITECTURE.md` — topology, stack decisions and data flow.
+- `docs/API.md` — REST/SSE contracts.
+- `docs/DATA-FORMATS.md` — ST-compatible cards, chats, world info, presets and internal files.
+- `docs/PROVIDERS.md` — provider adapters and configuration.
+- `docs/ST-COMPATIBILITY.md` — what works, what is partial, what is planned.
+- `docs/DEVELOPMENT.md` — setup, testing and extension workflows.
+- `docs/DEPLOYMENT.md` — production, LAN, reverse proxy, backup and upgrades.
+- `docs/SECURITY.md` — auth, secrets, threat model and hardening backlog.
+- `docs/TROUBLESHOOTING.md` — common failures.
+- `docs/GLOSSARY.md` — terminology.
+- `docs/REUSE.md` — licensing and code reuse.
+
+**Docs are part of done.** Update the relevant page and `CHANGELOG.md` in the same change. If scope moves, update `docs/MILESTONES.md` first.
+
+## Git workflow
+
+- `main` is the release baseline.
+- `dev` is the integration branch.
+- Feature branches are cut from `dev`; PRs target `dev`.
+- Use merge commits, not squash, for stacked PRs.
+- Small PRs, atomic commits; see `CONTRIBUTING.md`.
 
 ## Conventions
 
@@ -54,14 +84,18 @@ data/                   runtime data (gitignored)
 - Frontend: React + Tailwind 4. Theme tokens live in the `@theme` block of `apps/web/src/styles.css`.
 - Chat streaming uses SSE: `start` / `token` / `reasoning` / `done` / `error`. The server owns persistence; the client only renders optimistically.
 - Do not transplant ST's jQuery/DOM code into React. Port algorithms and data semantics only.
+- Never commit `data/`, `.ref/`, `.env`, build output or secrets.
 
 ## Current milestones
 
-- **M0**: scaffold, auth, card import, chat persistence, streaming for four provider families, dark tavern UI (in progress)
-- **M1**: STscript, world info, prompt manager, preset import, swipes/branches
-- **M2**: group chats, summary memory, regex scripts, quick replies, TTS / image generation
-- **M3**: ST extension compatibility (getContext + event bus + sandbox host)
-- **M4**: Tauri desktop shell and Node sidecar packaging
+- **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
+- **M1** (next): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
+- **M2** (planned): group chats, summary memory, regex scripts, Quick Replies subset, TTS, image generation, card editing/export, CharX, library polish.
+- **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
+- **M4** (planned): Tauri desktop shell and Node sidecar packaging.
+- **M5** (planned): mobile, i18n, accessibility, CI, performance and v1.0 release.
+
+The detailed acceptance criteria are in `docs/MILESTONES.md`.
 
 ## References
 
