@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import {
     type AppSettings,
     appSettingsSchema,
+    DEFAULT_AUTHOR_NOTE,
     DEFAULT_BASE_URLS,
     DEFAULT_GENERATION_SETTINGS,
     DEFAULT_PERSONA,
     DEFAULT_UI_SETTINGS,
+    DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
     type ProviderConfig,
     type ProviderInput,
@@ -66,6 +68,8 @@ function createDefaultSettings(): AppSettings {
         generation: { ...DEFAULT_GENERATION_SETTINGS },
         persona: { ...DEFAULT_PERSONA },
         ui: { ...DEFAULT_UI_SETTINGS },
+        worldInfo: { ...DEFAULT_WORLD_INFO_CONFIG },
+        authorNote: { ...DEFAULT_AUTHOR_NOTE },
     };
 }
 
@@ -223,6 +227,12 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         }
         if (patch.ui) {
             settings.ui = { ...settings.ui, ...patch.ui };
+        }
+        if (patch.worldInfo) {
+            settings.worldInfo = { ...settings.worldInfo, ...patch.worldInfo };
+        }
+        if (patch.authorNote) {
+            settings.authorNote = { ...settings.authorNote, ...patch.authorNote };
         }
         return settings;
     });

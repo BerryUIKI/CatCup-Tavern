@@ -294,10 +294,31 @@ ST OpenAI presets live in `data/presets/` (or a SillyTavern `openai-presets/` fo
 
 - sampling: `temperature`, `frequency_penalty`, `presence_penalty`, `top_p`, `top_k`, `openai_max_context`, `openai_max_tokens`, `stream_openai`;
 - model: `openai_model`;
-- prompt entries: `prompts[]` with `identifier`, `name`, `system_prompt`, `role`, `content`, `injection_position`, `injection_depth`, `injection_order`, `forbid_overrides`, `marker`, `enabled`;
+- assembly strings: `wi_format`, `scenario_format`, `personality_format`, `new_chat_prompt`, `new_example_chat_prompt`, `continue_nudge_prompt`, `impersonation_prompt`, `send_if_empty`, `squash_system_messages`, `names_behavior`, `continue_prefill`, `pin_examples`;
+- prompt entries: `prompts[]` with `identifier`, `name`, `system_prompt`, `role`, `content`, `marker`, `injection_position`, `injection_depth`, `injection_order`, `injection_trigger`, `forbid_overrides`, `extension`, `position`;
 - ordering: `prompt_order[]` with `character_id` and `order[]` (`identifier`, `enabled`).
 
-**Status:** the schema exists, but preset import/export and Prompt Manager execution arrive in M1. The current prompt builder uses the character's `system_prompt`, a character sheet, persona, history trimming and `post_history_instructions`.
+Three details are load-bearing for a lossless round trip:
+
+- `system_prompt` is `true` on SillyTavern's built-ins and markers, `false` on user prompts, and **absent** on merged literals. The schema keeps it optional rather than defaulting it, because the three cases behave differently.
+- `enabled` belongs to the order entry, not the prompt definition. A missing `enabled` means disabled; a prompt-level `enabled` is ignored.
+- `injection_position` is `0` for the prompt order and `1` for in-chat injection at `injection_depth`.
+
+### Default order
+
+SillyTavern's default order, used when a preset does not provide one:
+
+```text
+main, worldInfoBefore, personaDescription, charDescription, charPersonality,
+scenario, enhanceDefinitions (disabled), nsfw, worldInfoAfter,
+dialogueExamples, chatHistory, jailbreak
+```
+
+### Assembly status
+
+`apps/server/src/prompt/` implements the Prompt Manager model and execution: sanitizing the order, resolving markers, merging the fixed system prompts, applying character-card overrides for `main` and `jailbreak`, placing prompts in their order slots, inserting in-chat depth injections, and trimming history against the token budget.
+
+**Preset loading is not wired yet.** Generation runs on the built-in default prompt definitions, so a preset file in `data/presets/` has no effect until the next M1 slice adds import, export and activation.
 
 ## Internal files (not SillyTavern formats)
 

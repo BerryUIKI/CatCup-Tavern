@@ -9,7 +9,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Layer                | Scope                                                     | Status                                                                               |
 | -------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads and scans; presets have schemas only |
-| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: basic prompt/macros/swipes; STscript and extensions not yet                 |
+| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: prompt manager, world info and macros work; STscript and regex not yet      |
 | **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                       |
 | **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                    |
 
@@ -32,7 +32,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                |
 | World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split         |
 | World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects |
-| World Info injection               | ❌ Planned         | The Prompt Manager slice wires the scan result into generation    |
+| World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt       |
 | Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off       |
 | ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                                      |
 | Themes                             | ❌ Not implemented | Dark tavern theme only                                            |
@@ -43,15 +43,17 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 | Feature                                                            | Status             | Notes                                                                                           |
 | ------------------------------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
-| Character sheet prompt (description/personality/scenario/examples) | ✅ Basic           | Server-side prompt builder                                                                      |
+| Character sheet prompt (description/personality/scenario/examples) | ✅ Yes             | Each marker is its own message, in prompt-order order                                           |
 | Character `system_prompt` override                                 | ✅ Yes             | Used when non-empty                                                                             |
 | Post-history instructions                                          | ✅ Yes             | Appended after history                                                                          |
 | Core macros (`{{char}}`, `{{user}}`, ...)                          | 🟡 Partial         | `char`, `user`, `persona`, `description`, `personality`, `scenario`, `time`, `date`, `original` |
 | Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
-| Prompt Manager ordering/injection                                  | ❌ Planned         | M1                                                                                              |
-| Author's note                                                      | ❌ Planned         | M1                                                                                              |
+| Prompt Manager ordering/injection                                  | ✅ Implemented     | Default order, markers, relative and absolute injection                                         |
+| Prompt Manager editor UI                                           | ❌ Planned         | M1                                                                                              |
+| Preset import/export                                               | ❌ Planned         | M1                                                                                              |
+| Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                |
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
-| World Info injection                                               | ❌ Planned         | M1: the scan result is not consumed by the prompt builder yet                                   |
+| World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
 | Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
 | Message editing                                                    | 🟡 API only        | PATCH exists; inline UI planned for M1                                                          |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
@@ -96,14 +98,15 @@ Copy ST chat folders into `data/chats/`. CatCup looks for a folder named after t
 
 ### World info and presets
 
-World info files load from `data/worlds/` and are scanned with SillyTavern's full evaluation pipeline, including recursion, inclusion groups and timed effects. The result is still not injected into generation, so copying a book in does not change replies yet; the Prompt Manager slice connects the two. Presets are not wired in at all. M1 adds the prompt-manager integration, the editor and import/export.
+World info files load from `data/worlds/` and are scanned with SillyTavern's full evaluation pipeline, including recursion, inclusion groups and timed effects. The result now reaches generation: `worldInfoBefore`/`worldInfoAfter` land in their prompt-order slots, at-depth entries are injected into the chat, and the Author's Note is composed from the top and bottom buckets. Presets are still not loaded, so generation uses the built-in default prompt order.
 
 ## Known deviations
 
 - **`send_date` format:** CatCup writes ISO 8601 strings; ST writes humanized strings. Both are treated as opaque strings by the readers.
 - **Card file naming:** CatCup names the saved file after the card's display name; ST often keeps the uploaded file name. IDs therefore follow the display name.
 - **Chat folder naming:** Character name first, character ID fallback. This differs slightly from ST's single-folder rule but makes imported folders more tolerant.
-- **Prompt construction:** The M0 builder is intentionally small and does not reproduce ST's full Prompt Manager; replies may differ until M1.
+- **Prompt construction:** the Prompt Manager model is implemented with SillyTavern's default order, but presets are not loaded yet, so a preset selection has no effect.
+- **Continue generation:** CatCup appends SillyTavern's continue nudge, but does not implement `continue_prefill` displacement of the newest message.
 - **Anthropic start marker:** If a prompt starts with an assistant message, CatCup inserts a `[Start of chat]` user message for the Messages API.
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.
 - **World info injection:** the scanner is complete, but nothing consumes its result yet, so lorebook keys do not affect replies.
