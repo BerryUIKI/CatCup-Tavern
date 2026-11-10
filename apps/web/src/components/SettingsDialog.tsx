@@ -12,6 +12,7 @@ import {
     BookOpen,
     Check,
     Download,
+    Pencil,
     PlugZap,
     Save,
     Server,
@@ -40,6 +41,7 @@ import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
 import { PromptOrderEditor } from './PromptOrderEditor';
 import { Spinner } from './Spinner';
+import { WorldInfoEditor } from './WorldInfoEditor';
 
 type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo';
 
@@ -171,6 +173,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const [providerError, setProviderError] = useState<string | null>(null);
     const [generationForm, setGenerationForm] = useState<GenerationSettings | null>(null);
     const [personaForm, setPersonaForm] = useState<PersonaSettings | null>(null);
+    const [editingBookId, setEditingBookId] = useState<string | null>(null);
     const initializedRef = useRef(false);
 
     const selectedProvider = settings?.providers.find((provider) => provider.id === selectedProviderId) ?? null;
@@ -195,6 +198,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     useEffect(() => {
         if (!open) {
             initializedRef.current = false;
+            setEditingBookId(null);
             return;
         }
         if (!settings || initializedRef.current) {
@@ -860,6 +864,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         </div>
                     ) : null}
                 </div>
+            ) : editingBookId ? (
+                <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
             ) : (
                 <div className="space-y-5 p-5">
                     <p className="text-sm leading-relaxed text-muted">
@@ -918,6 +924,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                     >
                                         <Download size={14} />
                                     </a>
+                                    <button
+                                        type="button"
+                                        className="icon-btn size-7"
+                                        onClick={() => setEditingBookId(world.id)}
+                                        title="Edit entries"
+                                        aria-label={`Edit ${world.id}`}
+                                    >
+                                        <Pencil size={14} />
+                                    </button>
                                     <button
                                         type="button"
                                         className="icon-btn size-7 hover:text-wine"

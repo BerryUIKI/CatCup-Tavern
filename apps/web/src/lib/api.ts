@@ -16,6 +16,7 @@ import type {
     SettingsPatch,
     SettingsResponse,
     WorldDetail,
+    WorldInfoEntryPatch,
     WorldSummary,
 } from '@catcup/shared';
 
@@ -78,6 +79,29 @@ export const api = {
                 body: JSON.stringify({ fileName, book }),
             }),
         remove: (id: string) => request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        createEntry: (id: string) =>
+            request<{ world: WorldDetail; uid?: number }>(`/worlds/${encodeURIComponent(id)}/entries`, {
+                method: 'POST',
+            }),
+        duplicateEntry: (id: string, uid: number) =>
+            request<{ world: WorldDetail; uid?: number }>(
+                `/worlds/${encodeURIComponent(id)}/entries/${uid}/duplicate`,
+                { method: 'POST' },
+            ),
+        updateEntry: (id: string, uid: number, patch: WorldInfoEntryPatch) =>
+            request<{ world: WorldDetail; uid?: number }>(`/worlds/${encodeURIComponent(id)}/entries/${uid}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            }),
+        deleteEntry: (id: string, uid: number) =>
+            request<{ world: WorldDetail; uid?: number }>(`/worlds/${encodeURIComponent(id)}/entries/${uid}`, {
+                method: 'DELETE',
+            }),
+        reorderEntries: (id: string, uids: number[]) =>
+            request<{ world: WorldDetail; uid?: number }>(`/worlds/${encodeURIComponent(id)}/entries/order`, {
+                method: 'PUT',
+                body: JSON.stringify({ uids }),
+            }),
         exportUrl: (id: string) => `/api/worlds/${encodeURIComponent(id)}/export`,
     },
     context: {

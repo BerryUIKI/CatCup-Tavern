@@ -1,4 +1,12 @@
-import type { AuthStatus, ChatDetail, ImportCharactersResponse, ProviderInput, SettingsPatch } from '@catcup/shared';
+import type {
+    AuthStatus,
+    ChatDetail,
+    ImportCharactersResponse,
+    ProviderInput,
+    SettingsPatch,
+    WorldDetail,
+    WorldInfoEntryPatch,
+} from '@catcup/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../lib/api';
@@ -13,6 +21,7 @@ export const queryKeys = {
     presets: ['presets'] as const,
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
+    world: (id: string | null) => ['world', id] as const,
 };
 
 export function useAuthStatus() {
@@ -259,10 +268,99 @@ export function useDeleteWorld() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (id: string) => api.worlds.remove(id),
-        onSuccess: () => {
+        onSuccess: (_data, id) => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
             void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+            queryClient.removeQueries({ queryKey: queryKeys.world(id) });
         },
+    });
+}
+
+export function useWorld(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.world(id),
+        queryFn: () => api.worlds.get(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+/**
+ * Write a mutated book back into the cache.
+ *
+ * The server returns the whole book after every entry change, so the editor
+ * renders from what was actually stored — including the uid a new entry got and
+ * the display order that resulted.
+ */
+function useWorldCacheWriter(id: string | null) {
+    const queryClient = useQueryClient();
+    return (data: { world: WorldDetail; uid?: number }) => {
+        queryClient.setQueryData(queryKeys.world(id), data);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+    };
+}
+
+export function useCreateWorldEntry(id: string | null) {
+    const onSuccess = useWorldCacheWriter(id);
+    return useMutation({
+        mutationFn: () => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.createEntry(id);
+        },
+        onSuccess,
+    });
+}
+
+export function useDuplicateWorldEntry(id: string | null) {
+    const onSuccess = useWorldCacheWriter(id);
+    return useMutation({
+        mutationFn: (uid: number) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.duplicateEntry(id, uid);
+        },
+        onSuccess,
+    });
+}
+
+export function useUpdateWorldEntry(id: string | null) {
+    const onSuccess = useWorldCacheWriter(id);
+    return useMutation({
+        mutationFn: (variables: { uid: number; patch: WorldInfoEntryPatch }) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.updateEntry(id, variables.uid, variables.patch);
+        },
+        onSuccess,
+    });
+}
+
+export function useDeleteWorldEntry(id: string | null) {
+    const onSuccess = useWorldCacheWriter(id);
+    return useMutation({
+        mutationFn: (uid: number) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.deleteEntry(id, uid);
+        },
+        onSuccess,
+    });
+}
+
+export function useReorderWorldEntries(id: string | null) {
+    const onSuccess = useWorldCacheWriter(id);
+    return useMutation({
+        mutationFn: (uids: number[]) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.reorderEntries(id, uids);
+        },
+        onSuccess,
     });
 }
 
