@@ -6,41 +6,41 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 ## Compatibility layers
 
-| Layer                | Scope                                                     | Status                                                                               |
-| -------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads and scans; presets have schemas only |
-| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: prompt manager, world info and macros work; STscript and regex not yet      |
-| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                       |
-| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                    |
+| Layer                | Scope                                                     | Status                                                                           |
+| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads, scans and edits; presets import |
+| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: prompt manager, world info and macros work; STscript and regex not yet  |
+| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                   |
+| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                |
 
 ## Data compatibility matrix
 
-| Feature                            | Status             | Notes                                                             |
-| ---------------------------------- | ------------------ | ----------------------------------------------------------------- |
-| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                       |
-| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                            |
-| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                          |
-| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                 |
-| Character card write/export        | ❌ Planned         | M2                                                                |
-| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                |
-| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                                     |
-| Character editing                  | ❌ Planned         | M2                                                                |
-| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`              |
-| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported        |
-| Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                           |
-| Group chats                        | ❌ Planned         | M2                                                                |
-| World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                |
-| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split         |
-| World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects |
-| World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt       |
-| Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off       |
-| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat       |
-| World Info entry editor            | ❌ Planned         | M2; entries are edited as JSON for now                            |
-| Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates   |
-| ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                 |
-| Themes                             | ❌ Not implemented | Dark tavern theme only                                            |
-| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later               |
-| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                               |
+| Feature                            | Status             | Notes                                                                    |
+| ---------------------------------- | ------------------ | ------------------------------------------------------------------------ |
+| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                              |
+| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                                   |
+| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                                 |
+| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                        |
+| Character card write/export        | ❌ Planned         | M2                                                                       |
+| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                       |
+| Character book (embedded lorebook) | 🟡 Parsed          | Scanner and UI planned for M1                                            |
+| Character editing                  | ❌ Planned         | M2                                                                       |
+| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                     |
+| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported               |
+| Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                                  |
+| Group chats                        | ❌ Planned         | M2                                                                       |
+| World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                       |
+| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split                |
+| World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects        |
+| World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt              |
+| Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off              |
+| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat              |
+| World Info entry editor            | ✅ Yes             | Every scan-relevant field; character filters are preserved, not editable |
+| Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates          |
+| ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                        |
+| Themes                             | ❌ Not implemented | Dark tavern theme only                                                   |
+| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later                      |
+| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                      |
 
 ## Semantic compatibility
 
@@ -57,11 +57,12 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                |
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
 | World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
+| World Info entry editing                                           | ✅ Yes             | Keys, content, placement, groups, timing, recursion and matching, saved per entry               |
 | Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
 | Message editing                                                    | ✅ Yes             | Inline editor in the chat view; edits keep unknown `extra` fields                               |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
 | Continue generation                                                | ✅ Yes             | Continue button below the latest reply                                                          |
-| Branch from message                                                | ❌ Planned         | M1                                                                                              |
+| Branch from message                                                | ✅ Yes             | Branch from any message into a new chat                                                         |
 | Alternate greetings                                                | ✅ Yes             | Picker when starting a chat with a card that has alternates                                     |
 | Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                        |
 | Group chat                                                         | ❌ Planned         | M2                                                                                              |
@@ -108,16 +109,17 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **`send_date` format:** CatCup writes ISO 8601 strings; ST writes humanized strings. Both are treated as opaque strings by the readers.
 - **Card file naming:** CatCup names the saved file after the card's display name; ST often keeps the uploaded file name. IDs therefore follow the display name.
 - **Chat folder naming:** Character name first, character ID fallback. This differs slightly from ST's single-folder rule but makes imported folders more tolerant.
-- **Prompt construction:** the Prompt Manager model is implemented; preset activation replaces the built-in defaults, but there is no prompt-order editor yet.
+- **Prompt construction:** the Prompt Manager model is implemented, preset activation replaces the built-in defaults, and the prompt order and injection positions are editable per preset.
 - **Continue generation:** CatCup appends SillyTavern's continue nudge, but does not implement `continue_prefill` displacement of the newest message.
 - **Anthropic start marker:** If a prompt starts with an assistant message, CatCup inserts a `[Start of chat]` user message for the Messages API.
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.
-- **World info injection:** the scanner is complete, but nothing consumes its result yet, so lorebook keys do not affect replies.
 - **World info group removal:** SillyTavern's inclusion-group `removeEntry` calls `splice(indexOf(entry), 1)`; when the entry is already gone this removes the last unrelated candidate. CatCup guards the index instead of reproducing that data loss.
 - **World info book binding:** a card's own book and the global book list are merged and deduplicated case-insensitively, because `Eldoria` and `eldoria` are the same file on Windows. SillyTavern would load it twice.
-- **World info missing `position`:** entries without a `position` field default to `0` (before character). SillyTavern drops them from the prompt entirely.
+- **World Info entry list order:** the editor sorts by `displayIndex` (falling back to `uid`), then `order` descending, then uid — SillyTavern's Custom sort. SillyTavern's own editor defaults to a Priority sort with drag handles only in Custom mode; this editor always uses Custom order because it exposes explicit up/down buttons instead of dragging.
+- **World Info character filter:** `characterFilter` is honored by the scanner but not editable in the UI, because CatCup's character ids and tag values do not yet line up with SillyTavern's avatar file names and numeric tag ids. The field is preserved on save, so it survives a round trip.
+- **World Info missing `position`:** entries without a `position` field — or with an explicit `null` — default to `0` (before character). SillyTavern only defaults the missing case and drops a `null` position from the prompt entirely.
+- **World Info omitted defaults:** the editor writes the fields it exposes. SillyTavern's editor backfills every template field into the in-memory entry on render and persists them on the next save, so a file edited there gains keys a CatCup edit leaves absent. Both shapes read the same, because an absent field falls back to the same default.
 - **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
-- **Presets:** schemas exist, but the runtime does not use them yet.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
 ## Testing compatibility

@@ -118,9 +118,10 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **World info library**: books can be listed, imported, exported, deleted and enabled per account from a World Info settings tab. Importing stores the file verbatim; deleting removes the id from the enabled list.
 - **Context inspector**: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt against a cloned `chat_metadata`, and the inspector shows the assembled messages, the per-entry world info trace (activated or skipped, reason, pass) and per-slot token estimates.
 - **Prompt order editor**: reorder entries, enable or disable them, and move a prompt between the ordered list and an in-chat injection with a depth, order and role, saved back into the active preset through `PATCH /api/presets/:id`. Edits merge into the stored body, so sampling fields the editor does not show are preserved.
-- 92 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution and world info turn helpers, plus the SillyTavern sample book as a fixture.
+- **World info entry editor**: entries can be created, edited, duplicated, reordered and deleted in the World Info settings tab. The form covers keywords and secondary-key logic, content, placement, scan overrides, inclusion groups, timed effects, recursion and matching sources; the API merges each patch into the stored entry, so `extensions`, `vectorized` and unknown fields survive. New entries take the lowest free uid and are built from SillyTavern's `newWorldInfoEntryTemplate`.
+- 113 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution, world info turn helpers, entry editing and keyword splitting, plus the SillyTavern sample book as a fixture.
 
-The world info entry editor and the model-aware tokenizer are the remaining M1 work.
+The model-aware tokenizer is the remaining M1 work.
 
 ### Scope
 
