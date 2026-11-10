@@ -50,7 +50,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
 | Prompt Manager ordering/injection                                  | ✅ Implemented     | Default order, markers, relative and absolute injection                                         |
 | Prompt Manager editor UI                                           | ❌ Planned         | M1                                                                                              |
-| Preset import/export                                               | ❌ Planned         | M1                                                                                              |
+| Preset import/export                                               | ✅ Yes             | Import, export and activation through the API                                                   |
 | Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                |
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
 | World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
@@ -98,14 +98,14 @@ Copy ST chat folders into `data/chats/`. CatCup looks for a folder named after t
 
 ### World info and presets
 
-World info files load from `data/worlds/` and are scanned with SillyTavern's full evaluation pipeline, including recursion, inclusion groups and timed effects. The result now reaches generation: `worldInfoBefore`/`worldInfoAfter` land in their prompt-order slots, at-depth entries are injected into the chat, and the Author's Note is composed from the top and bottom buckets. Presets are still not loaded, so generation uses the built-in default prompt order.
+World info files load from `data/worlds/` and are scanned with SillyTavern's full evaluation pipeline, including recursion, inclusion groups and timed effects. The result now reaches generation: `worldInfoBefore`/`worldInfoAfter` land in their prompt-order slots, at-depth entries are injected into the chat, and the Author's Note is composed from the top and bottom buckets. ST OpenAI presets can be imported, exported and activated; an active preset supplies the prompt list, order, formats and sampling parameters, and without one the built-in defaults are used.
 
 ## Known deviations
 
 - **`send_date` format:** CatCup writes ISO 8601 strings; ST writes humanized strings. Both are treated as opaque strings by the readers.
 - **Card file naming:** CatCup names the saved file after the card's display name; ST often keeps the uploaded file name. IDs therefore follow the display name.
 - **Chat folder naming:** Character name first, character ID fallback. This differs slightly from ST's single-folder rule but makes imported folders more tolerant.
-- **Prompt construction:** the Prompt Manager model is implemented with SillyTavern's default order, but presets are not loaded yet, so a preset selection has no effect.
+- **Prompt construction:** the Prompt Manager model is implemented; preset activation replaces the built-in defaults, but there is no prompt-order editor yet.
 - **Continue generation:** CatCup appends SillyTavern's continue nudge, but does not implement `continue_prefill` displacement of the newest message.
 - **Anthropic start marker:** If a prompt starts with an assistant message, CatCup inserts a `[Start of chat]` user message for the Messages API.
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.

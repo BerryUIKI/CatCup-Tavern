@@ -113,9 +113,10 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Prompt Manager** (`apps/server/src/prompt/`): SillyTavern's default prompt definitions and order, sanitizing, generation-type triggers, the collection model, fixed system-prompt merging, character-card `main`/`jailbreak` overrides, ordered message slots, relative and absolute injection, and system-message squashing.
 - **Prompt assembly** now emits each marker as its own message — world info before/after, persona, description, personality, scenario, examples and history — instead of the M0 labelled character sheet.
 - **World info and Author's Note are wired into generation**: the route scans the full conversation, persists `timedWorldInfo`, and passes the scan result to the assembler.
-- 86 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection and macro expansion, plus the SillyTavern sample book as a fixture.
+- **Preset import, export and activation**: ST OpenAI presets are stored verbatim under `data/presets/`, listed, imported, exported and deleted over the API, and an active preset supplies the prompt list, order, formats and sampling parameters. Settings gain a Presets section in the UI.
+- 90 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion and preset resolution, plus the SillyTavern sample book as a fixture.
 
-The Preset Manager (import, export, activation) and the prompt-order editor are the remaining M1 prompt work.
+The prompt-order editor, message editing/branching and the model-aware tokenizer are the remaining M1 work.
 
 ### Scope
 

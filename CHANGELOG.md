@@ -20,6 +20,9 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - World info now reaches generation: `worldInfoBefore` and `worldInfoAfter` occupy their prompt-order slots, at-depth entries are injected into the chat, and `chat_metadata.timedWorldInfo` is persisted after each scan.
 - Author's Note: composed with world info's top and bottom buckets, scheduled by interval, and injected in prompt, in chat, or before the prompt.
 - Settings gain a `worldInfo` block (books, depth, budget, recursion and matching options) and an `authorNote` block.
+- SillyTavern OpenAI presets can be imported, exported, listed and deleted over `/api/presets`, and activated through `activePresetId`. The body is stored verbatim so unknown fields survive a round trip.
+- An active preset now supplies the prompt list and order, the assembly formats, the chat and example separators, the continue nudge, `squash_system_messages` and the sampling parameters; omitted fields fall back to the app's generation settings.
+- Settings has a Prompts tab for selecting, importing, exporting and deleting presets.
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed
