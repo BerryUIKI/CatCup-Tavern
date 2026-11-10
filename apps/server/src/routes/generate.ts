@@ -12,9 +12,11 @@ import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
+import type { GenerationType } from '../prompt/definitions.js';
+import { scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
-import { appendMessage, readChat, updateMessage } from '../storage/chats.js';
+import { appendMessage, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
 import { requireCharacter } from './helpers.js';
 
@@ -172,17 +174,37 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             originalAssistant = last;
         }
 
-        const prompt = buildPrompt({
+        const generationType: GenerationType = body.action === 'send' ? 'normal' : body.action;
+
+        // The scanner needs the whole non-system conversation as its timed
+        // effect clock, so it runs before the prompt is trimmed to context.
+        const worldInfoTurn = await scanWorldInfoForTurn({
+            character,
+            messages,
+            persona: settings.persona,
+            config: settings.worldInfo,
+            authorNote: settings.authorNote,
+            contextSize: settings.generation.contextSize,
+            trigger: generationType,
+            metadata: chat.header.chat_metadata,
+        });
+
+        await patchChatMetadata(character, body.chatId, {
+            timedWorldInfo: chat.header.chat_metadata.timedWorldInfo,
+        });
+
+        const assembled = buildPrompt({
             character,
             messages,
             persona: settings.persona,
             settings: settings.generation,
+            worldInfo: worldInfoTurn.prompt,
+            generationType,
         });
-        if (body.action === 'continue') {
-            prompt.push({
-                role: 'system',
-                content: '[Continue the last assistant message without repeating it.]',
-            });
+        const prompt = assembled.messages;
+
+        if (prompt.length === 0) {
+            throw badRequest('The assembled prompt is empty. Check the enabled prompt entries.');
         }
 
         const generationId = randomUUID();

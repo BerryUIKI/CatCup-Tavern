@@ -315,3 +315,31 @@ export async function deleteChat(character: CharacterDetail, chatId: string): Pr
         }
     });
 }
+
+/**
+ * Merge keys into the chat header's `chat_metadata`.
+ *
+ * `appendMessage` and `updateMessage` re-read the file inside their lock, so a
+ * caller that mutates the header it read earlier would lose the change. This
+ * is the write path for scanner-owned state such as `timedWorldInfo`.
+ */
+export async function patchChatMetadata(
+    character: CharacterDetail,
+    chatId: string,
+    patch: Record<string, unknown>,
+): Promise<ChatHeader> {
+    const filePath = await chatFilePath(character, chatId);
+    return withFileLock(filePath, async () => {
+        const chat = await readChatFile(filePath, character, chatId);
+        if (!chat) {
+            throw new Error('Chat not found');
+        }
+
+        chat.header = {
+            ...chat.header,
+            chat_metadata: { ...chat.header.chat_metadata, ...patch },
+        };
+        await writeChatFile(filePath, chat);
+        return chat.header;
+    });
+}

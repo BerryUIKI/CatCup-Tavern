@@ -5,6 +5,13 @@ export type ChatRole = 'system' | 'user' | 'assistant';
 export interface PromptMessage {
     role: ChatRole;
     content: string;
+    /**
+     * SillyTavern sets this on example messages (`example_user` /
+     * `example_assistant`) and, in one history mode, on history messages.
+     * OpenAI-compatible providers accept it; providers without the field
+     * ignore it.
+     */
+    name?: string;
 }
 
 export interface ProviderRequest {
