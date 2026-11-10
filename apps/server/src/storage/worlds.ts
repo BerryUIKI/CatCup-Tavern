@@ -1,7 +1,16 @@
 import { readdir, stat, unlink } from 'node:fs/promises';
 
-import { isRecord, type WorldDetail, type WorldSummary } from '@catcup/shared';
+import { isRecord, type WorldDetail, type WorldInfoEntryPatch, type WorldSummary } from '@catcup/shared';
 
+import {
+    appendEntry,
+    applyEntryPatch,
+    duplicateEntry,
+    ensureEntryContainer,
+    findEntryLocation,
+    readEntriesForEditor,
+    reorderEntries,
+} from '../worldinfo/entries.js';
 import { parseWorldInfoBook } from '../worldinfo/loader.js';
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
@@ -16,6 +25,10 @@ export function worldFilePath(id: string): string {
 function normalizeId(candidate: string, fallback = 'world'): string {
     const cleaned = candidate.replace(/\.json$/i, '').trim();
     return safeFileName(cleaned, fallback).slice(0, 120).trim() || fallback;
+}
+
+function detailOf(id: string, book: Record<string, unknown>): WorldDetail {
+    return { id, book, entries: readEntriesForEditor(book) };
 }
 
 /** List world info books in `data/worlds`, newest first. */
@@ -59,7 +72,7 @@ export async function readWorld(id: string): Promise<WorldDetail | null> {
     if (!isRecord(raw)) {
         return null;
     }
-    return { id, book: raw };
+    return detailOf(id, raw);
 }
 
 /**
@@ -88,7 +101,96 @@ export async function createWorld(input: { fileName?: string; book: unknown }): 
     const file = worldFilePath(id);
     await withFileLock(file, () => writeJsonFile(file, input.book));
 
-    return { id, book: input.book };
+    return detailOf(id, input.book);
+}
+
+/** Outcome of an entry mutation: the refreshed book, or what was missing. */
+export type WorldEntryResult =
+    | { status: 'ok'; world: WorldDetail; uid?: number }
+    | { status: 'missing-book' }
+    | { status: 'missing-entry' };
+
+/** What a mutation callback reports back: the entry it touched, or a miss. */
+type MutationOutcome = { status: 'ok'; uid?: number } | { status: 'missing-entry' };
+
+/**
+ * Serialize a read-modify-write of one book.
+ *
+ * Every mutation goes through this so a settings save, a generation and an
+ * editor save cannot interleave and lose an entry.
+ */
+async function mutateBook(
+    id: string,
+    mutate: (book: Record<string, unknown>) => MutationOutcome,
+): Promise<WorldEntryResult> {
+    const file = worldFilePath(id);
+
+    return withFileLock(file, async () => {
+        const raw = await readJsonFile<unknown>(file, null);
+        if (!isRecord(raw)) {
+            return { status: 'missing-book' } as const;
+        }
+
+        const outcome = mutate(raw);
+        if (outcome.status !== 'ok') {
+            return { status: outcome.status } as const;
+        }
+
+        await writeJsonFile(file, raw);
+        return {
+            status: 'ok',
+            world: detailOf(id, raw),
+            ...(outcome.uid === undefined ? {} : { uid: outcome.uid }),
+        } as const;
+    });
+}
+
+/** Append a blank entry built from SillyTavern's template. */
+export async function createWorldEntry(id: string): Promise<WorldEntryResult> {
+    return mutateBook(id, (book) => {
+        const { uid } = appendEntry(ensureEntryContainer(book));
+        return { status: 'ok', uid };
+    });
+}
+
+/** Copy one entry under a free uid. */
+export async function duplicateWorldEntry(id: string, uid: number): Promise<WorldEntryResult> {
+    return mutateBook(id, (book) => {
+        const copy = duplicateEntry(ensureEntryContainer(book), uid);
+        return copy ? { status: 'ok', uid: copy.uid } : { status: 'missing-entry' };
+    });
+}
+
+/** Merge a patch into one entry, leaving every field it does not mention. */
+export async function updateWorldEntry(id: string, uid: number, patch: WorldInfoEntryPatch): Promise<WorldEntryResult> {
+    return mutateBook(id, (book) => {
+        const location = findEntryLocation(book, uid);
+        if (!location) {
+            return { status: 'missing-entry' };
+        }
+        applyEntryPatch(location.value, patch);
+        return { status: 'ok', uid };
+    });
+}
+
+/** Remove one entry. */
+export async function deleteWorldEntry(id: string, uid: number): Promise<WorldEntryResult> {
+    return mutateBook(id, (book) => {
+        const location = findEntryLocation(book, uid);
+        if (!location) {
+            return { status: 'missing-entry' };
+        }
+        delete location.container[location.key];
+        return { status: 'ok', uid };
+    });
+}
+
+/** Assign `displayIndex` values in the given order, which is how the list reorders. */
+export async function reorderWorldEntries(id: string, uids: readonly number[]): Promise<WorldEntryResult> {
+    return mutateBook(id, (book) => {
+        reorderEntries(ensureEntryContainer(book), uids);
+        return { status: 'ok' };
+    });
 }
 
 /** Delete a book. Returns false when it did not exist. */

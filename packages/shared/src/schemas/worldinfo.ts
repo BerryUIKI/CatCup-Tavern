@@ -64,9 +64,21 @@ export const worldInfoEntrySchema = z
         comment: stringOr(''),
         content: stringOr(''),
         constant: booleanOr(false),
-        selective: booleanOr(false),
+        /**
+         * SillyTavern's entry template defaults `selective` to `true`, so an
+         * entry that only lists secondary keys still applies their logic.
+         */
+        selective: booleanOr(true),
         selectiveLogic: numberOr(0),
-        order: numberOr(100),
+        /**
+         * Insertion order. SillyTavern defaults a *missing* order to 100 but
+         * coerces an explicit `null` through `Number()`, which makes it 0, so
+         * the two are not the same and both spellings are kept distinct.
+         */
+        order: z
+            .number()
+            .nullish()
+            .transform((value) => (value === null ? 0 : (value ?? 100))),
         position: numberOr(0),
         disable: booleanOr(false),
         displayIndex: z.number().optional(),
@@ -113,8 +125,72 @@ export const worldInfoFileSchema = z
     })
     .passthrough();
 
+const characterFilterPatchSchema = z
+    .object({
+        names: z.array(z.string()),
+        tags: z.array(z.string()),
+        isExclude: z.boolean(),
+    })
+    .strict();
+
+/**
+ * Fields the world info entry editor is allowed to change.
+ *
+ * The patch is merged into the entry as stored on disk, so any field that is
+ * absent here — an extension's data, a SillyTavern field this editor does not
+ * show, an unknown key from a hand-edited file — survives a save untouched.
+ *
+ * `uid` and `displayIndex` are absent because the server owns them, and
+ * `vectorized` is absent because SillyTavern only sets it from its
+ * vectorization extension.
+ */
+export const worldInfoEntryPatchSchema = z
+    .object({
+        key: z.array(z.string()).optional(),
+        keysecondary: z.array(z.string()).optional(),
+        comment: z.string().optional(),
+        content: z.string().optional(),
+        constant: z.boolean().optional(),
+        selective: z.boolean().optional(),
+        selectiveLogic: z.number().int().min(0).max(3).optional(),
+        order: z.number().int().optional(),
+        position: z.number().int().min(0).max(7).optional(),
+        disable: z.boolean().optional(),
+        addMemo: z.boolean().optional(),
+        group: z.string().optional(),
+        groupOverride: z.boolean().optional(),
+        groupWeight: z.number().optional(),
+        sticky: z.number().int().min(0).optional(),
+        cooldown: z.number().int().min(0).optional(),
+        delay: z.number().int().min(0).optional(),
+        probability: z.number().min(0).max(100).optional(),
+        depth: z.number().int().min(0).optional(),
+        useProbability: z.boolean().optional(),
+        role: z.number().int().min(0).max(2).nullable().optional(),
+        excludeRecursion: z.boolean().optional(),
+        preventRecursion: z.boolean().optional(),
+        delayUntilRecursion: z.union([z.boolean(), z.number().int().min(0)]).optional(),
+        scanDepth: z.number().int().min(0).nullable().optional(),
+        caseSensitive: z.boolean().nullable().optional(),
+        matchWholeWords: z.boolean().nullable().optional(),
+        useGroupScoring: z.boolean().nullable().optional(),
+        matchPersonaDescription: z.boolean().optional(),
+        matchCharacterDescription: z.boolean().optional(),
+        matchCharacterPersonality: z.boolean().optional(),
+        matchCharacterDepthPrompt: z.boolean().optional(),
+        matchScenario: z.boolean().optional(),
+        matchCreatorNotes: z.boolean().optional(),
+        characterFilter: characterFilterPatchSchema.nullable().optional(),
+        ignoreBudget: z.boolean().optional(),
+        outletName: z.string().optional(),
+        triggers: z.array(z.string()).optional(),
+        automationId: z.string().optional(),
+    })
+    .strict();
+
 export type CharacterFilter = z.infer<typeof characterFilterSchema>;
 export type WorldInfoEntry = z.infer<typeof worldInfoEntrySchema>;
+export type WorldInfoEntryPatch = z.infer<typeof worldInfoEntryPatchSchema>;
 export type WorldInfoFile = z.infer<typeof worldInfoFileSchema>;
 
 /**

@@ -41,7 +41,7 @@ function looksLikeEntryMap(value: Record<string, unknown>): boolean {
 }
 
 /** Pull the entries map out of the shapes SillyTavern and its exporters produce. */
-function extractEntries(raw: unknown): Record<string, unknown> | null {
+export function extractEntries(raw: unknown): Record<string, unknown> | null {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
         return null;
     }
@@ -61,7 +61,15 @@ function extractEntries(raw: unknown): Record<string, unknown> | null {
     return null;
 }
 
-function resolveUid(raw: Record<string, unknown>, key: string, fallback: number): number {
+/**
+ * Resolve the uid an entry is known by.
+ *
+ * SillyTavern writes `uid` on every entry it saves; older and hand-written
+ * files key the entry map by uid instead. The editor resolves uids through the
+ * same function as the loader, so the entry a `PATCH` targets is the entry the
+ * scanner read.
+ */
+export function resolveUid(raw: Record<string, unknown>, key: string, fallback: number): number {
     const candidate = raw.uid;
     if (typeof candidate === 'number' && Number.isInteger(candidate)) {
         return candidate;

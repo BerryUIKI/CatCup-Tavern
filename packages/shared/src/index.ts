@@ -1,3 +1,4 @@
+export * from './keywords.js';
 export * from './schemas/api.js';
 export * from './schemas/character.js';
 export * from './schemas/chat.js';
