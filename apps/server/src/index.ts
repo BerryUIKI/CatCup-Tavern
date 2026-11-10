@@ -2,7 +2,12 @@ import os from 'node:os';
 
 import { buildApp } from './app.js';
 import { config } from './config.js';
+import { warmTokenizers } from './prompt/tokenizer.js';
 import { getAuthFile } from './storage/auth.js';
+
+// The Claude vocabulary is 1.7 MB; reading it before listening keeps the first
+// generation from paying for the parse.
+await warmTokenizers();
 
 const app = await buildApp();
 

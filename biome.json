@@ -6,7 +6,7 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["**", "!**/dist", "!**/.ref", "!**/data"]
+        "includes": ["**", "!**/dist", "!**/.ref", "!**/data", "!apps/server/assets"]
     },
     "formatter": {
         "enabled": true,

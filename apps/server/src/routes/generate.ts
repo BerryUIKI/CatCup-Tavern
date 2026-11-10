@@ -14,6 +14,7 @@ import { badRequest, notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
 import { resolvePreset } from '../prompt/preset.js';
+import { createTokenCounter } from '../prompt/tokenizer.js';
 import { scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
@@ -140,6 +141,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             throw badRequest('The active provider has no model selected');
         }
         const apiKey = await getProviderSecret(provider.id);
+        const tokenCounter = createTokenCounter(provider.kind, provider.model);
 
         // An active ST preset owns the prompt list, the assembly formats and
         // the sampling parameters; anything it omits falls back to settings.
@@ -194,6 +196,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             contextSize: preset.generation.contextSize,
             trigger: generationType,
             metadata: chat.header.chat_metadata,
+            countTokens: tokenCounter.count,
         });
 
         await patchChatMetadata(character, body.chatId, {
@@ -213,6 +216,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             squashSystemMessages: preset.squashSystemMessages,
             worldInfo: worldInfoTurn.prompt,
             generationType,
+            countTokens: tokenCounter.count,
         });
         const prompt = assembled.messages;
 

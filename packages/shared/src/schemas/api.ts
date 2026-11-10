@@ -156,5 +156,13 @@ export interface ContextPreviewWorldInfo {
 export interface ContextPreview {
     messages: ContextPreviewMessage[];
     worldInfo: ContextPreviewWorldInfo;
-    budget: { exceeded: boolean; tokenCounts: Record<string, number>; total: number };
+    budget: {
+        exceeded: boolean;
+        tokenCounts: Record<string, number>;
+        total: number;
+        /** Which counter produced the numbers, e.g. `o200k_base` or `estimate (chars/3.6)`. */
+        counter: string;
+        /** Whether those numbers come from a real vocabulary or an approximation. */
+        counterSource: 'tiktoken' | 'claude' | 'estimate';
+    };
 }
