@@ -34,7 +34,10 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects |
 | World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt       |
 | Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off       |
-| ST OpenAI preset schema            | ✅ Schema          | Import/export planned for M1                                      |
+| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat       |
+| World Info entry editor            | ❌ Planned         | M2; entries are edited as JSON for now                            |
+| Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates   |
+| ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                 |
 | Themes                             | ❌ Not implemented | Dark tavern theme only                                            |
 | Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later               |
 | Multi-user directories             | ❌ Not supported   | Single-user `data/`                                               |
@@ -111,6 +114,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Unknown macros:** Unrecognized `{{macros}}` are left untouched rather than expanded.
 - **World info injection:** the scanner is complete, but nothing consumes its result yet, so lorebook keys do not affect replies.
 - **World info group removal:** SillyTavern's inclusion-group `removeEntry` calls `splice(indexOf(entry), 1)`; when the entry is already gone this removes the last unrelated candidate. CatCup guards the index instead of reproducing that data loss.
+- **World info book binding:** a card's own book and the global book list are merged and deduplicated case-insensitively, because `Eldoria` and `eldoria` are the same file on Windows. SillyTavern would load it twice.
 - **World info missing `position`:** entries without a `position` field default to `0` (before character). SillyTavern drops them from the prompt entirely.
 - **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
 - **Presets:** schemas exist, but the runtime does not use them yet.

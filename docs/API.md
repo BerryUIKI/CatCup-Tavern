@@ -220,6 +220,56 @@ Copy the conversation up to and including `index` into a new chat.
 - `name` defaults to `<source chatId> (branch)`.
 - Response: `{ "chat": ChatDetail }` for the new chat.
 
+### `GET /api/chats/:characterId/:chatId/context`
+
+Rebuild the prompt for a chat without generating. This is the context inspector's data source.
+
+The world info scan runs against a **deep clone** of `chat_metadata`, so timed effects are evaluated faithfully but never written back.
+
+```json
+{
+    "context": {
+        "messages": [{ "role": "system", "content": "..." }],
+        "worldInfo": {
+            "books": ["eldoria"],
+            "activated": [
+                {
+                    "id": "eldoria.0",
+                    "world": "eldoria",
+                    "uid": 0,
+                    "comment": "eldoria",
+                    "reason": "primary-key",
+                    "loop": 1
+                }
+            ],
+            "trace": [
+                {
+                    "loop": 1,
+                    "world": "eldoria",
+                    "uid": 0,
+                    "comment": "eldoria",
+                    "activated": true,
+                    "reason": "primary-key",
+                    "detail": "eldoria"
+                }
+            ],
+            "before": ["..."],
+            "after": [],
+            "authorNoteTop": [],
+            "authorNoteBottom": [],
+            "atDepth": [],
+            "examples": [],
+            "outlets": {},
+            "budget": { "limit": 8192, "used": 214, "overflowed": false },
+            "loops": 1
+        },
+        "budget": { "exceeded": false, "tokenCounts": { "main": 24 }, "total": 3117 }
+    }
+}
+```
+
+`trace` has one line per candidate entry explaining whether it activated and why, which is what makes a missing or unexpected lorebook hit debuggable.
+
 ### `PATCH /api/chats/:characterId/:chatId/messages/:index`
 
 Edit the text or select a swipe. Send one of:
@@ -436,6 +486,39 @@ A failed test returns `ok: false` with the provider's error message; it does not
 ### `GET /api/providers/:id/models`
 
 Returns `{ "models": [{ "id": "...", "name": "..." }] }`. Provider failures return `502` with `code: "PROVIDER_ERROR"`.
+
+## World info
+
+Books stored in `data/worlds/`. The file body is kept verbatim, so unknown SillyTavern fields survive an export/import round trip.
+
+### `GET /api/worlds`
+
+```json
+{ "worlds": [{ "id": "eldoria", "name": "eldoria", "entryCount": 4, "updatedAt": 1794295677503 }] }
+```
+
+### `GET /api/worlds/:id`
+
+Returns `{ "world": { "id": "...", "book": { ... } } }` with the stored body.
+
+### `POST /api/worlds/import`
+
+```json
+{ "fileName": "eldoria.json", "book": { "entries": {} } }
+```
+
+- `fileName` is optional; the stored id comes from it, then `world`, with a numeric suffix on collision.
+- Response: `201` with `{ "world": WorldDetail }`.
+
+Importing does not enable the book; add its id to `worldInfo.globalBooks` through `PATCH /api/settings`.
+
+### `GET /api/worlds/:id/export`
+
+Returns the stored body as a JSON download.
+
+### `DELETE /api/worlds/:id`
+
+Removes the file and drops the id from `worldInfo.globalBooks` if it was enabled. Response: `{ "ok": true }`.
 
 ## Presets
 
