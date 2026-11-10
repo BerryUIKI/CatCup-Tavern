@@ -184,7 +184,7 @@ Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`. See [
 
 1. Macro substitution: `{{char}}`, `{{user}}`, `{{persona}}`, `{{description}}`, `{{personality}}`, `{{scenario}}`, `{{time}}`, `{{date}}`.
 2. System message: card `system_prompt` (or ST's default main prompt) + character sheet + user persona.
-3. Chat history, trimmed from newest to oldest by an estimated token budget.
+3. Chat history, trimmed from newest to oldest by the model's token budget — tiktoken for OpenAI models, the bundled Claude vocabulary for Anthropic, an estimate otherwise.
 4. Post-history instructions appended as a final system message.
 
 M1 replaces this with the full ST Prompt Manager ordering, injection positions/depth, world info recursion, author's note and preset import.

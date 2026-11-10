@@ -27,6 +27,8 @@ export interface WorldInfoTurnInput {
      * place; the caller persists it.
      */
     metadata: Record<string, unknown>;
+    /** Token counter for the budget; defaults to the shared estimator. */
+    countTokens?: (text: string) => number;
 }
 
 export interface WorldInfoTurnResult {
@@ -136,6 +138,7 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
         activeCharacter: { id: input.character.id },
         timed: { state },
         substitute,
+        ...(input.countTokens ? { countTokens: input.countTokens } : {}),
     });
 
     const noteEnabled = input.authorNote.enabled && input.authorNote.prompt.trim().length > 0;

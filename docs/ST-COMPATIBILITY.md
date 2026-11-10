@@ -2,7 +2,7 @@
 
 CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplementation of SillyTavern. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
-> Status snapshot: **M0 complete** (2026-11-09). M1 is the core compatibility milestone. See [MILESTONES.md](MILESTONES.md).
+> Status snapshot: **M1 complete** (2026-11-10). M1 is the core compatibility milestone. See [MILESTONES.md](MILESTONES.md).
 
 ## Compatibility layers
 
@@ -58,7 +58,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
 | World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
 | World Info entry editing                                           | ✅ Yes             | Keys, content, placement, groups, timing, recursion and matching, saved per entry               |
-| Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
+| Context budget                                                     | ✅ Yes             | tiktoken for OpenAI models, the bundled Claude vocabulary, estimate otherwise                   |
 | Message editing                                                    | ✅ Yes             | Inline editor in the chat view; edits keep unknown `extra` fields                               |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
 | Continue generation                                                | ✅ Yes             | Continue button below the latest reply                                                          |
@@ -120,6 +120,8 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **World Info missing `position`:** entries without a `position` field — or with an explicit `null` — default to `0` (before character). SillyTavern only defaults the missing case and drops a `null` position from the prompt entirely.
 - **World Info omitted defaults:** the editor writes the fields it exposes. SillyTavern's editor backfills every template field into the in-memory entry on render and persists them on the next save, so a file edited there gains keys a CatCup edit leaves absent. Both shapes read the same, because an absent field falls back to the same default.
 - **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
+- **Tokenizer for unrecognised models:** SillyTavern resolves every unknown model id to `gpt-3.5-turbo` and counts it with `cl100k_base`. CatCup falls back to its own byte-based estimate instead, because a local Llama or DeepSeek model does not use an OpenAI vocabulary and a wrong exact count is more misleading than a labelled estimate. The inspector names whichever counter is in use.
+- **Tokenizer overhead:** CatCup adds the same four tokens per message that SillyTavern uses for OpenAI chat completion. SillyTavern varies that number by call site — world info entries are measured through a path that adds six — so its world info budget can differ from CatCup's by a few tokens per entry.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
 ## Testing compatibility

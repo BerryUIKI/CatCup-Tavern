@@ -11,6 +11,7 @@
         "test": "vitest run"
     },
     "dependencies": {
+        "@agnai/web-tokenizers": "0.1.6-pre3",
         "@catcup/shared": "workspace:*",
         "@fastify/cookie": "^11.1.5",
         "@fastify/multipart": "^10.1.8",
@@ -18,6 +19,7 @@
         "@fastify/static": "^10.1.10",
         "dotenv": "^18.0.10",
         "fastify": "^5.12.8",
+        "js-tiktoken": "^1.0.21",
         "png-chunk-text": "^1.0.0",
         "png-chunks-extract": "^1.0.0",
         "sanitize-filename": "^1.6.5",

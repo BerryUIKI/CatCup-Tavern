@@ -20,6 +20,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@agnai/web-tokenizers':
+        specifier: 0.1.6-pre3
+        version: 0.1.6-pre3
       '@catcup/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -41,6 +44,9 @@ importers:
       fastify:
         specifier: ^5.12.8
         version: 5.12.8
+      js-tiktoken:
+        specifier: ^1.0.21
+        version: 1.0.21
       png-chunk-text:
         specifier: ^1.0.0
         version: 1.0.0
@@ -160,6 +166,9 @@ importers:
         version: 5.1.0(@types/node@24.19.2)(vite@8.3.6(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
 packages:
+
+  '@agnai/web-tokenizers@0.1.6-pre3':
+    resolution: {integrity: sha512-oJ2JqB+YB76ksZxFjtmZyWxrKxuKF50faSFIfrxMppijOH5EZwb7znwg/w4/EDFF0TE3s5jfOSUyqCSqAKQS+Q==}
 
   '@babel/runtime@7.29.13':
     resolution: {integrity: sha512-v+oN26xP4YIlQsbQ/CbTH1WG5m/l/DjKKZNy/Kp3f/AFvbgt7Em/D0FeMM3O2hX0YzeN2M16W8lOpyhIkfCBcQ==}
@@ -952,6 +961,9 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
+  base64-js@1.5.1:
+    resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
+
   brace-expansion@5.0.12:
     resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
     engines: {node: 20 || >=22}
@@ -1234,6 +1246,9 @@ packages:
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
+
+  js-tiktoken@1.0.21:
+    resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
 
   json-schema-ref-resolver@3.0.1:
     resolution: {integrity: sha512-w+HwgljXpVwZ3IidoUR1qPZxSOQ+NRQWuVe6a5pe8XbHsNZE4UAwVPUvzZagn7yBKbJtt6UJnRFYbNTRPZI45Q==}
@@ -2052,6 +2067,8 @@ packages:
 
 snapshots:
 
+  '@agnai/web-tokenizers@0.1.6-pre3': {}
+
   '@babel/runtime@7.29.13': {}
 
   '@biomejs/biome@2.6.6':
@@ -2587,6 +2604,8 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
+  base64-js@1.5.1: {}
+
   brace-expansion@5.0.12:
     dependencies:
       balanced-match: 4.0.4
@@ -2871,6 +2890,10 @@ snapshots:
   jiti@2.7.0: {}
 
   joycon@3.1.1: {}
+
+  js-tiktoken@1.0.21:
+    dependencies:
+      base64-js: 1.5.1
 
   json-schema-ref-resolver@3.0.1:
     dependencies:

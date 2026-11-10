@@ -31,6 +31,8 @@ pnpm start
 
 `pnpm start` runs the server, which serves the SPA and API from the same port. Open http://127.0.0.1:8000.
 
+The Claude tokenizer vocabulary lives in `apps/server/assets/tokenizers/claude.json` and is read at startup. If you copy only `apps/server/dist` somewhere else, the file is missing and the server logs a warning; Claude models then fall back to the character-based estimate, and everything else works. Copy `apps/server/assets` along with `dist` to keep exact Claude counts.
+
 ## Configuration
 
 | Variable                    | Default       | Purpose                                                       |
