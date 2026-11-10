@@ -65,6 +65,7 @@ function createDefaultSettings(): AppSettings {
         version: 1,
         activeProviderId: providers[0]?.id ?? null,
         providers,
+        activePresetId: null,
         generation: { ...DEFAULT_GENERATION_SETTINGS },
         persona: { ...DEFAULT_PERSONA },
         ui: { ...DEFAULT_UI_SETTINGS },
@@ -218,6 +219,9 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
                 throw new Error('Provider not found');
             }
             settings.activeProviderId = patch.activeProviderId;
+        }
+        if (patch.activePresetId !== undefined) {
+            settings.activePresetId = patch.activePresetId;
         }
         if (patch.generation) {
             settings.generation = { ...settings.generation, ...patch.generation };

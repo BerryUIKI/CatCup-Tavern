@@ -287,6 +287,7 @@ Aborts a running generation by its `generationId`.
     "settings": {
         "version": 1,
         "activeProviderId": "provider-uuid",
+        "activePresetId": null,
         "providers": [ProviderPublic],
         "generation": {
             "temperature": 1,
@@ -412,6 +413,42 @@ A failed test returns `ok: false` with the provider's error message; it does not
 ### `GET /api/providers/:id/models`
 
 Returns `{ "models": [{ "id": "...", "name": "..." }] }`. Provider failures return `502` with `code: "PROVIDER_ERROR"`.
+
+## Presets
+
+SillyTavern OpenAI presets stored in `data/presets/`. A preset owns the prompt list, its order, the assembly formats and the sampling parameters; `activePresetId` in settings selects one. With no preset active, generation uses the built-in SillyTavern defaults.
+
+### `GET /api/presets`
+
+```json
+{ "presets": [{ "id": "Default", "name": "Default", "updatedAt": 1794296904863, "promptCount": 12 }] }
+```
+
+`id` is the file name without `.json`.
+
+### `GET /api/presets/:id`
+
+Returns `{ "preset": { "id": "...", "preset": { ... } } }` where `preset.preset` is the stored body, unknown fields included.
+
+### `POST /api/presets/import`
+
+```json
+{ "fileName": "Default.json", "preset": { "prompts": [], "prompt_order": [] } }
+```
+
+- `fileName` is optional. The stored id comes from it, then from the preset body's `name`, then `preset`; collisions get a numeric suffix.
+- The body is stored as given, so a round trip keeps every field ST wrote.
+- Response: `201` with `{ "preset": PresetDetail }`.
+
+Importing does not activate the preset; send `PATCH /api/settings` with `{ "activePresetId": "<id>" }`.
+
+### `GET /api/presets/:id/export`
+
+Returns the stored body as a JSON download with `Content-Disposition: attachment`.
+
+### `DELETE /api/presets/:id`
+
+Removes the file. If the preset was active, `activePresetId` is cleared so generation falls back to the built-in defaults. Response: `{ "ok": true }`.
 
 ## Notes and limits
 

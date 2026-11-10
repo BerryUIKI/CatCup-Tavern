@@ -318,7 +318,9 @@ dialogueExamples, chatHistory, jailbreak
 
 `apps/server/src/prompt/` implements the Prompt Manager model and execution: sanitizing the order, resolving markers, merging the fixed system prompts, applying character-card overrides for `main` and `jailbreak`, placing prompts in their order slots, inserting in-chat depth injections, and trimming history against the token budget.
 
-**Preset loading is not wired yet.** Generation runs on the built-in default prompt definitions, so a preset file in `data/presets/` has no effect until the next M1 slice adds import, export and activation.
+Presets are imported, exported and activated through the API. While a preset is active it supplies the prompt list, the order, `wi_format`/`personality_format`/`scenario_format`, the chat and example separators, the continue nudge, `squash_system_messages` and the sampling parameters. Fields the preset omits fall back to the app's generation settings, and with no preset active the built-in SillyTavern defaults are used.
+
+The preset body is stored exactly as sent, so unknown SillyTavern fields survive an export/import round trip.
 
 ## Internal files (not SillyTavern formats)
 

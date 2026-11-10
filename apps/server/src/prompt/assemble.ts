@@ -129,7 +129,11 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     const characterId = input.characterId ?? GLOBAL_PROMPT_ORDER_ID;
     const generationType = input.generationType ?? 'normal';
     const card = input.character.card;
-    const formats = { ...DEFAULT_FORMATS, ...input.formats };
+    const formats = {
+        wi: input.formats?.wi ?? DEFAULT_FORMATS.wi,
+        personality: input.formats?.personality ?? DEFAULT_FORMATS.personality,
+        scenario: input.formats?.scenario ?? DEFAULT_FORMATS.scenario,
+    };
 
     const macroContext: MacroContext = {
         char: card.name || input.character.name,

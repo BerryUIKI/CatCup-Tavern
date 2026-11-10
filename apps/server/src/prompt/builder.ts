@@ -22,6 +22,9 @@ export interface BuildPromptInput {
     squashSystemMessages?: boolean;
     /** `wi_format`, `personality_format` and `scenario_format` overrides. */
     formats?: { wi?: string; personality?: string; scenario?: string };
+    newChatPrompt?: string;
+    newExampleChatPrompt?: string;
+    continueNudgePrompt?: string;
     /** Token counter override, used by tests. */
     countTokens?: (text: string) => number;
 }
@@ -46,6 +49,9 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         maxTokens: input.settings.maxTokens,
         squashSystemMessages: input.squashSystemMessages,
         formats: input.formats,
+        newChatPrompt: input.newChatPrompt,
+        newExampleChatPrompt: input.newExampleChatPrompt,
+        continueNudgePrompt: input.continueNudgePrompt,
         countTokens: input.countTokens,
     });
 }

@@ -107,6 +107,8 @@ export const appSettingsSchema = z.object({
     version: z.literal(1).default(1),
     activeProviderId: z.string().nullable().default(null),
     providers: z.array(providerConfigSchema).default([]),
+    /** Active ST OpenAI preset id under `data/presets`, or `null`. */
+    activePresetId: z.string().nullable().default(null),
     generation: generationSettingsSchema.default(DEFAULT_GENERATION_SETTINGS),
     persona: personaSchema.default(DEFAULT_PERSONA),
     ui: uiSettingsSchema.default(DEFAULT_UI_SETTINGS),
@@ -121,6 +123,7 @@ export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
 
 export const settingsPatchSchema = z.object({
     activeProviderId: z.string().nullable().optional(),
+    activePresetId: z.string().nullable().optional(),
     generation: generationSettingsSchema.partial().optional(),
     persona: personaSchema.partial().optional(),
     ui: uiSettingsSchema.partial().optional(),

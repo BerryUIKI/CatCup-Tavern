@@ -10,6 +10,7 @@ export const queryKeys = {
     chats: (characterId: string | null) => ['chats', characterId] as const,
     chat: (characterId: string | null, chatId: string | null) => ['chat', characterId, chatId] as const,
     settings: ['settings'] as const,
+    presets: ['presets'] as const,
 };
 
 export function useAuthStatus() {
@@ -234,5 +235,31 @@ export function useTestProvider() {
 export function useProviderModels() {
     return useMutation({
         mutationFn: (id: string) => api.providers.models(id),
+    });
+}
+
+export function usePresets() {
+    return useQuery({ queryKey: queryKeys.presets, queryFn: api.presets.list });
+}
+
+export function useImportPreset() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { fileName?: string; preset: unknown }) =>
+            api.presets.import(variables.fileName, variables.preset),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
+        },
+    });
+}
+
+export function useDeletePreset() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.presets.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
     });
 }
