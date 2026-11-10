@@ -23,6 +23,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - SillyTavern OpenAI presets can be imported, exported, listed and deleted over `/api/presets`, and activated through `activePresetId`. The body is stored verbatim so unknown fields survive a round trip.
 - An active preset now supplies the prompt list and order, the assembly formats, the chat and example separators, the continue nudge, `squash_system_messages` and the sampling parameters; omitted fields fall back to the app's generation settings.
 - Settings has a Prompts tab for selecting, importing, exporting and deleting presets.
+- Chat editing: inline message editor, a Continue button below the latest reply, branching a chat from any message, chat rename and delete, and an alternate-greeting picker when the card has more than one opening.
+- `PATCH /api/chats/:characterId/:chatId` renames a chat by moving its file, and `POST /api/chats/:characterId/:chatId/branch` copies the conversation up to a message into a new chat.
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed
