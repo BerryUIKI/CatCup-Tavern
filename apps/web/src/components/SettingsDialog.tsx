@@ -8,17 +8,31 @@ import type {
     ProviderTestResult,
 } from '@catcup/shared';
 import { DEFAULT_BASE_URLS, PROVIDER_KIND_LABELS } from '@catcup/shared';
-import { Check, Download, PlugZap, Save, Server, SlidersHorizontal, Trash2, Upload, UserRound } from 'lucide-react';
+import {
+    BookOpen,
+    Check,
+    Download,
+    PlugZap,
+    Save,
+    Server,
+    SlidersHorizontal,
+    Trash2,
+    Upload,
+    UserRound,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
     useDeletePreset,
+    useDeleteWorld,
     useImportPreset,
+    useImportWorld,
     usePresets,
     useSettings,
     useTestProvider,
     useUpdateProvider,
     useUpdateSettings,
+    useWorlds,
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
@@ -26,7 +40,7 @@ import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
-type Tab = 'connection' | 'generation' | 'persona' | 'prompts';
+type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo';
 
 interface ProviderForm {
     name: string;
@@ -127,6 +141,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'generation', label: 'Generation', icon: SlidersHorizontal },
     { id: 'persona', label: 'Persona', icon: UserRound },
     { id: 'prompts', label: 'Prompts', icon: SlidersHorizontal },
+    { id: 'worldinfo', label: 'World Info', icon: BookOpen },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -139,6 +154,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const importPreset = useImportPreset();
     const deletePreset = useDeletePreset();
     const presets = presetsQuery.data?.presets ?? [];
+    const worldsQuery = useWorlds();
+    const importWorld = useImportWorld();
+    const deleteWorldMutation = useDeleteWorld();
+    const worlds = worldsQuery.data?.worlds ?? [];
+    const globalBooks = settings?.worldInfo.globalBooks ?? [];
     const pushToast = useAppStore((state) => state.pushToast);
 
     const [tab, setTab] = useState<Tab>('connection');
@@ -328,6 +348,40 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             pushToast(`Deleted preset "${id}".`, 'success');
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not delete the preset.', 'error');
+        }
+    };
+
+    const handleToggleBook = async (id: string, enabled: boolean) => {
+        const next = enabled ? [...new Set([...globalBooks, id])] : globalBooks.filter((book) => book !== id);
+        try {
+            await updateSettings.mutateAsync({ worldInfo: { globalBooks: next } });
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not update the world info books.', 'error');
+        }
+    };
+
+    const handleImportWorld = async (file: File) => {
+        try {
+            const book = JSON.parse(await file.text()) as unknown;
+            const result = await importWorld.mutateAsync({ fileName: file.name, book });
+            await updateSettings.mutateAsync({
+                worldInfo: { globalBooks: [...new Set([...globalBooks, result.world.id])] },
+            });
+            pushToast(`Imported and enabled "${result.world.id}".`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not import the world info book.', 'error');
+        }
+    };
+
+    const handleDeleteWorld = async (id: string) => {
+        if (!window.confirm(`Delete the world info book "${id}"? This cannot be undone.`)) {
+            return;
+        }
+        try {
+            await deleteWorldMutation.mutateAsync(id);
+            pushToast(`Deleted "${id}".`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not delete the book.', 'error');
         }
     };
 
@@ -728,7 +782,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         Save persona
                     </button>
                 </div>
-            ) : (
+            ) : tab === 'prompts' ? (
                 <div className="space-y-5 p-5">
                     <p className="text-sm leading-relaxed text-muted">
                         An imported SillyTavern OpenAI preset supplies the prompt list, its order, the assembly formats
@@ -798,6 +852,78 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             </>
                         ) : null}
                     </div>
+                </div>
+            ) : (
+                <div className="space-y-5 p-5">
+                    <p className="text-sm leading-relaxed text-muted">
+                        Books stored in <code className="text-parchment-dim">data/worlds</code>. Enabled books are
+                        scanned for every chat; a character's own book, from its card, is added automatically.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className={cn('btn-ghost cursor-pointer', importWorld.isPending && 'opacity-60')}>
+                            {importWorld.isPending ? <Spinner size={15} /> : <Upload size={15} />}
+                            Import JSON
+                            <input
+                                type="file"
+                                accept=".json,application/json"
+                                className="sr-only"
+                                disabled={importWorld.isPending}
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    event.target.value = '';
+                                    if (file) {
+                                        void handleImportWorld(file);
+                                    }
+                                }}
+                            />
+                        </label>
+                        {worldsQuery.isLoading ? <Spinner size={15} className="text-muted" /> : null}
+                    </div>
+
+                    {worlds.length === 0 ? (
+                        <p className="text-sm text-muted">
+                            No books yet. Import a SillyTavern world info JSON file to get started.
+                        </p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {worlds.map((world) => (
+                                <li
+                                    key={world.id}
+                                    className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface/50 px-3 py-2"
+                                >
+                                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="accent-amber"
+                                            checked={globalBooks.includes(world.id)}
+                                            onChange={(event) => void handleToggleBook(world.id, event.target.checked)}
+                                        />
+                                        <span className="truncate text-sm text-parchment">{world.id}</span>
+                                        <span className="shrink-0 text-xs text-muted">{world.entryCount} entries</span>
+                                    </label>
+                                    <a
+                                        className="icon-btn size-7"
+                                        href={api.worlds.exportUrl(world.id)}
+                                        download
+                                        title="Export"
+                                        aria-label={`Export ${world.id}`}
+                                    >
+                                        <Download size={14} />
+                                    </a>
+                                    <button
+                                        type="button"
+                                        className="icon-btn size-7 hover:text-wine"
+                                        onClick={() => void handleDeleteWorld(world.id)}
+                                        title="Delete"
+                                        aria-label={`Delete ${world.id}`}
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
         </Modal>

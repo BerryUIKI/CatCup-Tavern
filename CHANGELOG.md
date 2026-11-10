@@ -25,6 +25,9 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Settings has a Prompts tab for selecting, importing, exporting and deleting presets.
 - Chat editing: inline message editor, a Continue button below the latest reply, branching a chat from any message, chat rename and delete, and an alternate-greeting picker when the card has more than one opening.
 - `PATCH /api/chats/:characterId/:chatId` renames a chat by moving its file, and `POST /api/chats/:characterId/:chatId/branch` copies the conversation up to a message into a new chat.
+- World info library: `GET/POST/DELETE /api/worlds` plus import and export, and a World Info settings tab to enable books, import JSON, export and delete them.
+- Context inspector: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt without generating, and a dialog shows the assembled messages, the world info activation trace and per-slot token estimates.
+- World info books bound by a character card and enabled globally are deduplicated case-insensitively, so a book is never scanned twice.
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed

@@ -5,6 +5,7 @@ import type {
     ChatDetail,
     ChatMessage,
     ChatSummary,
+    ContextPreview,
     ImportCharactersResponse,
     ModelInfo,
     PresetDetail,
@@ -14,6 +15,8 @@ import type {
     ProviderTestResult,
     SettingsPatch,
     SettingsResponse,
+    WorldDetail,
+    WorldSummary,
 } from '@catcup/shared';
 
 export class ApiError extends Error {
@@ -66,6 +69,25 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+    worlds: {
+        list: () => request<{ worlds: WorldSummary[] }>('/worlds'),
+        get: (id: string) => request<{ world: WorldDetail }>(`/worlds/${encodeURIComponent(id)}`),
+        import: (fileName: string | undefined, book: unknown) =>
+            request<{ world: WorldDetail }>('/worlds/import', {
+                method: 'POST',
+                body: JSON.stringify({ fileName, book }),
+            }),
+        remove: (id: string) => request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        exportUrl: (id: string) => `/api/worlds/${encodeURIComponent(id)}/export`,
+    },
+    context: {
+        preview: async (characterId: string, chatId: string) => {
+            const data = await request<{ context: ContextPreview }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/context`,
+            );
+            return data.context;
+        },
+    },
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),
         import: (fileName: string | undefined, preset: unknown) =>

@@ -11,6 +11,7 @@ export const queryKeys = {
     chat: (characterId: string | null, chatId: string | null) => ['chat', characterId, chatId] as const,
     settings: ['settings'] as const,
     presets: ['presets'] as const,
+    worlds: ['worlds'] as const,
 };
 
 export function useAuthStatus() {
@@ -235,6 +236,43 @@ export function useSettings() {
     return useQuery({
         queryKey: queryKeys.settings,
         queryFn: api.settings.get,
+    });
+}
+
+export function useWorlds() {
+    return useQuery({ queryKey: queryKeys.worlds, queryFn: api.worlds.list });
+}
+
+export function useImportWorld() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { fileName?: string; book: unknown }) =>
+            api.worlds.import(variables.fileName, variables.book),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+        },
+    });
+}
+
+export function useDeleteWorld() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.worlds.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+/** Rebuild the prompt for a chat without generating. Used by the inspector. */
+export function useContextPreview(characterId: string | null, chatId: string | null, enabled: boolean) {
+    return useQuery({
+        queryKey: [...queryKeys.chat(characterId, chatId), 'context'] as const,
+        queryFn: () => api.context.preview(characterId as string, chatId as string),
+        enabled: Boolean(enabled && characterId && chatId),
+        gcTime: 0,
+        staleTime: 0,
     });
 }
 
