@@ -548,6 +548,19 @@ Returns `{ "preset": { "id": "...", "preset": { ... } } }` where `preset.preset`
 
 Importing does not activate the preset; send `PATCH /api/settings` with `{ "activePresetId": "<id>" }`.
 
+### `PATCH /api/presets/:id`
+
+Merge prompt fields into a stored preset. Everything else in the body is left alone, so the editor cannot clobber the sampling and behaviour fields it does not show.
+
+```json
+{
+    "prompts": [{ "identifier": "main", "injection_position": 1, "injection_depth": 2 }],
+    "prompt_order": [{ "character_id": 100001, "order": [{ "identifier": "main", "enabled": true }] }]
+}
+```
+
+Response: `{ "preset": PresetDetail }`.
+
 ### `GET /api/presets/:id/export`
 
 Returns the stored body as a JSON download with `Content-Disposition: attachment`.

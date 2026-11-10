@@ -117,9 +117,10 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Chat editing and branching**: inline message editing, continue generation from the latest reply, branching a conversation from any message, chat rename and delete, and an alternate-greeting picker when starting a chat.
 - **World info library**: books can be listed, imported, exported, deleted and enabled per account from a World Info settings tab. Importing stores the file verbatim; deleting removes the id from the enabled list.
 - **Context inspector**: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt against a cloned `chat_metadata`, and the inspector shows the assembled messages, the per-entry world info trace (activated or skipped, reason, pass) and per-slot token estimates.
+- **Prompt order editor**: reorder entries, enable or disable them, and move a prompt between the ordered list and an in-chat injection with a depth, order and role, saved back into the active preset through `PATCH /api/presets/:id`. Edits merge into the stored body, so sampling fields the editor does not show are preserved.
 - 92 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution and world info turn helpers, plus the SillyTavern sample book as a fixture.
 
-The prompt-order editor, the world info entry editor and the model-aware tokenizer are the remaining M1 work.
+The world info entry editor and the model-aware tokenizer are the remaining M1 work.
 
 ### Scope
 
