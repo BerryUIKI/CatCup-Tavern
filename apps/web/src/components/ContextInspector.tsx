@@ -69,7 +69,7 @@ function PromptTab({ context }: { context: ContextPreview }) {
     return (
         <div className="space-y-2">
             <p className="text-sm text-muted">
-                {context.messages.length} messages · about {context.budget.total} tokens
+                {context.messages.length} messages · {context.budget.total} tokens ({context.budget.counter})
                 {context.budget.exceeded ? ' · over budget' : ''}
             </p>
 
@@ -210,7 +210,7 @@ function BudgetTab({ context }: { context: ContextPreview }) {
     return (
         <div className="space-y-4">
             <p className="text-sm text-muted">
-                About {context.budget.total} tokens in the assembled prompt
+                {context.budget.total} tokens in the assembled prompt, counted with {context.budget.counter}
                 {context.budget.exceeded ? ' · the budget was exceeded' : ''}.
             </p>
             <div className="overflow-x-auto rounded-xl border border-line-soft">
@@ -232,8 +232,11 @@ function BudgetTab({ context }: { context: ContextPreview }) {
                 </table>
             </div>
             <p className="text-xs leading-relaxed text-parchment-dim">
-                Counts are estimates: the tokenizer is still character-based. A model-aware tokenizer lands in a later
-                slice.
+                {context.budget.counterSource === 'estimate'
+                    ? 'No tokenizer matches the active model, so the counts are a character-based estimate.'
+                    : context.budget.counterSource === 'claude'
+                      ? "Counts use Anthropic's Claude vocabulary, the same one SillyTavern ships."
+                      : 'Counts use the exact tiktoken encoding for the active model, plus four tokens per message.'}
             </p>
         </div>
     );
