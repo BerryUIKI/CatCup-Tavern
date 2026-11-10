@@ -16,6 +16,11 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - World info prompt helper: `buildWorldInfoPrompt`, `wi_format` handling and Author's Note composition.
 - Per-entry activation trace on the scan result, recording the pass and reason, ready for the context inspector.
 - Shared world info schema extended with SillyTavern's full position, logic, role and scan opt-in fields.
+- Prompt Manager model and assembly: SillyTavern's default prompt definitions and order, order sanitizing, generation-type triggers, fixed system-prompt merging, character-card `main` and `jailbreak` overrides, ordered message slots, relative and absolute in-chat injection, and optional system-message squashing.
+- World info now reaches generation: `worldInfoBefore` and `worldInfoAfter` occupy their prompt-order slots, at-depth entries are injected into the chat, and `chat_metadata.timedWorldInfo` is persisted after each scan.
+- Author's Note: composed with world info's top and bottom buckets, scheduled by interval, and injected in prompt, in chat, or before the prompt.
+- Settings gain a `worldInfo` block (books, depth, budget, recursion and matching options) and an `authorNote` block.
+- ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed
 
@@ -23,6 +28,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Changed
 
+- Prompt assembly replaces the M0 builder's single labelled character sheet with one message per marker, in prompt-order order.
 - README now links the full documentation map and the current milestone status.
 - `CLAUDE.md` now points at the documentation set and records M1 as in progress.
 

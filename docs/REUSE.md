@@ -115,6 +115,12 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `apps/server/src/worldinfo/scanner.ts`      | ST `public/scripts/world-info.js`                      | Full `checkWorldInfo`: scan states, groups, budget, positions    |
 | `apps/server/src/worldinfo/timedEffects.ts` | ST `public/scripts/world-info.js`                      | `WorldInfoTimedEffects`: sticky, cooldown, delay, hand-off       |
 | `apps/server/src/worldinfo/prompt.ts`       | ST `world-info.js` + `openai.js`                       | Prompt buckets, `wi_format`, Author's Note composition           |
+| `apps/server/src/prompt/definitions.ts`     | ST `PromptManager.js`                                  | Default prompt definitions, order and identifiers                |
+| `apps/server/src/prompt/manager.ts`         | ST `PromptManager.js`                                  | Sanitize, order lookup and prompt collection                     |
+| `apps/server/src/prompt/messages.ts`        | ST `openai.js`                                         | `ChatCompletion` slots, budget and system-message squashing      |
+| `apps/server/src/prompt/assemble.ts`        | ST `openai.js`                                         | Marker merge, card overrides, injection and population           |
+| `apps/server/src/prompt/history.ts`         | ST `openai.js`                                         | History conversion and example-dialogue parsing                  |
+| `apps/server/src/prompt/macros.ts`          | ST `macros.js`                                         | Macro subset used by the built-in prompts                        |
 | `packages/shared/src/schemas/preset.ts`     | ST OpenAI preset                                       | Preset fields, `prompts` / `prompt_order`                        |
 
 ## 8. Related documentation

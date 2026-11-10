@@ -296,12 +296,34 @@ Aborts a running generation by its `generationId`.
             "stream": true
         },
         "persona": { "name": "You", "description": "" },
-        "ui": { "language": "en", "theme": "tavern-dark" }
+        "ui": { "language": "en", "theme": "tavern-dark" },
+        "worldInfo": {
+            "globalBooks": [],
+            "depth": 2,
+            "budgetPercent": 25,
+            "budgetCap": 0,
+            "caseSensitive": false,
+            "matchWholeWords": false,
+            "useGroupScoring": false,
+            "recursive": false,
+            "minActivations": 0,
+            "minActivationsDepthMax": 0,
+            "maxRecursionSteps": 0
+        },
+        "authorNote": {
+            "enabled": false,
+            "prompt": "",
+            "interval": 1,
+            "position": 1,
+            "depth": 4,
+            "role": 0,
+            "scan": false
+        }
     }
 }
 ```
 
-`ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n.
+`ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n. `worldInfo.globalBooks` lists world info book ids (file names without `.json`) scanned for every chat; a character's own book, from the card's `extensions.world`, is added automatically. `authorNote.position` is `0` in prompt, `1` in chat, `2` before prompt; `authorNote.role` is `0` system, `1` user, `2` assistant.
 
 ### `PATCH /api/settings`
 
@@ -312,7 +334,9 @@ Partial update. All fields are optional:
     "activeProviderId": "provider-uuid",
     "generation": { "temperature": 0.9, "maxTokens": 4096 },
     "persona": { "name": "Alex", "description": "A curious traveler." },
-    "ui": { "theme": "tavern-dark" }
+    "ui": { "theme": "tavern-dark" },
+    "worldInfo": { "globalBooks": ["eldoria"], "recursive": true },
+    "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 }
 }
 ```
 
