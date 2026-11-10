@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, unlink } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -314,6 +314,94 @@ export async function deleteChat(character: CharacterDetail, chatId: string): Pr
             throw error;
         }
     });
+}
+
+/**
+ * Rename a chat by moving its file. A name that is already taken gets a
+ * numeric suffix rather than overwriting another conversation.
+ */
+export async function renameChat(character: CharacterDetail, chatId: string, name: string): Promise<ChatDetail> {
+    const directory = await ensureChatDirectory(character);
+    const sourceId = cleanChatId(chatId);
+    const source = resolveInside(directory, `${sourceId}.jsonl`);
+    const base = safeFileName(name.trim() || sourceId, 'chat');
+
+    const existing = new Set(
+        (await readdir(directory, { withFileTypes: true }))
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name.toLowerCase()),
+    );
+
+    let nextId = base;
+    let index = 2;
+    while (existing.has(`${nextId}.jsonl`.toLowerCase()) && nextId !== sourceId) {
+        nextId = `${base} (${index})`;
+        index += 1;
+    }
+
+    const target = resolveInside(directory, `${nextId}.jsonl`);
+    if (target === source) {
+        const current = await readChatFile(source, character, sourceId);
+        if (!current) {
+            throw new Error('Chat not found');
+        }
+        return current;
+    }
+
+    return withFileLock(source, async () => {
+        const chat = await readChatFile(source, character, sourceId);
+        if (!chat) {
+            throw new Error('Chat not found');
+        }
+        await rename(source, target);
+        return { ...chat, chatId: nextId };
+    });
+}
+
+/**
+ * Copy the conversation up to and including `index` into a new chat.
+ *
+ * The header, including `chat_metadata`, is copied as SillyTavern does for
+ * bookmarks; the scanner's rewind rule drops timed effects that no longer fit.
+ */
+export async function branchChat(
+    character: CharacterDetail,
+    chatId: string,
+    index: number,
+    name?: string,
+): Promise<ChatDetail> {
+    const source = await readChat(character, chatId);
+    if (!source) {
+        throw new Error('Chat not found');
+    }
+    if (!Number.isInteger(index) || index < 0 || index >= source.messages.length) {
+        throw new Error('Message not found');
+    }
+
+    const directory = await ensureChatDirectory(character);
+    const base = safeFileName(name?.trim() || `${source.chatId} (branch)`, 'chat');
+    const existing = new Set(
+        (await readdir(directory, { withFileTypes: true }))
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name.toLowerCase()),
+    );
+
+    let nextId = base;
+    let counter = 2;
+    while (existing.has(`${nextId}.jsonl`.toLowerCase())) {
+        nextId = `${base} (${counter})`;
+        counter += 1;
+    }
+
+    const chat: ChatFile = {
+        header: structuredClone(source.header),
+        messages: source.messages.slice(0, index + 1).map((message) => structuredClone(message)),
+    };
+
+    const target = resolveInside(directory, `${nextId}.jsonl`);
+    await withFileLock(target, () => writeChatFile(target, chat));
+
+    return { ...chat, characterId: character.id, chatId: nextId };
 }
 
 /**

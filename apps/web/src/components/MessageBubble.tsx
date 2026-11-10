@@ -1,5 +1,6 @@
 import type { ChatMessage } from '@catcup/shared';
-import { ChevronLeft, ChevronRight, Copy, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, GitBranch, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -28,6 +29,8 @@ interface MessageBubbleProps {
     onDelete?: () => void;
     onCopy?: () => void;
     onSwipe?: (delta: number) => void;
+    onEdit?: (text: string) => void;
+    onBranch?: () => void;
 }
 
 export function MessageBubble({
@@ -41,6 +44,8 @@ export function MessageBubble({
     onDelete,
     onCopy,
     onSwipe,
+    onEdit,
+    onBranch,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
     const reasoning = typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '';
@@ -50,6 +55,28 @@ export function MessageBubble({
         : [];
     const swipeId = typeof message.extra?.swipe_id === 'number' ? message.extra.swipe_id : 0;
     const canSwipe = swipes.length > 1;
+
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState(message.mes);
+    const editRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (editing) {
+            editRef.current?.focus();
+        }
+    }, [editing]);
+
+    const startEditing = () => {
+        setDraft(message.mes);
+        setEditing(true);
+    };
+
+    const saveEdit = () => {
+        setEditing(false);
+        if (draft !== message.mes) {
+            onEdit?.(draft);
+        }
+    };
 
     return (
         <article
@@ -87,89 +114,151 @@ export function MessageBubble({
                     </details>
                 ) : null}
 
-                <div
-                    className={cn(
-                        'w-full rounded-2xl border px-4 py-3 text-[15px] shadow-sm',
-                        isUser
-                            ? 'border-amber/20 bg-amber/10 text-parchment'
-                            : 'border-line/80 bg-surface/85 text-parchment',
-                    )}
-                >
-                    {message.mes.trim() ? (
-                        <MarkdownText text={message.mes} />
-                    ) : (
-                        <span className="text-sm italic text-muted">Empty message</span>
-                    )}
-                </div>
-
-                <footer
-                    className={cn(
-                        'mt-1 flex min-h-7 w-full items-center gap-1 px-1 text-muted transition md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100',
-                        isUser && 'justify-end',
-                    )}
-                >
-                    {canSwipe ? (
-                        <div className="mr-auto flex items-center gap-0.5 rounded-lg bg-surface/60 px-1 py-0.5">
-                            <button
-                                type="button"
-                                className="icon-btn size-6"
-                                onClick={() => onSwipe?.(-1)}
-                                disabled={disabled || swipeId <= 0}
-                                aria-label="Previous swipe"
-                            >
-                                <ChevronLeft size={14} />
+                {editing ? (
+                    <div className="w-full rounded-2xl border border-amber/40 bg-ink-soft/80 px-3 py-2 shadow-sm">
+                        <textarea
+                            ref={editRef}
+                            className="input-shell min-h-28 w-full resize-y text-[15px] leading-relaxed"
+                            value={draft}
+                            onChange={(event) => setDraft(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Escape') {
+                                    setEditing(false);
+                                } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                                    saveEdit();
+                                }
+                            }}
+                            aria-label="Edit message"
+                        />
+                        <div className="mt-2 flex justify-end gap-2">
+                            <button type="button" className="btn-ghost" onClick={() => setEditing(false)}>
+                                <X size={14} />
+                                Cancel
                             </button>
-                            <span className="min-w-8 text-center text-[10px] tabular-nums text-muted">
-                                {Math.min(swipeId + 1, swipes.length)}/{swipes.length}
-                            </span>
                             <button
                                 type="button"
-                                className="icon-btn size-6"
-                                onClick={() => onSwipe?.(1)}
-                                disabled={disabled || swipeId >= swipes.length - 1}
-                                aria-label="Next swipe"
+                                className="btn-primary"
+                                onClick={saveEdit}
+                                disabled={disabled || draft === message.mes}
                             >
-                                <ChevronRight size={14} />
+                                <Check size={14} />
+                                Save
                             </button>
                         </div>
-                    ) : null}
-
-                    <button
-                        type="button"
-                        className="icon-btn size-7"
-                        onClick={onCopy}
-                        title="Copy message"
-                        aria-label="Copy message"
+                    </div>
+                ) : (
+                    <div
+                        className={cn(
+                            'w-full rounded-2xl border px-4 py-3 text-[15px] shadow-sm',
+                            isUser
+                                ? 'border-amber/20 bg-amber/10 text-parchment'
+                                : 'border-line/80 bg-surface/85 text-parchment',
+                        )}
                     >
-                        <Copy size={14} />
-                    </button>
+                        {message.mes.trim() ? (
+                            <MarkdownText text={message.mes} />
+                        ) : (
+                            <span className="text-sm italic text-muted">Empty message</span>
+                        )}
+                    </div>
+                )}
 
-                    {isLastAssistant && onRegenerate ? (
+                {editing ? null : (
+                    <footer
+                        className={cn(
+                            'mt-1 flex min-h-7 w-full items-center gap-1 px-1 text-muted transition md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100',
+                            isUser && 'justify-end',
+                        )}
+                    >
+                        {canSwipe ? (
+                            <div className="mr-auto flex items-center gap-0.5 rounded-lg bg-surface/60 px-1 py-0.5">
+                                <button
+                                    type="button"
+                                    className="icon-btn size-6"
+                                    onClick={() => onSwipe?.(-1)}
+                                    disabled={disabled || swipeId <= 0}
+                                    aria-label="Previous swipe"
+                                >
+                                    <ChevronLeft size={14} />
+                                </button>
+                                <span className="min-w-8 text-center text-[10px] tabular-nums text-muted">
+                                    {Math.min(swipeId + 1, swipes.length)}/{swipes.length}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="icon-btn size-6"
+                                    onClick={() => onSwipe?.(1)}
+                                    disabled={disabled || swipeId >= swipes.length - 1}
+                                    aria-label="Next swipe"
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+                        ) : null}
+
                         <button
                             type="button"
                             className="icon-btn size-7"
-                            onClick={onRegenerate}
-                            disabled={disabled}
-                            title="Regenerate"
-                            aria-label="Regenerate reply"
+                            onClick={onCopy}
+                            title="Copy message"
+                            aria-label="Copy message"
                         >
-                            <RefreshCw size={14} />
+                            <Copy size={14} />
                         </button>
-                    ) : null}
 
-                    {onDelete ? (
-                        <button
-                            type="button"
-                            className="icon-btn size-7 hover:text-wine"
-                            onClick={onDelete}
-                            disabled={disabled}
-                            title="Delete message"
-                            aria-label="Delete message"
-                        >
-                            <Trash2 size={14} />
-                        </button>
-                    ) : null}
-                </footer>
+                        {onEdit ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={startEditing}
+                                disabled={disabled}
+                                title="Edit message"
+                                aria-label="Edit message"
+                            >
+                                <Pencil size={14} />
+                            </button>
+                        ) : null}
+
+                        {onBranch ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={onBranch}
+                                disabled={disabled}
+                                title="Branch from here"
+                                aria-label="Branch from here"
+                            >
+                                <GitBranch size={14} />
+                            </button>
+                        ) : null}
+
+                        {isLastAssistant && onRegenerate ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={onRegenerate}
+                                disabled={disabled}
+                                title="Regenerate"
+                                aria-label="Regenerate reply"
+                            >
+                                <RefreshCw size={14} />
+                            </button>
+                        ) : null}
+
+                        {onDelete ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7 hover:text-wine"
+                                onClick={onDelete}
+                                disabled={disabled}
+                                title="Delete message"
+                                aria-label="Delete message"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        ) : null}
+                    </footer>
+                )}
             </div>
         </article>
     );

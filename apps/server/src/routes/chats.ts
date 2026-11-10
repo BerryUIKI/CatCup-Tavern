@@ -2,7 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
-import { createChat, deleteChat, deleteMessage, listChats, readChat, updateMessage } from '../storage/chats.js';
+import {
+    branchChat,
+    createChat,
+    deleteChat,
+    deleteMessage,
+    listChats,
+    readChat,
+    renameChat,
+    updateMessage,
+} from '../storage/chats.js';
 import { parseMessageIndex, requireCharacter } from './helpers.js';
 
 const chatParamsSchema = z.object({
@@ -21,6 +30,15 @@ const messageParamsSchema = chatParamsSchema.extend({
 const newChatSchema = z.object({
     name: z.string().trim().max(200).optional(),
     greetingIndex: z.number().int().min(0).max(100).optional(),
+});
+
+const renameChatSchema = z.object({
+    name: z.string().trim().min(1).max(200),
+});
+
+const branchChatSchema = z.object({
+    index: z.number().int().min(0),
+    name: z.string().trim().max(200).optional(),
 });
 
 const updateMessageSchema = z
@@ -54,6 +72,30 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
             throw notFound('Chat not found');
         }
         return { chat };
+    });
+
+    app.patch('/api/chats/:characterId/:chatId', async (request) => {
+        const { characterId, chatId } = chatParamsSchema.parse(request.params);
+        const body = renameChatSchema.parse(request.body ?? {});
+        const character = await requireCharacter(characterId);
+
+        try {
+            return { chat: await renameChat(character, chatId, body.name) };
+        } catch (error) {
+            throw badRequest(error instanceof Error ? error.message : 'Failed to rename chat');
+        }
+    });
+
+    app.post('/api/chats/:characterId/:chatId/branch', async (request) => {
+        const { characterId, chatId } = chatParamsSchema.parse(request.params);
+        const body = branchChatSchema.parse(request.body ?? {});
+        const character = await requireCharacter(characterId);
+
+        try {
+            return { chat: await branchChat(character, chatId, body.index, body.name) };
+        } catch (error) {
+            throw badRequest(error instanceof Error ? error.message : 'Failed to branch chat');
+        }
     });
 
     app.patch('/api/chats/:characterId/:chatId/messages/:index', async (request) => {

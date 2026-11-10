@@ -1,14 +1,22 @@
 import type { CharacterSummary, ChatMessage, ChatSummary } from '@catcup/shared';
-import { Menu, MessageSquarePlus, Plus, Settings2, Sparkles, X } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef } from 'react';
+import { Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
-import { useChat, useDeleteMessage, useUpdateMessage } from '../hooks/data';
+import {
+    useBranchChat,
+    useChat,
+    useDeleteChat,
+    useDeleteMessage,
+    useRenameChat,
+    useUpdateMessage,
+} from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { Logo } from './Logo';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
+import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
 interface ChatViewProps {
@@ -91,6 +99,12 @@ export function ChatView({
     const chatQuery = useChat(character?.id ?? null, selectedChatId);
     const updateMessageMutation = useUpdateMessage(character?.id ?? null, selectedChatId);
     const deleteMessageMutation = useDeleteMessage(character?.id ?? null, selectedChatId);
+    const renameChatMutation = useRenameChat(character?.id ?? null);
+    const branchChatMutation = useBranchChat(character?.id ?? null);
+    const deleteChatMutation = useDeleteChat(character?.id ?? null);
+
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState('');
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
@@ -192,6 +206,74 @@ export function ChatView({
             .catch(() => pushToast('Could not copy the message.', 'error'));
     };
 
+    const handleContinue = () => {
+        if (!selectedChatId) {
+            return;
+        }
+        void generation.start('continue');
+    };
+
+    const handleEditMessage = (index: number, text: string) => {
+        updateMessageMutation.mutate(
+            { index, message: text },
+            { onError: (error) => pushToast(error.message, 'error') },
+        );
+    };
+
+    const handleBranch = (index: number) => {
+        if (!selectedChatId) {
+            return;
+        }
+        branchChatMutation.mutate(
+            { chatId: selectedChatId, index },
+            {
+                onSuccess: (chat) => {
+                    onSelectChat(chat.chatId);
+                    pushToast('Branch created.', 'success');
+                },
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
+    const handleOpenRename = () => {
+        if (!selectedChatId) {
+            return;
+        }
+        setRenameValue(selectedChatId);
+        setRenameOpen(true);
+    };
+
+    const handleRename = () => {
+        if (!selectedChatId || !renameValue.trim()) {
+            return;
+        }
+        renameChatMutation.mutate(
+            { chatId: selectedChatId, name: renameValue.trim() },
+            {
+                onSuccess: (chat) => {
+                    setRenameOpen(false);
+                    onSelectChat(chat.chatId);
+                    pushToast('Chat renamed.', 'success');
+                },
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
+    const handleDeleteChat = () => {
+        if (!selectedChatId) {
+            return;
+        }
+        if (!window.confirm('Delete this chat? This cannot be undone.')) {
+            return;
+        }
+        deleteChatMutation.mutate(selectedChatId, {
+            onSuccess: () => pushToast('Chat deleted.', 'success'),
+            onError: (error) => pushToast(error.message, 'error'),
+        });
+    };
+
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
     const header = (
@@ -250,6 +332,28 @@ export function ChatView({
                     >
                         {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
                     </button>
+                    <div className="hidden items-center gap-1 sm:flex">
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={handleOpenRename}
+                            disabled={!selectedChatId}
+                            title="Rename chat"
+                            aria-label="Rename chat"
+                        >
+                            <Pencil size={16} />
+                        </button>
+                        <button
+                            type="button"
+                            className="icon-btn hover:text-wine"
+                            onClick={handleDeleteChat}
+                            disabled={!selectedChatId || deleteChatMutation.isPending}
+                            title="Delete chat"
+                            aria-label="Delete chat"
+                        >
+                            {deleteChatMutation.isPending ? <Spinner size={16} /> : <Trash2 size={16} />}
+                        </button>
+                    </div>
                     <button
                         type="button"
                         className="icon-btn"
@@ -340,6 +444,8 @@ export function ChatView({
                                     onDelete={() => handleDelete(index)}
                                     onCopy={() => handleCopy(message.mes)}
                                     onSwipe={(delta) => handleSwipe(index, delta)}
+                                    onEdit={(text) => handleEditMessage(index, text)}
+                                    onBranch={() => handleBranch(index)}
                                 />
                             ))}
 
@@ -363,6 +469,21 @@ export function ChatView({
                                     reasoning={generation.reasoningText}
                                     streaming={generation.streaming}
                                 />
+                            ) : null}
+
+                            {lastMessage && !lastMessage.is_user && !lastMessage.is_system && !generation.streaming ? (
+                                <div className="flex justify-center pt-1">
+                                    <button
+                                        type="button"
+                                        className="btn-ghost"
+                                        onClick={handleContinue}
+                                        disabled={actionsDisabled}
+                                        title="Continue the last reply"
+                                    >
+                                        <Play size={15} />
+                                        Continue
+                                    </button>
+                                </div>
                             ) : null}
                         </>
                     )}
@@ -394,6 +515,45 @@ export function ChatView({
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
             />
+
+            <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
+                <div className="space-y-4 p-5">
+                    <div>
+                        <label className="label-text" htmlFor="chat-name">
+                            Chat name
+                        </label>
+                        <input
+                            id="chat-name"
+                            className="input-shell"
+                            value={renameValue}
+                            onChange={(event) => setRenameValue(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    handleRename();
+                                }
+                            }}
+                        />
+                        <p className="mt-1 text-xs text-parchment-dim">
+                            The chat is stored as a file, so renaming moves it. A name already in use gets a numeric
+                            suffix.
+                        </p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <button type="button" className="btn-ghost" onClick={() => setRenameOpen(false)}>
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={handleRename}
+                            disabled={!renameValue.trim() || renameChatMutation.isPending}
+                        >
+                            {renameChatMutation.isPending ? <Spinner size={15} /> : null}
+                            Rename
+                        </button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 }
