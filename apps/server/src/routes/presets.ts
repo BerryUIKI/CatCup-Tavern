@@ -1,8 +1,9 @@
+import { promptEntrySchema, promptOrderSchema } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
-import { createPreset, deletePreset, listPresets, readPreset } from '../storage/presets.js';
+import { createPreset, deletePreset, listPresets, readPreset, updatePreset } from '../storage/presets.js';
 import { getSettings, updateSettings } from '../storage/settings.js';
 
 const idParams = z.object({ id: z.string().min(1).max(200) });
@@ -10,6 +11,11 @@ const idParams = z.object({ id: z.string().min(1).max(200) });
 const importSchema = z.object({
     fileName: z.string().max(200).optional(),
     preset: z.record(z.string(), z.unknown()),
+});
+
+const patchSchema = z.object({
+    prompts: z.array(promptEntrySchema).optional(),
+    prompt_order: z.array(promptOrderSchema).optional(),
 });
 
 export async function registerPresetRoutes(app: FastifyInstance): Promise<void> {
@@ -29,6 +35,23 @@ export async function registerPresetRoutes(app: FastifyInstance): Promise<void> 
         const preset = await createPreset(body);
         reply.code(201);
         return { preset };
+    });
+
+    app.patch('/api/presets/:id', async (request) => {
+        const { id } = idParams.parse(request.params);
+        const body = patchSchema.parse(request.body ?? {});
+
+        const existing = await readPreset(id);
+        if (!existing) {
+            throw notFound('Preset not found');
+        }
+
+        return {
+            preset: await updatePreset(id, {
+                prompts: body.prompts,
+                prompt_order: body.prompt_order,
+            }),
+        };
     });
 
     app.get('/api/presets/:id/export', async (request, reply) => {
