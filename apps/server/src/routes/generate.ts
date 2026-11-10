@@ -13,10 +13,12 @@ import { z } from 'zod';
 import { badRequest, notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
+import { resolvePreset } from '../prompt/preset.js';
 import { scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
 import { appendMessage, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
+import { readPresetBody } from '../storage/presets.js';
 import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
 import { requireCharacter } from './helpers.js';
 
@@ -139,6 +141,11 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         }
         const apiKey = await getProviderSecret(provider.id);
 
+        // An active ST preset owns the prompt list, the assembly formats and
+        // the sampling parameters; anything it omits falls back to settings.
+        const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
+        const preset = resolvePreset(activePreset, settings.generation);
+
         let messages = chat.messages;
         let regenerateIndex: number | null = null;
         let continueIndex: number | null = null;
@@ -184,7 +191,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             persona: settings.persona,
             config: settings.worldInfo,
             authorNote: settings.authorNote,
-            contextSize: settings.generation.contextSize,
+            contextSize: preset.generation.contextSize,
             trigger: generationType,
             metadata: chat.header.chat_metadata,
         });
@@ -197,7 +204,13 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             character,
             messages,
             persona: settings.persona,
-            settings: settings.generation,
+            settings: preset.generation,
+            promptSettings: preset.promptSettings,
+            formats: preset.formats,
+            newChatPrompt: preset.newChatPrompt,
+            newExampleChatPrompt: preset.newExampleChatPrompt,
+            continueNudgePrompt: preset.continueNudgePrompt,
+            squashSystemMessages: preset.squashSystemMessages,
             worldInfo: worldInfoTurn.prompt,
             generationType,
         });
@@ -249,9 +262,9 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
                 for await (const chunk of adapter.streamChat(provider, apiKey, {
                     model: provider.model,
                     messages: prompt,
-                    temperature: settings.generation.temperature,
-                    topP: settings.generation.topP,
-                    maxTokens: settings.generation.maxTokens,
+                    temperature: preset.generation.temperature,
+                    topP: preset.generation.topP,
+                    maxTokens: preset.generation.maxTokens,
                     signal: controller.signal,
                 })) {
                     if (chunk.type === 'text') {

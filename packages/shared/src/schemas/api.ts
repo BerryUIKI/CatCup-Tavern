@@ -72,3 +72,23 @@ export interface UpdateMessageRequest {
 export interface ProviderTestRequest {
     apiKey?: string;
 }
+
+export interface PresetSummary {
+    /** File name without `.json`. */
+    id: string;
+    name: string;
+    updatedAt: number;
+    promptCount: number;
+}
+
+export interface PresetDetail {
+    id: string;
+    /** The preset body exactly as stored, including unknown fields. */
+    preset: Record<string, unknown>;
+}
+
+export interface ImportPresetRequest {
+    /** Base file name to store under; derived from the preset when absent. */
+    fileName?: string;
+    preset: unknown;
+}

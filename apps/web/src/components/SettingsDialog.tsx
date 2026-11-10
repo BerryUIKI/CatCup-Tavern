@@ -8,16 +8,25 @@ import type {
     ProviderTestResult,
 } from '@catcup/shared';
 import { DEFAULT_BASE_URLS, PROVIDER_KIND_LABELS } from '@catcup/shared';
-import { Check, PlugZap, Save, Server, SlidersHorizontal, UserRound } from 'lucide-react';
+import { Check, Download, PlugZap, Save, Server, SlidersHorizontal, Trash2, Upload, UserRound } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useSettings, useTestProvider, useUpdateProvider, useUpdateSettings } from '../hooks/data';
+import {
+    useDeletePreset,
+    useImportPreset,
+    usePresets,
+    useSettings,
+    useTestProvider,
+    useUpdateProvider,
+    useUpdateSettings,
+} from '../hooks/data';
+import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
-type Tab = 'connection' | 'generation' | 'persona';
+type Tab = 'connection' | 'generation' | 'persona' | 'prompts';
 
 interface ProviderForm {
     name: string;
@@ -117,6 +126,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'connection', label: 'Connection', icon: Server },
     { id: 'generation', label: 'Generation', icon: SlidersHorizontal },
     { id: 'persona', label: 'Persona', icon: UserRound },
+    { id: 'prompts', label: 'Prompts', icon: SlidersHorizontal },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -125,6 +135,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const updateSettings = useUpdateSettings();
     const updateProvider = useUpdateProvider();
     const testProvider = useTestProvider();
+    const presetsQuery = usePresets();
+    const importPreset = useImportPreset();
+    const deletePreset = useDeletePreset();
+    const presets = presetsQuery.data?.presets ?? [];
     const pushToast = useAppStore((state) => state.pushToast);
 
     const [tab, setTab] = useState<Tab>('connection');
@@ -281,6 +295,39 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             pushToast('Persona saved.', 'success');
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the persona.', 'error');
+        }
+    };
+
+    const handleSelectPreset = async (id: string | null) => {
+        try {
+            await updateSettings.mutateAsync({ activePresetId: id });
+            pushToast(id ? `Activated preset "${id}".` : 'Using the built-in prompt defaults.', 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not change the preset.', 'error');
+        }
+    };
+
+    const handleImportPreset = async (file: File) => {
+        try {
+            const preset = JSON.parse(await file.text()) as unknown;
+            const result = await importPreset.mutateAsync({ fileName: file.name, preset });
+            await updateSettings.mutateAsync({ activePresetId: result.preset.id });
+            pushToast(`Imported and activated "${result.preset.id}".`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not import the preset.', 'error');
+        }
+    };
+
+    const handleDeletePreset = async () => {
+        const id = settings?.activePresetId;
+        if (!id) {
+            return;
+        }
+        try {
+            await deletePreset.mutateAsync(id);
+            pushToast(`Deleted preset "${id}".`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not delete the preset.', 'error');
         }
     };
 
@@ -627,7 +674,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         Save generation settings
                     </button>
                 </div>
-            ) : (
+            ) : tab === 'persona' ? (
                 <div className="space-y-4 p-5">
                     <p className="text-sm leading-relaxed text-muted">
                         Your persona is how the model refers to you in prompts.
@@ -680,6 +727,77 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
                         Save persona
                     </button>
+                </div>
+            ) : (
+                <div className="space-y-5 p-5">
+                    <p className="text-sm leading-relaxed text-muted">
+                        An imported SillyTavern OpenAI preset supplies the prompt list, its order, the assembly formats
+                        and the sampling parameters. With no preset selected, the built-in SillyTavern defaults are
+                        used.
+                    </p>
+
+                    <div>
+                        <label className="label-text" htmlFor="active-preset">
+                            Active preset
+                        </label>
+                        <select
+                            id="active-preset"
+                            className="input-shell"
+                            value={settings?.activePresetId ?? ''}
+                            disabled={updateSettings.isPending}
+                            onChange={(event) => void handleSelectPreset(event.target.value || null)}
+                        >
+                            <option value="">Built-in defaults</option>
+                            {presets.map((preset) => (
+                                <option key={preset.id} value={preset.id}>
+                                    {preset.id} ({preset.promptCount} prompts)
+                                </option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-xs text-parchment-dim">
+                            {settings?.activePresetId
+                                ? `Active: ${settings.activePresetId}`
+                                : 'No preset selected. Preset files in data/presets take effect once activated.'}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className={cn('btn-ghost cursor-pointer', importPreset.isPending && 'opacity-60')}>
+                            {importPreset.isPending ? <Spinner size={15} /> : <Upload size={15} />}
+                            Import JSON
+                            <input
+                                type="file"
+                                accept=".json,application/json"
+                                className="sr-only"
+                                disabled={importPreset.isPending}
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    event.target.value = '';
+                                    if (file) {
+                                        void handleImportPreset(file);
+                                    }
+                                }}
+                            />
+                        </label>
+
+                        {settings?.activePresetId ? (
+                            <>
+                                <a className="btn-ghost" href={api.presets.exportUrl(settings.activePresetId)} download>
+                                    <Download size={15} />
+                                    Export
+                                </a>
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    onClick={() => void handleDeletePreset()}
+                                    disabled={deletePreset.isPending}
+                                >
+                                    {deletePreset.isPending ? <Spinner size={15} /> : <Trash2 size={15} />}
+                                    Delete
+                                </button>
+                            </>
+                        ) : null}
+                    </div>
                 </div>
             )}
         </Modal>

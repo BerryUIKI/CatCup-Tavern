@@ -7,6 +7,8 @@ import type {
     ChatSummary,
     ImportCharactersResponse,
     ModelInfo,
+    PresetDetail,
+    PresetSummary,
     ProviderInput,
     ProviderPublic,
     ProviderTestResult,
@@ -64,6 +66,16 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+    presets: {
+        list: () => request<{ presets: PresetSummary[] }>('/presets'),
+        import: (fileName: string | undefined, preset: unknown) =>
+            request<{ preset: PresetDetail }>('/presets/import', {
+                method: 'POST',
+                body: JSON.stringify({ fileName, preset }),
+            }),
+        remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,
+    },
     auth: {
         status: () => request<AuthStatus>('/auth/status'),
         setup: (password: string) =>
