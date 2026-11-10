@@ -13,11 +13,13 @@ import { HttpError } from './http/errors.js';
 import { registerAuthRoutes, requireAuth } from './routes/auth.js';
 import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
+import { registerContextRoutes } from './routes/context.js';
 import { registerGenerateRoutes } from './routes/generate.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerPresetRoutes } from './routes/presets.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerWorldRoutes } from './routes/worlds.js';
 import { ensureDataDirs } from './storage/paths.js';
 
 const PUBLIC_API_PATHS = new Set([
@@ -123,6 +125,8 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerSettingsRoutes(app);
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);
+    await registerWorldRoutes(app);
+    await registerContextRoutes(app);
     await registerGenerateRoutes(app);
 
     const webDist = path.resolve(import.meta.dirname, '../../web/dist');

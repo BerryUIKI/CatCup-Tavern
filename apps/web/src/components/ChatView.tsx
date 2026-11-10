@@ -1,5 +1,5 @@
 import type { CharacterSummary, ChatMessage, ChatSummary } from '@catcup/shared';
-import { Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -14,6 +14,7 @@ import { useGeneration } from '../hooks/useGeneration';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
+import { ContextInspector } from './ContextInspector';
 import { Logo } from './Logo';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
@@ -105,6 +106,7 @@ export function ChatView({
 
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
+    const [inspectorOpen, setInspectorOpen] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
@@ -363,6 +365,16 @@ export function ChatView({
                     >
                         <Settings2 size={18} />
                     </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => setInspectorOpen(true)}
+                        disabled={!selectedChatId}
+                        title="Inspect context"
+                        aria-label="Inspect context"
+                    >
+                        <Eye size={18} />
+                    </button>
                 </div>
             ) : null}
         </header>
@@ -514,6 +526,13 @@ export function ChatView({
                 streaming={generation.streaming}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
+            />
+
+            <ContextInspector
+                open={inspectorOpen}
+                onClose={() => setInspectorOpen(false)}
+                characterId={character?.id ?? null}
+                chatId={selectedChatId}
             />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">

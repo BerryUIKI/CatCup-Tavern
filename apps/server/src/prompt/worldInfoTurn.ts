@@ -10,7 +10,7 @@ import { loadWorldInfoEntries } from '../worldinfo/loader.js';
 import { buildWorldInfoPrompt } from '../worldinfo/prompt.js';
 import { scanWorldInfo } from '../worldinfo/scanner.js';
 import { ensureTimedWorldInfo } from '../worldinfo/timedEffects.js';
-import type { WorldInfoPrompt } from '../worldinfo/types.js';
+import type { ScanResult, WorldInfoPrompt } from '../worldinfo/types.js';
 import { type MacroContext, substituteMacros } from './macros.js';
 
 export interface WorldInfoTurnInput {
@@ -31,6 +31,8 @@ export interface WorldInfoTurnInput {
 
 export interface WorldInfoTurnResult {
     prompt: WorldInfoPrompt;
+    /** The raw scan, for the context inspector. */
+    scan: ScanResult;
     /** Books that were scanned, for diagnostics. */
     books: string[];
 }
@@ -61,6 +63,30 @@ export function createMacroContext(character: CharacterDetail, persona: PersonaS
 }
 
 /**
+ * Drop duplicate book ids, ignoring case.
+ *
+ * A card can bind the same book that is also enabled globally, and on a
+ * case-insensitive filesystem `Eldoria` and `eldoria` are one file. Loading it
+ * twice would double its entries and skew the budget.
+ */
+export function dedupeBooks(ids: readonly string[]): string[] {
+    const seen = new Set<string>();
+    const books: string[] = [];
+
+    for (const id of ids) {
+        const trimmed = id.trim();
+        const key = trimmed.toLowerCase();
+        if (!trimmed || seen.has(key)) {
+            continue;
+        }
+        seen.add(key);
+        books.push(trimmed);
+    }
+
+    return books;
+}
+
+/**
  * Run the world info scan for one generation.
  *
  * The chat passed to the scanner is the full non-system conversation, newest
@@ -70,7 +96,7 @@ export function createMacroContext(character: CharacterDetail, persona: PersonaS
 export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<WorldInfoTurnResult> {
     const card = input.character.card;
     const characterWorld = typeof card.extensions.world === 'string' ? card.extensions.world : '';
-    const books = [...new Set([...input.config.globalBooks, characterWorld].filter(Boolean))];
+    const books = dedupeBooks([...input.config.globalBooks, characterWorld]);
 
     const entries = await loadWorldInfoEntries(books);
     const macroContext = createMacroContext(input.character, input.persona);
@@ -126,5 +152,5 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
         },
     });
 
-    return { prompt, books };
+    return { prompt, scan, books };
 }

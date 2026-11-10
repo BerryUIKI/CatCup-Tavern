@@ -92,3 +92,60 @@ export interface ImportPresetRequest {
     fileName?: string;
     preset: unknown;
 }
+
+export interface WorldSummary {
+    /** File name without `.json`. */
+    id: string;
+    name: string;
+    entryCount: number;
+    updatedAt: number;
+}
+
+export interface WorldDetail {
+    id: string;
+    /** The stored book body, unknown fields included. */
+    book: Record<string, unknown>;
+}
+
+export interface ImportWorldRequest {
+    fileName?: string;
+    book: unknown;
+}
+
+export interface ContextPreviewMessage {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+    name?: string;
+}
+
+export interface ContextPreviewTrace {
+    loop: number;
+    world: string;
+    uid: number;
+    comment: string;
+    activated: boolean;
+    reason: string;
+    detail?: string;
+}
+
+export interface ContextPreviewWorldInfo {
+    /** Books that were scanned for this chat. */
+    books: string[];
+    activated: Array<{ id: string; world: string; uid: number; comment: string; reason: string; loop: number }>;
+    trace: ContextPreviewTrace[];
+    before: string[];
+    after: string[];
+    authorNoteTop: string[];
+    authorNoteBottom: string[];
+    atDepth: Array<{ depth: number; role: number; entries: string[] }>;
+    examples: Array<{ position: number; content: string }>;
+    outlets: Record<string, string[]>;
+    budget: { limit: number; used: number; overflowed: boolean };
+    loops: number;
+}
+
+export interface ContextPreview {
+    messages: ContextPreviewMessage[];
+    worldInfo: ContextPreviewWorldInfo;
+    budget: { exceeded: boolean; tokenCounts: Record<string, number>; total: number };
+}
