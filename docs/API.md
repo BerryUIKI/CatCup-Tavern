@@ -499,7 +499,80 @@ Books stored in `data/worlds/`. The file body is kept verbatim, so unknown Silly
 
 ### `GET /api/worlds/:id`
 
-Returns `{ "world": { "id": "...", "book": { ... } } }` with the stored body.
+Returns `{ "world": WorldDetail }` with the stored body plus a normalized entry list for the editor:
+
+```json
+{
+    "world": {
+        "id": "eldoria",
+        "book": { "entries": {} },
+        "entries": [
+            {
+                "uid": 0,
+                "key": ["eldoria", "forest"],
+                "comment": "Eldoria",
+                "content": "Eldoria is the forest around the glade.",
+                "position": 0,
+                "order": 100,
+                "displayIndex": 0
+            }
+        ]
+    }
+}
+```
+
+`entries` is the entry list every entry mutation returns, so a client never has to merge by hand. Fields missing from the file are filled with SillyTavern's defaults, `content` is the stored text with decorators intact, and the list is in editor order: `displayIndex` (falling back to `uid`), then `order` descending, then `uid`.
+
+### `POST /api/worlds/:id/entries`
+
+Appends a blank entry built from SillyTavern's `newWorldInfoEntryTemplate`. The uid is the lowest one the book is not using, so the uid of a deleted entry is reused.
+
+Response: `201` with `{ "world": WorldDetail, "uid": 3 }`.
+
+### `POST /api/worlds/:id/entries/:uid/duplicate`
+
+Copies an entry under a free uid. The copy keeps the source `displayIndex`, matching SillyTavern, so it sorts beside the original.
+
+Response: `201` with `{ "world": WorldDetail, "uid": 4 }`.
+
+### `PATCH /api/worlds/:id/entries/:uid`
+
+Merge fields into one entry.
+
+```json
+{
+    "comment": "Shadowfang",
+    "key": ["shadowfang", "/beast|monster/i"],
+    "content": "Shadowfangs are corrupted beasts.",
+    "position": 4,
+    "depth": 2,
+    "role": 1,
+    "probability": 80
+}
+```
+
+- Every field is optional. Unknown fields are rejected with `400 VALIDATION`, so a typo cannot silently write junk.
+- The patch is merged into the entry as stored: `extensions`, `vectorized` and any field the editor does not expose survive.
+- `key`, `keysecondary` and `triggers` are trimmed and empty entries dropped; `/pattern/flags` keys are stored verbatim and interpreted by the scanner.
+- `uid`, `displayIndex` and `vectorized` are not patchable.
+
+Response: `{ "world": WorldDetail, "uid": 3 }`. `404` means the book or the entry does not exist.
+
+### `PUT /api/worlds/:id/entries/order`
+
+Assigns `displayIndex` values in the order given, which is how the entry list reorders.
+
+```json
+{ "uids": [2, 0, 1] }
+```
+
+Response: `{ "world": WorldDetail }`. Uids that are not in the book are skipped.
+
+### `DELETE /api/worlds/:id/entries/:uid`
+
+Removes one entry. `displayIndex` values are not renumbered, so gaps remain until the list is reordered — SillyTavern behaves the same way.
+
+Response: `{ "world": WorldDetail }`.
 
 ### `POST /api/worlds/import`
 

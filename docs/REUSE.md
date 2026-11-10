@@ -114,6 +114,8 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `apps/server/src/worldinfo/loader.ts`       | ST `public/scripts/world-info.js`                      | Book shape handling, entry normalization and hashing             |
 | `apps/server/src/worldinfo/scanner.ts`      | ST `public/scripts/world-info.js`                      | Full `checkWorldInfo`: scan states, groups, budget, positions    |
 | `apps/server/src/worldinfo/timedEffects.ts` | ST `public/scripts/world-info.js`                      | `WorldInfoTimedEffects`: sticky, cooldown, delay, hand-off       |
+| `apps/server/src/worldinfo/entries.ts`      | ST `public/scripts/world-info.js`                      | Entry template defaults, free-uid allocation, patch merge, order |
+| `packages/shared/src/keywords.ts`           | ST `public/scripts/world-info.js`                      | `splitKeywordsAndRegexes` and `/pattern/flags` validation        |
 | `apps/server/src/worldinfo/prompt.ts`       | ST `world-info.js` + `openai.js`                       | Prompt buckets, `wi_format`, Author's Note composition           |
 | `apps/server/src/prompt/definitions.ts`     | ST `PromptManager.js`                                  | Default prompt definitions, order and identifiers                |
 | `apps/server/src/prompt/manager.ts`         | ST `PromptManager.js`                                  | Sanitize, order lookup and prompt collection                     |

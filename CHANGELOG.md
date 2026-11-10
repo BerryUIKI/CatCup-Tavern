@@ -29,11 +29,17 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Context inspector: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt without generating, and a dialog shows the assembled messages, the world info activation trace and per-slot token estimates.
 - World info books bound by a character card and enabled globally are deduplicated case-insensitively, so a book is never scanned twice.
 - Prompt order editor: reorder entries, enable or disable them, and switch a prompt between the ordered list and an in-chat injection with depth, order and role. Saved with `PATCH /api/presets/:id`, which merges the prompt fields into the stored preset and leaves the rest of the body untouched.
+- World info entry editor: create, edit, duplicate, reorder and delete entries from the World Info settings tab. The form covers keywords and secondary-key logic, content, always-active and disabled state, position with depth and role, scan overrides, inclusion groups, sticky/cooldown/delay, recursion and matching sources.
+- World info entry endpoints: `POST /api/worlds/:id/entries`, `POST /api/worlds/:id/entries/:uid/duplicate`, `PATCH /api/worlds/:id/entries/:uid`, `DELETE /api/worlds/:id/entries/:uid` and `PUT /api/worlds/:id/entries/order`. Patches merge into the stored entry, so `extensions`, `vectorized` and unknown fields survive.
+- `GET /api/worlds/:id` now returns the normalized entry list alongside the stored body, in editor order.
+- `splitKeywordsAndRegexes` in the shared package: comma-separated keyword input keeps commas inside `/pattern/flags` keys, matching SillyTavern's editor.
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed
 
 - World info entries are no longer dropped when `sticky`, `cooldown`, `delay`, `group`, `groupWeight`, `triggers` or a key list is `null`, which is what the SillyTavern editor and several card exporters write.
+- An entry with no `selective` field now defaults to `true`, as SillyTavern's entry template does, so an entry that only lists secondary keys applies their logic.
+- An explicit `order: null` now reads as `0`; before, it shared the missing-field default of `100` and sorted lorebook entries differently from SillyTavern.
 
 ### Changed
 

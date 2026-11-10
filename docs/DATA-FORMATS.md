@@ -263,7 +263,18 @@ For each entry:
 
 Every entry produces one trace line per scan explaining the outcome and the pass it happened in.
 
-**Not wired into generation yet.** `apps/server/src/prompt/builder.ts` still assembles prompts with the M0 pipeline, so files in `data/worlds/` do not change replies. The Prompt Manager slice consumes the scan result; the editor and import/export follow it.
+### Editing rules
+
+`apps/server/src/worldinfo/entries.ts` holds the write path. It follows the SillyTavern editor:
+
+- **Identity.** uids are resolved exactly as the loader resolves them, so a patch always targets the entry the scanner read. New entries take the lowest free uid rather than a new maximum, so a deleted uid is reused — `nextFreeUid` scans for the first gap up to 1,000,000.
+- **Creation.** A new entry is `{ uid, ...newWorldInfoEntryTemplate }`: `key: []`, `order: 100`, `position: 0`, `depth: 4`, `probability: 100`, `selective: true`, `groupWeight: 100`, `role: 0`, `delayUntilRecursion: 0`, and `null` for `scanDepth`, `caseSensitive`, `matchWholeWords`, `useGroupScoring`, `sticky`, `cooldown` and `delay`. No `displayIndex` is written; SillyTavern leaves it out too and falls back to the uid when sorting.
+- **Patching.** A patch is merged into the entry as stored, never substituted for it. `extensions`, `vectorized`, unknown keys and anything the editor does not expose survive a save. Key lists are trimmed and empty keys dropped. `uid`, `displayIndex` and `vectorized` are not patchable: the first two belong to the server, the third to SillyTavern's vectorization extension.
+- **Deleting.** Only the entry record is removed. SillyTavern does not renumber `displayIndex` on delete and neither do we, so gaps stay until the list is reordered.
+- **Duplicating.** The clone keeps the source's `displayIndex`, as SillyTavern's does, so it sorts next to the original and the tie is broken by `order` descending and then uid.
+- **Ordering.** The editor lists entries by `displayIndex`, falling back to uid, then `order` descending and uid ascending. Reordering assigns contiguous `displayIndex` values in the order given. SillyTavern's editor defaults to a Priority sort instead and only offers dragging in Custom sort; this editor always uses the Custom order because it exposes explicit reorder buttons.
+
+An explicit `null` and a missing field are not always the same thing. SillyTavern's entry template supplies `selective: true` when the field is absent, and its editor pushes `order: null` through `Number()`, which makes it `0`; only a missing `order` falls back to `100`. Both distinctions are kept.
 
 ### Timed effects in the chat header
 

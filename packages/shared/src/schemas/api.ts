@@ -1,6 +1,7 @@
 import type { CharacterSummary } from './character.js';
 import type { ChatMessage } from './chat.js';
 import type { ModelInfo } from './provider.js';
+import type { WorldInfoEntry } from './worldinfo.js';
 
 export interface AuthStatus {
     needsSetup: boolean;
@@ -101,10 +102,18 @@ export interface WorldSummary {
     updatedAt: number;
 }
 
+/**
+ * One world info entry as the editor sees it: the stored fields with
+ * SillyTavern's defaults applied, plus the uid that addresses it.
+ */
+export type WorldInfoEntryView = WorldInfoEntry & { uid: number };
+
 export interface WorldDetail {
     id: string;
     /** The stored book body, unknown fields included. */
     book: Record<string, unknown>;
+    /** Normalized entries in the order the editor lists them. */
+    entries: WorldInfoEntryView[];
 }
 
 export interface ImportWorldRequest {

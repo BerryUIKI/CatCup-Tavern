@@ -65,7 +65,8 @@ describe('world info loader', () => {
 
         expect(entries[0]?.order).toBe(100);
         expect(entries[0]?.probability).toBe(100);
-        expect(entries[0]?.selective).toBe(false);
+        // SillyTavern's entry template defaults `selective` to true.
+        expect(entries[0]?.selective).toBe(true);
         expect(entries[0]?.triggers).toEqual([]);
     });
 
@@ -85,6 +86,7 @@ describe('world info loader', () => {
                     groupWeight: null,
                     triggers: null,
                     keysecondary: null,
+                    order: null,
                 },
             },
         });
@@ -94,6 +96,9 @@ describe('world info loader', () => {
         expect(entries[0]?.group).toBe('');
         expect(entries[0]?.groupWeight).toBe(100);
         expect(entries[0]?.keysecondary).toEqual([]);
+        // SillyTavern coerces a null order through Number(), which makes it 0;
+        // only a missing order falls back to 100.
+        expect(entries[0]?.order).toBe(0);
     });
 
     it('derives a stable hash from the raw entry', () => {
