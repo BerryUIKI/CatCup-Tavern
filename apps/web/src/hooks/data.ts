@@ -11,6 +11,7 @@ export const queryKeys = {
     chat: (characterId: string | null, chatId: string | null) => ['chat', characterId, chatId] as const,
     settings: ['settings'] as const,
     presets: ['presets'] as const,
+    preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
 };
 
@@ -311,6 +312,26 @@ export function useProviderModels() {
 
 export function usePresets() {
     return useQuery({ queryKey: queryKeys.presets, queryFn: api.presets.list });
+}
+
+export function usePreset(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.preset(id),
+        queryFn: () => api.presets.get(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+export function useUpdatePreset(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (patch: { prompts?: unknown[]; prompt_order?: unknown[] }) =>
+            api.presets.update(id as string, patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.preset(id) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
+        },
+    });
 }
 
 export function useImportPreset() {

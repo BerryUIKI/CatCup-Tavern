@@ -38,6 +38,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
+import { PromptOrderEditor } from './PromptOrderEditor';
 import { Spinner } from './Spinner';
 
 type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo';
@@ -852,6 +853,12 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             </>
                         ) : null}
                     </div>
+
+                    {settings?.activePresetId ? (
+                        <div className="border-t border-line-soft pt-4">
+                            <PromptOrderEditor key={settings.activePresetId} presetId={settings.activePresetId} />
+                        </div>
+                    ) : null}
                 </div>
             ) : (
                 <div className="space-y-5 p-5">

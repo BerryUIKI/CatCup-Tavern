@@ -52,7 +52,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Core macros (`{{char}}`, `{{user}}`, ...)                          | 🟡 Partial         | `char`, `user`, `persona`, `description`, `personality`, `scenario`, `time`, `date`, `original` |
 | Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
 | Prompt Manager ordering/injection                                  | ✅ Implemented     | Default order, markers, relative and absolute injection                                         |
-| Prompt Manager editor UI                                           | ❌ Planned         | M1                                                                                              |
+| Prompt Manager editor UI                                           | ✅ Yes             | Reorder, enable/disable and injection position per preset prompt                                |
 | Preset import/export                                               | ✅ Yes             | Import, export and activation through the API                                                   |
 | Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                |
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |

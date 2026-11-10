@@ -90,10 +90,16 @@ export const api = {
     },
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),
+        get: (id: string) => request<{ preset: PresetDetail }>(`/presets/${encodeURIComponent(id)}`),
         import: (fileName: string | undefined, preset: unknown) =>
             request<{ preset: PresetDetail }>('/presets/import', {
                 method: 'POST',
                 body: JSON.stringify({ fileName, preset }),
+            }),
+        update: (id: string, patch: { prompts?: unknown[]; prompt_order?: unknown[] }) =>
+            request<{ preset: PresetDetail }>(`/presets/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
             }),
         remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,

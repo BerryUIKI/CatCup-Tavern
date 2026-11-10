@@ -110,6 +110,32 @@ export async function writePreset(id: string, preset: unknown): Promise<PresetDe
     return { id, preset };
 }
 
+/**
+ * Merge prompt fields into a stored preset, leaving everything else alone.
+ *
+ * Used by the prompt order editor: a preset carries dozens of sampling and
+ * behaviour fields, and the editor must not clobber the ones it does not show.
+ */
+export async function updatePreset(
+    id: string,
+    patch: { prompts?: unknown[]; prompt_order?: unknown[] },
+): Promise<PresetDetail> {
+    const existing = await readPreset(id);
+    if (!existing) {
+        throw new Error('Preset not found');
+    }
+
+    const next: Record<string, unknown> = { ...existing.preset };
+    if (patch.prompts !== undefined) {
+        next.prompts = patch.prompts;
+    }
+    if (patch.prompt_order !== undefined) {
+        next.prompt_order = patch.prompt_order;
+    }
+
+    return writePreset(id, next);
+}
+
 /** Delete a preset. Returns false when it did not exist. */
 export async function deletePreset(id: string): Promise<boolean> {
     try {

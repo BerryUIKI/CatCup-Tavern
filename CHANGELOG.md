@@ -28,6 +28,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - World info library: `GET/POST/DELETE /api/worlds` plus import and export, and a World Info settings tab to enable books, import JSON, export and delete them.
 - Context inspector: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt without generating, and a dialog shows the assembled messages, the world info activation trace and per-slot token estimates.
 - World info books bound by a character card and enabled globally are deduplicated case-insensitively, so a book is never scanned twice.
+- Prompt order editor: reorder entries, enable or disable them, and switch a prompt between the ordered list and an in-chat injection with depth, order and role. Saved with `PATCH /api/presets/:id`, which merges the prompt fields into the stored preset and leaves the rest of the body untouched.
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 
 ### Fixed
