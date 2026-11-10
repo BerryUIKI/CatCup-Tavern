@@ -30,14 +30,14 @@ A milestone is complete when all of its acceptance criteria pass and its status 
 
 ## At a glance
 
-| Milestone | Theme                                                                         | Status      | Depends on |
-| --------- | ----------------------------------------------------------------------------- | ----------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete    | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | In progress | M0         |
-| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | Planned     | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned     | M1, M2     |
-| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | Planned     | M0–M3      |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned     | M0–M4      |
+| Milestone | Theme                                                                         | Status   | Depends on |
+| --------- | ----------------------------------------------------------------------------- | -------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | Complete | M0         |
+| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | Planned  | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned  | M1, M2     |
+| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | Planned  | M0–M3      |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned  | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -116,12 +116,13 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Preset import, export and activation**: ST OpenAI presets are stored verbatim under `data/presets/`, listed, imported, exported and deleted over the API, and an active preset supplies the prompt list, order, formats and sampling parameters. Settings gain a Presets section in the UI.
 - **Chat editing and branching**: inline message editing, continue generation from the latest reply, branching a conversation from any message, chat rename and delete, and an alternate-greeting picker when starting a chat.
 - **World info library**: books can be listed, imported, exported, deleted and enabled per account from a World Info settings tab. Importing stores the file verbatim; deleting removes the id from the enabled list.
-- **Context inspector**: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt against a cloned `chat_metadata`, and the inspector shows the assembled messages, the per-entry world info trace (activated or skipped, reason, pass) and per-slot token estimates.
+- **Context inspector**: `GET /api/chats/:characterId/:chatId/context` rebuilds the prompt against a cloned `chat_metadata`, and the inspector shows the assembled messages, the per-entry world info trace (activated or skipped, reason, pass) and per-slot token counts.
 - **Prompt order editor**: reorder entries, enable or disable them, and move a prompt between the ordered list and an in-chat injection with a depth, order and role, saved back into the active preset through `PATCH /api/presets/:id`. Edits merge into the stored body, so sampling fields the editor does not show are preserved.
 - **World info entry editor**: entries can be created, edited, duplicated, reordered and deleted in the World Info settings tab. The form covers keywords and secondary-key logic, content, placement, scan overrides, inclusion groups, timed effects, recursion and matching sources; the API merges each patch into the stored entry, so `extensions`, `vectorized` and unknown fields survive. New entries take the lowest free uid and are built from SillyTavern's `newWorldInfoEntryTemplate`.
-- 113 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution, world info turn helpers, entry editing and keyword splitting, plus the SillyTavern sample book as a fixture.
+- **Model-aware tokenizer**: generation and the context inspector count with the exact tiktoken encoding for the active OpenAI or OpenAI-compatible model (`o200k_base`, `cl100k_base`, `p50k_base` or `r50k_base`), and with the bundled Claude vocabulary for Anthropic providers. Models with their own tokenizer, such as a local Llama, fall back to a character-based estimate. The inspector names the counter in use.
+- 124 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution, world info turn helpers, entry editing, keyword splitting and tokenizer selection, plus the SillyTavern sample book as a fixture.
 
-The model-aware tokenizer is the remaining M1 work.
+M1 is complete. Next is M2.
 
 ### Scope
 
@@ -190,14 +191,14 @@ The model-aware tokenizer is the remaining M1 work.
 
 ### Acceptance criteria
 
-- [ ] An ST world info file + an ST OpenAI preset + a v2/v3 character card can be imported and used together.
-- [ ] Triggering a world info key visibly changes the generated prompt and the debug panel explains why.
-- [ ] Prompt order and injection positions are editable and persist per character/preset.
-- [ ] Token budget is enforced with a real tokenizer for at least the OpenAI-compatible and Anthropic model families.
-- [ ] Message edit, branch and continue round-trip through the ST JSONL format without losing unknown fields.
-- [ ] World info and preset files can be exported and re-imported without data loss.
-- [ ] Unit tests cover the scanner, prompt ordering, token budget and preset conversion.
-- [ ] Docs (`MILESTONES.md`, `API.md`, `DATA-FORMATS.md`, `ST-COMPATIBILITY.md`) and `CHANGELOG.md` are updated.
+- [x] An ST world info file + an ST OpenAI preset + a v2/v3 character card can be imported and used together.
+- [x] Triggering a world info key visibly changes the generated prompt and the debug panel explains why.
+- [x] Prompt order and injection positions are editable and persist per character/preset.
+- [x] Token budget is enforced with a real tokenizer for at least the OpenAI-compatible and Anthropic model families.
+- [x] Message edit, branch and continue round-trip through the ST JSONL format without losing unknown fields.
+- [x] World info and preset files can be exported and re-imported without data loss.
+- [x] Unit tests cover the scanner, prompt ordering, token budget and preset conversion.
+- [x] Docs (`MILESTONES.md`, `API.md`, `DATA-FORMATS.md`, `ST-COMPATIBILITY.md`) and `CHANGELOG.md` are updated.
 
 ### Suggested PR slices
 

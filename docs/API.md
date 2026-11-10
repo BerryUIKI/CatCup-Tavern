@@ -263,12 +263,20 @@ The world info scan runs against a **deep clone** of `chat_metadata`, so timed e
             "budget": { "limit": 8192, "used": 214, "overflowed": false },
             "loops": 1
         },
-        "budget": { "exceeded": false, "tokenCounts": { "main": 24 }, "total": 3117 }
+        "budget": {
+            "exceeded": false,
+            "tokenCounts": { "main": 24 },
+            "total": 3117,
+            "counter": "o200k_base",
+            "counterSource": "tiktoken"
+        }
     }
 }
 ```
 
 `trace` has one line per candidate entry explaining whether it activated and why, which is what makes a missing or unexpected lorebook hit debuggable.
+
+`budget.counter` names the tokenizer used for every count in the response — `o200k_base`, `cl100k_base`, `p50k_base`, `r50k_base`, `claude`, or an `estimate (...)` label. `counterSource` says whether that is a real vocabulary (`tiktoken`, `claude`) or the character-based fallback (`estimate`). Both come from the active provider's kind and model, so switching the provider changes the numbers.
 
 ### `PATCH /api/chats/:characterId/:chatId/messages/:index`
 

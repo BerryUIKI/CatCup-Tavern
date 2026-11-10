@@ -5,7 +5,7 @@ This directory is the project handbook. Start with the path that matches your ro
 ## Current status
 
 - **M0 complete** (2026-11-09): runnable web + server foundation, ST card/chat basics, four provider families, dark tavern UI.
-- **M1 in progress**: world info, Prompt Manager, ST preset import, message editing/branching, tokenization.
+- **M1 complete**: world info, Prompt Manager, ST preset import, message editing/branching, tokenization.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here
