@@ -197,6 +197,29 @@ Returns `{ "chat": ChatDetail }`.
 }
 ```
 
+### `PATCH /api/chats/:characterId/:chatId`
+
+Rename a chat. Chats are files, so this moves the file and returns the chat under its new id.
+
+```json
+{ "name": "The forest glade" }
+```
+
+Response: `{ "chat": ChatDetail }`. A name that is already in use gets a numeric suffix instead of overwriting the other chat; the returned `chatId` is the one actually used.
+
+### `POST /api/chats/:characterId/:chatId/branch`
+
+Copy the conversation up to and including `index` into a new chat.
+
+```json
+{ "index": 4, "name": "Optional branch name" }
+```
+
+- `index` is zero-based and does not include the header line.
+- The header, including `chat_metadata`, is copied as SillyTavern does for bookmarks. Timed world info records that no longer fit are dropped by the scanner's rewind rule on the branch's first scan.
+- `name` defaults to `<source chatId> (branch)`.
+- Response: `{ "chat": ChatDetail }` for the new chat.
+
 ### `PATCH /api/chats/:characterId/:chatId/messages/:index`
 
 Edit the text or select a swipe. Send one of:

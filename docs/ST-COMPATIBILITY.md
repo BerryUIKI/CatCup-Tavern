@@ -27,7 +27,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Character editing                  | ❌ Planned         | M2                                                                |
 | Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`              |
 | Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported        |
-| Chat branches/checkpoints          | ❌ Planned         | M1                                                                |
+| Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                           |
 | Group chats                        | ❌ Planned         | M2                                                                |
 | World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                |
 | World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split         |
@@ -55,12 +55,12 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
 | World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
 | Context budget                                                     | 🟡 Approximate     | Character-based estimate; real tokenizer planned for M1                                         |
-| Message editing                                                    | 🟡 API only        | PATCH exists; inline UI planned for M1                                                          |
+| Message editing                                                    | ✅ Yes             | Inline editor in the chat view; edits keep unknown `extra` fields                               |
 | Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
-| Continue generation                                                | 🟡 API only        | Server action exists; UI control planned for M1                                                 |
+| Continue generation                                                | ✅ Yes             | Continue button below the latest reply                                                          |
 | Branch from message                                                | ❌ Planned         | M1                                                                                              |
-| Alternate greetings                                                | 🟡 API only        | `greetingIndex` on chat creation; UI selection planned                                          |
-| Chat rename/delete in UI                                           | 🟡 Partial         | Delete API + new chat UI; rename/delete controls planned                                        |
+| Alternate greetings                                                | ✅ Yes             | Picker when starting a chat with a card that has alternates                                     |
+| Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                        |
 | Group chat                                                         | ❌ Planned         | M2                                                                                              |
 | Summary memory                                                     | ❌ Planned         | M2                                                                                              |
 | Regex scripts                                                      | ❌ Planned         | M2                                                                                              |

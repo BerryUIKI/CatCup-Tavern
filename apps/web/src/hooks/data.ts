@@ -198,6 +198,39 @@ export function useDeleteChat(characterId: string | null) {
     });
 }
 
+export function useRenameChat(characterId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { chatId: string; name: string }) => {
+            if (!characterId) {
+                throw new Error('No character selected');
+            }
+            return api.chats.rename(characterId, variables.chatId, variables.name);
+        },
+        onSuccess: (chat, variables) => {
+            queryClient.removeQueries({ queryKey: queryKeys.chat(characterId, variables.chatId) });
+            queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
+export function useBranchChat(characterId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { chatId: string; index: number; name?: string }) => {
+            if (!characterId) {
+                throw new Error('No character selected');
+            }
+            return api.chats.branch(characterId, variables.chatId, variables.index, variables.name);
+        },
+        onSuccess: (chat) => {
+            queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
 export function useSettings() {
     return useQuery({
         queryKey: queryKeys.settings,

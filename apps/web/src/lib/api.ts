@@ -162,6 +162,20 @@ export const api = {
             request<{ ok: true }>(`/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}`, {
                 method: 'DELETE',
             }),
+        rename: async (characterId: string, chatId: string, name: string) => {
+            const data = await request<{ chat: ChatDetail }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}`,
+                { method: 'PATCH', body: JSON.stringify({ name }) },
+            );
+            return data.chat;
+        },
+        branch: async (characterId: string, chatId: string, index: number, name?: string) => {
+            const data = await request<{ chat: ChatDetail }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/branch`,
+                { method: 'POST', body: JSON.stringify({ index, name }) },
+            );
+            return data.chat;
+        },
     },
 
     settings: {

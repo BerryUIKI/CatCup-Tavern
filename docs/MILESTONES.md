@@ -114,9 +114,10 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Prompt assembly** now emits each marker as its own message — world info before/after, persona, description, personality, scenario, examples and history — instead of the M0 labelled character sheet.
 - **World info and Author's Note are wired into generation**: the route scans the full conversation, persists `timedWorldInfo`, and passes the scan result to the assembler.
 - **Preset import, export and activation**: ST OpenAI presets are stored verbatim under `data/presets/`, listed, imported, exported and deleted over the API, and an active preset supplies the prompt list, order, formats and sampling parameters. Settings gain a Presets section in the UI.
+- **Chat editing and branching**: inline message editing, continue generation from the latest reply, branching a conversation from any message, chat rename and delete, and an alternate-greeting picker when starting a chat.
 - 90 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion and preset resolution, plus the SillyTavern sample book as a fixture.
 
-The prompt-order editor, message editing/branching and the model-aware tokenizer are the remaining M1 work.
+The prompt-order editor, the world info editor and the model-aware tokenizer are the remaining M1 work.
 
 ### Scope
 
