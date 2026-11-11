@@ -6,6 +6,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- Group chat storage and REST endpoints: groups are stored in SillyTavern's `data/groups/<id>.json` shape and their chats in `data/group chats/<chatId>.jsonl`, with `members` as avatar file names and `original_avatar` on every group message. `/api/groups` can create, edit and delete groups, their chats and their messages. Group reply generation and the group UI are the next M2 step.
 - GitHub Actions builds the Windows installer when a `v*` tag is pushed and attaches it to the matching GitHub release, using that version's `CHANGELOG.md` section as the release body. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 ## 0.2.1 — 2026-11-11

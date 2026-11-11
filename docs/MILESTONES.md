@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. Next: M2.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chat storage landed first.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -93,14 +93,14 @@ Released after the MVP, before M2:
 
 ## At a glance
 
-| Milestone | Theme                                                                      | Status   | Depends on |
-| --------- | -------------------------------------------------------------------------- | -------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                         | Complete | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete | M0         |
-| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Planned  | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned  | M1, M2     |
-| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned  | M0, M1     |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned  | M0–M4      |
+| Milestone | Theme                                                                      | Status      | Depends on |
+| --------- | -------------------------------------------------------------------------- | ----------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                         | Complete    | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete    | M0         |
+| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | In progress | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
+| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned     | M0, M1     |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -281,11 +281,15 @@ M1 is complete. Next is M2.
 - Tokenizer model coverage may lag the model list; always keep the estimator fallback.
 - Scope creep: group chat and STscript must stay out of M1.
 
-## M2 — Extended roleplay (MVP subset in progress)
+## M2 — Extended roleplay (In progress)
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
 Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until after `0.2.0`.
+
+### Delivered so far
+
+- **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages. Group UI and reply generation are the next slice.
 
 ### Scope
 
@@ -311,7 +315,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage → group chat UI → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
 
 ## M3 — Scripting and extension compatibility (Planned)
 

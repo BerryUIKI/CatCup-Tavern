@@ -14,6 +14,10 @@ data/
 ├── chats/
 │   └── Seraphina/
 │       └── Seraphina - 2026-11-09_18-42-29.jsonl
+├── groups/
+│   └── 1762839291123.json      # ST group metadata
+├── group chats/
+│   └── 2026-11-11@08h14m52s123ms.jsonl
 ├── worlds/                    # World Info JSON (reserved; scanner planned for M1)
 ├── presets/                   # ST OpenAI presets (reserved; import planned for M1)
 ├── settings.json
@@ -25,12 +29,14 @@ The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data
 
 ### Identity rules
 
-| Object    | ID                                 | Notes                                                                                         |
-| --------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| Character | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
-| Avatar    | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
-| Chat      | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
-| Message   | Zero-based array index             | The JSONL header is not a message                                                             |
+| Object     | ID                                 | Notes                                                                                         |
+| ---------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| Character  | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
+| Avatar     | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
+| Chat       | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
+| Group      | JSON file name without `.json`     | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
+| Group chat | JSONL file name without `.jsonl`   | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
+| Message    | Zero-based array index             | The JSONL header is not a message                                                             |
 
 ## Character cards
 
@@ -141,14 +147,16 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
 }
 ```
 
-| Field       | Type     | Notes                                                                                 |
-| ----------- | -------- | ------------------------------------------------------------------------------------- |
-| `name`      | string   | Display name of the speaker                                                           |
-| `is_user`   | boolean  | User message when true                                                                |
-| `is_system` | boolean? | System/note messages; skipped by the current prompt builder                           |
-| `send_date` | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings |
-| `mes`       | string   | Message text                                                                          |
-| `extra`     | object?  | Metadata; unknown keys preserved                                                      |
+| Field             | Type     | Notes                                                                                 |
+| ----------------- | -------- | ------------------------------------------------------------------------------------- |
+| `name`            | string   | Display name of the speaker                                                           |
+| `is_user`         | boolean  | User message when true                                                                |
+| `is_system`       | boolean? | System/note messages; skipped by the current prompt builder                           |
+| `send_date`       | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings |
+| `mes`             | string   | Message text                                                                          |
+| `extra`           | object?  | Metadata; unknown keys preserved                                                      |
+| `original_avatar` | string?  | Group chats only: the speaker's avatar file name, as ST writes it                     |
+| `force_avatar`    | string?  | Group chats only: a URL ST may write; preserved but not used by CatCup                |
 
 ### `extra` fields written by CatCup
 
@@ -200,6 +208,62 @@ A regenerated assistant message keeps all variants:
 - The header is always rewritten in the ST shape even if the input lacked one (a synthesized header is used).
 - Malformed JSONL lines are skipped and logged; the rest of the chat remains readable.
 - Back up chats before bulk manual edits.
+
+## Group chats
+
+A group is one metadata file plus one JSONL per conversation, in the same two folders SillyTavern uses.
+
+### Group metadata
+
+`data/groups/<id>.json`:
+
+```json
+{
+    "id": "1762839291123",
+    "name": "The Cup",
+    "members": ["Mira.png", "Seraphina.png"],
+    "avatar_url": "",
+    "allow_self_responses": false,
+    "activation_strategy": 0,
+    "generation_mode": 0,
+    "disabled_members": [],
+    "fav": false,
+    "chat_id": "2026-11-11@08h14m52s123ms",
+    "chats": ["2026-11-11@08h14m52s123ms"],
+    "auto_mode_delay": 5,
+    "generation_mode_join_prefix": "",
+    "generation_mode_join_suffix": ""
+}
+```
+
+| Field                    | Meaning                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them |
+| `disabled_members`       | Members that stay in the group but do not reply                               |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                 |
+| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                     |
+| `chat_id`                | The chat the group last opened                                                |
+| `chats`                  | Every chat id belonging to the group, oldest first                            |
+| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step            |
+| `generation_mode_join_*` | Text wrapped around joined replies in append modes                            |
+
+The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
+
+### Group chat JSONL
+
+Group chats use the same header and message format as single-character chats, with one addition: SillyTavern writes the speaker's avatar file name at the top level of each message, and sometimes a `force_avatar` URL.
+
+```json
+{
+    "name": "Mira",
+    "is_user": false,
+    "mes": "Sit. The rain can wait.",
+    "original_avatar": "Mira.png",
+    "extra": {}
+}
+```
+
+The header's `chat_metadata.persona_id` pins the group chat to a persona exactly as it does for a single-character chat.
 
 ## World Info
 

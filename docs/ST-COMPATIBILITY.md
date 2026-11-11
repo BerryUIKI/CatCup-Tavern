@@ -28,7 +28,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                                                             |
 | Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported                                                       |
 | Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                                                                          |
-| Group chats                        | ❌ Planned         | M2                                                                                                               |
+| Group chats                        | 🟡 Storage only    | ST `groups/` and `group chats/` files are read and written; group UI and generation are next in M2               |
 | World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                                                               |
 | World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split                                                        |
 | World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects                                                |
@@ -65,7 +65,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Branch from message                                                | ✅ Yes             | Branch from any message into a new chat                                                                                                                  |
 | Alternate greetings                                                | ✅ Yes             | Picker when starting a chat and from the chat header; new chats keep every greeting as a swipe on the first message, as ST does                          |
 | Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                                                                                 |
-| Group chat                                                         | ❌ Planned         | M2                                                                                                                                                       |
+| Group chat                                                         | 🟡 Storage only    | ST files and endpoints exist; no group UI or reply generation yet                                                                                        |
 | Summary memory                                                     | ❌ Planned         | M2                                                                                                                                                       |
 | Regex scripts                                                      | ✅ Yes             | All placements, prompt/display scoping, depth window and import/export                                                                                   |
 | Quick Replies                                                      | ❌ Planned         | M2 subset, full in M3                                                                                                                                    |
