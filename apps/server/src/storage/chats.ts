@@ -152,6 +152,36 @@ async function writeChatFile(filePath: string, chat: ChatFile): Promise<void> {
     await writeFileAtomic(filePath, serializeChat(chat), { encoding: 'utf8', mode: 0o644 });
 }
 
+/**
+ * Store a chat read from another installation.
+ *
+ * The file name becomes the chat id, with a numeric suffix when it is taken, so
+ * importing the same folder twice adds copies instead of overwriting the first.
+ */
+export async function importChatFile(
+    character: CharacterDetail,
+    fileName: string,
+    content: string,
+): Promise<ChatDetail> {
+    const parsed = parseChatContent(content);
+    const base = cleanChatId(fileName.replace(/\.jsonl$/i, '')) || timestampForFile();
+    const directory = await ensureChatDirectory(character);
+
+    const existing = new Set((await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()));
+
+    let chatId = base;
+    let index = 2;
+    while (existing.has(`${chatId}.jsonl`.toLowerCase())) {
+        chatId = `${base} (${index})`;
+        index += 1;
+    }
+
+    const filePath = resolveInside(directory, `${chatId}.jsonl`);
+    await withFileLock(filePath, () => writeChatFile(filePath, parsed));
+
+    return { ...parsed, characterId: character.id, chatId };
+}
+
 export async function listChats(character: CharacterDetail): Promise<ChatSummary[]> {
     const directory = await findChatDirectory(character);
     if (!directory) {

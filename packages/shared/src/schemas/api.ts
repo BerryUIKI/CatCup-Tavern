@@ -121,6 +121,28 @@ export interface ImportWorldRequest {
     book: unknown;
 }
 
+/** How much of a SillyTavern installation an import move touches. */
+export interface SillyTavernImportCounts {
+    characters: number;
+    chats: number;
+    worlds: number;
+    presets: number;
+}
+
+/** What a dry run found. */
+export interface SillyTavernImportPlan extends SillyTavernImportCounts {
+    /** Directories that contributed files. */
+    sources: string[];
+    errors: string[];
+}
+
+export interface SillyTavernImportResult {
+    imported: SillyTavernImportCounts;
+    errors: string[];
+    /** Chats whose character was not found in the same import. */
+    skippedChats: string[];
+}
+
 export interface ContextPreviewMessage {
     role: 'system' | 'user' | 'assistant';
     content: string;
