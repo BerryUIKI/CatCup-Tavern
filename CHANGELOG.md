@@ -1,11 +1,15 @@
 # Changelog
 
-All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). No release tag has been cut yet; `0.1.0` records the M0 scaffold.
+All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release.
 
-## Unreleased
+## 0.2.0 — 2026-11-11
 
 ### Added
 
+- Bundled sample character, added from the empty library with one click; the card is original to this project and safe to delete.
+- An About tab that states what this build does and does not do, next to the version it is running.
+- `docs/LIMITATIONS.md`, the user-facing page behind that tab.
+- Version 0.2.0 across the workspace, the server and the desktop bundle.
 - Milestone roadmap with scope, sequencing and acceptance criteria (`docs/MILESTONES.md`).
 - Documentation set: API, data formats, providers, ST compatibility, development, deployment, security, troubleshooting, glossary and documentation index.
 - Pull request template and contributing guide.

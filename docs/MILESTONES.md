@@ -52,20 +52,20 @@ The MVP is not a new milestone number: it pulls a subset of M2 and M4 forward an
 3. **Character card editing and export.** **Done 2026-11-11** — every text field, written back to PNG (both `chara` and `ccv3`) or JSON, with unknown fields preserved.
 4. **Multiple personas.** **Done 2026-11-11** — a persona list with a default, a per-chat pin stored in the chat header, and migration from the old single-persona field.
 5. **SillyTavern data import.** **Done 2026-11-11** — point at an ST user folder, scan, then copy characters, chats, world info and presets in one action.
-6. **Desktop packaging.** **Done 2026-11-11** — a per-user Windows installer with its own Node runtime, a single-file server and the SPA; single-instance and crash-safe shutdown included. Installer, icons, first run, shutdown.
-7. **Demo packaging.** Sample card, limitations page, screenshots, version `0.2.0`.
+6. **Desktop packaging.** **Done 2026-11-11** — a per-user Windows installer with its own Node runtime, a single-file server and the SPA, plus single-instance behaviour and crash-safe shutdown.
+7. **Demo packaging.** **Done 2026-11-11** — a bundled sample character, an About tab and `docs/LIMITATIONS.md` that state what works, screenshots in the README, and version `0.2.0`.
 
 Steps 2–5 have no dependencies between them and can be reordered. Step 1 has to come first and step 6 last.
 
 ### Acceptance criteria
 
-- [ ] A Windows installer starts the app, shows the library without a terminal, and exits with no orphaned server process.
-- [ ] Pointing at a SillyTavern `data/` directory imports its characters, chats, world info and presets in one action, and each is usable afterwards.
-- [ ] A regex script that rewrites AI output applies on generation, survives an export, and comes back intact on import.
-- [ ] A character card can be edited in the app and exported to PNG, then re-imported with every edited field intact.
-- [ ] A second persona can be created, selected for a chat, and is the name used in that chat's prompts.
-- [ ] The limitations page matches what the app actually does, with no feature listed that is missing.
-- [ ] Version reads `0.2.0`; `typecheck`, `lint`, `test` and `build` pass.
+- [x] A Windows installer starts the app, shows the library without a terminal, and exits with no orphaned server process.
+- [x] Pointing at a SillyTavern `data/` directory imports its characters, chats, world info and presets in one action, and each is usable afterwards.
+- [x] A regex script that rewrites AI output applies on generation, survives an export, and comes back intact on import.
+- [x] A character card can be edited in the app and exported to PNG, then re-imported with every edited field intact.
+- [x] A second persona can be created, selected for a chat, and is the name used in that chat's prompts.
+- [x] The limitations page matches what the app actually does, with no feature listed that is missing.
+- [x] Version reads `0.2.0`; `typecheck`, `lint`, `test` and `build` pass.
 
 ### Delivered so far
 
@@ -79,14 +79,14 @@ Steps 2–5 have no dependencies between them and can be reordered. Step 1 has t
 
 ## At a glance
 
-| Milestone | Theme                                                                         | Status                 | Depends on |
-| --------- | ----------------------------------------------------------------------------- | ---------------------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete               | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | Complete               | M0         |
-| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | MVP subset in progress | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned                | M1, M2     |
-| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | MVP subset in progress | M0, M1     |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned                | M0–M4      |
+| Milestone | Theme                                                                      | Status   | Depends on |
+| --------- | -------------------------------------------------------------------------- | -------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                         | Complete | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete | M0         |
+| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Planned  | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned  | M1, M2     |
+| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned  | M0, M1     |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned  | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 

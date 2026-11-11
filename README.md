@@ -3,36 +3,44 @@
 A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
 
 - **Web** — open it in a browser, locally or across your LAN
-- **Desktop** — Tauri 2 shell (planned, reusing the same server + SPA)
-- **Data** — import SillyTavern character cards (PNG/JSON V2/V3) and read/write ST-style chat JSONL; world info and preset schemas are ready for the next milestone
+- **Desktop** — a Windows app that carries its own runtime
+- **Data** — reads and writes SillyTavern's own files: PNG/JSON character cards (V2/V3), chat JSONL, world info, OpenAI presets and regex scripts
 - **Providers** — OpenAI-compatible APIs, OpenRouter, Anthropic and Ollama
 
-> **Status: v0.1 M0 complete (2026-11-09). M1 is next.**
-> See the [milestone document](docs/MILESTONES.md) for scope, acceptance criteria and the current roadmap.
+> **Status: 0.2.0, early access.** Moves your SillyTavern data in and handles single-character roleplay end to end. Group chats, Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
+> See [docs/MILESTONES.md](docs/MILESTONES.md) for what comes next.
 
 ## Why another tavern?
 
 SillyTavern's data model and prompt semantics are the ecosystem's lingua franca. CatCup Tavern keeps that compatibility while replacing the legacy jQuery UI with a modern React app and a server-owned generation pipeline:
 
 - API keys never reach the browser.
-- The same server powers localhost, LAN and the future desktop shell.
+- The same server powers localhost, LAN and the desktop app — the desktop build really is the same server, started as a child process.
 - Prompt assembly, token budgeting and provider calls live in one place.
 - The UI follows SillyTavern's information architecture — character rail, chat stream, settings — with a darker, quieter tavern atmosphere.
 
 ## What works today
 
-- Password setup/login, server-side sessions and a single-user LAN mode.
-- Character card import (PNG `tEXt` V2/V3, JSON V2/V3 and legacy flat cards).
-- Character library with search, tags and avatars.
-- ST-style chat JSONL persistence, multiple chats, swipes, regenerate, delete and copy.
-- Streaming replies with reasoning display.
-- Provider configuration for OpenAI-compatible, OpenRouter, Anthropic and Ollama, including model list and connection test.
-- Provider keys stored only on the server.
-- Dark tavern UI, English-first.
+- **Your SillyTavern data in.** Point the importer at an ST user folder and copy characters, chats, lorebooks and OpenAI presets in one action, after a scan shows what it found. Or import files one at a time.
+- **Chat.** Streaming replies with reasoning, swipes, regenerate, continue, inline editing, branching, alternate greetings, rename and delete.
+- **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
+- **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
+- **Regex scripts.** Import, export, a live test box, and all four live placements.
+- **Characters.** Edit any text field and write the card back to PNG or JSON, keeping fields the editor does not show.
+- **Personas.** Several, one default, and a per-chat choice.
+- **Desktop.** A Windows installer that needs no administrator and starts the server on a free port.
 
 ### What is next
 
-M1 adds the core SillyTavern experience: world info scanning/editor, Prompt Manager and ordering, ST preset import/export, message editing/branching, alternate greeting selection and a model-aware tokenizer. See [docs/MILESTONES.md](docs/MILESTONES.md).
+Group chats, Quick Replies and STscript, SillyTavern extensions, TTS, image generation and memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+
+### Screenshots
+
+Captured from the 0.2.0 build.
+
+![Chatting with the bundled sample character](docs/images/chat.jpg)
+
+![The context inspector shows the assembled prompt, every slot and its token count](docs/images/context-inspector.jpg)
 
 ## Stack
 
