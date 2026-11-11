@@ -42,7 +42,7 @@ function timestampForFile(date = new Date()): string {
     ].join('');
 }
 
-function cleanChatId(chatId: string): string {
+export function cleanChatId(chatId: string): string {
     const clean = chatId.replace(/\.jsonl$/i, '');
     assertSimpleName(clean);
     return clean;

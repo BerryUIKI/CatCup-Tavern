@@ -9,6 +9,8 @@ export const paths = {
     root: config.dataDir,
     characters: path.join(config.dataDir, 'characters'),
     chats: path.join(config.dataDir, 'chats'),
+    groups: path.join(config.dataDir, 'groups'),
+    groupChats: path.join(config.dataDir, 'group chats'),
     worlds: path.join(config.dataDir, 'worlds'),
     presets: path.join(config.dataDir, 'presets'),
     regex: path.join(config.dataDir, 'regex.json'),
@@ -21,6 +23,8 @@ export async function ensureDataDirs(): Promise<void> {
     await Promise.all([
         mkdir(paths.characters, { recursive: true }),
         mkdir(paths.chats, { recursive: true }),
+        mkdir(paths.groups, { recursive: true }),
+        mkdir(paths.groupChats, { recursive: true }),
         mkdir(paths.worlds, { recursive: true }),
         mkdir(paths.presets, { recursive: true }),
     ]);
