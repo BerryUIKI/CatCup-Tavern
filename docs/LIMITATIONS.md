@@ -36,6 +36,7 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 **Characters and personas**
 
 - Edit every text field of a card, export it, or delete it from the library.
+- **Import lore** copies a card's embedded lorebook into the world info library and links it to the card, so its entries scan for that character without enabling the book globally.
 - Several personas, one default, with a per-chat choice.
 
 **Providers**
@@ -59,7 +60,7 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 
 **Partial, and worth knowing before you rely on it**
 
-- **A card's embedded lorebook is not scanned.** Only world info books enabled globally, or named in the card's `extensions.world` and present in the library, reach the prompt. Lore that exists only inside the PNG or JSON does nothing.
+- **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.
 - **Regex scripts are global.** SillyTavern's per-character and per-preset scopes and allowlists are not implemented, and scripts stored inside a card or a preset are preserved but never run.
 - **The world info editor cannot edit character filters**, and a world info regex script needs "prompt only" ticked or it never runs — the same rule SillyTavern has.

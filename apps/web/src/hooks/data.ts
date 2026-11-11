@@ -130,6 +130,30 @@ export function useAddSampleCharacter() {
     });
 }
 
+/**
+ * Import a card's embedded lorebook and link it to the character.
+ *
+ * The server returns the refreshed card, whose `extensions.world` now names the
+ * book, so the editor can show the link without a second fetch.
+ */
+export function useImportCharacterBook(characterId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => {
+            if (!characterId) {
+                throw new Error('No character selected');
+            }
+            return api.characters.lorebook(characterId);
+        },
+        onSuccess: ({ character }) => {
+            queryClient.setQueryData(queryKeys.character(character.id), character);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
 export function useDeleteCharacter() {
     const queryClient = useQueryClient();
     return useMutation<{ ok: true }, Error, string>({

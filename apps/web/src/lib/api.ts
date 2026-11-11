@@ -204,6 +204,11 @@ export const api = {
             });
         },
         sample: () => request<SampleCharacterResponse>('/characters/sample', { method: 'POST' }),
+        lorebook: (id: string) =>
+            request<{ world: WorldDetail; character: CharacterDetail; created: boolean }>(
+                `/characters/${encodeURIComponent(id)}/lorebook`,
+                { method: 'POST' },
+            ),
         remove: (id: string) =>
             request<{ ok: true }>(`/characters/${encodeURIComponent(id)}`, {
                 method: 'DELETE',
