@@ -1,4 +1,4 @@
-import { type ContextPreview, sanitizeRegexMacro } from '@catcup/shared';
+import { type ContextPreview, resolvePersona, sanitizeRegexMacro } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -8,7 +8,7 @@ import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
 import { createTokenCounter, ESTIMATE_COUNTER } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
-import { readChat } from '../storage/chats.js';
+import { chatPersonaId, readChat } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
 import { listRegexScripts } from '../storage/regex.js';
 import { getActiveProvider, getSettings } from '../storage/settings.js';
@@ -38,8 +38,9 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const settings = await getSettings();
         const provider = await getActiveProvider();
         const tokenCounter = provider ? createTokenCounter(provider.kind, provider.model) : ESTIMATE_COUNTER;
+        const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(character, settings.persona);
+        const macroContext = createMacroContext(character, persona);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
@@ -48,7 +49,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const worldInfoTurn = await scanWorldInfoForTurn({
             character,
             messages: chat.messages,
-            persona: settings.persona,
+            persona: persona,
             config: settings.worldInfo,
             authorNote: settings.authorNote,
             contextSize: preset.generation.contextSize,
@@ -62,7 +63,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const assembled = buildPrompt({
             character,
             messages: chat.messages,
-            persona: settings.persona,
+            persona: persona,
             settings: preset.generation,
             promptSettings: preset.promptSettings,
             worldInfo: worldInfoTurn.prompt,

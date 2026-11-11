@@ -1,4 +1,10 @@
-import { applyRegexScripts, REGEX_PLACEMENT, regexPlacementForMessage, sanitizeRegexMacro } from '@catcup/shared';
+import {
+    applyRegexScripts,
+    REGEX_PLACEMENT,
+    regexPlacementForMessage,
+    resolvePersona,
+    sanitizeRegexMacro,
+} from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -7,10 +13,12 @@ import { substituteMacros } from '../prompt/macros.js';
 import { createMacroContext } from '../prompt/worldInfoTurn.js';
 import {
     branchChat,
+    chatPersonaId,
     createChat,
     deleteChat,
     deleteMessage,
     listChats,
+    patchChatMetadata,
     readChat,
     renameChat,
     updateMessage,
@@ -38,7 +46,9 @@ const newChatSchema = z.object({
 });
 
 const renameChatSchema = z.object({
-    name: z.string().trim().min(1).max(200),
+    name: z.string().trim().min(1).max(200).optional(),
+    /** Pin the chat to a persona, or `null` to follow the account default. */
+    personaId: z.string().min(1).max(200).nullable().optional(),
 });
 
 const branchChatSchema = z.object({
@@ -68,7 +78,7 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
         const character = await requireCharacter(characterId);
 
         const [settings, regexScripts] = await Promise.all([getSettings(), listRegexScripts()]);
-        const macroContext = createMacroContext(character, settings.persona);
+        const macroContext = createMacroContext(character, resolvePersona(settings));
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 
@@ -96,10 +106,34 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
         const body = renameChatSchema.parse(request.body ?? {});
         const character = await requireCharacter(characterId);
 
+        if (body.name === undefined && body.personaId === undefined) {
+            throw badRequest('Nothing to update');
+        }
+
         try {
-            return { chat: await renameChat(character, chatId, body.name) };
+            let chat = await readChat(character, chatId);
+            if (!chat) {
+                throw notFound('Chat not found');
+            }
+
+            if (body.personaId !== undefined) {
+                // An `undefined` value survives the merge as a key that
+                // `JSON.stringify` drops, which removes the pin.
+                await patchChatMetadata(character, chatId, {
+                    persona_id: body.personaId === null ? undefined : body.personaId,
+                });
+                chat = (await readChat(character, chatId)) ?? chat;
+            }
+            if (body.name !== undefined) {
+                chat = await renameChat(character, chatId, body.name);
+            }
+
+            return { chat };
         } catch (error) {
-            throw badRequest(error instanceof Error ? error.message : 'Failed to rename chat');
+            if (error instanceof Error && error.name === 'HttpError') {
+                throw error;
+            }
+            throw badRequest(error instanceof Error ? error.message : 'Failed to update chat');
         }
     });
 
@@ -151,7 +185,7 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                 // Editing re-runs the source scripts, but only those with
                 // `runOnEdit`; SillyTavern treats an edit as a new source event.
                 const [settings, regexScripts] = await Promise.all([getSettings(), listRegexScripts()]);
-                const macroContext = createMacroContext(character, settings.persona);
+                const macroContext = createMacroContext(character, resolvePersona(settings, chatPersonaId(chat)));
                 const substitute = (text: string, escapeValues: boolean) =>
                     substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 

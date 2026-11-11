@@ -7,7 +7,8 @@ describe('shared schemas', () => {
     it('applies app settings defaults', () => {
         const settings = appSettingsSchema.parse({});
         expect(settings.ui.language).toBe('en');
-        expect(settings.persona.name).toBe('You');
+        expect(settings.personas).toEqual([]);
+        expect(settings.activePersonaId).toBeNull();
         expect(DEFAULT_UI_SETTINGS.theme).toBe('tavern-dark');
     });
 

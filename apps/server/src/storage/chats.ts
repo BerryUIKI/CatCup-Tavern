@@ -10,6 +10,7 @@ import {
     type ChatSummary,
     chatHeaderSchema,
     chatMessageSchema,
+    chatPersonaId as chatPersonaIdFromMetadata,
     isRecord,
     type NewChatRequest,
 } from '@catcup/shared';
@@ -192,6 +193,11 @@ function greetingFor(character: CharacterDetail, greetingIndex: number | undefin
         return character.card.first_mes;
     }
     return character.card.alternate_greetings[greetingIndex - 1] ?? character.card.first_mes;
+}
+
+/** The persona a chat pinned, if any. */
+export function chatPersonaId(chat: { header: { chat_metadata: Record<string, unknown> } }): string | null {
+    return chatPersonaIdFromMetadata(chat.header.chat_metadata);
 }
 
 export interface CreateChatOptions extends NewChatRequest {
