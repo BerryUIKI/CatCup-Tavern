@@ -31,7 +31,7 @@ Requirements:
 | Source | File                                          | Size       | Purpose                                                                 | Approach                                                                                              |
 | ------ | --------------------------------------------- | ---------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | ST     | `src/character-card-parser.js`                | 98 lines   | PNG `tEXt` card read/write                                              | Ported to `apps/server/src/cards/`; attribution retained                                              |
-| ST     | `src/png/encode.js`                           | 68 lines   | PNG chunk re-encoding                                                   | To reuse for card export in M2 (MIT origin; keep original note)                                       |
+| ST     | `src/png/encode.js`                           | 68 lines   | PNG chunk re-encoding                                                   | Ported to `apps/server/src/cards/png.ts` (MIT origin; note kept)                                      |
 | ST     | `src/charx.js`                                | 399 lines  | CharX (ZIP + v3 card + assets)                                          | M2 port                                                                                               |
 | ST     | `src/prompt-converters.js`                    | 1451 lines | Claude/Google/Mistral message conversion                                | Port as needed per provider                                                                           |
 | ST     | `src/endpoints/backends/chat-completions.js`  | 2995 lines | Provider parameter matrix, SSE forwarding, reasoning/tool-call handling | Use as a parameter/edge-case reference; rewrite per provider                                          |
@@ -105,7 +105,9 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 
 | Location                                    | Source                                                            | Notes                                                                     |
 | ------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `apps/server/src/cards/parse.ts`            | ST `src/character-card-parser.js` + PNG chunk handling            | PNG `tEXt` reading, v2/v3 precedence; card writing arrives in M2          |
+| `apps/server/src/cards/parse.ts`            | ST `src/character-card-parser.js` + PNG chunk handling            | PNG `tEXt` reading and v2/v3 precedence                                   |
+| `apps/server/src/cards/write.ts`            | ST `src/character-card-parser.js`                                 | Card write-back: `chara` + `ccv3` chunks, legacy promotion                |
+| `apps/server/src/cards/png.ts`              | ST `src/png/encode.js`                                            | PNG chunk serialization and text-chunk replacement                        |
 | `packages/shared/src/schemas/character.ts`  | ST Character Card V2/V3 spec                                      | Field names and `character_book` structure                                |
 | `packages/shared/src/schemas/chat.ts`       | ST chat JSONL                                                     | Header + message fields                                                   |
 | `packages/shared/src/schemas/worldinfo.ts`  | ST World Info JSON                                                | Entry field set, positions, logic and role constants                      |

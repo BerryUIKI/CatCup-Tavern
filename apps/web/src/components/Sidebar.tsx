@@ -1,5 +1,5 @@
 import type { CharacterSummary } from '@catcup/shared';
-import { BookOpen, LogOut, Search, Settings2, Upload, X } from 'lucide-react';
+import { BookOpen, LogOut, Pencil, Search, Settings2, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
@@ -12,6 +12,7 @@ interface SidebarProps {
     loading: boolean;
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
+    onEditCharacter: (id: string) => void;
     onImport: (files: File[]) => void;
     importing: boolean;
     activeProviderName: string | null;
@@ -28,6 +29,7 @@ export function Sidebar({
     loading,
     selectedCharacterId,
     onSelect,
+    onEditCharacter,
     onImport,
     importing,
     activeProviderName,
@@ -140,37 +142,49 @@ export function Sidebar({
                         {filtered.map((character) => {
                             const active = character.id === selectedCharacterId;
                             return (
-                                <button
+                                <div
                                     key={character.id}
-                                    type="button"
-                                    onClick={() => onSelect(character.id)}
                                     className={cn(
-                                        'flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left transition',
+                                        'flex items-center rounded-xl transition',
                                         active ? 'bg-surface-2 ring-1 ring-amber/25' : 'hover:bg-surface/70',
                                     )}
                                 >
-                                    <CharacterAvatar name={character.name} src={character.avatarUrl} size={38} />
-                                    <span className="min-w-0 flex-1">
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="truncate text-sm font-medium text-parchment">
-                                                {character.name}
+                                    <button
+                                        type="button"
+                                        onClick={() => onSelect(character.id)}
+                                        className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2.5 py-2 text-left"
+                                    >
+                                        <CharacterAvatar name={character.name} src={character.avatarUrl} size={38} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="flex items-center gap-1.5">
+                                                <span className="truncate text-sm font-medium text-parchment">
+                                                    {character.name}
+                                                </span>
+                                                {character.hasCharacterBook ? (
+                                                    <BookOpen
+                                                        size={12}
+                                                        className="shrink-0 text-sage/80"
+                                                        aria-label="Has a character book"
+                                                    />
+                                                ) : null}
                                             </span>
-                                            {character.hasCharacterBook ? (
-                                                <BookOpen
-                                                    size={12}
-                                                    className="shrink-0 text-sage/80"
-                                                    aria-label="Has a character book"
-                                                />
-                                            ) : null}
+                                            <span className="block truncate text-[11px] text-muted">
+                                                {character.tags.length > 0
+                                                    ? character.tags.slice(0, 2).join(' · ')
+                                                    : character.creator || 'No tags'}
+                                            </span>
                                         </span>
-                                        <span className="block truncate text-[11px] text-muted">
-                                            {character.tags.length > 0
-                                                ? character.tags.slice(0, 2).join(' · ')
-                                                : character.creator || 'No tags'}
-                                        </span>
-                                    </span>
-                                    {active ? <span className="size-1.5 shrink-0 rounded-full bg-amber" /> : null}
-                                </button>
+                                        {active ? <span className="size-1.5 shrink-0 rounded-full bg-amber" /> : null}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => onEditCharacter(character.id)}
+                                        aria-label={`Edit ${character.name}`}
+                                        className="icon-btn mr-1.5 size-7 shrink-0 text-muted hover:text-parchment"
+                                    >
+                                        <Pencil size={13} />
+                                    </button>
+                                </div>
                             );
                         })}
                     </div>

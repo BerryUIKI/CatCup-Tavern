@@ -1,10 +1,11 @@
 import { readdir, readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { CharacterDetail, CharacterSummary } from '@catcup/shared';
+import type { CharacterDetail, CharacterPatch, CharacterSummary } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
 
 import { parseCardBuffer } from '../cards/parse.js';
+import { buildCardPayload, writePngCard } from '../cards/write.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 
@@ -178,6 +179,34 @@ export async function importCharacter(originalName: string, buffer: Buffer): Pro
         throw new Error('Imported card could not be read back');
     }
     return detail;
+}
+
+/**
+ * Merge an edit into a stored card and write it back.
+ *
+ * The file name does not change: it is the character id that chats, avatars and
+ * world info references already use. Only the card's own `name` field moves.
+ */
+export async function updateCharacter(id: string, patch: CharacterPatch): Promise<CharacterDetail | null> {
+    const found = await getCharacterFile(id);
+    if (!found) {
+        return null;
+    }
+
+    return withFileLock(found.filePath, async () => {
+        const payload = buildCardPayload(found.detail.rawCard, patch);
+
+        if (found.detail.format === 'png') {
+            const buffer = await readFile(found.filePath);
+            const next = writePngCard(new Uint8Array(buffer), payload);
+            await writeFileAtomic(found.filePath, Buffer.from(next), { mode: 0o644 });
+        } else {
+            await writeFileAtomic(found.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+        }
+
+        cache.delete(found.detail.fileName);
+        return loadCharacterFile(found.filePath, found.detail.fileName);
+    });
 }
 
 export async function deleteCharacter(id: string): Promise<boolean> {

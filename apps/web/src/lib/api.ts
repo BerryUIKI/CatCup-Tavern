@@ -1,6 +1,7 @@
 import type {
     AuthStatus,
     CharacterDetail,
+    CharacterPatch,
     CharacterSummary,
     ChatDetail,
     ChatMessage,
@@ -173,6 +174,15 @@ export const api = {
             const data = await request<{ character: CharacterDetail }>(`/characters/${encodeURIComponent(id)}`);
             return data.character;
         },
+        update: async (id: string, patch: CharacterPatch) => {
+            const data = await request<{ character: CharacterDetail }>(`/characters/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            });
+            return data.character;
+        },
+        exportUrl: (id: string, format: 'png' | 'json') =>
+            `/api/characters/${encodeURIComponent(id)}/export?format=${format}`,
         import: (files: File[]) => {
             const form = new FormData();
             for (const file of files) {
