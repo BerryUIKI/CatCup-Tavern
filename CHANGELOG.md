@@ -36,6 +36,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - ST preset schema now carries `injection_trigger`, `extension`, `position` and the assembly strings, and keeps `system_prompt` optional so its three states survive a round trip.
 - Model-aware token counting: generation and the context inspector count with the exact tiktoken encoding for the active OpenAI or OpenAI-compatible model (`o200k_base`, `cl100k_base`, `p50k_base` or `r50k_base`) and with the bundled Claude vocabulary for Anthropic providers. Models with their own tokenizer fall back to the byte-based estimate.
 - The context inspector names the counter in use (`counter` and `counterSource` on `budget`), so a surprising budget has an explanation.
+- Desktop shell spike: a Tauri 2 window starts the server on an OS-chosen port, opens the SPA and kills the child on exit. See `docs/DESKTOP.md` for what is proven and what is still missing.
+- `CATCUP_PORT=0` asks the OS for a free port; the server then writes `CATCUP_READY <port>` to stdout so a supervisor or the desktop shell can find it.
 
 ### Fixed
 

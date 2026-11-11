@@ -39,6 +39,7 @@ apps/web/               React SPA
   src/hooks/            React Query data hooks
   src/lib/              API / SSE clients
   src/store/            Zustand UI state
+apps/desktop/           Tauri 2 shell (MVP); src-tauri/ holds the Rust sidecar host
 packages/shared/        Zod schemas, shared types, ST data models
 docs/                   handbook (see docs/README.md)
 .ref/                   SillyTavern / RisuAI reference checkouts (gitignored)
@@ -58,6 +59,7 @@ Read before changing behaviour:
 - `docs/ST-COMPATIBILITY.md` — what works, what is partial, what is planned.
 - `docs/DEVELOPMENT.md` — setup, testing and extension workflows.
 - `docs/DEPLOYMENT.md` — production, LAN, reverse proxy, backup and upgrades.
+- `docs/DESKTOP.md` — Tauri shell, server sidecar and the readiness contract.
 - `docs/SECURITY.md` — auth, secrets, threat model and hardening backlog.
 - `docs/TROUBLESHOOTING.md` — common failures.
 - `docs/GLOSSARY.md` — terminology.
