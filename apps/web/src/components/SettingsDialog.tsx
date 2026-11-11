@@ -11,6 +11,7 @@ import {
     BookOpen,
     Check,
     Download,
+    Info,
     Pencil,
     PlugZap,
     Regex,
@@ -38,6 +39,7 @@ import {
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { AboutTab } from './AboutTab';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
@@ -45,7 +47,7 @@ import { RegexSettings } from './RegexSettings';
 import { Spinner } from './Spinner';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
-type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo' | 'regex';
+type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo' | 'regex' | 'about';
 
 interface ProviderForm {
     name: string;
@@ -148,6 +150,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'prompts', label: 'Prompts', icon: SlidersHorizontal },
     { id: 'worldinfo', label: 'World Info', icon: BookOpen },
     { id: 'regex', label: 'Regex', icon: Regex },
+    { id: 'about', label: 'About', icon: Info },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -805,6 +808,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
             ) : tab === 'regex' ? (
                 <RegexSettings />
+            ) : tab === 'about' ? (
+                <AboutTab />
             ) : (
                 <div className="space-y-5 p-5">
                     <p className="text-sm leading-relaxed text-muted">

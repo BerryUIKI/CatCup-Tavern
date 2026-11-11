@@ -120,6 +120,16 @@ export function useUpdateCharacter() {
     });
 }
 
+export function useAddSampleCharacter() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => api.characters.sample(),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
 export function useDeleteCharacter() {
     const queryClient = useQueryClient();
     return useMutation<{ ok: true }, Error, string>({

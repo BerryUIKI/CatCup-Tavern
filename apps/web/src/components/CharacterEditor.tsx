@@ -1,8 +1,8 @@
 import type { CharacterPatch } from '@catcup/shared';
-import { Download, Save } from 'lucide-react';
+import { Download, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { useCharacter, useUpdateCharacter } from '../hooks/data';
+import { useCharacter, useDeleteCharacter, useUpdateCharacter } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -20,7 +20,7 @@ interface Draft {
     scenario: string;
     first_mes: string;
     mes_example: string;
-    alternate_greetings: string;
+    alternate_greetings: string[];
     system_prompt: string;
     post_history_instructions: string;
 }
@@ -51,7 +51,7 @@ function toDraft(card: {
         scenario: card.scenario,
         first_mes: card.first_mes,
         mes_example: card.mes_example,
-        alternate_greetings: card.alternate_greetings.join('\n'),
+        alternate_greetings: [...card.alternate_greetings],
         system_prompt: card.system_prompt,
         post_history_instructions: card.post_history_instructions,
     };
@@ -61,14 +61,6 @@ function toDraft(card: {
 function splitList(value: string): string[] {
     return value
         .split(',')
-        .map((item) => item.trim())
-        .filter(Boolean);
-}
-
-/** Split a one-per-line list, dropping blank lines. */
-function splitLines(value: string): string[] {
-    return value
-        .split('\n')
         .map((item) => item.trim())
         .filter(Boolean);
 }
@@ -121,6 +113,7 @@ function Field({
 export function CharacterEditor({ characterId, onClose }: { characterId: string | null; onClose: () => void }) {
     const characterQuery = useCharacter(characterId);
     const updateCharacter = useUpdateCharacter();
+    const deleteCharacterMutation = useDeleteCharacter();
     const pushToast = useAppStore((state) => state.pushToast);
     const [draft, setDraft] = useState<Draft | null>(null);
 
@@ -153,7 +146,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
             scenario: draft.scenario,
             first_mes: draft.first_mes,
             mes_example: draft.mes_example,
-            alternate_greetings: splitLines(draft.alternate_greetings),
+            alternate_greetings: draft.alternate_greetings.filter((greeting) => greeting.trim().length > 0),
             system_prompt: draft.system_prompt,
             post_history_instructions: draft.post_history_instructions,
         };
@@ -164,6 +157,26 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
             onClose();
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the character.', 'error');
+        }
+    };
+
+    const remove = async () => {
+        if (!character) {
+            return;
+        }
+        if (
+            !window.confirm(
+                `Delete "${character.name}"? The card file is removed; chats stay on disk but no longer appear in the library.`,
+            )
+        ) {
+            return;
+        }
+        try {
+            await deleteCharacterMutation.mutateAsync(character.id);
+            pushToast('Character deleted.', 'success');
+            onClose();
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not delete the character.', 'error');
         }
     };
 
@@ -198,6 +211,15 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                                 PNG
                             </span>
                         )}
+                        <button
+                            type="button"
+                            className="btn-ghost hover:text-wine"
+                            onClick={() => void remove()}
+                            disabled={deleteCharacterMutation.isPending}
+                        >
+                            {deleteCharacterMutation.isPending ? <Spinner size={15} /> : <Trash2 size={15} />}
+                            Delete
+                        </button>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
@@ -241,13 +263,67 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                         value={draft.first_mes}
                         onChange={(value) => update('first_mes', value)}
                     />
-                    <Field
-                        label="Alternate greetings"
-                        hint="One per line. Shown when starting a chat."
-                        rows={4}
-                        value={draft.alternate_greetings}
-                        onChange={(value) => update('alternate_greetings', value)}
-                    />
+                    <div>
+                        <span className="label-text">Alternate greetings</span>
+                        <p className="mb-1 text-[11px] leading-relaxed text-muted/70">
+                            Each one is offered when starting a chat. They are separate entries, so a greeting that
+                            spans paragraphs stays one greeting.
+                        </p>
+                        <div className="space-y-2">
+                            {draft.alternate_greetings.map((greeting, index) => (
+                                // biome-ignore lint/suspicious/noArrayIndexKey: greetings have no stable id
+                                <div key={index} className="flex items-start gap-2">
+                                    <textarea
+                                        className="input-shell min-h-[80px] resize-y leading-relaxed"
+                                        value={greeting}
+                                        onChange={(event) => {
+                                            const next = [...draft.alternate_greetings];
+                                            next[index] = event.target.value;
+                                            setDraft((current) =>
+                                                current ? { ...current, alternate_greetings: next } : current,
+                                            );
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="icon-btn mt-1 size-7 shrink-0 hover:text-wine"
+                                        onClick={() =>
+                                            setDraft((current) =>
+                                                current
+                                                    ? {
+                                                          ...current,
+                                                          alternate_greetings: current.alternate_greetings.filter(
+                                                              (_, position) => position !== index,
+                                                          ),
+                                                      }
+                                                    : current,
+                                            )
+                                        }
+                                        aria-label={`Remove greeting ${index + 1}`}
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            className="btn-ghost mt-2"
+                            onClick={() =>
+                                setDraft((current) =>
+                                    current
+                                        ? {
+                                              ...current,
+                                              alternate_greetings: [...current.alternate_greetings, ''],
+                                          }
+                                        : current,
+                                )
+                            }
+                        >
+                            <Plus size={15} />
+                            Add greeting
+                        </button>
+                    </div>
                     <Field
                         label="Example messages"
                         rows={5}
