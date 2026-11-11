@@ -2,6 +2,7 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/tokenizers.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -63,7 +64,26 @@ export function estimateAnthropicTokens(text: string): number {
  * asynchronous, so the server warms it at startup and every counter stays
  * synchronous; `countTokens` runs once per message in a hot loop.
  */
-const CLAUDE_VOCABULARY = path.join(config.repoRoot, 'apps/server/assets/tokenizers/claude.json');
+/**
+ * Locate the vocabulary.
+ *
+ * Three layouts have to work: an explicit `CATCUP_ASSETS_DIR`, the desktop
+ * bundle where `assets/` sits next to `dist/`, and a development checkout where
+ * this file is several directories deep.
+ */
+function claudeVocabularyPath(): string {
+    const configured = process.env.CATCUP_ASSETS_DIR?.trim();
+    if (configured) {
+        return path.resolve(configured, 'tokenizers', 'claude.json');
+    }
+
+    const besideBundle = path.resolve(import.meta.dirname, '../assets/tokenizers/claude.json');
+    if (existsSync(besideBundle)) {
+        return besideBundle;
+    }
+
+    return path.join(config.repoRoot, 'apps/server/assets/tokenizers/claude.json');
+}
 
 let claudeTokenizer: Tokenizer | null = null;
 
@@ -72,13 +92,14 @@ export async function warmTokenizers(): Promise<void> {
     if (claudeTokenizer) {
         return;
     }
+    const vocabulary = claudeVocabularyPath();
     try {
-        const file = await readFile(CLAUDE_VOCABULARY);
+        const file = await readFile(vocabulary);
         const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
         const { Tokenizer: WebTokenizer } = require('@agnai/web-tokenizers') as { Tokenizer: typeof Tokenizer };
         claudeTokenizer = await WebTokenizer.fromJSON(bytes as ArrayBuffer);
     } catch (error) {
-        console.warn(`Could not load the Claude tokenizer at ${CLAUDE_VOCABULARY}.`, error);
+        console.warn(`Could not load the Claude tokenizer at ${vocabulary}.`, error);
     }
 }
 
