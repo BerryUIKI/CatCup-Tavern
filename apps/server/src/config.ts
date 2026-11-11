@@ -34,7 +34,7 @@ const dataDirValue = process.env.CATCUP_DATA_DIR?.trim();
 
 export const config = {
     repoRoot,
-    version: '0.2.0',
+    version: '0.2.1',
     host: process.env.CATCUP_HOST?.trim() || '127.0.0.1',
     port: parsePort(process.env.CATCUP_PORT),
     /**

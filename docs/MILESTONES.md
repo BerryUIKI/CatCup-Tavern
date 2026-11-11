@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.0 MVP are complete**. Next: M2.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. Next: M2.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -75,7 +75,16 @@ Steps 2–5 have no dependencies between them and can be reordered. Step 1 has t
 - **Multiple personas** (2026-11-11): a persona list with a default, a per-chat pin in `chat_metadata.persona_id`, and a migration that promotes the old single persona to the list on read.
 - **SillyTavern data import** (2026-11-11): a scan-then-copy flow that brings characters, chats, world info and presets over from an existing installation, reporting anything it could not match instead of guessing.
 - **Desktop packaging** (2026-11-11): a Windows installer bundling Node, the server and the SPA, with single-instance behaviour and a job object that kills the server if the shell dies.
-- 171 unit tests (42 shared, 129 server).
+- 188 unit tests (48 shared, 140 server).
+
+### 0.2.1 — compatibility patch (2026-11-11)
+
+Released after the MVP, before M2:
+
+- Macros in greetings, chat history and typed messages expand in the prompt and in the chat view; sent and edited messages are stored expanded, as SillyTavern does.
+- A card's embedded lorebook can be imported into the world info library and linked to the card, matching ST's Import Card Lore.
+- A chat's opening greeting can be switched from the chat header or by swiping the first message.
+- GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
 
 ## At a glance
 
