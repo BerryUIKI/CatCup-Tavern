@@ -650,6 +650,64 @@ Returns the stored body as a JSON download with `Content-Disposition: attachment
 
 Removes the file. If the preset was active, `activePresetId` is cleared so generation falls back to the built-in defaults. Response: `{ "ok": true }`.
 
+## Regex scripts
+
+Stored in `data/regex.json` as an ordered array, because order is behaviour: scripts run top to bottom and each sees the previous one's output.
+
+### `GET /api/regex`
+
+```json
+{ "scripts": [{ "id": "uuid", "scriptName": "Strip OOC", "findRegex": "/\\(OOC:.*?\\)/gs", "placement": [2] }] }
+```
+
+### `POST /api/regex`
+
+```json
+{ "scriptName": "Strip OOC", "findRegex": "/\\(OOC:.*?\\)/gs", "replaceString": "", "placement": [2] }
+```
+
+The id is generated. Missing fields fall back to SillyTavern's defaults. Response: `201` with `{ "script": RegexScript }`.
+
+### `PATCH /api/regex/:id`
+
+Merge fields into a stored script. Unknown fields are rejected with `400 VALIDATION`. Response: `{ "script": RegexScript }`.
+
+### `DELETE /api/regex/:id`
+
+Response: `{ "ok": true }`, or `404` for an unknown id.
+
+### `PUT /api/regex/order`
+
+```json
+{ "ids": ["uuid-b", "uuid-a"] }
+```
+
+Ids the payload omits keep their relative order after the listed ones. Response: `{ "scripts": [...] }`.
+
+### `POST /api/regex/import`
+
+```json
+{ "data": { "scripts": [] }, "mode": "append" }
+```
+
+`data` accepts an array of scripts, `{ "scripts": [...] }`, a SillyTavern extension-settings backup (`{ "regex": [...] }`) or a single exported script. `mode` is `append` (default) or `replace`. Response: `201` with `{ "scripts": [...], "errors": ["Script 2: ..."] }`; one error per script that could not be read.
+
+### `GET /api/regex/export`
+
+Returns `{ "scripts": [...] }` as a JSON download.
+
+### Where scripts apply
+
+| Placement      | Value | Applied to                                                               |
+| -------------- | ----- | ------------------------------------------------------------------------ |
+| User input     | `1`   | The message the user sends, before it is stored                          |
+| AI output      | `2`   | A generated reply and the greeting of a new chat, before they are stored |
+| Slash commands | `3`   | Reserved; no slash commands yet                                          |
+| World info     | `5`   | An entry's content as it enters the prompt                               |
+| Reasoning      | `6`   | Reasoning text, before it is stored                                      |
+
+A script with neither `markdownOnly` nor `promptOnly` rewrites the stored text. `promptOnly` rewrites only the copy that goes into the prompt, `markdownOnly` only what the chat view renders. `minDepth` and `maxDepth` count back from the newest message, where `0` is the newest.
+
 ## Notes and limits
 
 - Request bodies are limited to 25 MB; uploads to 20 MB per file and 50 files.

@@ -1,4 +1,11 @@
-import type { CharacterSummary, ChatMessage, ChatSummary } from '@catcup/shared';
+import {
+    applyRegexScripts,
+    type CharacterSummary,
+    type ChatMessage,
+    type ChatSummary,
+    REGEX_PLACEMENT,
+    regexPlacementForMessage,
+} from '@catcup/shared';
 import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -7,6 +14,7 @@ import {
     useChat,
     useDeleteChat,
     useDeleteMessage,
+    useRegexScripts,
     useRenameChat,
     useUpdateMessage,
 } from '../hooks/data';
@@ -103,6 +111,9 @@ export function ChatView({
     const renameChatMutation = useRenameChat(character?.id ?? null);
     const branchChatMutation = useBranchChat(character?.id ?? null);
     const deleteChatMutation = useDeleteChat(character?.id ?? null);
+    // Render-time scripts (`markdownOnly`) transform the display only; the
+    // stored message keeps its text, which is what editing edits.
+    const regexScripts = useRegexScripts().data?.scripts ?? [];
 
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
@@ -443,23 +454,38 @@ export function ChatView({
                                 />
                             ) : null}
 
-                            {visibleMessages.map((message, index) => (
-                                <MessageBubble
-                                    key={`${message.send_date ?? 'message'}-${message.name}-${message.mes.length}-${message.mes.slice(0, 48)}`}
-                                    message={message}
-                                    index={index}
-                                    characterName={character.name}
-                                    avatarUrl={character.avatarUrl}
-                                    isLastAssistant={index === lastAssistantIndex}
-                                    disabled={actionsDisabled}
-                                    onRegenerate={handleRegenerate}
-                                    onDelete={() => handleDelete(index)}
-                                    onCopy={() => handleCopy(message.mes)}
-                                    onSwipe={(delta) => handleSwipe(index, delta)}
-                                    onEdit={(text) => handleEditMessage(index, text)}
-                                    onBranch={() => handleBranch(index)}
-                                />
-                            ))}
+                            {visibleMessages.map((message, index) => {
+                                const depth = visibleMessages.length - index - 1;
+                                return (
+                                    <MessageBubble
+                                        key={`${message.send_date ?? 'message'}-${message.name}-${message.mes.length}-${message.mes.slice(0, 48)}`}
+                                        message={message}
+                                        index={index}
+                                        characterName={character.name}
+                                        avatarUrl={character.avatarUrl}
+                                        isLastAssistant={index === lastAssistantIndex}
+                                        displayText={applyRegexScripts(
+                                            regexScripts,
+                                            message.mes,
+                                            regexPlacementForMessage(Boolean(message.is_user)),
+                                            { isMarkdown: true, depth },
+                                        )}
+                                        displayReasoning={applyRegexScripts(
+                                            regexScripts,
+                                            typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '',
+                                            REGEX_PLACEMENT.REASONING,
+                                            { isMarkdown: true, depth },
+                                        )}
+                                        disabled={actionsDisabled}
+                                        onRegenerate={handleRegenerate}
+                                        onDelete={() => handleDelete(index)}
+                                        onCopy={() => handleCopy(message.mes)}
+                                        onSwipe={(delta) => handleSwipe(index, delta)}
+                                        onEdit={(text) => handleEditMessage(index, text)}
+                                        onBranch={() => handleBranch(index)}
+                                    />
+                                );
+                            })}
 
                             {optimisticMessage ? (
                                 <MessageBubble

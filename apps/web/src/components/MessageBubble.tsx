@@ -24,6 +24,12 @@ interface MessageBubbleProps {
     characterName: string;
     avatarUrl: string | null;
     isLastAssistant: boolean;
+    /**
+     * Text after render-time regex scripts. The stored message is untouched, so
+     * editing still edits what was persisted.
+     */
+    displayText?: string;
+    displayReasoning?: string;
     disabled?: boolean;
     onRegenerate?: () => void;
     onDelete?: () => void;
@@ -39,6 +45,8 @@ export function MessageBubble({
     characterName,
     avatarUrl,
     isLastAssistant,
+    displayText,
+    displayReasoning,
     disabled,
     onRegenerate,
     onDelete,
@@ -48,7 +56,8 @@ export function MessageBubble({
     onBranch,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
-    const reasoning = typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '';
+    const reasoning = displayReasoning ?? (typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '');
+    const shown = displayText ?? message.mes;
     const rawSwipes = message.extra?.swipes;
     const swipes = Array.isArray(rawSwipes)
         ? rawSwipes.filter((swipe): swipe is string => typeof swipe === 'string')
@@ -155,8 +164,8 @@ export function MessageBubble({
                                 : 'border-line/80 bg-surface/85 text-parchment',
                         )}
                     >
-                        {message.mes.trim() ? (
-                            <MarkdownText text={message.mes} />
+                        {shown.trim() ? (
+                            <MarkdownText text={shown} />
                         ) : (
                             <span className="text-sm italic text-muted">Empty message</span>
                         )}

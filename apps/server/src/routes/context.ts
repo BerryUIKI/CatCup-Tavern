@@ -1,14 +1,16 @@
-import type { ContextPreview } from '@catcup/shared';
+import { type ContextPreview, sanitizeRegexMacro } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
+import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
 import { createTokenCounter, ESTIMATE_COUNTER } from '../prompt/tokenizer.js';
-import { scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
+import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { readChat } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
+import { listRegexScripts } from '../storage/regex.js';
 import { getActiveProvider, getSettings } from '../storage/settings.js';
 import { requireCharacter } from './helpers.js';
 
@@ -36,6 +38,10 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const settings = await getSettings();
         const provider = await getActiveProvider();
         const tokenCounter = provider ? createTokenCounter(provider.kind, provider.model) : ESTIMATE_COUNTER;
+        const regexScripts = await listRegexScripts();
+        const macroContext = createMacroContext(character, settings.persona);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
 
@@ -49,6 +55,8 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             trigger: 'normal',
             metadata: structuredClone(chat.header.chat_metadata),
             countTokens: tokenCounter.count,
+            regexScripts,
+            substitute,
         });
 
         const assembled = buildPrompt({
@@ -65,6 +73,8 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             continueNudgePrompt: preset.continueNudgePrompt,
             squashSystemMessages: preset.squashSystemMessages,
             countTokens: tokenCounter.count,
+            regexScripts,
+            substitute,
         });
 
         const scan = worldInfoTurn.scan;

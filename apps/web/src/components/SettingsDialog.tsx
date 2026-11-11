@@ -14,6 +14,7 @@ import {
     Download,
     Pencil,
     PlugZap,
+    Regex,
     Save,
     Server,
     SlidersHorizontal,
@@ -40,10 +41,11 @@ import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
 import { PromptOrderEditor } from './PromptOrderEditor';
+import { RegexSettings } from './RegexSettings';
 import { Spinner } from './Spinner';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
-type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo';
+type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo' | 'regex';
 
 interface ProviderForm {
     name: string;
@@ -145,6 +147,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'persona', label: 'Persona', icon: UserRound },
     { id: 'prompts', label: 'Prompts', icon: SlidersHorizontal },
     { id: 'worldinfo', label: 'World Info', icon: BookOpen },
+    { id: 'regex', label: 'Regex', icon: Regex },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -866,6 +869,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 </div>
             ) : editingBookId ? (
                 <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
+            ) : tab === 'regex' ? (
+                <RegexSettings />
             ) : (
                 <div className="space-y-5 p-5">
                     <p className="text-sm leading-relaxed text-muted">

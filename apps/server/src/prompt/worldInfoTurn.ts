@@ -3,8 +3,10 @@ import type {
     CharacterDetail,
     ChatMessage,
     PersonaSettings,
+    RegexScript,
     WorldInfoConfig,
 } from '@catcup/shared';
+import { applyRegexScripts, REGEX_PLACEMENT } from '@catcup/shared';
 
 import { loadWorldInfoEntries } from '../worldinfo/loader.js';
 import { buildWorldInfoPrompt } from '../worldinfo/prompt.js';
@@ -29,6 +31,10 @@ export interface WorldInfoTurnInput {
     metadata: Record<string, unknown>;
     /** Token counter for the budget; defaults to the shared estimator. */
     countTokens?: (text: string) => number;
+    /** Scripts with the `WORLD_INFO` placement, applied per entry. */
+    regexScripts?: readonly RegexScript[];
+    /** Macro expansion for those scripts. */
+    substitute?: (text: string, escapeValues: boolean) => string;
 }
 
 export interface WorldInfoTurnResult {
@@ -139,6 +145,14 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
         timed: { state },
         substitute,
         ...(input.countTokens ? { countTokens: input.countTokens } : {}),
+        // `WORLD_INFO` scripts run on each entry as it enters the prompt, with
+        // the entry's own depth when it is injected at depth.
+        transformContent: (_entry, content, depth) =>
+            applyRegexScripts(input.regexScripts ?? [], content, REGEX_PLACEMENT.WORLD_INFO, {
+                isPrompt: true,
+                ...(typeof depth === 'number' ? { depth } : {}),
+                substitute: input.substitute,
+            }),
     });
 
     const noteEnabled = input.authorNote.enabled && input.authorNote.prompt.trim().length > 0;

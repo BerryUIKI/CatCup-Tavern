@@ -20,7 +20,18 @@ export interface MacroContext {
 
 const MACRO_PATTERN = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
 
-export function substituteMacros(text: string, context: MacroContext): string {
+export interface MacroOptions {
+    /**
+     * Applied to each expanded value rather than to the whole string.
+     *
+     * Regex scripts use this to escape a macro's value for `substituteRegex:
+     * ESCAPED`; escaping the finished pattern would also escape its `/`
+     * delimiters.
+     */
+    escapeValue?: (value: string) => string;
+}
+
+export function substituteMacros(text: string, context: MacroContext, options: MacroOptions = {}): string {
     if (!text) {
         return '';
     }
@@ -52,6 +63,10 @@ export function substituteMacros(text: string, context: MacroContext): string {
 
     return text.replace(MACRO_PATTERN, (match, name: string) => {
         const resolve = values[name.toLowerCase()];
-        return resolve ? resolve() : match;
+        if (!resolve) {
+            return match;
+        }
+        const value = resolve();
+        return options.escapeValue ? options.escapeValue(value) : value;
     });
 }
