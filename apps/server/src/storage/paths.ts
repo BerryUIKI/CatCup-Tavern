@@ -11,6 +11,7 @@ export const paths = {
     chats: path.join(config.dataDir, 'chats'),
     worlds: path.join(config.dataDir, 'worlds'),
     presets: path.join(config.dataDir, 'presets'),
+    regex: path.join(config.dataDir, 'regex.json'),
     settings: path.join(config.dataDir, 'settings.json'),
     secrets: path.join(config.dataDir, 'secrets.json'),
     auth: path.join(config.dataDir, 'auth.json'),

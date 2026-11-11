@@ -194,7 +194,17 @@ function greetingFor(character: CharacterDetail, greetingIndex: number | undefin
     return character.card.alternate_greetings[greetingIndex - 1] ?? character.card.first_mes;
 }
 
-export async function createChat(character: CharacterDetail, options: NewChatRequest = {}): Promise<ChatDetail> {
+export interface CreateChatOptions extends NewChatRequest {
+    /**
+     * Applied to the greeting before it is stored.
+     *
+     * SillyTavern runs `AI_OUTPUT` regex scripts over the first message, so a
+     * greeting shows up in the chat exactly as a generated reply would.
+     */
+    transformGreeting?: (text: string) => string;
+}
+
+export async function createChat(character: CharacterDetail, options: CreateChatOptions = {}): Promise<ChatDetail> {
     const directory = await ensureChatDirectory(character);
     const base = safeFileName(options.name?.trim() || `${character.name} - ${timestampForFile()}`, 'chat');
 
@@ -211,7 +221,8 @@ export async function createChat(character: CharacterDetail, options: NewChatReq
         index += 1;
     }
 
-    const greeting = greetingFor(character, options.greetingIndex).trim();
+    const rawGreeting = greetingFor(character, options.greetingIndex).trim();
+    const greeting = rawGreeting && options.transformGreeting ? options.transformGreeting(rawGreeting) : rawGreeting;
     const messages: ChatMessage[] = greeting
         ? [
               {

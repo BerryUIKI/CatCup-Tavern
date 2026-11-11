@@ -18,6 +18,7 @@ import { registerGenerateRoutes } from './routes/generate.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerPresetRoutes } from './routes/presets.js';
 import { registerProviderRoutes } from './routes/providers.js';
+import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerWorldRoutes } from './routes/worlds.js';
 import { ensureDataDirs } from './storage/paths.js';
@@ -126,6 +127,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);
     await registerWorldRoutes(app);
+    await registerRegexRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);
 

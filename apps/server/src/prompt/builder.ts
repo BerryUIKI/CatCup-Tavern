@@ -1,4 +1,4 @@
-import type { CharacterDetail, ChatMessage, GenerationSettings, PersonaSettings } from '@catcup/shared';
+import type { CharacterDetail, ChatMessage, GenerationSettings, PersonaSettings, RegexScript } from '@catcup/shared';
 
 import type { WorldInfoPrompt } from '../worldinfo/types.js';
 import { type AssembleResult, assemblePrompt } from './assemble.js';
@@ -27,6 +27,10 @@ export interface BuildPromptInput {
     continueNudgePrompt?: string;
     /** Token counter override, used by tests. */
     countTokens?: (text: string) => number;
+    /** Scripts with `promptOnly`, applied to the history. */
+    regexScripts?: readonly RegexScript[];
+    /** Macro expansion for those scripts. */
+    substitute?: (text: string, escapeValues: boolean) => string;
 }
 
 /**
@@ -53,5 +57,7 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         newExampleChatPrompt: input.newExampleChatPrompt,
         continueNudgePrompt: input.continueNudgePrompt,
         countTokens: input.countTokens,
+        regexScripts: input.regexScripts,
+        substitute: input.substitute,
     });
 }

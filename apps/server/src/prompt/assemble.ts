@@ -2,7 +2,15 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/openai.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
-import { type CharacterDetail, type ChatMessage, GLOBAL_PROMPT_ORDER_ID, type PersonaSettings } from '@catcup/shared';
+import {
+    applyRegexScripts,
+    type CharacterDetail,
+    type ChatMessage,
+    GLOBAL_PROMPT_ORDER_ID,
+    type PersonaSettings,
+    type RegexScript,
+    regexPlacementForMessage,
+} from '@catcup/shared';
 
 import type { PromptMessage } from '../providers/types.js';
 import { formatWorldInfo } from '../worldinfo/prompt.js';
@@ -47,6 +55,10 @@ export interface AssembleInput {
     continueNudgePrompt?: string;
     /** Token counter; defaults to the shared estimator. */
     countTokens?: (text: string) => number;
+    /** Scripts with `promptOnly`, applied to the history while assembling. */
+    regexScripts?: readonly RegexScript[];
+    /** Macro expansion for those scripts. */
+    substitute?: (text: string, escapeValues: boolean) => string;
 }
 
 export interface AssembleResult {
@@ -313,11 +325,24 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     }
 
     // Phase 6: chat history, with the injections spliced in by depth.
-    const history = toHistoryEntries(input.messages).map(
+    // `promptOnly` scripts run here, on the copy that becomes the prompt; the
+    // stored message keeps its original text.
+    const rawHistory = toHistoryEntries(input.messages);
+    const depthOffset = generationType === 'continue' ? 2 : 1;
+    const history = rawHistory.map(
         (entry, index): CompletionMessage => ({
             identifier: `chatHistory-${index}`,
             role: entry.role,
-            content: entry.content,
+            content: applyRegexScripts(
+                input.regexScripts ?? [],
+                entry.content,
+                regexPlacementForMessage(entry.role === 'user'),
+                {
+                    isPrompt: true,
+                    depth: rawHistory.length - index - depthOffset,
+                    substitute: input.substitute,
+                },
+            ),
         }),
     );
 

@@ -1,10 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+    applyRegexScripts,
     type CharacterDetail,
     type ChatMessage,
     errorMessage,
     type GenerateAction,
+    REGEX_PLACEMENT,
+    type RegexScript,
+    sanitizeRegexMacro,
     type UsageInfo,
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
@@ -13,13 +17,15 @@ import { z } from 'zod';
 import { badRequest, notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
+import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
 import { createTokenCounter } from '../prompt/tokenizer.js';
-import { scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
+import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
 import { appendMessage, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
+import { listRegexScripts } from '../storage/regex.js';
 import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
 import { requireCharacter } from './helpers.js';
 
@@ -44,6 +50,9 @@ interface PersistContext {
     providerKind: string;
     providerModel: string;
     startedAt: string;
+    /** Scripts that transform a message before it is stored. */
+    regexScripts: readonly RegexScript[];
+    substitute: (text: string, escapeValues: boolean) => string;
 }
 
 async function saveSwipe(context: PersistContext, text: string, extra: Record<string, unknown>): Promise<ChatMessage> {
@@ -86,25 +95,34 @@ async function persistMessage(
     reasoning: string,
     stopped: boolean,
 ): Promise<ChatMessage> {
+    // Scripts without a markdown/prompt flag run here, once, so the stored
+    // message — and therefore the prompt and the view — all read the result.
+    const storedText = applyRegexScripts(context.regexScripts, text, REGEX_PLACEMENT.AI_OUTPUT, {
+        substitute: context.substitute,
+    });
+    const storedReasoning = applyRegexScripts(context.regexScripts, reasoning, REGEX_PLACEMENT.REASONING, {
+        substitute: context.substitute,
+    });
+
     const extra: Record<string, unknown> = {
         api: context.providerKind,
         model: context.providerModel,
         gen_started: context.startedAt,
         gen_finished: new Date().toISOString(),
-        ...(reasoning ? { reasoning } : {}),
+        ...(storedReasoning ? { reasoning: storedReasoning } : {}),
         ...(stopped ? { stopped: true } : {}),
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
-        return saveSwipe(context, text, extra);
+        return saveSwipe(context, storedText, extra);
     }
 
     if (context.action === 'continue' && context.continueIndex !== null && context.originalAssistant) {
-        const mergedReasoning = [context.originalAssistant.extra?.reasoning, reasoning]
+        const mergedReasoning = [context.originalAssistant.extra?.reasoning, storedReasoning]
             .filter((value): value is string => typeof value === 'string' && value.length > 0)
             .join('\n\n');
         return updateMessage(context.character, context.chatId, context.continueIndex, {
-            mes: `${context.originalAssistant.mes}${text}`,
+            mes: `${context.originalAssistant.mes}${storedText}`,
             extra: {
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
@@ -116,7 +134,7 @@ async function persistMessage(
         name: context.character.name,
         is_user: false,
         send_date: new Date().toISOString(),
-        mes: text,
+        mes: storedText,
         extra,
     });
 }
@@ -143,6 +161,13 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const apiKey = await getProviderSecret(provider.id);
         const tokenCounter = createTokenCounter(provider.kind, provider.model);
 
+        // Scripts and the macro context are resolved once per request; the
+        // source transforms below and the prompt transform later share them.
+        const regexScripts = await listRegexScripts();
+        const macroContext = createMacroContext(character, settings.persona);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+
         // An active ST preset owns the prompt list, the assembly formats and
         // the sampling parameters; anything it omits falls back to settings.
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
@@ -158,11 +183,14 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             if (!text) {
                 throw badRequest('Message is empty');
             }
+            // USER_INPUT scripts run before the text is stored, so the prompt,
+            // the stored chat and any later export all agree.
+            const storedText = applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute });
             const userMessage: ChatMessage = {
                 name: settings.persona.name,
                 is_user: true,
                 send_date: new Date().toISOString(),
-                mes: text,
+                mes: storedText,
                 extra: {},
             };
             await appendMessage(character, body.chatId, userMessage);
@@ -197,6 +225,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             trigger: generationType,
             metadata: chat.header.chat_metadata,
             countTokens: tokenCounter.count,
+            regexScripts,
+            substitute,
         });
 
         await patchChatMetadata(character, body.chatId, {
@@ -217,6 +247,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             worldInfo: worldInfoTurn.prompt,
             generationType,
             countTokens: tokenCounter.count,
+            regexScripts,
+            substitute,
         });
         const prompt = assembled.messages;
 
@@ -239,6 +271,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             providerKind: provider.kind,
             providerModel: provider.model,
             startedAt,
+            regexScripts,
+            substitute,
         };
 
         let replyInitialized = false;

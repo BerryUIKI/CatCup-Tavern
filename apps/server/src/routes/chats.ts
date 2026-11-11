@@ -1,7 +1,10 @@
+import { applyRegexScripts, REGEX_PLACEMENT, regexPlacementForMessage, sanitizeRegexMacro } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
+import { substituteMacros } from '../prompt/macros.js';
+import { createMacroContext } from '../prompt/worldInfoTurn.js';
 import {
     branchChat,
     createChat,
@@ -12,6 +15,8 @@ import {
     renameChat,
     updateMessage,
 } from '../storage/chats.js';
+import { listRegexScripts } from '../storage/regex.js';
+import { getSettings } from '../storage/settings.js';
 import { parseMessageIndex, requireCharacter } from './helpers.js';
 
 const chatParamsSchema = z.object({
@@ -61,7 +66,19 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
         const { characterId } = characterParamsSchema.parse(request.params);
         const body = newChatSchema.parse(request.body ?? {});
         const character = await requireCharacter(characterId);
-        return { chat: await createChat(character, body) };
+
+        const [settings, regexScripts] = await Promise.all([getSettings(), listRegexScripts()]);
+        const macroContext = createMacroContext(character, settings.persona);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+
+        return {
+            chat: await createChat(character, {
+                ...body,
+                transformGreeting: (text) =>
+                    applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.AI_OUTPUT, { substitute }),
+            }),
+        };
     });
 
     app.get('/api/chats/:characterId/:chatId', async (request) => {
@@ -131,9 +148,21 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
             }
 
             if (body.message !== undefined) {
+                // Editing re-runs the source scripts, but only those with
+                // `runOnEdit`; SillyTavern treats an edit as a new source event.
+                const [settings, regexScripts] = await Promise.all([getSettings(), listRegexScripts()]);
+                const macroContext = createMacroContext(character, settings.persona);
+                const substitute = (text: string, escapeValues: boolean) =>
+                    substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+
                 return {
                     message: await updateMessage(character, params.chatId, index, {
-                        mes: body.message,
+                        mes: applyRegexScripts(
+                            regexScripts,
+                            body.message,
+                            regexPlacementForMessage(Boolean(existing.is_user)),
+                            { isEdit: true, substitute },
+                        ),
                     }),
                 };
             }
