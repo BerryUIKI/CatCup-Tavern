@@ -5,13 +5,14 @@ import {
     chatPersonaId,
     type GroupMember,
     type GroupView,
+    getLatestSummary,
     type Persona,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Trash2, Users, X } from 'lucide-react';
+import { Brain, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Trash2, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -29,6 +30,7 @@ import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { EmptyState } from './EmptyState';
+import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
@@ -108,6 +110,8 @@ export function GroupChatView({
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
+    const [memoryOpen, setMemoryOpen] = useState(false);
+    const chatSummary = getLatestSummary(chatQuery.data?.messages ?? []);
 
     useEffect(() => {
         if (!enabledMembers.some((member) => member.fileName === manualSpeaker)) {
@@ -185,6 +189,7 @@ export function GroupChatView({
             scenario: member?.scenario ?? '',
             group: group.memberDetails.map((entry) => entry.name),
             groupNotMuted: enabledMembers.map((entry) => entry.name),
+            ...(chatSummary ? { summary: chatSummary.value } : {}),
         };
         return substituteMacros(
             applyRegexScripts(
@@ -449,6 +454,16 @@ export function GroupChatView({
                 <button
                     type="button"
                     className="icon-btn"
+                    onClick={() => setMemoryOpen(true)}
+                    disabled={!selectedChatId}
+                    title="Memory"
+                    aria-label="Memory"
+                >
+                    <Brain size={17} />
+                </button>
+                <button
+                    type="button"
+                    className="icon-btn"
                     onClick={onEditGroup}
                     title="Edit group"
                     aria-label="Edit group"
@@ -642,6 +657,14 @@ export function GroupChatView({
                 streaming={generation.streaming}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
+            />
+
+            <MemoryDialog
+                open={memoryOpen}
+                onClose={() => setMemoryOpen(false)}
+                target={selectedChatId ? { kind: 'group', id: group.id, chatId: selectedChatId } : null}
+                messages={messages}
+                title={group.name}
             />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">

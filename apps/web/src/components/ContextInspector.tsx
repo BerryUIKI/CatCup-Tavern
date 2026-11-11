@@ -6,11 +6,12 @@ import { cn } from '../lib/cn';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
-type InspectorTab = 'prompt' | 'worldinfo' | 'budget';
+type InspectorTab = 'prompt' | 'worldinfo' | 'memory' | 'budget';
 
 const TABS: { id: InspectorTab; label: string }[] = [
     { id: 'prompt', label: 'Prompt' },
     { id: 'worldinfo', label: 'World Info' },
+    { id: 'memory', label: 'Memory' },
     { id: 'budget', label: 'Budget' },
 ];
 
@@ -57,6 +58,7 @@ export function ContextInspector({ open, onClose, characterId, chatId }: Context
                     <>
                         {tab === 'prompt' ? <PromptTab context={context} /> : null}
                         {tab === 'worldinfo' ? <WorldInfoTab context={context} /> : null}
+                        {tab === 'memory' ? <MemoryTab context={context} /> : null}
                         {tab === 'budget' ? <BudgetTab context={context} /> : null}
                     </>
                 ) : null}
@@ -91,6 +93,56 @@ function PromptTab({ context }: { context: ContextPreview }) {
                     </pre>
                 </article>
             ))}
+        </div>
+    );
+}
+
+function MemoryTab({ context }: { context: ContextPreview }) {
+    const memory = context.memory;
+    if (!memory) {
+        return (
+            <p className="py-6 text-sm leading-relaxed text-muted">
+                No summary is stored in this chat yet. Use the Memory button in the chat header to create one, or enable
+                automatic summaries in Settings.
+            </p>
+        );
+    }
+
+    const positions: Record<number, string> = {
+        [-1]: 'Not injected (macro only)',
+        0: 'After the main prompt',
+        1: `In chat at depth ${memory.depth}`,
+        2: 'Before the main prompt',
+    };
+    const roles = ['system', 'user', 'assistant'];
+
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-muted">
+                Stored on message {memory.index + 1} · {memory.tokens} tokens in the prompt ·{' '}
+                {positions[memory.position] ?? 'Unknown position'} · {roles[memory.role] ?? 'system'}
+            </p>
+
+            <section>
+                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">Summary</h3>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-line-soft bg-ink-soft/60 p-3 font-sans text-[13px] leading-relaxed text-parchment-dim">
+                    {memory.value}
+                </pre>
+            </section>
+
+            <section>
+                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">Injected text</h3>
+                {memory.injection ? (
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-sage/30 bg-sage/5 p-3 font-sans text-[13px] leading-relaxed text-parchment-dim">
+                        {memory.injection}
+                    </pre>
+                ) : (
+                    <p className="rounded-xl border border-line-soft bg-ink-soft/50 p-3 text-sm leading-relaxed text-muted">
+                        This summary is not injected into the prompt. The <code>{'{{summary}}'}</code> macro still
+                        expands to it in cards, presets and world info.
+                    </p>
+                )}
+            </section>
         </div>
     );
 }

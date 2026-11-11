@@ -607,6 +607,58 @@ export function useDeleteGroupMessage(groupId: string | null, chatId: string | n
     });
 }
 
+/** A chat addressed for the memory endpoints. */
+export interface MemoryChatRef {
+    kind: 'character' | 'group';
+    /** Character id or group id, depending on `kind`. */
+    id: string;
+    chatId: string;
+}
+
+function invalidateMemoryChat(queryClient: QueryClient, target: MemoryChatRef): void {
+    if (target.kind === 'character') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chat(target.id, target.chatId) });
+        return;
+    }
+    void queryClient.invalidateQueries({ queryKey: queryKeys.groupChat(target.id, target.chatId) });
+}
+
+/** Run one summary for the chat and store it on the covered message. */
+export function useSummarizeMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (target: MemoryChatRef) =>
+            target.kind === 'character'
+                ? api.chats.summarize(target.id, target.chatId)
+                : api.groups.chats.summarize(target.id, target.chatId),
+        onSuccess: (_result, target) => invalidateMemoryChat(queryClient, target),
+    });
+}
+
+/** Replace the stored summary with edited text. */
+export function useSaveMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { target: MemoryChatRef; text: string }) =>
+            variables.target.kind === 'character'
+                ? api.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text)
+                : api.groups.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text),
+        onSuccess: (_result, variables) => invalidateMemoryChat(queryClient, variables.target),
+    });
+}
+
+/** Remove the latest summary, falling back to an older one when present. */
+export function useClearMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (target: MemoryChatRef) =>
+            target.kind === 'character'
+                ? api.chats.clearMemory(target.id, target.chatId)
+                : api.groups.chats.clearMemory(target.id, target.chatId),
+        onSuccess: (_result, target) => invalidateMemoryChat(queryClient, target),
+    });
+}
+
 export function useRegexScripts() {
     return useQuery({ queryKey: queryKeys.regex, queryFn: api.regex.list });
 }

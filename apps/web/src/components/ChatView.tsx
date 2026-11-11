@@ -5,13 +5,14 @@ import {
     type ChatMessage,
     type ChatSummary,
     chatPersonaId,
+    getLatestSummary,
     type Persona,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import { Brain, Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useBranchChat,
@@ -30,6 +31,7 @@ import { Composer } from './Composer';
 import { ContextInspector } from './ContextInspector';
 import { EmptyState } from './EmptyState';
 import { Logo } from './Logo';
+import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
@@ -112,12 +114,14 @@ export function ChatView({
     // Stored messages keep their raw macros, as SillyTavern does; the same
     // expansion the server applies to the prompt is applied here for display.
     const card = characterDetail?.card;
+    const chatSummary = getLatestSummary(chatQuery.data?.messages ?? []);
     const macroContext = {
         char: card?.name || character?.name || '',
         user: persona.name,
         description: card?.description ?? '',
         personality: card?.personality ?? '',
         scenario: card?.scenario ?? '',
+        ...(chatSummary ? { summary: chatSummary.value } : {}),
     };
     const display = (text: string, isUser: boolean, depth: number, isReasoning = false) =>
         substituteMacros(
@@ -148,6 +152,7 @@ export function ChatView({
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const [inspectorOpen, setInspectorOpen] = useState(false);
+    const [memoryOpen, setMemoryOpen] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
@@ -437,6 +442,16 @@ export function ChatView({
                     <button
                         type="button"
                         className="icon-btn"
+                        onClick={() => setMemoryOpen(true)}
+                        disabled={!selectedChatId}
+                        title="Memory"
+                        aria-label="Memory"
+                    >
+                        <Brain size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
                         onClick={() => setInspectorOpen(true)}
                         disabled={!selectedChatId}
                         title="Inspect context"
@@ -612,6 +627,16 @@ export function ChatView({
                 onClose={() => setInspectorOpen(false)}
                 characterId={character?.id ?? null}
                 chatId={selectedChatId}
+            />
+
+            <MemoryDialog
+                open={memoryOpen}
+                onClose={() => setMemoryOpen(false)}
+                target={
+                    character && selectedChatId ? { kind: 'character', id: character.id, chatId: selectedChatId } : null
+                }
+                messages={messages}
+                title={character?.name ?? 'Memory'}
             />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
