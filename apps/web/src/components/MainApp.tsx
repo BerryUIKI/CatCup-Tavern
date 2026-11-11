@@ -10,6 +10,7 @@ import {
     useImportCharacters,
     useLogout,
     useSettings,
+    useUpdateSettings,
 } from '../hooks/data';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
@@ -41,6 +42,7 @@ export function MainApp() {
     const characterQuery = useCharacter(selectedCharacterId);
     const importMutation = useImportCharacters();
     const addSampleMutation = useAddSampleCharacter();
+    const updateSettingsMutation = useUpdateSettings();
 
     const handleAddSample = async () => {
         try {
@@ -55,6 +57,17 @@ export function MainApp() {
         }
     };
     const createChatMutation = useCreateChat(selectedCharacterId);
+
+    /** Switch the provider every chat uses, from the library footer. */
+    const handleSwitchProvider = async (id: string) => {
+        try {
+            const provider = settings?.providers.find((item) => item.id === id);
+            await updateSettingsMutation.mutateAsync({ activeProviderId: id });
+            pushToast(`${provider?.name ?? 'Provider'} is now active.`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not switch the provider.', 'error');
+        }
+    };
     const logoutMutation = useLogout();
     const [newChatOpen, setNewChatOpen] = useState(false);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
@@ -190,6 +203,9 @@ export function MainApp() {
                 addingSample={addSampleMutation.isPending}
                 onImport={(files) => void handleImport(files)}
                 importing={importMutation.isPending}
+                providers={settings?.providers ?? []}
+                activeProviderId={activeProvider?.id ?? null}
+                onSwitchProvider={(id) => void handleSwitchProvider(id)}
                 activeProviderName={activeProvider?.name ?? null}
                 activeProviderReady={activeProviderReady}
                 onOpenSettings={() => setSettingsOpen(true)}

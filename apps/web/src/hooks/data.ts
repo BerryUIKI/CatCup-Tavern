@@ -495,6 +495,26 @@ export function useUpdateProvider() {
     });
 }
 
+export function useCreateProvider() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: ProviderInput) => api.providers.create(input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useDeleteProvider() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.providers.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
 export function useTestProvider() {
     return useMutation({
         mutationFn: (variables: { id: string; apiKey?: string }) => api.providers.test(variables.id, variables.apiKey),

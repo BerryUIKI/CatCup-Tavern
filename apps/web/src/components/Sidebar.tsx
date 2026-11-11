@@ -1,4 +1,4 @@
-import type { CharacterSummary } from '@catcup/shared';
+import type { CharacterSummary, ProviderPublic } from '@catcup/shared';
 import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Sparkles, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
@@ -18,6 +18,9 @@ interface SidebarProps {
     addingSample: boolean;
     onImport: (files: File[]) => void;
     importing: boolean;
+    providers: ProviderPublic[];
+    activeProviderId: string | null;
+    onSwitchProvider: (id: string) => void;
     activeProviderName: string | null;
     activeProviderReady: boolean;
     onOpenSettings: () => void;
@@ -38,6 +41,9 @@ export function Sidebar({
     addingSample,
     onImport,
     importing,
+    providers,
+    activeProviderId,
+    onSwitchProvider,
     activeProviderName,
     activeProviderReady,
     onOpenSettings,
@@ -219,15 +225,34 @@ export function Sidebar({
             </div>
 
             <div className="border-t border-line-soft px-3 py-3">
-                <div className="mb-2 flex items-center justify-between gap-2 rounded-lg bg-surface/60 px-3 py-2">
-                    <div className="min-w-0">
+                <div className="mb-2 rounded-lg bg-surface/60 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
                         <p className="text-[10px] uppercase tracking-[0.14em] text-muted/70">Active provider</p>
-                        <p className="truncate text-xs text-parchment-dim">{activeProviderName ?? 'Not configured'}</p>
+                        <span
+                            className={cn(
+                                'size-2 shrink-0 rounded-full',
+                                activeProviderReady ? 'bg-sage' : 'bg-amber/70',
+                            )}
+                            title={activeProviderReady ? 'Provider ready' : 'API key may be required'}
+                        />
                     </div>
-                    <span
-                        className={cn('size-2 shrink-0 rounded-full', activeProviderReady ? 'bg-sage' : 'bg-amber/70')}
-                        title={activeProviderReady ? 'Provider ready' : 'API key may be required'}
-                    />
+                    {providers.length > 1 ? (
+                        <select
+                            className="mt-1 w-full rounded border border-line bg-ink px-1.5 py-1 text-xs text-parchment-dim"
+                            value={activeProviderId ?? ''}
+                            onChange={(event) => onSwitchProvider(event.target.value)}
+                            aria-label="Active provider"
+                        >
+                            {providers.map((provider) => (
+                                <option key={provider.id} value={provider.id}>
+                                    {provider.name}
+                                    {provider.model ? ` — ${provider.model}` : ''}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <p className="truncate text-xs text-parchment-dim">{activeProviderName ?? 'Not configured'}</p>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2">
