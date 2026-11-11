@@ -10,6 +10,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - The library footer switches the active provider from a list that shows each one's model, so changing servers no longer means opening settings.
 - GitHub Actions CI runs `typecheck`, `lint`, `test` and `build` on every pull request into `dev` or `main`, and on every push to either branch, replacing the manual post-merge checks.
 - **Import lore** in the character editor copies a card's embedded `character_book` into the world info library and links it to the card through `extensions.world`. The imported book is editable in the World Info tab, and repeating the action on a linked card reuses the existing book.
+- A chat's opening message can be switched to any of the card's greetings from the chat header. New chats keep every greeting as a swipe on the first message, as SillyTavern does, so swiping also changes the opening.
 
 ### Fixed
 

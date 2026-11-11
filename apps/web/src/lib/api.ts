@@ -275,6 +275,13 @@ export const api = {
             );
             return data.chat;
         },
+        setGreeting: async (characterId: string, chatId: string, greetingIndex: number) => {
+            const data = await request<{ chat: ChatDetail }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/greeting`,
+                { method: 'POST', body: JSON.stringify({ greetingIndex }) },
+            );
+            return data.chat;
+        },
         branch: async (characterId: string, chatId: string, index: number, name?: string) => {
             const data = await request<{ chat: ChatDetail }>(
                 `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/branch`,

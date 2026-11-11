@@ -21,6 +21,7 @@ import {
     patchChatMetadata,
     readChat,
     renameChat,
+    setChatGreeting,
     updateMessage,
 } from '../storage/chats.js';
 import { listRegexScripts } from '../storage/regex.js';
@@ -49,6 +50,10 @@ const renameChatSchema = z.object({
     name: z.string().trim().min(1).max(200).optional(),
     /** Pin the chat to a persona, or `null` to follow the account default. */
     personaId: z.string().min(1).max(200).nullable().optional(),
+});
+
+const setGreetingSchema = z.object({
+    greetingIndex: z.number().int().min(0).max(100),
 });
 
 const branchChatSchema = z.object({
@@ -89,6 +94,44 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                     applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.AI_OUTPUT, { substitute }),
             }),
         };
+    });
+
+    /**
+     * Replace the opening message with another greeting from the card.
+     *
+     * Also used to upgrade a chat created before greetings were stored as
+     * swipes: the call writes every greeting into the first message's swipes.
+     */
+    app.post('/api/chats/:characterId/:chatId/greeting', async (request) => {
+        const { characterId, chatId } = chatParamsSchema.parse(request.params);
+        const body = setGreetingSchema.parse(request.body ?? {});
+        const character = await requireCharacter(characterId);
+        const chat = await readChat(character, chatId);
+        if (!chat) {
+            throw notFound('Chat not found');
+        }
+
+        const [settings, regexScripts] = await Promise.all([getSettings(), listRegexScripts()]);
+        const macroContext = createMacroContext(character, resolvePersona(settings, chatPersonaId(chat)));
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+
+        try {
+            const updated = await setChatGreeting(character, chatId, {
+                ...body,
+                transformGreeting: (text) =>
+                    applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.AI_OUTPUT, { substitute }),
+            });
+            if (!updated) {
+                throw notFound('Chat not found');
+            }
+            return { chat: updated };
+        } catch (error) {
+            if (error instanceof Error && error.name === 'HttpError') {
+                throw error;
+            }
+            throw badRequest(error instanceof Error ? error.message : 'Could not switch the greeting');
+        }
     });
 
     app.get('/api/chats/:characterId/:chatId', async (request) => {

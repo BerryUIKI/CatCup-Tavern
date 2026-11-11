@@ -197,6 +197,18 @@ Sorted newest first.
 
 Response: `{ "chat": ChatDetail }`. `ChatDetail` contains `characterId`, `chatId`, `header` and `messages`.
 
+The first message carries every non-empty greeting as a swipe, as SillyTavern does, so the chat opens on `greetingIndex` and can switch later with the normal swipe controls.
+
+### `POST /api/chats/:characterId/:chatId/greeting`
+
+```json
+{ "greetingIndex": 2 }
+```
+
+Replaces the opening message with another greeting from the card and rewrites its `extra.swipes` from the card, which also upgrades a chat created before greetings were stored as swipes. The rest of the conversation is untouched. Returns 400 when that greeting is empty or missing.
+
+Response: `{ "chat": ChatDetail }`.
+
 ### `GET /api/chats/:characterId/:chatId`
 
 Returns `{ "chat": ChatDetail }`.

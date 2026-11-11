@@ -45,6 +45,7 @@ interface ChatViewProps {
     selectedChatId: string | null;
     onSelectChat: (id: string) => void;
     onNewChat: () => void;
+    onSwitchGreeting: () => void;
     creatingChat: boolean;
     onOpenSettings: () => void;
     onOpenSidebar: () => void;
@@ -110,6 +111,7 @@ export function ChatView({
     selectedChatId,
     onSelectChat,
     onNewChat,
+    onSwitchGreeting,
     creatingChat,
     onOpenSettings,
     onOpenSidebar,
@@ -416,6 +418,16 @@ export function ChatView({
                         {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
                     </button>{' '}
                     <div className="hidden items-center gap-1 sm:flex">
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={onSwitchGreeting}
+                            disabled={!selectedChatId}
+                            title="Switch greeting"
+                            aria-label="Switch greeting"
+                        >
+                            <Sparkles size={16} />
+                        </button>
                         <button
                             type="button"
                             className="icon-btn"
