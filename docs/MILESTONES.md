@@ -47,7 +47,7 @@ The MVP is not a new milestone number: it pulls a subset of M2 and M4 forward an
 
 ### Sequencing
 
-1. **Desktop spike.** Prove the Tauri shell can start and stop the Fastify sidecar on Windows: port selection, readiness, clean shutdown with no orphaned process. Throwaway code; if it cannot be made reliable, change the approach before anything is built on it.
+1. **Desktop spike.** Prove the Tauri shell can start and stop the Fastify sidecar on Windows: port selection, readiness, clean shutdown with no orphaned process. **Done 2026-11-11** — verified on Windows, see [DESKTOP.md](DESKTOP.md). The shell's remaining risks (bundled runtime, crash cleanup, single instance) are listed there and belong to step 6.
 2. **Regex scripts.**
 3. **Character card editing and export.**
 4. **Multiple personas.**

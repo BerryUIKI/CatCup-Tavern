@@ -15,7 +15,9 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 function parsePort(value: string | undefined): number {
     const parsed = Number.parseInt(value ?? '', 10);
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 65535) {
+    // 0 asks the OS for a free port; the desktop shell relies on it and reads
+    // the real port from the `CATCUP_READY` line.
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 65535) {
         return 8000;
     }
     return parsed;

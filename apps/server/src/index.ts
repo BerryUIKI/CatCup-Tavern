@@ -12,16 +12,22 @@ await warmTokenizers();
 const app = await buildApp();
 
 try {
-    await app.listen({ host: config.host, port: config.port });
+    const address = await app.listen({ host: config.host, port: config.port });
+
+    // The desktop shell starts this process with CATCUP_PORT=0 and reads the
+    // port the OS picked from this line. Keep the prefix stable; it is the
+    // readiness handshake, not a log message.
+    const port = new URL(address).port;
+    process.stdout.write(`CATCUP_READY ${port}\n`);
 
     const displayHost = config.host === '0.0.0.0' || config.host === '::' ? 'localhost' : config.host;
-    app.log.info(`CatCup Tavern is running at http://${displayHost}:${config.port}`);
+    app.log.info(`CatCup Tavern is running at http://${displayHost}:${port}`);
 
     if (config.host === '0.0.0.0' || config.host === '::') {
         for (const addresses of Object.values(os.networkInterfaces())) {
             for (const address of addresses ?? []) {
                 if (address.family === 'IPv4' && !address.internal) {
-                    app.log.info(`LAN: http://${address.address}:${config.port}`);
+                    app.log.info(`LAN: http://${address.address}:${port}`);
                 }
             }
         }

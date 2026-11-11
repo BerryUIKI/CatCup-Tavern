@@ -6,6 +6,7 @@ This directory is the project handbook. Start with the path that matches your ro
 
 - **M0 complete** (2026-11-09): runnable web + server foundation, ST card/chat basics, four provider families, dark tavern UI.
 - **M1 complete**: world info, Prompt Manager, ST preset import, message editing/branching, tokenization.
+- **MVP (0.2.0) in progress**: regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here
@@ -20,6 +21,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | Configure a model provider                        | [PROVIDERS.md](PROVIDERS.md)               |
 | Know what SillyTavern features work today         | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) |
 | Deploy locally or on a LAN                        | [DEPLOYMENT.md](DEPLOYMENT.md)             |
+| Work on the desktop build                         | [DESKTOP.md](DESKTOP.md)                   |
 | Understand the security model                     | [SECURITY.md](SECURITY.md)                 |
 | Fix a problem                                     | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   |
 | Learn the vocabulary                              | [GLOSSARY.md](GLOSSARY.md)                 |
@@ -39,6 +41,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) | Feature-by-feature compatibility matrix and known deviations                      |
 | [DEVELOPMENT.md](DEVELOPMENT.md)           | Setup, commands, project layout, testing and extension workflows                  |
 | [DEPLOYMENT.md](DEPLOYMENT.md)             | Production build, LAN access, reverse proxy, backup and upgrades                  |
+| [DESKTOP.md](DESKTOP.md)                   | Tauri shell, server sidecar, readiness contract and packaging status              |
 | [SECURITY.md](SECURITY.md)                 | Threat model, auth, secrets, LAN guidance and hardening backlog                   |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   | Common failures and diagnostic steps                                              |
 | [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                |

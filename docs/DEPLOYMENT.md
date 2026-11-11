@@ -38,12 +38,14 @@ The Claude tokenizer vocabulary lives in `apps/server/assets/tokenizers/claude.j
 | Variable                    | Default       | Purpose                                                       |
 | --------------------------- | ------------- | ------------------------------------------------------------- |
 | `CATCUP_HOST`               | `127.0.0.1`   | Bind address; use `0.0.0.0` for LAN                           |
-| `CATCUP_PORT`               | `8000`        | HTTP port                                                     |
+| `CATCUP_PORT`               | `8000`        | HTTP port; `0` lets the OS pick a free one                    |
 | `CATCUP_DATA_DIR`           | `<repo>/data` | Data root; recommended absolute path in production            |
 | `CATCUP_LOG_LEVEL`          | `info`        | Pino log level                                                |
 | `CATCUP_ALLOW_REMOTE_SETUP` | `false`       | Allow first-run setup from a non-loopback address; keep false |
 
 Use an absolute `CATCUP_DATA_DIR` for services and containers so the working directory does not change the data location.
+
+When the OS picks the port (`CATCUP_PORT=0`), the server writes `CATCUP_READY <port>` to stdout once it is listening. Supervisors and the desktop shell read that line; the prefix is a contract, not a log message.
 
 ## LAN access
 
