@@ -7,6 +7,7 @@ This directory is the project handbook. Start with the path that matches your ro
 - **M0 complete** (2026-11-09): runnable web + server foundation, ST card/chat basics, four provider families, dark tavern UI.
 - **M1 complete**: world info, Prompt Manager, ST preset import, message editing/branching, tokenization.
 - **0.2.0 released** (2026-11-11): regex scripts, card editing/export, multiple personas, SillyTavern data import, Windows desktop app.
+- **0.2.1 released** (2026-11-11): macros in stored messages, card lorebook import, greeting switching, CI on every pull request.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here

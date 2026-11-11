@@ -1,6 +1,6 @@
 # What works, and what does not
 
-CatCup Tavern 0.2.0 is early-access software. The goal for this release is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep telling single-character stories without going back. Everything outside that is either partial or absent, and this page says which.
+CatCup Tavern 0.2.1 is early-access software. The goal for this release is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep telling single-character stories without going back. Everything outside that is either partial or absent, and this page says which.
 
 ## What works
 

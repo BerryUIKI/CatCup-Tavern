@@ -151,6 +151,7 @@ Future compatibility tests should copy small fixtures into a test directory rath
 | --------- | --------------------------------------------------------------------------------------------- |
 | M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer |
 | 0.2.0 MVP | Regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell  |
+| 0.2.1     | Macros in stored messages, card lorebook import, greeting switching                           |
 | M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX               |
 | M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix   |
 | M4        | Desktop signing, auto-updater, file associations, macOS/Linux packaging; no new ST semantics  |

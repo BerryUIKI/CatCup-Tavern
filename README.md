@@ -7,7 +7,7 @@ A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
 - **Data** — reads and writes SillyTavern's own files: PNG/JSON character cards (V2/V3), chat JSONL, world info, OpenAI presets and regex scripts
 - **Providers** — OpenAI-compatible APIs, OpenRouter, Anthropic and Ollama
 
-> **Status: 0.2.0, early access.** Moves your SillyTavern data in and handles single-character roleplay end to end. Group chats, Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
+> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character roleplay end to end. Group chats, Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
 > See [docs/MILESTONES.md](docs/MILESTONES.md) for what comes next.
 
 ## Why another tavern?
