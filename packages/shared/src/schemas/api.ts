@@ -1,4 +1,4 @@
-import type { CharacterSummary } from './character.js';
+import type { CharacterDetail, CharacterSummary } from './character.js';
 import type { ChatMessage } from './chat.js';
 import type { ModelInfo } from './provider.js';
 import type { WorldInfoEntry } from './worldinfo.js';
@@ -49,6 +49,12 @@ export interface UsageInfo {
 export interface ImportCharactersResponse {
     imported: CharacterSummary[];
     errors: { fileName: string; message: string }[];
+}
+
+export interface SampleCharacterResponse {
+    character: CharacterDetail;
+    /** False when the sample was already in the library. */
+    created: boolean;
 }
 
 export interface ModelsResponse {

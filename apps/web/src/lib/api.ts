@@ -7,6 +7,7 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    HealthResponse,
     ImportCharactersResponse,
     ModelInfo,
     PresetDetail,
@@ -16,6 +17,7 @@ import type {
     ProviderTestResult,
     RegexScript,
     RegexScriptPatch,
+    SampleCharacterResponse,
     SettingsPatch,
     SettingsResponse,
     SillyTavernImportPlan,
@@ -75,6 +77,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
+    health: () => request<HealthResponse>('/health'),
     worlds: {
         list: () => request<{ worlds: WorldSummary[] }>('/worlds'),
         get: (id: string) => request<{ world: WorldDetail }>(`/worlds/${encodeURIComponent(id)}`),
@@ -200,6 +203,7 @@ export const api = {
                 body: form,
             });
         },
+        sample: () => request<SampleCharacterResponse>('/characters/sample', { method: 'POST' }),
         remove: (id: string) =>
             request<{ ok: true }>(`/characters/${encodeURIComponent(id)}`, {
                 method: 'DELETE',

@@ -2,15 +2,13 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/tokenizers.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import path from 'node:path';
 import type { Tokenizer } from '@agnai/web-tokenizers';
 import type { ProviderKind } from '@catcup/shared';
 import { getEncoding, type Tiktoken, type TiktokenEncoding } from 'js-tiktoken';
 
-import { config } from '../config.js';
+import { assetPath } from '../assets.js';
 
 /**
  * The package's ESM entry is a UMD wrapper whose `default` export is the
@@ -64,27 +62,6 @@ export function estimateAnthropicTokens(text: string): number {
  * asynchronous, so the server warms it at startup and every counter stays
  * synchronous; `countTokens` runs once per message in a hot loop.
  */
-/**
- * Locate the vocabulary.
- *
- * Three layouts have to work: an explicit `CATCUP_ASSETS_DIR`, the desktop
- * bundle where `assets/` sits next to `dist/`, and a development checkout where
- * this file is several directories deep.
- */
-function claudeVocabularyPath(): string {
-    const configured = process.env.CATCUP_ASSETS_DIR?.trim();
-    if (configured) {
-        return path.resolve(configured, 'tokenizers', 'claude.json');
-    }
-
-    const besideBundle = path.resolve(import.meta.dirname, '../assets/tokenizers/claude.json');
-    if (existsSync(besideBundle)) {
-        return besideBundle;
-    }
-
-    return path.join(config.repoRoot, 'apps/server/assets/tokenizers/claude.json');
-}
-
 let claudeTokenizer: Tokenizer | null = null;
 
 /** Load the Claude vocabulary. Safe to call more than once. */
@@ -92,7 +69,7 @@ export async function warmTokenizers(): Promise<void> {
     if (claudeTokenizer) {
         return;
     }
-    const vocabulary = claudeVocabularyPath();
+    const vocabulary = assetPath('tokenizers', 'claude.json');
     try {
         const file = await readFile(vocabulary);
         const bytes = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);

@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
+import { assetPath } from '../assets.js';
+import { parseJsonCard } from '../cards/parse.js';
 import { buildCardPayload } from '../cards/write.js';
 import { badRequest, notFound } from '../http/errors.js';
 import {
@@ -22,6 +23,9 @@ const idParamsSchema = z.object({
 const exportQuerySchema = z.object({
     format: z.enum(['png', 'json']).default('png'),
 });
+
+/** The card that ships with the app, relative to the assets folder. */
+const SAMPLE_CARD = 'samples/mira.json';
 
 export async function registerCharacterRoutes(app: FastifyInstance): Promise<void> {
     app.get('/api/characters', async () => ({
@@ -88,6 +92,29 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             .header('Content-Type', 'application/json; charset=utf-8')
             .header('Content-Disposition', `attachment; filename="${safeName}.json"`)
             .send(`${JSON.stringify(payload, null, 4)}\n`);
+    });
+
+    /**
+     * Add the bundled sample character, so a fresh install has someone to talk
+     * to. Running it twice returns the copy that is already there rather than
+     * making a second one.
+     */
+    app.post('/api/characters/sample', async (_request, reply) => {
+        let buffer: Buffer;
+        try {
+            buffer = await readFile(assetPath(SAMPLE_CARD));
+        } catch {
+            throw notFound('The sample character is missing from this build');
+        }
+
+        const parsed = parseJsonCard(buffer);
+        const existing = (await listCharacters()).find((character) => character.name === parsed.card.name);
+        if (existing) {
+            return { character: await requireCharacter(existing.id), created: false };
+        }
+
+        reply.code(201);
+        return { character: await importCharacter('mira.json', buffer), created: true };
     });
 
     app.post('/api/characters/import', async (request) => {

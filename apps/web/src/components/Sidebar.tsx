@@ -1,5 +1,5 @@
 import type { CharacterSummary } from '@catcup/shared';
-import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, X } from 'lucide-react';
+import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Sparkles, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
@@ -14,6 +14,8 @@ interface SidebarProps {
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
     onImportSillyTavern: () => void;
+    onAddSample: () => void;
+    addingSample: boolean;
     onImport: (files: File[]) => void;
     importing: boolean;
     activeProviderName: string | null;
@@ -32,6 +34,8 @@ export function Sidebar({
     onSelect,
     onEditCharacter,
     onImportSillyTavern,
+    onAddSample,
+    addingSample,
     onImport,
     importing,
     activeProviderName,
@@ -143,9 +147,22 @@ export function Sidebar({
                     </div>
                 ) : filtered.length === 0 ? (
                     <div className="px-4 py-10 text-center text-sm leading-relaxed text-muted">
-                        {characters.length === 0
-                            ? 'No characters yet. Import a PNG or JSON card to open the first door.'
-                            : 'No characters match this search.'}
+                        {characters.length === 0 ? (
+                            <>
+                                <p>No characters yet. Import a PNG or JSON card to open the first door.</p>
+                                <button
+                                    type="button"
+                                    className="btn-ghost mx-auto mt-3"
+                                    onClick={onAddSample}
+                                    disabled={addingSample}
+                                >
+                                    {addingSample ? <Spinner size={15} /> : <Sparkles size={15} />}
+                                    Add the sample character
+                                </button>
+                            </>
+                        ) : (
+                            'No characters match this search.'
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-1">

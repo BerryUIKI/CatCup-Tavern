@@ -2,6 +2,7 @@ import type { CharacterSummary, ChatSummary } from '@catcup/shared';
 import { useEffect, useState } from 'react';
 
 import {
+    useAddSampleCharacter,
     useCharacter,
     useCharacters,
     useChats,
@@ -39,6 +40,20 @@ export function MainApp() {
     const chatsQuery = useChats(selectedCharacterId);
     const characterQuery = useCharacter(selectedCharacterId);
     const importMutation = useImportCharacters();
+    const addSampleMutation = useAddSampleCharacter();
+
+    const handleAddSample = async () => {
+        try {
+            const result = await addSampleMutation.mutateAsync();
+            selectCharacter(result.character.id);
+            pushToast(
+                result.created ? 'Added the sample character.' : 'The sample character is already in your library.',
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not add the sample character.', 'error');
+        }
+    };
     const createChatMutation = useCreateChat(selectedCharacterId);
     const logoutMutation = useLogout();
     const [newChatOpen, setNewChatOpen] = useState(false);
@@ -171,6 +186,8 @@ export function MainApp() {
                 onSelect={selectCharacter}
                 onEditCharacter={(id) => setEditingCharacterId(id)}
                 onImportSillyTavern={() => setStImportOpen(true)}
+                onAddSample={() => handleAddSample()}
+                addingSample={addSampleMutation.isPending}
                 onImport={(files) => void handleImport(files)}
                 importing={importMutation.isPending}
                 activeProviderName={activeProvider?.name ?? null}
