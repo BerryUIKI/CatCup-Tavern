@@ -86,6 +86,11 @@ Released after the MVP, before M2:
 - A chat's opening greeting can be switched from the chat header or by swiping the first message.
 - GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
 
+### Release automation (2026-11-11)
+
+- `.github/workflows/release.yml` builds the Windows installer on `windows-latest` when a `v*` tag is pushed and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
+- The workflow can be dispatched manually with an existing tag to rebuild or republish an installer; the `v0.2.1` release was the first to get its asset this way.
+
 ## At a glance
 
 | Milestone | Theme                                                                      | Status   | Depends on |
@@ -416,15 +421,15 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 
 ## Risks and open questions
 
-| Risk                                        | Impact                                | Mitigation                                              |
-| ------------------------------------------- | ------------------------------------- | ------------------------------------------------------- |
-| ST extension compatibility is unbounded     | Schedule and scope                    | Compatibility tiers; sandbox; document unsupported APIs |
-| World Info/Prompt Manager semantics diverge | Users notice different replies        | Port algorithms; fixture tests; compare with ST         |
-| Tokenizer coverage lags providers           | Context budget wrong                  | Estimator fallback; per-family tokenizers               |
-| Tauri sidecar packaging on Windows          | Desktop milestone slips               | Prototype early in M4; keep web mode independent        |
-| Single-user assumption                      | No multi-user LAN                     | Document explicitly; defer multi-user                   |
-| i18n late                                   | Rework if strings scattered           | English-first with centralized UI strings               |
-| CI does not build the desktop app           | Installer regressions reach a release | Run the desktop build manually before a release         |
+| Risk                                        | Impact                            | Mitigation                                              |
+| ------------------------------------------- | --------------------------------- | ------------------------------------------------------- |
+| ST extension compatibility is unbounded     | Schedule and scope                | Compatibility tiers; sandbox; document unsupported APIs |
+| World Info/Prompt Manager semantics diverge | Users notice different replies    | Port algorithms; fixture tests; compare with ST         |
+| Tokenizer coverage lags providers           | Context budget wrong              | Estimator fallback; per-family tokenizers               |
+| Tauri sidecar packaging on Windows          | Desktop milestone slips           | Prototype early in M4; keep web mode independent        |
+| Single-user assumption                      | No multi-user LAN                 | Document explicitly; defer multi-user                   |
+| i18n late                                   | Rework if strings scattered       | English-first with centralized UI strings               |
+| Windows release builds are unsigned         | SmartScreen warnings on first run | Documented; signing arrives in M4                       |
 
 ## Document history
 

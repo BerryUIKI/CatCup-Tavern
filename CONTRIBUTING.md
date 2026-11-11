@@ -32,6 +32,17 @@ No long descriptive branch names are required. The PR title carries the detail.
 
 If a change depends on another open PR, branch from the dependency and target `dev`. Note the stack in the PR body. Merge the base PR first with a merge commit; the stacked PR's diff then shrinks to its own changes.
 
+## Releases
+
+Releases are cut from `main` and built by CI:
+
+1. Bump the version across the workspace (`package.json`, the app packages, `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` and `apps/server/src/config.ts`), and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
+2. Merge the release preparation into `dev`, then open a `dev` → `main` pull request and merge it with a merge commit.
+3. Push a `v<version>` tag pointing at `main`.
+4. `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and creates or updates the GitHub release, with the changelog section as the body and the installer as an asset.
+
+To rebuild an existing release, run the Release workflow manually with that tag. A tag without a matching `CHANGELOG.md` section fails the build on purpose.
+
 ## Commits
 
 Use Conventional Commit-style subjects and keep each commit atomic:
