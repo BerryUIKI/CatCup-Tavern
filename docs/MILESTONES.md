@@ -48,7 +48,7 @@ The MVP is not a new milestone number: it pulls a subset of M2 and M4 forward an
 ### Sequencing
 
 1. **Desktop spike.** Prove the Tauri shell can start and stop the Fastify sidecar on Windows: port selection, readiness, clean shutdown with no orphaned process. **Done 2026-11-11** — verified on Windows, see [DESKTOP.md](DESKTOP.md). The shell's remaining risks (bundled runtime, crash cleanup, single instance) are listed there and belong to step 6.
-2. **Regex scripts.**
+2. **Regex scripts.** **Done 2026-11-11** — engine, storage, API, manager UI and all four live placements; see `DATA-FORMATS.md` and `API.md`.
 3. **Character card editing and export.**
 4. **Multiple personas.**
 5. **SillyTavern data import.**
@@ -66,6 +66,12 @@ Steps 2–5 have no dependencies between them and can be reordered. Step 1 has t
 - [ ] A second persona can be created, selected for a chat, and is the name used in that chat's prompts.
 - [ ] The limitations page matches what the app actually does, with no feature listed that is missing.
 - [ ] Version reads `0.2.0`; `typecheck`, `lint`, `test` and `build` pass.
+
+### Delivered so far
+
+- **Desktop spike** (2026-11-11): a Tauri 2 shell starts the server on an OS-chosen port, waits for `CATCUP_READY`, opens the SPA and kills the child on exit. See [DESKTOP.md](DESKTOP.md).
+- **Regex scripts** (2026-11-11): SillyTavern's regex engine ported to the shared package, a `data/regex.json` store with import/export, a settings tab with a live test box, and the source, prompt, world-info and display placements wired in.
+- 154 unit tests (37 shared, 117 server).
 
 ## At a glance
 

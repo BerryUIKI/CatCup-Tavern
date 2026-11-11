@@ -333,6 +333,44 @@ Presets are imported, exported and activated through the API. While a preset is 
 
 The preset body is stored exactly as sent, so unknown SillyTavern fields survive an export/import round trip.
 
+## Regex scripts
+
+Stored in `data/regex.json` as one ordered array:
+
+```json
+{
+    "scripts": [
+        {
+            "id": "0d1f...",
+            "scriptName": "Strip OOC",
+            "findRegex": "/\\(OOC:.*?\\)/gs",
+            "replaceString": "",
+            "trimStrings": [],
+            "placement": [2],
+            "disabled": false,
+            "markdownOnly": false,
+            "promptOnly": false,
+            "runOnEdit": false,
+            "substituteRegex": 0,
+            "minDepth": null,
+            "maxDepth": null
+        }
+    ]
+}
+```
+
+The field names are SillyTavern's `RegexScriptData` verbatim, and unknown fields are preserved on read. In SillyTavern these live in `extension_settings.regex`; here they are their own file because a script list has an order that matters and a settings blob does not preserve it as clearly.
+
+Placements: `1` user input, `2` AI output, `3` slash commands, `5` world info, `6` reasoning. `0` is a retired markdown-display slot and `4` a retired `sendAs` slot; both are accepted so old files round-trip.
+
+The three-way gate is SillyTavern's:
+
+- `markdownOnly` scripts run only when the chat view renders a message;
+- `promptOnly` scripts run only when a prompt is assembled;
+- scripts with neither run at the source — when a message, greeting or reasoning text is stored — because the stored text is what the prompt and the view both read afterwards.
+
+One consequence catches people out: world info is assembled with the prompt flag set, so a `WORLD_INFO` script must also set `promptOnly`, exactly as in SillyTavern. A plain script with only the world-info placement never runs.
+
 ## Internal files (not SillyTavern formats)
 
 ### `settings.json`

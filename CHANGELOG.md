@@ -38,6 +38,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - The context inspector names the counter in use (`counter` and `counterSource` on `budget`), so a surprising budget has an explanation.
 - Desktop shell spike: a Tauri 2 window starts the server on an OS-chosen port, opens the SPA and kills the child on exit. See `docs/DESKTOP.md` for what is proven and what is still missing.
 - `CATCUP_PORT=0` asks the OS for a free port; the server then writes `CATCUP_READY <port>` to stdout so a supervisor or the desktop shell can find it.
+- Regex scripts: SillyTavern's engine, placements and field names, with scripts stored in `data/regex.json`, imported and exported as JSON, and managed from a new Regex settings tab that includes a live test box.
+- Regex scripts run at the four points SillyTavern uses: user input and AI output before they are stored, world info entry content, reasoning, and the chat view for display-only scripts. Message edits re-run scripts that opt into `runOnEdit`.
 
 ### Fixed
 

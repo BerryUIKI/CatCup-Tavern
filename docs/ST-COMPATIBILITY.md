@@ -67,7 +67,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                        |
 | Group chat                                                         | ❌ Planned         | M2                                                                                              |
 | Summary memory                                                     | ❌ Planned         | M2                                                                                              |
-| Regex scripts                                                      | ❌ Planned         | M2                                                                                              |
+| Regex scripts                                                      | ✅ Yes             | All placements, prompt/display scoping, depth window and import/export                          |
 | Quick Replies                                                      | ❌ Planned         | M2 subset, full in M3                                                                           |
 | STscript / slash commands                                          | ❌ Planned         | M3                                                                                              |
 | Text completion mode (Kobold/Ooba)                                 | ❌ Not implemented | Chat completion only                                                                            |
@@ -122,6 +122,10 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
 - **Tokenizer for unrecognised models:** SillyTavern resolves every unknown model id to `gpt-3.5-turbo` and counts it with `cl100k_base`. CatCup falls back to its own byte-based estimate instead, because a local Llama or DeepSeek model does not use an OpenAI vocabulary and a wrong exact count is more misleading than a labelled estimate. The inspector names whichever counter is in use.
 - **Tokenizer overhead:** CatCup adds the same four tokens per message that SillyTavern uses for OpenAI chat completion. SillyTavern varies that number by call site — world info entries are measured through a path that adds six — so its world info budget can differ from CatCup's by a few tokens per entry.
+- **Regex script scopes:** SillyTavern stores scripts globally, on a character (`data.extensions.regex_scripts`) and inside a preset, and runs them in that order behind per-scope allowlists. CatCup has one global list in `data/regex.json`; character and preset scopes, and the allowlists that gate them, are not implemented. An imported global set works unchanged.
+- **Regex extension switch:** SillyTavern can disable the regex extension wholesale through `extension_settings.disabledExtensions`. CatCup has no extension registry, so the per-script `disabled` flag is the only switch.
+- **Regex and the slash-command placement:** the `SLASH_COMMAND` placement is accepted and stored, but nothing runs it yet because there are no slash commands.
+- **World Info regex needs `promptOnly`:** world info is assembled with the prompt flag set, so only `promptOnly` scripts run over entry content. This matches SillyTavern's engine, where a plain script with only the world-info placement would never run either, but it surprises people who expect the placement alone to be enough.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
 ## Testing compatibility

@@ -36,7 +36,7 @@ Requirements:
 | ST     | `src/prompt-converters.js`                    | 1451 lines | Claude/Google/Mistral message conversion                                | Port as needed per provider                                                                           |
 | ST     | `src/endpoints/backends/chat-completions.js`  | 2995 lines | Provider parameter matrix, SSE forwarding, reasoning/tool-call handling | Use as a parameter/edge-case reference; rewrite per provider                                          |
 | ST     | `src/endpoints/backends/text-completions.js`  | 646 lines  | Kobold/Ooba text completion                                             | Later, if needed                                                                                      |
-| ST     | `public/scripts/extensions/regex/engine.js`   | small      | Regex script engine                                                     | M2 port to pure TS                                                                                    |
+| ST     | `public/scripts/extensions/regex/engine.js`   | small      | Regex script engine                                                     | Ported to `packages/shared/src/regex.ts`                                                              |
 | ST     | `public/scripts/extensions/quick-reply/`      | medium     | Quick Replies model and commands                                        | M2 subset; M3 full                                                                                    |
 | ST     | `public/scripts/tokenizers.js`                | 1231 lines | Tokenizer/model mapping                                                 | Ported to `apps/server/src/prompt/tokenizer.ts`; `tiktoken` and the Claude vocabulary do the counting |
 | RisuAI | `src/ts/pngChunk.ts`                          | 324 lines  | Alternative PNG chunk implementation                                    | Cross-check; do not add a duplicate dependency                                                        |
@@ -125,6 +125,8 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `apps/server/src/prompt/macros.ts`          | ST `macros.js`                                                    | Macro subset used by the built-in prompts                                 |
 | `apps/server/src/prompt/tokenizer.ts`       | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js` | Model to tiktoken-encoding mapping, the byte estimate and Claude counting |
 | `apps/server/assets/tokenizers/claude.json` | ST `src/tokenizers/claude.json`                                   | Claude byte-level BPE vocabulary, shipped verbatim                        |
+| `packages/shared/src/regex.ts`              | ST `public/scripts/extensions/regex/engine.js`                    | Placement gate, replacement syntax, trim strings and the depth window     |
+| `packages/shared/src/schemas/regex.ts`      | ST `public/scripts/char-data.js` (`RegexScriptData`)              | Script field names, placements and substitution modes                     |
 | `packages/shared/src/schemas/preset.ts`     | ST OpenAI preset                                                  | Preset fields, `prompts` / `prompt_order`                                 |
 
 ## 8. Related documentation
