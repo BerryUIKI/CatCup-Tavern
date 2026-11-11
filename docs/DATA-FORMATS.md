@@ -422,13 +422,14 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 ## Migrating from SillyTavern
 
-1. Stop CatCup Tavern.
-2. Copy ST's `characters/`, `chats/` and (once M1 lands) `worlds/` folders into `data/`. If ST uses a per-user directory such as `data/default-user/characters/`, copy the inner folders.
-3. Start CatCup Tavern and verify cards and chats in the UI.
-4. Presets are not imported yet (M1).
-5. `.charx` and PNG card export are not supported yet.
+**Import from SillyTavern**, in the character library, copies an installation in one step. Point it at the ST user folder — the one containing `characters/`, `chats/` and `worlds/`. A scan runs first and shows what was found; nothing is written until you confirm.
 
-Chat folders are matched by character name first and character ID second, so most ST chat folders work without renaming. Unknown fields in cards, chats and headers are preserved.
+- **Imported:** character cards, chats, world info books and OpenAI presets.
+- **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
+- **Not imported:** group chats, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
+- **Repeat imports add copies.** Names get numeric suffixes; nothing is overwritten. To start clean, back up `data/` and remove the folders you want replaced first.
+
+Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`. The naming rules are the same, and unknown fields are preserved either way.
 
 ## Backup, restore and upgrades
 

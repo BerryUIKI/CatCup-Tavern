@@ -45,6 +45,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - `GET /api/characters/:id/export?format=png|json` downloads a card; a legacy flat card is promoted to a V2 wrapper so the file is valid on its own.
 - Multiple personas: a list in settings with one marked default, a persona manager in the Persona tab, and a per-chat pin stored as `chat_metadata.persona_id` so the choice travels with the chat file.
 - A file written before the persona list existed is migrated on read: its single `persona` object becomes the first entry, under the id `default`.
+- SillyTavern import: point at an existing user folder and copy its characters, chats, world info and OpenAI presets in one action. A scan shows what was found before anything is written; chats are matched to characters by folder name and unmatched ones are reported instead of guessed at. `POST /api/import/sillytavern`.
+- An "Import from SillyTavern" entry in the character library that drives that endpoint.
 
 ### Changed
 

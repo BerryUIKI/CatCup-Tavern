@@ -51,7 +51,7 @@ The MVP is not a new milestone number: it pulls a subset of M2 and M4 forward an
 2. **Regex scripts.** **Done 2026-11-11** — engine, storage, API, manager UI and all four live placements; see `DATA-FORMATS.md` and `API.md`.
 3. **Character card editing and export.** **Done 2026-11-11** — every text field, written back to PNG (both `chara` and `ccv3`) or JSON, with unknown fields preserved.
 4. **Multiple personas.** **Done 2026-11-11** — a persona list with a default, a per-chat pin stored in the chat header, and migration from the old single-persona field.
-5. **SillyTavern data import.**
+5. **SillyTavern data import.** **Done 2026-11-11** — point at an ST user folder, scan, then copy characters, chats, world info and presets in one action.
 6. **Desktop packaging.** Installer, icons, first run, shutdown.
 7. **Demo packaging.** Sample card, limitations page, screenshots, version `0.2.0`.
 
@@ -73,7 +73,8 @@ Steps 2–5 have no dependencies between them and can be reordered. Step 1 has t
 - **Regex scripts** (2026-11-11): SillyTavern's regex engine ported to the shared package, a `data/regex.json` store with import/export, a settings tab with a live test box, and the source, prompt, world-info and display placements wired in.
 - **Character card editing and export** (2026-11-11): an editor for every text field, PNG write-back with both card chunks, JSON export, and the file name left alone so ids stay valid.
 - **Multiple personas** (2026-11-11): a persona list with a default, a per-chat pin in `chat_metadata.persona_id`, and a migration that promotes the old single persona to the list on read.
-- 167 unit tests (42 shared, 125 server).
+- **SillyTavern data import** (2026-11-11): a scan-then-copy flow that brings characters, chats, world info and presets over from an existing installation, reporting anything it could not match instead of guessing.
+- 171 unit tests (42 shared, 129 server).
 
 ## At a glance
 
