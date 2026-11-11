@@ -24,6 +24,8 @@ pnpm test
 pnpm lint
 ```
 
+Releases are built and published by `.github/workflows/release.yml`: push a `v*` tag on `main` and CI attaches the Windows installer to the GitHub release. The release body comes from that version's `CHANGELOG.md` section.
+
 ## Layout
 
 ```text
