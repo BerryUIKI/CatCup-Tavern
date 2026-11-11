@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0 and M1 complete**. **MVP (0.2.0) in progress.**
+> Current status: **M0, M1 and the 0.2.0 MVP are complete**. Next: M2.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -362,7 +362,8 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
-- CI workflow (typecheck, lint, test, build) and release automation.
+- CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md).
+- Release automation.
 - Backup/restore and upgrade documentation.
 - Security hardening: trust-proxy/TLS guidance, optional CSRF tokens, key encryption at rest evaluation.
 - Release notes and v1.0 checklist.
@@ -371,7 +372,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 - [ ] The app is usable on a phone-sized viewport without horizontal scrolling.
 - [ ] English and zh-CN UI can be selected at runtime.
-- [ ] CI runs all quality gates on every PR into `dev`.
+- [x] CI runs all quality gates on every PR into `dev`.
 - [ ] The v1.0 release checklist and upgrade notes are published.
 
 ## Cross-cutting tracks
@@ -406,15 +407,15 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 
 ## Risks and open questions
 
-| Risk                                        | Impact                         | Mitigation                                              |
-| ------------------------------------------- | ------------------------------ | ------------------------------------------------------- |
-| ST extension compatibility is unbounded     | Schedule and scope             | Compatibility tiers; sandbox; document unsupported APIs |
-| World Info/Prompt Manager semantics diverge | Users notice different replies | Port algorithms; fixture tests; compare with ST         |
-| Tokenizer coverage lags providers           | Context budget wrong           | Estimator fallback; per-family tokenizers               |
-| Tauri sidecar packaging on Windows          | Desktop milestone slips        | Prototype early in M4; keep web mode independent        |
-| Single-user assumption                      | No multi-user LAN              | Document explicitly; defer multi-user                   |
-| i18n late                                   | Rework if strings scattered    | English-first with centralized UI strings               |
-| No CI yet                                   | Regressions reach dev          | Add CI in M5; run local gates before pushing            |
+| Risk                                        | Impact                                | Mitigation                                              |
+| ------------------------------------------- | ------------------------------------- | ------------------------------------------------------- |
+| ST extension compatibility is unbounded     | Schedule and scope                    | Compatibility tiers; sandbox; document unsupported APIs |
+| World Info/Prompt Manager semantics diverge | Users notice different replies        | Port algorithms; fixture tests; compare with ST         |
+| Tokenizer coverage lags providers           | Context budget wrong                  | Estimator fallback; per-family tokenizers               |
+| Tauri sidecar packaging on Windows          | Desktop milestone slips               | Prototype early in M4; keep web mode independent        |
+| Single-user assumption                      | No multi-user LAN                     | Document explicitly; defer multi-user                   |
+| i18n late                                   | Rework if strings scattered           | English-first with centralized UI strings               |
+| CI does not build the desktop app           | Installer regressions reach a release | Run the desktop build manually before a release         |
 
 ## Document history
 

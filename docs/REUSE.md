@@ -125,7 +125,7 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `apps/server/src/prompt/messages.ts`         | ST `openai.js`                                                    | `ChatCompletion` slots, budget and system-message squashing               |
 | `apps/server/src/prompt/assemble.ts`         | ST `openai.js`                                                    | Marker merge, card overrides, injection and population                    |
 | `apps/server/src/prompt/history.ts`          | ST `openai.js`                                                    | History conversion and example-dialogue parsing                           |
-| `apps/server/src/prompt/macros.ts`           | ST `macros.js`                                                    | Macro subset used by the built-in prompts                                 |
+| `packages/shared/src/macros.ts`              | ST `macros.js`                                                    | Macro subset used by the built-in prompts and message display             |
 | `apps/server/src/prompt/tokenizer.ts`        | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js` | Model to tiktoken-encoding mapping, the byte estimate and Claude counting |
 | `apps/server/assets/tokenizers/claude.json`  | ST `src/tokenizers/claude.json`                                   | Claude byte-level BPE vocabulary, shipped verbatim                        |
 | `packages/shared/src/regex.ts`               | ST `public/scripts/extensions/regex/engine.js`                    | Placement gate, replacement syntax, trim strings and the depth window     |

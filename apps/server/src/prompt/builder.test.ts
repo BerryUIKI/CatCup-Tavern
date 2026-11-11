@@ -125,10 +125,24 @@ describe('prompt assembly', () => {
         expect(result.messages[7]?.role).toBe('user');
     });
 
+    it('expands macros in chat history without touching the stored message', () => {
+        const greeting: ChatMessage = {
+            name: 'Seraphina',
+            is_user: false,
+            send_date: '',
+            mes: 'Welcome, {{user}}. I am {{char}}.',
+            extra: {},
+        };
+
+        const result = buildPrompt({ character, messages: [greeting], persona, settings });
+
+        expect(result.messages.map((message) => message.content)).toContain('Welcome, Alex. I am Seraphina.');
+        expect(greeting.mes).toBe('Welcome, {{user}}. I am {{char}}.');
+    });
+
     it('does not merge the character sheet into one message', () => {
         const result = buildPrompt({ character, messages: [], persona, settings });
         const systemMessages = result.messages.filter((message) => message.role === 'system');
-
         expect(systemMessages.length).toBeGreaterThanOrEqual(5);
         expect(systemMessages.some((message) => message.content.includes('[Character:'))).toBe(false);
     });

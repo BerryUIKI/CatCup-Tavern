@@ -44,37 +44,37 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 ## Semantic compatibility
 
-| Feature                                                            | Status             | Notes                                                                                           |
-| ------------------------------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
-| Character sheet prompt (description/personality/scenario/examples) | ✅ Yes             | Each marker is its own message, in prompt-order order                                           |
-| Character `system_prompt` override                                 | ✅ Yes             | Used when non-empty                                                                             |
-| Post-history instructions                                          | ✅ Yes             | Appended after history                                                                          |
-| Core macros (`{{char}}`, `{{user}}`, ...)                          | 🟡 Partial         | `char`, `user`, `persona`, `description`, `personality`, `scenario`, `time`, `date`, `original` |
-| Full ST macro engine                                               | ❌ Planned         | M3                                                                                              |
-| Prompt Manager ordering/injection                                  | ✅ Implemented     | Default order, markers, relative and absolute injection                                         |
-| Prompt Manager editor UI                                           | ✅ Yes             | Reorder, enable/disable and injection position per preset prompt                                |
-| Preset import/export                                               | ✅ Yes             | Import, export and activation through the API                                                   |
-| Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                |
-| World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                  |
-| World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                        |
-| World Info entry editing                                           | ✅ Yes             | Keys, content, placement, groups, timing, recursion and matching, saved per entry               |
-| Context budget                                                     | ✅ Yes             | tiktoken for OpenAI models, the bundled Claude vocabulary, estimate otherwise                   |
-| Message editing                                                    | ✅ Yes             | Inline editor in the chat view; edits keep unknown `extra` fields                               |
-| Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                  |
-| Continue generation                                                | ✅ Yes             | Continue button below the latest reply                                                          |
-| Branch from message                                                | ✅ Yes             | Branch from any message into a new chat                                                         |
-| Alternate greetings                                                | ✅ Yes             | Picker when starting a chat with a card that has alternates                                     |
-| Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                        |
-| Group chat                                                         | ❌ Planned         | M2                                                                                              |
-| Summary memory                                                     | ❌ Planned         | M2                                                                                              |
-| Regex scripts                                                      | ✅ Yes             | All placements, prompt/display scoping, depth window and import/export                          |
-| Quick Replies                                                      | ❌ Planned         | M2 subset, full in M3                                                                           |
-| STscript / slash commands                                          | ❌ Planned         | M3                                                                                              |
-| Text completion mode (Kobold/Ooba)                                 | ❌ Not implemented | Chat completion only                                                                            |
-| TTS                                                                | ❌ Planned         | M2                                                                                              |
-| Image generation                                                   | ❌ Planned         | M2                                                                                              |
-| ST extension API                                                   | ❌ Planned         | M3                                                                                              |
-| Extension loading/sandbox                                          | ❌ Planned         | M3                                                                                              |
+| Feature                                                            | Status             | Notes                                                                                                                                                    |
+| ------------------------------------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Character sheet prompt (description/personality/scenario/examples) | ✅ Yes             | Each marker is its own message, in prompt-order order                                                                                                    |
+| Character `system_prompt` override                                 | ✅ Yes             | Used when non-empty                                                                                                                                      |
+| Post-history instructions                                          | ✅ Yes             | Appended after history                                                                                                                                   |
+| Core macros (`{{char}}`, `{{user}}`, ...)                          | 🟡 Partial         | `char`, `user`, `persona`, `description`, `personality`, `scenario`, `time`, `date`, `original`; applied to prompts, lorebooks, history and the composer |
+| Full ST macro engine                                               | ❌ Planned         | M3                                                                                                                                                       |
+| Prompt Manager ordering/injection                                  | ✅ Implemented     | Default order, markers, relative and absolute injection                                                                                                  |
+| Prompt Manager editor UI                                           | ✅ Yes             | Reorder, enable/disable and injection position per preset prompt                                                                                         |
+| Preset import/export                                               | ✅ Yes             | Import, export and activation through the API                                                                                                            |
+| Author's note                                                      | ✅ Yes             | Composed with world info, scheduled and injected at its position                                                                                         |
+| World Info scanning                                                | ✅ Implemented     | Activation, recursion, groups, timed effects, budget and trace                                                                                           |
+| World Info injection                                               | ✅ Yes             | Before/after, at-depth and example buckets are consumed by the assembler                                                                                 |
+| World Info entry editing                                           | ✅ Yes             | Keys, content, placement, groups, timing, recursion and matching, saved per entry                                                                        |
+| Context budget                                                     | ✅ Yes             | tiktoken for OpenAI models, the bundled Claude vocabulary, estimate otherwise                                                                            |
+| Message editing                                                    | ✅ Yes             | Inline editor in the chat view; edits keep unknown `extra` fields                                                                                        |
+| Regenerate/swipe                                                   | ✅ Yes             | Swipe selection via API and UI                                                                                                                           |
+| Continue generation                                                | ✅ Yes             | Continue button below the latest reply                                                                                                                   |
+| Branch from message                                                | ✅ Yes             | Branch from any message into a new chat                                                                                                                  |
+| Alternate greetings                                                | ✅ Yes             | Picker when starting a chat with a card that has alternates                                                                                              |
+| Chat rename/delete in UI                                           | ✅ Yes             | Rename moves the chat file; delete asks for confirmation                                                                                                 |
+| Group chat                                                         | ❌ Planned         | M2                                                                                                                                                       |
+| Summary memory                                                     | ❌ Planned         | M2                                                                                                                                                       |
+| Regex scripts                                                      | ✅ Yes             | All placements, prompt/display scoping, depth window and import/export                                                                                   |
+| Quick Replies                                                      | ❌ Planned         | M2 subset, full in M3                                                                                                                                    |
+| STscript / slash commands                                          | ❌ Planned         | M3                                                                                                                                                       |
+| Text completion mode (Kobold/Ooba)                                 | ❌ Not implemented | Chat completion only                                                                                                                                     |
+| TTS                                                                | ❌ Planned         | M2                                                                                                                                                       |
+| Image generation                                                   | ❌ Planned         | M2                                                                                                                                                       |
+| ST extension API                                                   | ❌ Planned         | M3                                                                                                                                                       |
+| Extension loading/sandbox                                          | ❌ Planned         | M3                                                                                                                                                       |
 
 ## Provider compatibility
 

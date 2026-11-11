@@ -145,9 +145,17 @@ Stop the server first.
 
 Do not commit any file under `data/`.
 
-## CI status
+## Continuous integration
 
-There is no GitHub Actions workflow yet. Quality gates are run locally before push; adding CI is tracked in M5. When adding CI, run `typecheck`, `lint`, `test` and the workspace build on every PR into `dev`.
+`.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
+
+The workflow does not build the desktop app: that needs Rust and the Tauri toolchain, and it is still a manual step before a release (see [DESKTOP.md](DESKTOP.md)).
+
+Run the same gates locally before pushing — CI is a backstop, not a substitute:
+
+```bash
+pnpm typecheck && pnpm lint && pnpm test && pnpm build
+```
 
 ## Related docs
 
