@@ -1,4 +1,5 @@
 export * from './keywords.js';
+export * from './macros.js';
 export * from './persona.js';
 export * from './regex.js';
 export * from './schemas/api.js';

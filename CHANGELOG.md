@@ -9,6 +9,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Providers can be added, duplicated and deleted in Settings. A new one starts as a custom endpoint, and **Load** fills the model suggestions from the provider's own model list without saving first.
 - The library footer switches the active provider from a list that shows each one's model, so changing servers no longer means opening settings.
 
+### Fixed
+
+- Macros in greetings, chat history and typed messages now expand to the character and persona names, both in the assembled prompt and in the chat view. Sent and edited messages are stored expanded, as SillyTavern does, while a greeting keeps its macros in the chat file and is expanded when it is used or displayed.
+
 ## 0.2.0 — 2026-11-11
 
 ### Added

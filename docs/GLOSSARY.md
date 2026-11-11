@@ -36,7 +36,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Preset** — A saved set of sampling parameters and prompt entries/order, usually imported from SillyTavern's OpenAI preset JSON. Planned for M1.
 
-**Macro** — A template token such as `{{char}}` or `{{user}}` replaced at prompt-build time.
+**Macro** — A template token such as `{{char}}` or `{{user}}`, replaced when the prompt is built and when a stored message is displayed.
 
 **Context budget** — The maximum number of tokens sent to the model for a request, split between the prompt and the reply budget.
 
