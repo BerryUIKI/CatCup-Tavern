@@ -147,16 +147,16 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
 }
 ```
 
-| Field             | Type     | Notes                                                                                 |
-| ----------------- | -------- | ------------------------------------------------------------------------------------- |
-| `name`            | string   | Display name of the speaker                                                           |
-| `is_user`         | boolean  | User message when true                                                                |
-| `is_system`       | boolean? | System/note messages; skipped by the current prompt builder                           |
-| `send_date`       | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings |
-| `mes`             | string   | Message text                                                                          |
-| `extra`           | object?  | Metadata; unknown keys preserved                                                      |
-| `original_avatar` | string?  | Group chats only: the speaker's avatar file name, as ST writes it                     |
-| `force_avatar`    | string?  | Group chats only: a URL ST may write; preserved but not used by CatCup                |
+| Field             | Type     | Notes                                                                                                                      |
+| ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `name`            | string   | Display name of the speaker                                                                                                |
+| `is_user`         | boolean  | User message when true                                                                                                     |
+| `is_system`       | boolean? | System/note messages; skipped by the current prompt builder                                                                |
+| `send_date`       | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings                                      |
+| `mes`             | string   | Message text                                                                                                               |
+| `extra`           | object?  | Metadata; unknown keys preserved                                                                                           |
+| `original_avatar` | string?  | Group chats only: the speaker's avatar file name, as ST writes it                                                          |
+| `force_avatar`    | string?  | Group chats only: an ST thumbnail URL; CatCup writes it for ST readers and resolves its own avatars from `original_avatar` |
 
 ### `extra` fields written by CatCup
 
@@ -171,6 +171,7 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
 | `swipes`       | string[]   | Alternative assistant replies                                                      |
 | `swipe_id`     | number     | Zero-based selected swipe index                                                    |
 | `swipe_info`   | unknown[]  | Per-swipe metadata objects                                                         |
+| `gen_id`       | number     | Group chats: the generation batch id SillyTavern uses to group one turn's replies  |
 
 ### Swipes
 
@@ -236,18 +237,20 @@ A group is one metadata file plus one JSONL per conversation, in the same two fo
 }
 ```
 
-| Field                    | Meaning                                                                       |
-| ------------------------ | ----------------------------------------------------------------------------- |
-| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them |
-| `disabled_members`       | Members that stay in the group but do not reply                               |
-| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                 |
-| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                     |
-| `chat_id`                | The chat the group last opened                                                |
-| `chats`                  | Every chat id belonging to the group, oldest first                            |
-| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step            |
-| `generation_mode_join_*` | Text wrapped around joined replies in append modes                            |
+| Field                    | Meaning                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them               |
+| `disabled_members`       | Members that stay in the group but do not reply                                             |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                               |
+| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                                   |
+| `chat_id`                | The chat the group last opened                                                              |
+| `chats`                  | Every chat id belonging to the group, oldest first                                          |
+| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step                          |
+| `generation_mode_join_*` | Wrapped around each member's character-card field in append modes; it does not wrap replies |
 
 The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
+
+A new chat is seeded with one greeting per member, muted members included, as SillyTavern does. CatCup keeps each member's greetings as swipes on that opening message, so the opening can be changed without losing the alternatives. The greeting's macros are expanded with the member who owns it before it is stored — SillyTavern expands a group greeting with the same member — so a later speaker cannot rewrite an earlier greeting.
 
 ### Group chat JSONL
 
@@ -264,6 +267,8 @@ Group chats use the same header and message format as single-character chats, wi
 ```
 
 The header's `chat_metadata.persona_id` pins the group chat to a persona exactly as it does for a single-character chat.
+
+When the prompt is assembled, each history message whose name is not the user persona is prefixed with that name (`Mira: Sit down.`), and the group nudge `[Write the next reply only as {{char}}.]` is appended after the history, as SillyTavern's Chat Completion prompt does.
 
 ## World Info
 

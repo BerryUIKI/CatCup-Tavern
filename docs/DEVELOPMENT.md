@@ -65,11 +65,13 @@ apps/server/src/
   index.ts        entrypoint and graceful shutdown
   config.ts       env, paths, data dir
   cards/          PNG tEXt / JSON card parsing
+  generation/     shared SSE stream and in-flight generation registry
+  group/          group speaker selection and reply trimming
   providers/      OpenAI-compatible / Anthropic / Ollama adapters
   prompt/         prompt assembly and token estimation
-  routes/         auth, characters, chats, generate, providers, settings, health
+  routes/         auth, characters, chats, groups, generate, providers, settings, health
   security/       scrypt password, HMAC sessions
-  storage/        paths, atomic JSON, locks, settings, characters, chats
+  storage/        paths, atomic JSON, locks, settings, characters, chats, groups
   sse.ts          SSE writer
 apps/web/src/
   App.tsx         auth gate

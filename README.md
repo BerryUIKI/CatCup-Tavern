@@ -7,7 +7,7 @@ A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
 - **Data** — reads and writes SillyTavern's own files: PNG/JSON character cards (V2/V3), chat JSONL, world info, OpenAI presets and regex scripts
 - **Providers** — OpenAI-compatible APIs, OpenRouter, Anthropic and Ollama
 
-> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character roleplay end to end. Group chats, Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
+> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character and group roleplay end to end. Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
 > See [docs/MILESTONES.md](docs/MILESTONES.md) for what comes next.
 
 ## Why another tavern?
@@ -23,6 +23,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 - **Your SillyTavern data in.** Point the importer at an ST user folder and copy characters, chats, lorebooks and OpenAI presets in one action, after a scan shows what it found. Or import files one at a time.
 - **Chat.** Streaming replies with reasoning, swipes, regenerate, continue, inline editing, branching, alternate greetings, rename and delete.
+- **Group chats.** Several characters in one room with their own greetings and avatars, natural, list, manual or pooled reply order, and per-member mute. Replies are stored in SillyTavern's group files.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
@@ -32,7 +33,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 ### What is next
 
-Group chats, Quick Replies and STscript, SillyTavern extensions, TTS, image generation and memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+Quick Replies and STscript, SillyTavern extensions, TTS, image generation and memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
 
 ### Screenshots
 

@@ -353,9 +353,9 @@ Deletes the chat file. Response: `{ "ok": true }`.
 
 Group chats use SillyTavern's storage shape: metadata in `data/groups/<id>.json` and messages in `data/group chats/<chatId>.jsonl`. `members` and `disabled_members` hold character avatar file names, but a request may identify a member by either its id or its file name; the stored value is always the file name.
 
-A `GroupView` is the stored group object plus two fields the client needs: `memberDetails` (`fileName`, `name`, `id`, `avatarUrl`, with `id: null` when the card is gone) and `updatedAt` (group file mtime in milliseconds). Stored fields include `id`, `name`, `members`, `avatar_url`, `allow_self_responses`, `activation_strategy`, `generation_mode`, `disabled_members`, `fav`, `chat_id`, `chats`, `auto_mode_delay`, `generation_mode_join_prefix` and `generation_mode_join_suffix`.
+A `GroupView` is the stored group object plus two fields the client needs: `memberDetails` (`fileName`, `name`, `id`, `avatarUrl`, `description`, `personality`, `scenario`, with `id: null` when the card is gone) and `updatedAt` (group file mtime in milliseconds). Stored fields include `id`, `name`, `members`, `avatar_url`, `allow_self_responses`, `activation_strategy`, `generation_mode`, `disabled_members`, `fav`, `chat_id`, `chats`, `auto_mode_delay`, `generation_mode_join_prefix` and `generation_mode_join_suffix`.
 
-Group replies are not generated yet; this section covers storage and message maintenance, which is the first M2 step.
+Group generation picks one member per request and builds the prompt from that member's card (SillyTavern's swap generation mode). History messages whose name is not the user persona are prefixed with that name — assistant, narrator and send-as messages alike — the group nudge is appended after the history, and a reply that starts speaking for another member is trimmed before it is stored.
 
 ### `GET /api/groups`
 
@@ -397,7 +397,7 @@ Lists the chats the group file references, most recently modified first: `{ "cha
 { "name": "first night" }
 ```
 
-Starts an empty chat (header only) and makes it the group's `chat_id`. Without a name, the file is named like SillyTavern's group chats (`2026-11-11@08h14m52s123ms`). Response `201`: `{ "chat": GroupChatDetail, "group": GroupView }`.
+Starts a chat and makes it the group's `chat_id`. The chat is seeded with one greeting per member, in member order and muted members included, as SillyTavern does; each greeting keeps the member's alternate greetings as swipes. Without a name, the file is named like SillyTavern's group chats (`2026-11-11@08h14m52s123ms`). Response `201`: `{ "chat": GroupChatDetail, "group": GroupView }`.
 
 ### `GET /api/groups/:groupId/chats/:chatId`
 
@@ -406,14 +406,43 @@ Response: `{ "chat": GroupChatDetail }`, where `GroupChatDetail` is the usual ch
 ### `PATCH /api/groups/:groupId/chats/:chatId`
 
 ```json
-{ "name": "renamed", "personaId": "default" }
+{ "name": "renamed", "personaId": "default", "current": true }
 ```
 
-Both fields are optional. `name` moves the chat file and updates `chats` and, when needed, `chat_id`. `personaId` pins the chat to a persona; `null` removes the pin. Response: `{ "chat": GroupChatDetail, "group": GroupView }`.
+All fields are optional. `name` moves the chat file and updates `chats` and, when needed, `chat_id`. `personaId` pins the chat to a persona; `null` removes the pin. `current: true` records the chat as the group's `chat_id`, the field SillyTavern uses to reopen the last chat. Response: `{ "chat": GroupChatDetail, "group": GroupView }`.
 
 ### `DELETE /api/groups/:groupId/chats/:chatId`
 
 Deletes the chat file and its entry in the group. When it was the current chat, `chat_id` moves to the newest remaining chat or becomes empty. Response: `{ "ok": true, "group": GroupView }`.
+
+### `POST /api/groups/:groupId/chats/:chatId/generate`
+
+Starts a group reply and returns the same SSE stream as `POST /api/generate`. The server appends the user message, chooses the speaker, builds the prompt and persists the reply.
+
+```json
+{
+    "action": "send",
+    "message": "What is cooking?",
+    "speaker": "Bram.json"
+}
+```
+
+`action` is `send`, `regenerate` or `continue`. `speaker` selects the member in manual groups and acts as an override for the other strategies; it accepts a member file name, id or name. Without it, manual groups fall back to the first enabled member. The `start` event carries the chosen member:
+
+```json
+{
+    "type": "start",
+    "generationId": "…",
+    "speaker": {
+        "id": "Bram",
+        "fileName": "Bram.json",
+        "name": "Bram",
+        "avatarUrl": "/api/characters/Bram/avatar?v=…"
+    }
+}
+```
+
+Selection follows the group's `activation_strategy`: **natural** uses a name mention, otherwise the member after the last speaker; **list** rotates; **pooled** prefers a member who has not spoken since the user's last message; **manual** uses the request's `speaker`. Regenerate and continue stay on the message's current speaker. The reply is stored with `name`, `original_avatar`, `force_avatar` and a numeric `extra.gen_id`, and a new reply is emitted by `done`.
 
 ### `PATCH /api/groups/:groupId/chats/:chatId/messages/:index`
 

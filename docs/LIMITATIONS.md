@@ -17,6 +17,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - Swipes on a regenerated reply, continue, inline editing, deleting messages, copying.
 - Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings, and switch a chat's opening to another greeting from the chat header or by swiping the first message.
 - Stop a reply mid-stream; the partial text is kept.
+- **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them.
 
 **Lorebooks**
 
@@ -48,7 +49,6 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 
 **Not there at all**
 
-- **Group chats.** One character per conversation, and SillyTavern group chats are not imported.
 - **Quick Replies and STscript.** A line such as `/send hello` is sent to the model as ordinary text.
 - **SillyTavern extensions.** None load.
 - **Text to speech** and **image generation**.
@@ -59,6 +59,10 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - **A change-password screen.** The reset is deleting `data/auth.json`, which signs every device out.
 
 **Partial, and worth knowing before you rely on it**
+
+- **Group chats reply one member per turn.** SillyTavern can have several members answer the same message and offers append modes that merge every member's card into the prompt; CatCup picks one speaker, uses that member's card, and leaves append modes, automatic turns and the queue UI for later. Manual groups ask you who replies next.
+- **Group prompts use fixed defaults.** A SillyTavern preset's `new_group_chat_prompt` and `group_nudge_prompt` are ignored, and the context inspector covers single-character chats only.
+- **Groups have no picture of their own.** The library uses the first member's avatar as the group icon.
 
 - **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.
