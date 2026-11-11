@@ -3,6 +3,7 @@ import type {
     ChatDetail,
     ImportCharactersResponse,
     ProviderInput,
+    RegexScriptPatch,
     SettingsPatch,
     WorldDetail,
     WorldInfoEntryPatch,
@@ -22,6 +23,7 @@ export const queryKeys = {
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
     world: (id: string | null) => ['world', id] as const,
+    regex: ['regex'] as const,
 };
 
 export function useAuthStatus() {
@@ -238,6 +240,62 @@ export function useBranchChat(characterId: string | null) {
         onSuccess: (chat) => {
             queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
             void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
+export function useRegexScripts() {
+    return useQuery({ queryKey: queryKeys.regex, queryFn: api.regex.list });
+}
+
+export function useCreateRegexScript() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (patch: RegexScriptPatch) => api.regex.create(patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+        },
+    });
+}
+
+export function useUpdateRegexScript() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; patch: RegexScriptPatch }) =>
+            api.regex.update(variables.id, variables.patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+        },
+    });
+}
+
+export function useDeleteRegexScript() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.regex.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+        },
+    });
+}
+
+export function useReorderRegexScripts() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (ids: string[]) => api.regex.reorder(ids),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+        },
+    });
+}
+
+export function useImportRegexScripts() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { data: unknown; mode: 'append' | 'replace' }) =>
+            api.regex.import(variables.data, variables.mode),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
     });
 }

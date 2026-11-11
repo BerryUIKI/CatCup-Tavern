@@ -13,6 +13,8 @@ import type {
     ProviderInput,
     ProviderPublic,
     ProviderTestResult,
+    RegexScript,
+    RegexScriptPatch,
     SettingsPatch,
     SettingsResponse,
     WorldDetail,
@@ -111,6 +113,25 @@ export const api = {
             );
             return data.context;
         },
+    },
+    regex: {
+        list: () => request<{ scripts: RegexScript[] }>('/regex'),
+        create: (patch: RegexScriptPatch) =>
+            request<{ script: RegexScript }>('/regex', { method: 'POST', body: JSON.stringify(patch) }),
+        update: (id: string, patch: RegexScriptPatch) =>
+            request<{ script: RegexScript }>(`/regex/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            }),
+        remove: (id: string) => request<{ ok: true }>(`/regex/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        reorder: (ids: string[]) =>
+            request<{ scripts: RegexScript[] }>('/regex/order', { method: 'PUT', body: JSON.stringify({ ids }) }),
+        import: (data: unknown, mode: 'append' | 'replace') =>
+            request<{ scripts: RegexScript[]; errors: string[] }>('/regex/import', {
+                method: 'POST',
+                body: JSON.stringify({ data, mode }),
+            }),
+        exportUrl: () => '/api/regex/export',
     },
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),
