@@ -2,6 +2,13 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release.
 
+## Unreleased
+
+### Added
+
+- Providers can be added, duplicated and deleted in Settings. A new one starts as a custom endpoint, and **Load** fills the model suggestions from the provider's own model list without saving first.
+- The library footer switches the active provider from a list that shows each one's model, so changing servers no longer means opening settings.
+
 ## 0.2.0 — 2026-11-11
 
 ### Added

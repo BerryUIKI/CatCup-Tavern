@@ -10,10 +10,13 @@ import { DEFAULT_BASE_URLS, PROVIDER_KIND_LABELS } from '@catcup/shared';
 import {
     BookOpen,
     Check,
+    Copy,
     Download,
     Info,
     Pencil,
     PlugZap,
+    Plus,
+    RefreshCw,
     Regex,
     Save,
     Server,
@@ -25,11 +28,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
+    useCreateProvider,
     useDeletePreset,
+    useDeleteProvider,
     useDeleteWorld,
     useImportPreset,
     useImportWorld,
     usePresets,
+    useProviderModels,
     useSettings,
     useTestProvider,
     useUpdateProvider,
@@ -158,7 +164,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const settings = settingsQuery.data;
     const updateSettings = useUpdateSettings();
     const updateProvider = useUpdateProvider();
+    const createProvider = useCreateProvider();
+    const deleteProviderMutation = useDeleteProvider();
     const testProvider = useTestProvider();
+    const providerModels = useProviderModels();
     const presetsQuery = usePresets();
     const importPreset = useImportPreset();
     const deletePreset = useDeletePreset();
@@ -179,6 +188,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const [providerError, setProviderError] = useState<string | null>(null);
     const [generationForm, setGenerationForm] = useState<GenerationSettings | null>(null);
     const [editingBookId, setEditingBookId] = useState<string | null>(null);
+    const [creatingProvider, setCreatingProvider] = useState(false);
     const initializedRef = useRef(false);
 
     const selectedProvider = settings?.providers.find((provider) => provider.id === selectedProviderId) ?? null;
@@ -288,6 +298,100 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             pushToast('Saved API key removed.', 'success');
         } catch (error) {
             setProviderError(error instanceof Error ? error.message : 'Could not remove the API key.');
+        }
+    };
+
+    /** Start a blank provider. `custom` is the kind that needs a base URL typed in. */
+    const startCreateProvider = () => {
+        setCreatingProvider(true);
+        setSelectedProviderId(null);
+        setProviderForm({ name: 'New provider', kind: 'custom', baseUrl: '', model: '', enabled: true, headers: {} });
+        setApiKey('');
+        setModels([]);
+        setTestResult(null);
+        setProviderError(null);
+    };
+
+    const cancelCreateProvider = () => {
+        setCreatingProvider(false);
+        const fallback =
+            settings?.providers.find((provider) => provider.id === settings.activeProviderId) ?? settings?.providers[0];
+        if (fallback) {
+            loadProvider(fallback);
+        }
+    };
+
+    const handleCreateProvider = async () => {
+        if (!providerForm) {
+            return;
+        }
+        setProviderError(null);
+        try {
+            const created = await createProvider.mutateAsync(
+                formToInput(providerForm, apiKey.trim() ? apiKey.trim() : undefined),
+            );
+            setCreatingProvider(false);
+            loadProvider(created);
+            pushToast(`Added ${created.name}.`, 'success');
+        } catch (error) {
+            setProviderError(error instanceof Error ? error.message : 'Could not add the provider.');
+        }
+    };
+
+    /**
+     * Copy the current form under a new name. The saved API key stays with the
+     * original, so a copy of a provider that had one starts without it.
+     */
+    const handleDuplicateProvider = async () => {
+        if (!providerForm) {
+            return;
+        }
+        setProviderError(null);
+        try {
+            const created = await createProvider.mutateAsync({
+                ...formToInput(providerForm),
+                name: `${providerForm.name} copy`,
+            });
+            loadProvider(created);
+            pushToast(`Added ${created.name}. Add its API key if it needs one.`, 'success');
+        } catch (error) {
+            setProviderError(error instanceof Error ? error.message : 'Could not duplicate the provider.');
+        }
+    };
+
+    const handleDeleteProvider = async () => {
+        if (!selectedProvider) {
+            return;
+        }
+        if (
+            !window.confirm(
+                `Delete the provider "${selectedProvider.name}"? Its saved API key is removed with it, and any chat using it will fail until another provider is active.`,
+            )
+        ) {
+            return;
+        }
+        try {
+            await deleteProviderMutation.mutateAsync(selectedProvider.id);
+            const next = settings?.providers.find((provider) => provider.id !== selectedProvider.id);
+            if (next) {
+                loadProvider(next);
+            }
+            pushToast('Provider deleted.', 'success');
+        } catch (error) {
+            setProviderError(error instanceof Error ? error.message : 'Could not delete the provider.');
+        }
+    };
+
+    /** Ask the saved provider which models it offers; the field stays free text. */
+    const handleLoadModels = async () => {
+        if (!selectedProvider) {
+            return;
+        }
+        setProviderError(null);
+        try {
+            setModels(await providerModels.mutateAsync(selectedProvider.id));
+        } catch (error) {
+            setProviderError(error instanceof Error ? error.message : 'Could not load the model list.');
         }
     };
 
@@ -452,13 +556,21 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 />
                             </button>
                         ))}
+                        <button
+                            type="button"
+                            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line px-3 py-2 text-sm text-muted transition hover:border-amber/50 hover:text-parchment"
+                            onClick={startCreateProvider}
+                        >
+                            <Plus size={15} />
+                            New provider
+                        </button>
                         <p className="pt-2 text-[11px] leading-relaxed text-muted/70">
                             Keys are stored in the server&apos;s data directory and are never sent to the browser.
                         </p>
                     </div>
 
                     <div className="min-w-0">
-                        {!providerForm || !selectedProvider ? (
+                        {!providerForm || (!selectedProvider && !creatingProvider) ? (
                             <p className="text-sm text-muted">No provider selected.</p>
                         ) : (
                             <div className="space-y-4">
@@ -518,18 +630,37 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                     <label className="label-text" htmlFor="provider-model">
                                         Model
                                     </label>
-                                    <input
-                                        id="provider-model"
-                                        className="input-shell"
-                                        list="provider-models"
-                                        value={providerForm.model}
-                                        placeholder="e.g. claude-sonnet-5-5"
-                                        onChange={(event) =>
-                                            setProviderForm((current) =>
-                                                current ? { ...current, model: event.target.value } : current,
-                                            )
-                                        }
-                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            id="provider-model"
+                                            className="input-shell"
+                                            list="provider-models"
+                                            value={providerForm.model}
+                                            placeholder="e.g. claude-sonnet-5-5"
+                                            onChange={(event) =>
+                                                setProviderForm((current) =>
+                                                    current ? { ...current, model: event.target.value } : current,
+                                                )
+                                            }
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn-ghost shrink-0 px-2.5"
+                                            onClick={() => void handleLoadModels()}
+                                            disabled={!selectedProvider || providerModels.isPending}
+                                            title={
+                                                selectedProvider
+                                                    ? 'Ask this provider which models it offers'
+                                                    : 'Save the provider first'
+                                            }
+                                        >
+                                            {providerModels.isPending ? <Spinner size={15} /> : <RefreshCw size={15} />}
+                                            Load
+                                        </button>
+                                    </div>
+                                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                                        Any model id is accepted; the list is only a suggestion.
+                                    </p>
                                     <datalist id="provider-models">
                                         {models.map((model) => (
                                             <option key={model.id} value={model.id}>
@@ -551,13 +682,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                             className="input-shell"
                                             value={apiKey}
                                             placeholder={
-                                                selectedProvider.hasKey
+                                                selectedProvider?.hasKey
                                                     ? 'Saved — leave blank to keep'
                                                     : 'API key (if required)'
                                             }
                                             onChange={(event) => setApiKey(event.target.value)}
                                         />
-                                        {selectedProvider.hasKey ? (
+                                        {selectedProvider?.hasKey ? (
                                             <button
                                                 type="button"
                                                 className="btn-ghost shrink-0 px-2.5"
@@ -615,39 +746,93 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 ) : null}
 
                                 <div className="flex flex-wrap items-center gap-2 pt-1">
-                                    <button
-                                        type="button"
-                                        className="btn-primary"
-                                        onClick={() => void handleSaveProvider()}
-                                        disabled={updateProvider.isPending}
-                                    >
-                                        {updateProvider.isPending ? <Spinner size={15} /> : <Save size={15} />}
-                                        Save provider
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-ghost"
-                                        onClick={() => void handleSaveAndTest()}
-                                        disabled={updateProvider.isPending || testProvider.isPending}
-                                    >
-                                        {testProvider.isPending ? <Spinner size={15} /> : <PlugZap size={15} />}
-                                        Save &amp; test
-                                    </button>
-                                    {!isActive ? (
-                                        <button
-                                            type="button"
-                                            className="btn-ghost"
-                                            onClick={() => void handleSetActive()}
-                                            disabled={updateSettings.isPending}
-                                        >
-                                            {updateSettings.isPending ? <Spinner size={15} /> : <Check size={15} />}
-                                            Set as active
-                                        </button>
+                                    {creatingProvider ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn-primary"
+                                                onClick={() => void handleCreateProvider()}
+                                                disabled={createProvider.isPending}
+                                            >
+                                                {createProvider.isPending ? <Spinner size={15} /> : <Plus size={15} />}
+                                                Add provider
+                                            </button>
+                                            <button type="button" className="btn-ghost" onClick={cancelCreateProvider}>
+                                                Cancel
+                                            </button>
+                                        </>
                                     ) : (
-                                        <span className="inline-flex items-center gap-1 text-xs text-sage">
-                                            <Check size={13} />
-                                            Active
-                                        </span>
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn-primary"
+                                                onClick={() => void handleSaveProvider()}
+                                                disabled={updateProvider.isPending}
+                                            >
+                                                {updateProvider.isPending ? <Spinner size={15} /> : <Save size={15} />}
+                                                Save provider
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn-ghost"
+                                                onClick={() => void handleSaveAndTest()}
+                                                disabled={updateProvider.isPending || testProvider.isPending}
+                                            >
+                                                {testProvider.isPending ? <Spinner size={15} /> : <PlugZap size={15} />}
+                                                Save &amp; test
+                                            </button>
+                                            {!isActive ? (
+                                                <button
+                                                    type="button"
+                                                    className="btn-ghost"
+                                                    onClick={() => void handleSetActive()}
+                                                    disabled={updateSettings.isPending}
+                                                >
+                                                    {updateSettings.isPending ? (
+                                                        <Spinner size={15} />
+                                                    ) : (
+                                                        <Check size={15} />
+                                                    )}
+                                                    Set as active
+                                                </button>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 text-xs text-sage">
+                                                    <Check size={13} />
+                                                    Active
+                                                </span>
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="btn-ghost"
+                                                onClick={() => void handleDuplicateProvider()}
+                                                disabled={createProvider.isPending}
+                                                title="Add a copy of this provider under a new name"
+                                            >
+                                                {createProvider.isPending ? <Spinner size={15} /> : <Copy size={15} />}
+                                                Duplicate
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn-ghost hover:text-wine"
+                                                onClick={() => void handleDeleteProvider()}
+                                                disabled={
+                                                    deleteProviderMutation.isPending ||
+                                                    (settings?.providers.length ?? 0) <= 1
+                                                }
+                                                title={
+                                                    (settings?.providers.length ?? 0) <= 1
+                                                        ? 'Keep at least one provider'
+                                                        : 'Delete this provider and its saved key'
+                                                }
+                                            >
+                                                {deleteProviderMutation.isPending ? (
+                                                    <Spinner size={15} />
+                                                ) : (
+                                                    <Trash2 size={15} />
+                                                )}
+                                                Delete
+                                            </button>
+                                        </>
                                     )}
                                 </div>
                             </div>

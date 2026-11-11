@@ -37,6 +37,11 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 - Edit every text field of a card, export it, or delete it from the library.
 - Several personas, one default, with a per-chat choice.
 
+**Providers**
+
+- Add, duplicate and delete providers, including any OpenAI-compatible endpoint.
+- Switch the active provider from the library footer without opening settings; one click, and the model it uses is shown in the list.
+
 ## What does not work yet
 
 **Not there at all**
