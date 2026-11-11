@@ -252,6 +252,13 @@ export const api = {
             );
             return data.chat;
         },
+        setPersona: async (characterId: string, chatId: string, personaId: string | null) => {
+            const data = await request<{ chat: ChatDetail }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}`,
+                { method: 'PATCH', body: JSON.stringify({ personaId }) },
+            );
+            return data.chat;
+        },
         branch: async (characterId: string, chatId: string, index: number, name?: string) => {
             const data = await request<{ chat: ChatDetail }>(
                 `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/branch`,

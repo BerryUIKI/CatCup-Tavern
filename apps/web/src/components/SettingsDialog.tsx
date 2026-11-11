@@ -1,7 +1,6 @@
 import type {
     GenerationSettings,
     ModelInfo,
-    PersonaSettings,
     ProviderInput,
     ProviderKind,
     ProviderPublic,
@@ -40,6 +39,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { Modal } from './Modal';
+import { PersonaSettings } from './PersonaSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
 import { RegexSettings } from './RegexSettings';
 import { Spinner } from './Spinner';
@@ -175,7 +175,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
     const [providerError, setProviderError] = useState<string | null>(null);
     const [generationForm, setGenerationForm] = useState<GenerationSettings | null>(null);
-    const [personaForm, setPersonaForm] = useState<PersonaSettings | null>(null);
     const [editingBookId, setEditingBookId] = useState<string | null>(null);
     const initializedRef = useRef(false);
 
@@ -209,7 +208,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         }
         initializedRef.current = true;
         setGenerationForm({ ...settings.generation });
-        setPersonaForm({ ...settings.persona });
         const initial =
             settings.providers.find((provider) => provider.id === settings.activeProviderId) ?? settings.providers[0];
         if (initial) {
@@ -311,18 +309,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             pushToast('Generation settings saved.', 'success');
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save generation settings.', 'error');
-        }
-    };
-
-    const handleSavePersona = async () => {
-        if (!personaForm) {
-            return;
-        }
-        try {
-            await updateSettings.mutateAsync({ persona: personaForm });
-            pushToast('Persona saved.', 'success');
-        } catch (error) {
-            pushToast(error instanceof Error ? error.message : 'Could not save the persona.', 'error');
         }
     };
 
@@ -737,59 +723,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     </button>
                 </div>
             ) : tab === 'persona' ? (
-                <div className="space-y-4 p-5">
-                    <p className="text-sm leading-relaxed text-muted">
-                        Your persona is how the model refers to you in prompts.
-                    </p>
-
-                    {personaForm ? (
-                        <>
-                            <div>
-                                <label className="label-text" htmlFor="persona-name">
-                                    Display name
-                                </label>
-                                <input
-                                    id="persona-name"
-                                    className="input-shell"
-                                    value={personaForm.name}
-                                    placeholder="You"
-                                    onChange={(event) =>
-                                        setPersonaForm((current) =>
-                                            current ? { ...current, name: event.target.value } : current,
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div>
-                                <label className="label-text" htmlFor="persona-description">
-                                    Description
-                                </label>
-                                <textarea
-                                    id="persona-description"
-                                    rows={8}
-                                    className="input-shell resize-y leading-relaxed"
-                                    value={personaForm.description}
-                                    placeholder="Optional description of your persona…"
-                                    onChange={(event) =>
-                                        setPersonaForm((current) =>
-                                            current ? { ...current, description: event.target.value } : current,
-                                        )
-                                    }
-                                />
-                            </div>
-                        </>
-                    ) : null}
-
-                    <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => void handleSavePersona()}
-                        disabled={updateSettings.isPending}
-                    >
-                        {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
-                        Save persona
-                    </button>
-                </div>
+                <PersonaSettings />
             ) : tab === 'prompts' ? (
                 <div className="space-y-5 p-5">
                     <p className="text-sm leading-relaxed text-muted">

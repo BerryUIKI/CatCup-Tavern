@@ -243,6 +243,22 @@ export function useRenameChat(characterId: string | null) {
     });
 }
 
+export function useSetChatPersona(characterId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { chatId: string; personaId: string | null }) => {
+            if (!characterId) {
+                throw new Error('No character selected');
+            }
+            return api.chats.setPersona(characterId, variables.chatId, variables.personaId);
+        },
+        onSuccess: (chat) => {
+            queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
 export function useBranchChat(characterId: string | null) {
     const queryClient = useQueryClient();
     return useMutation({

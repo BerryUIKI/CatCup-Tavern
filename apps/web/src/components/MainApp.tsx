@@ -182,7 +182,8 @@ export function MainApp() {
             <main className="flex min-w-0 flex-1 flex-col">
                 <ChatView
                     character={selectedCharacter}
-                    personaName={settings?.persona.name ?? 'You'}
+                    personas={settings?.personas ?? []}
+                    activePersonaId={settings?.activePersonaId ?? null}
                     chats={chats}
                     chatsLoading={chatsQuery.isLoading}
                     selectedChatId={selectedChatId}

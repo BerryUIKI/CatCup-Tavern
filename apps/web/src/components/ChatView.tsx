@@ -3,8 +3,11 @@ import {
     type CharacterSummary,
     type ChatMessage,
     type ChatSummary,
+    chatPersonaId,
+    type Persona,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
+    resolvePersona,
 } from '@catcup/shared';
 import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -16,6 +19,7 @@ import {
     useDeleteMessage,
     useRegexScripts,
     useRenameChat,
+    useSetChatPersona,
     useUpdateMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
@@ -30,7 +34,8 @@ import { Spinner } from './Spinner';
 
 interface ChatViewProps {
     character: CharacterSummary | null;
-    personaName: string;
+    personas: Persona[];
+    activePersonaId: string | null;
     chats: ChatSummary[];
     chatsLoading: boolean;
     selectedChatId: string | null;
@@ -93,7 +98,8 @@ function EmptyState({
 
 export function ChatView({
     character,
-    personaName,
+    personas,
+    activePersonaId,
     chats,
     chatsLoading,
     selectedChatId,
@@ -114,6 +120,25 @@ export function ChatView({
     // Render-time scripts (`markdownOnly`) transform the display only; the
     // stored message keeps its text, which is what editing edits.
     const regexScripts = useRegexScripts().data?.scripts ?? [];
+
+    // A chat may pin its own persona; otherwise the account default applies.
+    const pinnedPersonaId = chatPersonaId(chatQuery.data?.header.chat_metadata);
+    const persona = resolvePersona({ personas, activePersonaId }, pinnedPersonaId);
+    const setPersona = useSetChatPersona(character?.id ?? null);
+
+    const handlePersonaChange = (personaId: string | null) => {
+        if (!selectedChatId) {
+            return;
+        }
+        setPersona.mutate(
+            { chatId: selectedChatId, personaId },
+            {
+                onError: (error) => {
+                    pushToast(error instanceof Error ? error.message : 'Could not change the persona.', 'error');
+                },
+            },
+        );
+    };
 
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
@@ -146,7 +171,7 @@ export function ChatView({
 
     const optimisticMessage: ChatMessage | null = generation.optimisticUser
         ? {
-              name: personaName,
+              name: persona.name,
               is_user: true,
               mes: generation.optimisticUser,
               extra: {},
@@ -334,7 +359,26 @@ export function ChatView({
                             </span>
                         ) : null}
                     </div>
-
+                    {personas.length > 1 ? (
+                        <select
+                            className="max-w-[140px] rounded-lg border border-line bg-ink px-2 py-1.5 text-xs text-parchment-dim"
+                            value={pinnedPersonaId ?? ''}
+                            onChange={(event) => handlePersonaChange(event.target.value || null)}
+                            disabled={!selectedChatId || setPersona.isPending}
+                            title="Persona for this chat"
+                            aria-label="Persona for this chat"
+                        >
+                            <option value="">
+                                Default (
+                                {personas.find((item) => item.id === activePersonaId)?.name ?? personas[0]?.name})
+                            </option>
+                            {personas.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                    {item.name}
+                                </option>
+                            ))}
+                        </select>
+                    ) : null}
                     <button
                         type="button"
                         className="icon-btn"
@@ -344,7 +388,7 @@ export function ChatView({
                         aria-label="New chat"
                     >
                         {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
-                    </button>
+                    </button>{' '}
                     <div className="hidden items-center gap-1 sm:flex">
                         <button
                             type="button"
