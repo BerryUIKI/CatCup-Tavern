@@ -2,10 +2,11 @@ import { readdir, readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { CharacterDetail, CharacterPatch, CharacterSummary } from '@catcup/shared';
+import { isRecord } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
 
 import { parseCardBuffer } from '../cards/parse.js';
-import { buildCardPayload, writePngCard } from '../cards/write.js';
+import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/write.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 
@@ -187,25 +188,51 @@ export async function importCharacter(originalName: string, buffer: Buffer): Pro
  * The file name does not change: it is the character id that chats, avatars and
  * world info references already use. Only the card's own `name` field moves.
  */
+/** Write a built payload back into the card file, in the format it arrived in. */
+async function writeCardFile(
+    found: { filePath: string; detail: CharacterDetail },
+    payload: Record<string, unknown>,
+): Promise<CharacterDetail | null> {
+    if (found.detail.format === 'png') {
+        const buffer = await readFile(found.filePath);
+        const next = writePngCard(new Uint8Array(buffer), payload);
+        await writeFileAtomic(found.filePath, Buffer.from(next), { mode: 0o644 });
+    } else {
+        await writeFileAtomic(found.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+    }
+
+    cache.delete(found.detail.fileName);
+    return loadCharacterFile(found.filePath, found.detail.fileName);
+}
+
 export async function updateCharacter(id: string, patch: CharacterPatch): Promise<CharacterDetail | null> {
     const found = await getCharacterFile(id);
     if (!found) {
         return null;
     }
 
-    return withFileLock(found.filePath, async () => {
-        const payload = buildCardPayload(found.detail.rawCard, patch);
+    return withFileLock(found.filePath, () => writeCardFile(found, buildCardPayload(found.detail.rawCard, patch)));
+}
 
-        if (found.detail.format === 'png') {
-            const buffer = await readFile(found.filePath);
-            const next = writePngCard(new Uint8Array(buffer), payload);
-            await writeFileAtomic(found.filePath, Buffer.from(next), { mode: 0o644 });
-        } else {
-            await writeFileAtomic(found.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-        }
+/**
+ * Point a card at a world info book through `extensions.world`.
+ *
+ * This is the field SillyTavern uses to bind a card to a lorebook, so the link
+ * travels with the exported card and the scanner reads it without the book
+ * having to be enabled globally.
+ */
+export async function setCharacterWorld(id: string, worldName: string): Promise<CharacterDetail | null> {
+    const found = await getCharacterFile(id);
+    if (!found) {
+        return null;
+    }
 
-        cache.delete(found.detail.fileName);
-        return loadCharacterFile(found.filePath, found.detail.fileName);
+    return withFileLock(found.filePath, () => {
+        const payload = mutateCardPayload(found.detail.rawCard, (data) => {
+            const extensions = isRecord(data.extensions) ? data.extensions : {};
+            return { ...data, extensions: { ...extensions, world: worldName } };
+        });
+        return writeCardFile(found, payload);
     });
 }
 

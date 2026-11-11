@@ -1,5 +1,6 @@
 import {
     applyRegexScripts,
+    type CharacterDetail,
     type CharacterSummary,
     type ChatMessage,
     type ChatSummary,
@@ -8,6 +9,7 @@ import {
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
+    substituteMacros,
 } from '@catcup/shared';
 import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -34,6 +36,8 @@ import { Spinner } from './Spinner';
 
 interface ChatViewProps {
     character: CharacterSummary | null;
+    /** Full card, for macros that refer to fields other than the name. */
+    characterDetail: CharacterDetail | null;
     personas: Persona[];
     activePersonaId: string | null;
     chats: ChatSummary[];
@@ -99,6 +103,7 @@ function EmptyState({
 
 export function ChatView({
     character,
+    characterDetail,
     personas,
     activePersonaId,
     chats,
@@ -126,6 +131,27 @@ export function ChatView({
     // A chat may pin its own persona; otherwise the account default applies.
     const pinnedPersonaId = chatPersonaId(chatQuery.data?.header.chat_metadata);
     const persona = resolvePersona({ personas, activePersonaId }, pinnedPersonaId);
+
+    // Stored messages keep their raw macros, as SillyTavern does; the same
+    // expansion the server applies to the prompt is applied here for display.
+    const card = characterDetail?.card;
+    const macroContext = {
+        char: card?.name || character?.name || '',
+        user: persona.name,
+        description: card?.description ?? '',
+        personality: card?.personality ?? '',
+        scenario: card?.scenario ?? '',
+    };
+    const display = (text: string, isUser: boolean, depth: number, isReasoning = false) =>
+        substituteMacros(
+            applyRegexScripts(
+                regexScripts,
+                text,
+                isReasoning ? REGEX_PLACEMENT.REASONING : regexPlacementForMessage(isUser),
+                { isMarkdown: true, depth },
+            ),
+            macroContext,
+        );
     const setPersona = useSetChatPersona(character?.id ?? null);
 
     const handlePersonaChange = (personaId: string | null) => {
@@ -520,18 +546,12 @@ export function ChatView({
                                         characterName={character.name}
                                         avatarUrl={character.avatarUrl}
                                         isLastAssistant={index === lastAssistantIndex}
-                                        displayText={applyRegexScripts(
-                                            regexScripts,
-                                            message.mes,
-                                            regexPlacementForMessage(Boolean(message.is_user)),
-                                            { isMarkdown: true, depth },
-                                        )}
-                                        displayReasoning={applyRegexScripts(
-                                            regexScripts,
-                                            typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '',
-                                            REGEX_PLACEMENT.REASONING,
-                                            { isMarkdown: true, depth },
-                                        )}
+                                        displayText={display(message.mes, Boolean(message.is_user), depth)}
+                                        displayReasoning={
+                                            typeof message.extra?.reasoning === 'string'
+                                                ? display(message.extra.reasoning, false, depth, true)
+                                                : ''
+                                        }
                                         disabled={actionsDisabled}
                                         onRegenerate={handleRegenerate}
                                         onDelete={() => handleDelete(index)}
@@ -550,6 +570,7 @@ export function ChatView({
                                     characterName={character.name}
                                     avatarUrl={character.avatarUrl}
                                     isLastAssistant={false}
+                                    displayText={display(optimisticMessage.mes, true, 0)}
                                     disabled
                                     onCopy={() => handleCopy(optimisticMessage.mes)}
                                 />

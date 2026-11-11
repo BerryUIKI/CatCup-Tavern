@@ -10,7 +10,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **`chara` / `ccv3`** — PNG `tEXt` chunk keys holding base64-encoded card JSON. `ccv3` takes precedence.
 
-**Character book** — A lorebook embedded inside a character card. CatCup parses it but does not scan it yet; the scanner is planned for M1.
+**Character book** — A lorebook embedded inside a character card. CatCup can copy it into the world info library and link it to the card with **Import lore**.
 
 **Chat JSONL** — The SillyTavern chat format: one header line followed by one JSON message per line.
 
@@ -36,7 +36,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Preset** — A saved set of sampling parameters and prompt entries/order, usually imported from SillyTavern's OpenAI preset JSON. Planned for M1.
 
-**Macro** — A template token such as `{{char}}` or `{{user}}` replaced at prompt-build time.
+**Macro** — A template token such as `{{char}}` or `{{user}}`, replaced when the prompt is built and when a stored message is displayed.
 
 **Context budget** — The maximum number of tokens sent to the model for a request, split between the prompt and the reply budget.
 

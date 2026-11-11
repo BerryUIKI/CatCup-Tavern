@@ -110,9 +110,11 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
     const macroContext = createMacroContext(input.character, input.persona);
     const substitute = (text: string) => substituteMacros(text, macroContext);
 
+    // The scanner sees the same text the prompt will: greetings keep their raw
+    // macros in storage, so they are expanded here without touching the chat.
     const chat = input.messages
         .filter((message) => !message.is_system)
-        .map((message) => ({ text: message.mes }))
+        .map((message) => ({ text: substitute(message.mes) }))
         .reverse();
 
     const state = ensureTimedWorldInfo(input.metadata);

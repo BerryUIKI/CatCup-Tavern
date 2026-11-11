@@ -1,8 +1,8 @@
 import type { CharacterPatch } from '@catcup/shared';
-import { Download, Plus, Save, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { useCharacter, useDeleteCharacter, useUpdateCharacter } from '../hooks/data';
+import { useCharacter, useDeleteCharacter, useImportCharacterBook, useUpdateCharacter } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -114,10 +114,13 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
     const characterQuery = useCharacter(characterId);
     const updateCharacter = useUpdateCharacter();
     const deleteCharacterMutation = useDeleteCharacter();
+    const importBook = useImportCharacterBook(characterId);
     const pushToast = useAppStore((state) => state.pushToast);
     const [draft, setDraft] = useState<Draft | null>(null);
 
     const character = characterQuery.data ?? null;
+    const linkedWorld =
+        character && typeof character.card.extensions.world === 'string' ? character.card.extensions.world : '';
 
     useEffect(() => {
         if (character) {
@@ -180,6 +183,23 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
         }
     };
 
+    const importLorebook = async () => {
+        if (!character) {
+            return;
+        }
+        try {
+            const result = await importBook.mutateAsync();
+            pushToast(
+                result.created
+                    ? `Imported "${result.world.id}" and linked it to this card.`
+                    : `This card is already linked to "${result.world.id}".`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not import the lorebook.', 'error');
+        }
+    };
+
     return (
         <Modal open={characterId !== null} onClose={onClose} title="Edit character" widthClassName="max-w-3xl">
             {characterQuery.isLoading || !character || !draft ? (
@@ -211,6 +231,22 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                                 PNG
                             </span>
                         )}
+                        {character.hasCharacterBook ? (
+                            <button
+                                type="button"
+                                className="btn-ghost"
+                                onClick={() => void importLorebook()}
+                                disabled={importBook.isPending || Boolean(linkedWorld)}
+                                title={
+                                    linkedWorld
+                                        ? `Linked to the "${linkedWorld}" lorebook`
+                                        : "Import the card's embedded lorebook"
+                                }
+                            >
+                                {importBook.isPending ? <Spinner size={15} /> : <BookOpen size={15} />}
+                                {linkedWorld ? 'Lore linked' : 'Import lore'}
+                            </button>
+                        ) : null}
                         <button
                             type="button"
                             className="btn-ghost hover:text-wine"

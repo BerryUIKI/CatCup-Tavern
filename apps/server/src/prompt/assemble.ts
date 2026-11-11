@@ -326,22 +326,26 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
 
     // Phase 6: chat history, with the injections spliced in by depth.
     // `promptOnly` scripts run here, on the copy that becomes the prompt; the
-    // stored message keeps its original text.
+    // stored message keeps its original text. Macros expand after the scripts,
+    // as SillyTavern does in `PromptManager.preparePrompt`, so a greeting that
+    // still carries `{{char}}` reaches the model with the name filled in.
     const rawHistory = toHistoryEntries(input.messages);
     const depthOffset = generationType === 'continue' ? 2 : 1;
     const history = rawHistory.map(
         (entry, index): CompletionMessage => ({
             identifier: `chatHistory-${index}`,
             role: entry.role,
-            content: applyRegexScripts(
-                input.regexScripts ?? [],
-                entry.content,
-                regexPlacementForMessage(entry.role === 'user'),
-                {
-                    isPrompt: true,
-                    depth: rawHistory.length - index - depthOffset,
-                    substitute: input.substitute,
-                },
+            content: substitute(
+                applyRegexScripts(
+                    input.regexScripts ?? [],
+                    entry.content,
+                    regexPlacementForMessage(entry.role === 'user'),
+                    {
+                        isPrompt: true,
+                        depth: rawHistory.length - index - depthOffset,
+                        substitute: input.substitute,
+                    },
+                ),
             ),
         }),
     );

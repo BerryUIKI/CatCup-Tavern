@@ -234,11 +234,14 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
 
                 return {
                     message: await updateMessage(character, params.chatId, index, {
-                        mes: applyRegexScripts(
-                            regexScripts,
-                            body.message,
-                            regexPlacementForMessage(Boolean(existing.is_user)),
-                            { isEdit: true, substitute },
+                        mes: substituteMacros(
+                            applyRegexScripts(
+                                regexScripts,
+                                body.message,
+                                regexPlacementForMessage(Boolean(existing.is_user)),
+                                { isEdit: true, substitute },
+                            ),
+                            macroContext,
                         ),
                     }),
                 };
