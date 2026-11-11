@@ -32,7 +32,9 @@ Providers are stored in `data/settings.json` as public configuration:
 
 `headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID. The API returns `hasKey` only; it never returns the key.
 
-The Settings UI edits existing providers and the active provider. Creating and deleting providers is available through the API (`POST /api/providers`, `DELETE /api/providers/:id`); a richer provider manager is planned for M1.
+The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. A new provider starts as a `custom` endpoint — the kind that takes any base URL — and the model field accepts any id: **Load** only fills the suggestion list from the provider's own model endpoint.
+
+Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
 ## OpenAI-compatible (`openai`, `openrouter`, `custom`)
 
@@ -175,6 +177,7 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
 - No request timeout configuration; generation is stopped by the user or by client disconnect.
 - Model lists are advisory; the model field is free text.
+- There is one active provider for every chat; per-chat or per-character model overrides and provider fallback are not available.
 - There is no automatic fallback between providers.
 
 ## Security
