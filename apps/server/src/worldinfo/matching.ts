@@ -2,6 +2,10 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
+import { parseRegexFromString } from '@catcup/shared';
+
+export { parseRegexFromString };
+
 /** Decorators SillyTavern recognises at the top of an entry's content. */
 const KNOWN_DECORATORS = ['@@activate', '@@dont_activate'] as const;
 
@@ -50,36 +54,6 @@ export function parseDecorators(content: string): { decorators: string[]; conten
     }
 
     return { decorators, content: remaining };
-}
-
-/**
- * Build a `RegExp` from a slash-delimited string such as `/dragon|wyrm/i`.
- *
- * Returns `null` for anything that is not a well-formed delimited regex, so
- * plain keyword entries fall through to substring matching.
- */
-export function parseRegexFromString(input: string): RegExp | null {
-    const match = input.match(/^\/([\s\S]+?)\/([gimsuy]*)$/);
-    if (!match) {
-        return null;
-    }
-
-    const [, pattern, flags] = match;
-    if (pattern === undefined || flags === undefined) {
-        return null;
-    }
-
-    // An unescaped delimiter means this is not a regex after all; every other
-    // engine would reject it, so treat it as a plain key.
-    if (/(^|[^\\])\//.test(pattern)) {
-        return null;
-    }
-
-    try {
-        return new RegExp(pattern.replace('\\/', '/'), flags);
-    } catch {
-        return null;
-    }
 }
 
 /** Escape a string so it can be embedded in a regular expression. */
