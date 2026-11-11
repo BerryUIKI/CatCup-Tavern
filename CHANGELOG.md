@@ -47,6 +47,13 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - A file written before the persona list existed is migrated on read: its single `persona` object becomes the first entry, under the id `default`.
 - SillyTavern import: point at an existing user folder and copy its characters, chats, world info and OpenAI presets in one action. A scan shows what was found before anything is written; chats are matched to characters by folder name and unmatched ones are reported instead of guessed at. `POST /api/import/sillytavern`.
 - An "Import from SillyTavern" entry in the character library that drives that endpoint.
+- Windows desktop app: a per-user NSIS installer that bundles its own Node runtime, a single-file server build and the SPA. It starts the server on an OS-chosen port, opens it in a window, and stops the server when the window closes.
+- The desktop app is single-instance — a second launch focuses the open window — and puts the server in a job object, so killing the shell also kills the server.
+- `CATCUP_BUNDLE_DEPS=1` builds the server with every dependency inlined, which is what the desktop bundle ships.
+
+### Changed
+
+- Pretty log output is now used only when stdout is a terminal. A packaged build pipes stdout into the desktop shell, where `pino-pretty` is not installed.
 
 ### Changed
 
