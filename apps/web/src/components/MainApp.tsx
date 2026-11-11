@@ -1,4 +1,4 @@
-import type { CharacterSummary, ChatSummary } from '@catcup/shared';
+import { type CharacterSummary, type ChatSummary, resolvePersona, substituteMacros } from '@catcup/shared';
 import { useEffect, useState } from 'react';
 
 import {
@@ -77,6 +77,21 @@ export function MainApp() {
     const chats = chatsQuery.data ?? EMPTY_CHATS;
     const settings = settingsQuery.data;
     const selectedCharacter = characters.find((character) => character.id === selectedCharacterId) ?? null;
+
+    // The greeting picker has no chat yet, so it uses the account persona.
+    const persona = resolvePersona({
+        personas: settings?.personas ?? [],
+        activePersonaId: settings?.activePersonaId ?? null,
+    });
+    const macroContext = characterQuery.data
+        ? {
+              char: characterQuery.data.card.name || characterQuery.data.name,
+              user: persona.name,
+              description: characterQuery.data.card.description,
+              personality: characterQuery.data.card.personality,
+              scenario: characterQuery.data.card.scenario,
+          }
+        : null;
 
     const activeProvider =
         settings?.providers.find((provider) => provider.id === settings.activeProviderId) ??
@@ -218,6 +233,7 @@ export function MainApp() {
             <main className="flex min-w-0 flex-1 flex-col">
                 <ChatView
                     character={selectedCharacter}
+                    characterDetail={characterQuery.data ?? null}
                     personas={settings?.personas ?? []}
                     activePersonaId={settings?.activePersonaId ?? null}
                     chats={chats}
@@ -260,7 +276,7 @@ export function MainApp() {
                                 {greeting.index === 0 ? 'First message' : `Alternate greeting ${greeting.index}`}
                             </div>
                             <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-parchment-dim">
-                                {greeting.text}
+                                {macroContext ? substituteMacros(greeting.text, macroContext) : greeting.text}
                             </p>
                         </button>
                     ))}

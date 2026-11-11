@@ -13,6 +13,7 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 **Chatting**
 
 - Streaming replies with reasoning shown separately when the model sends it.
+- Macros such as `{{char}}` and `{{user}}` expand in greetings, chat history and what you type, both in the prompt and in the chat view; sent and edited messages are stored expanded, as SillyTavern does.
 - Swipes on a regenerated reply, continue, inline editing, deleting messages, copying.
 - Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings.
 - Stop a reply mid-stream; the partial text is kept.
@@ -59,7 +60,6 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 **Partial, and worth knowing before you rely on it**
 
 - **A card's embedded lorebook is not scanned.** Only world info books enabled globally, or named in the card's `extensions.world` and present in the library, reach the prompt. Lore that exists only inside the PNG or JSON does nothing.
-- **Macros in a stored message are not expanded.** `{{char}}` and `{{user}}` work in card fields, lorebooks and prompt entries, but a greeting or a message you type shows the braces literally and sends them that way.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.
 - **Regex scripts are global.** SillyTavern's per-character and per-preset scopes and allowlists are not implemented, and scripts stored inside a card or a preset are preserved but never run.
 - **The world info editor cannot edit character filters**, and a world info regex script needs "prompt only" ticked or it never runs — the same rule SillyTavern has.

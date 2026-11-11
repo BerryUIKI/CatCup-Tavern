@@ -186,8 +186,13 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
                 throw badRequest('Message is empty');
             }
             // USER_INPUT scripts run before the text is stored, so the prompt,
-            // the stored chat and any later export all agree.
-            const storedText = applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute });
+            // the stored chat and any later export all agree. Macros expand
+            // next, exactly as SillyTavern's `sendMessageAsUser` does, so the
+            // chat file holds the name the user saw.
+            const storedText = substituteMacros(
+                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute }),
+                macroContext,
+            );
             const userMessage: ChatMessage = {
                 name: persona.name,
                 is_user: true,
