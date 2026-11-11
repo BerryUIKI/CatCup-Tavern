@@ -60,6 +60,21 @@ export type GenerationEvent =
       }
     | { type: 'error'; message: string };
 
+/** A summary stored on a chat message's `extra.memory`. */
+export interface SummaryRecord {
+    value: string;
+    /** Index of the message that carries it. */
+    index: number;
+}
+
+export interface SummarizeResponse {
+    summary: SummaryRecord | null;
+    /** Why nothing was summarized, when `summary` is null. */
+    reason?: string;
+    /** How many chat messages this request covered. */
+    messages?: number;
+}
+
 export interface UsageInfo {
     promptTokens?: number;
     completionTokens?: number;
@@ -203,6 +218,17 @@ export interface ContextPreviewWorldInfo {
 export interface ContextPreview {
     messages: ContextPreviewMessage[];
     worldInfo: ContextPreviewWorldInfo;
+    /** The summary in effect for this chat, or null when none is stored. */
+    memory: {
+        value: string;
+        index: number;
+        tokens: number;
+        /** Formatted with the injection template; empty when position is -1. */
+        injection: string;
+        position: number;
+        role: number;
+        depth: number;
+    } | null;
     budget: {
         exceeded: boolean;
         tokenCounts: Record<string, number>;

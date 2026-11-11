@@ -1,5 +1,6 @@
 export * from './keywords.js';
 export * from './macros.js';
+export * from './memory.js';
 export * from './persona.js';
 export * from './regex.js';
 export * from './schemas/api.js';

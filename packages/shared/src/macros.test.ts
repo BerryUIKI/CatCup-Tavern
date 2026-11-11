@@ -56,4 +56,16 @@ describe('substituteMacros', () => {
         const groupContext = { ...context, group: ['Seraphina', 'Mira'] };
         expect(substituteMacros('{{notChar}}', groupContext)).toBe('Mira, Alex');
     });
+
+    it('expands the summary and words macros', () => {
+        const memoryContext = { ...context, summary: 'They met in the glade.', words: 120 };
+        expect(substituteMacros('{{summary}} ({{words}} words)', memoryContext)).toBe(
+            'They met in the glade. (120 words)',
+        );
+    });
+
+    it('empties summary and words when they are not set', () => {
+        expect(substituteMacros('[{{summary}}]', context)).toBe('[]');
+        expect(substituteMacros('[{{words}}]', context)).toBe('[]');
+    });
 });
