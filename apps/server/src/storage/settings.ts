@@ -6,6 +6,7 @@ import {
     DEFAULT_AUTHOR_NOTE,
     DEFAULT_BASE_URLS,
     DEFAULT_GENERATION_SETTINGS,
+    DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
     DEFAULT_UI_SETTINGS,
     DEFAULT_WORLD_INFO_CONFIG,
@@ -74,6 +75,7 @@ function createDefaultSettings(): AppSettings {
         ui: { ...DEFAULT_UI_SETTINGS },
         worldInfo: { ...DEFAULT_WORLD_INFO_CONFIG },
         authorNote: { ...DEFAULT_AUTHOR_NOTE },
+        memory: { ...DEFAULT_MEMORY_SETTINGS },
     };
 }
 
@@ -270,6 +272,9 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         }
         if (patch.authorNote) {
             settings.authorNote = { ...settings.authorNote, ...patch.authorNote };
+        }
+        if (patch.memory) {
+            settings.memory = { ...settings.memory, ...patch.memory };
         }
         return settings;
     });

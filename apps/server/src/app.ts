@@ -19,6 +19,7 @@ import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
 import { registerGroupRoutes } from './routes/groups.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerImportRoutes } from './routes/import.js';
+import { registerMemoryRoutes } from './routes/memory.js';
 import { registerPresetRoutes } from './routes/presets.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerRegexRoutes } from './routes/regex.js';
@@ -141,6 +142,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);
     await registerGroupGenerateRoutes(app);
+    await registerMemoryRoutes(app);
 
     const webDist = path.resolve(import.meta.dirname, '../../web/dist');
     if (existsSync(webDist)) {

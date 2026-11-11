@@ -497,6 +497,7 @@ export async function registerGroupRoutes(app: FastifyInstance): Promise<void> {
                     message: await updateGroupMessage(found.group, params.chatId, index, {
                         mes: swipe,
                         extra: { swipe_id: body.swipeId },
+                        ...(existing.extra?.memory !== undefined ? { extraDelete: ['memory'] } : {}),
                     }),
                 };
             }
@@ -528,6 +529,7 @@ export async function registerGroupRoutes(app: FastifyInstance): Promise<void> {
                             ),
                             macroContext,
                         ),
+                        ...(existing.extra?.memory !== undefined ? { extraDelete: ['memory'] } : {}),
                     }),
                 };
             }

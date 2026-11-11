@@ -503,10 +503,20 @@ export async function updateGroupMessage(
             throw new Error('Message not found');
         }
 
+        const { extraDelete, ...fields } = patch;
+        const hasExtra = existing.extra !== undefined || patch.extra !== undefined || (extraDelete?.length ?? 0) > 0;
+        const extra = { ...(existing.extra ?? {}) };
+        if (patch.extra) {
+            Object.assign(extra, patch.extra);
+        }
+        for (const key of extraDelete ?? []) {
+            delete extra[key];
+        }
+
         const updated: ChatMessage = {
             ...existing,
-            ...patch,
-            extra: patch.extra === undefined ? existing.extra : { ...(existing.extra ?? {}), ...patch.extra },
+            ...fields,
+            ...(hasExtra ? { extra } : {}),
         };
         chat.messages[index] = updated;
         await writeChatFile(filePath, chat);

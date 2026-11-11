@@ -343,6 +343,8 @@ export interface MessagePatch {
     send_date?: string;
     mes?: string;
     extra?: Record<string, unknown>;
+    /** Keys to remove from `extra`, e.g. `memory` when a summary is cleared. */
+    extraDelete?: string[];
     /** Group chats record the speaker's avatar file name at the message level. */
     original_avatar?: string;
     force_avatar?: string;
@@ -365,10 +367,20 @@ export async function updateMessage(
             throw new Error('Message not found');
         }
 
+        const { extraDelete, ...fields } = patch;
+        const hasExtra = existing.extra !== undefined || patch.extra !== undefined || (extraDelete?.length ?? 0) > 0;
+        const extra = { ...(existing.extra ?? {}) };
+        if (patch.extra) {
+            Object.assign(extra, patch.extra);
+        }
+        for (const key of extraDelete ?? []) {
+            delete extra[key];
+        }
+
         const updated: ChatMessage = {
             ...existing,
-            ...patch,
-            extra: patch.extra === undefined ? existing.extra : { ...(existing.extra ?? {}), ...patch.extra },
+            ...fields,
+            ...(hasExtra ? { extra } : {}),
         };
         chat.messages[index] = updated;
         await writeChatFile(filePath, chat);
