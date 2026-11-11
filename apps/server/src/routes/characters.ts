@@ -12,8 +12,11 @@ import {
     getCharacterFile,
     importCharacter,
     listCharacters,
+    setCharacterWorld,
     updateCharacter,
 } from '../storage/characters.js';
+import { createWorld, readWorld } from '../storage/worlds.js';
+import { convertCharacterBook } from '../worldinfo/characterBook.js';
 import { requireCharacter } from './helpers.js';
 
 const idParamsSchema = z.object({
@@ -64,6 +67,36 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             throw notFound('Character not found');
         }
         return { character };
+    });
+
+    /**
+     * Import the card's embedded lorebook and link it through `extensions.world`.
+     *
+     * SillyTavern offers the same action when a card with a book is selected and
+     * leaves the lore inert until it is taken. Repeating the call is harmless:
+     * a card already linked to an existing book gets that book back.
+     */
+    app.post('/api/characters/:id/lorebook', async (request) => {
+        const { id } = idParamsSchema.parse(request.params);
+        const character = await requireCharacter(id);
+        const book = character.card.character_book;
+        if (!book || book.entries.length === 0) {
+            throw badRequest('This card has no embedded lorebook');
+        }
+
+        const linkedName =
+            typeof character.card.extensions.world === 'string' ? character.card.extensions.world.trim() : '';
+        if (linkedName) {
+            const linked = await readWorld(linkedName);
+            if (linked) {
+                return { world: linked, character, created: false };
+            }
+        }
+
+        const name = book.name?.trim() || `${character.name}'s Lorebook`;
+        const world = await createWorld({ fileName: name, book: convertCharacterBook(book) });
+        const updated = await setCharacterWorld(character.id, world.id);
+        return { world, character: updated ?? character, created: true };
     });
 
     app.get('/api/characters/:id/export', async (request, reply) => {

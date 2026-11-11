@@ -17,17 +17,20 @@ function applyPatch(data: Record<string, unknown>, patch: CharacterPatch): Recor
 }
 
 /**
- * Merge an edit into a stored card.
+ * Merge a change into a stored card.
  *
- * A wrapped V2/V3 card keeps its wrapper and every field the editor does not
- * show. A legacy flat card is promoted into a V2 wrapper on the way out, since
+ * A wrapped V2/V3 card keeps its wrapper and every field the change does not
+ * touch. A legacy flat card is promoted into a V2 wrapper on the way out, since
  * a card without a `spec` cannot be written back losslessly either.
  */
-export function buildCardPayload(raw: unknown, patch: CharacterPatch): Record<string, unknown> {
+export function mutateCardPayload(
+    raw: unknown,
+    mutate: (data: Record<string, unknown>) => Record<string, unknown>,
+): Record<string, unknown> {
     const source = isRecord(raw) ? raw : {};
 
     if (isRecord(source.data) && (source.spec === 'chara_card_v2' || source.spec === 'chara_card_v3')) {
-        return { ...source, data: applyPatch(source.data, patch) };
+        return { ...source, data: mutate(source.data) };
     }
 
     const flat = { ...source };
@@ -38,8 +41,13 @@ export function buildCardPayload(raw: unknown, patch: CharacterPatch): Record<st
     return {
         spec: 'chara_card_v2',
         spec_version: '2.0',
-        data: applyPatch(flat, patch),
+        data: mutate(flat),
     };
+}
+
+/** Apply an editor patch to a stored card. */
+export function buildCardPayload(raw: unknown, patch: CharacterPatch): Record<string, unknown> {
+    return mutateCardPayload(raw, (data) => applyPatch(data, patch));
 }
 
 /** Base64 text for a `tEXt` chunk, as the card format requires. */
