@@ -1,6 +1,6 @@
 # Desktop shell
 
-> Status: packaging implemented, installer built and verified on Windows, 2026-11-11. See [MILESTONES.md](MILESTONES.md) for the release step.
+> Status: packaging implemented; the installer is built and published by GitHub Actions on a `v*` tag, 2026-11-11. See [MILESTONES.md](MILESTONES.md) for the release step.
 
 The desktop build is a Tauri 2 window around the same Fastify server and React SPA the web build uses. It is not a second implementation: the shell starts the bundled server as a child process and points a webview at it.
 
@@ -80,10 +80,13 @@ apps/desktop/
 
 ```bash
 CATCUP_BUNDLE_DEPS=1 pnpm --filter @catcup/server build   # one-file server
+pnpm --filter @catcup/web build                            # SPA served beside it
 pnpm --filter @catcup/desktop build                        # prepares, then tauri build
 ```
 
 The installer lands in `apps/desktop/src-tauri/target/release/bundle/nsis/`.
+
+GitHub Actions runs the same three steps on `windows-latest` for every `v*` tag and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
 
 Two environment variables help when iterating: `CATCUP_SERVER_ENTRY` points the shell at a different server entry file, and `CATCUP_NODE` selects a different Node binary. Both are ignored when the bundled copies exist.
 

@@ -2,6 +2,12 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch.
 
+## Unreleased
+
+### Added
+
+- GitHub Actions builds the Windows installer when a `v*` tag is pushed and attaches it to the matching GitHub release, using that version's `CHANGELOG.md` section as the release body. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
+
 ## 0.2.1 — 2026-11-11
 
 ### Added

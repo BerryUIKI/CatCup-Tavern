@@ -149,7 +149,9 @@ Do not commit any file under `data/`.
 
 `.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
 
-The workflow does not build the desktop app: that needs Rust and the Tauri toolchain, and it is still a manual step before a release (see [DESKTOP.md](DESKTOP.md)).
+The release workflow, `.github/workflows/release.yml`, is separate. Pushing a `v*` tag builds the Windows installer on `windows-latest` and creates or updates the matching GitHub release, using that version's `CHANGELOG.md` section as the body. A tag without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes.
+
+The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 Run the same gates locally before pushing — CI is a backstop, not a substitute:
 
