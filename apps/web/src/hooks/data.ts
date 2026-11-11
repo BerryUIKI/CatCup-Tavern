@@ -1,5 +1,6 @@
 import type {
     AuthStatus,
+    CharacterPatch,
     ChatDetail,
     ImportCharactersResponse,
     ProviderInput,
@@ -100,6 +101,20 @@ export function useImportCharacters() {
     return useMutation<ImportCharactersResponse, Error, File[]>({
         mutationFn: (files) => api.characters.import(files),
         onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+export function useUpdateCharacter() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; patch: CharacterPatch }) =>
+            api.characters.update(variables.id, variables.patch),
+        onSuccess: (character) => {
+            // `useCharacter` caches the detail itself, not a `{ character }`
+            // wrapper: the API client already unwraps it.
+            queryClient.setQueryData(queryKeys.character(character.id), character);
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
         },
     });

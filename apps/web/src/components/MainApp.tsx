@@ -12,6 +12,7 @@ import {
 } from '../hooks/data';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
+import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
@@ -40,6 +41,7 @@ export function MainApp() {
     const createChatMutation = useCreateChat(selectedCharacterId);
     const logoutMutation = useLogout();
     const [newChatOpen, setNewChatOpen] = useState(false);
+    const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
     const chats = chatsQuery.data ?? EMPTY_CHATS;
@@ -165,6 +167,7 @@ export function MainApp() {
                 loading={charactersQuery.isLoading}
                 selectedCharacterId={selectedCharacterId}
                 onSelect={selectCharacter}
+                onEditCharacter={(id) => setEditingCharacterId(id)}
                 onImport={(files) => void handleImport(files)}
                 importing={importMutation.isPending}
                 activeProviderName={activeProvider?.name ?? null}
@@ -193,6 +196,8 @@ export function MainApp() {
             </main>
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+            <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
 
             <Modal
                 open={newChatOpen}
