@@ -33,6 +33,11 @@ const PUBLIC_API_PATHS = new Set([
 ]);
 
 export async function buildApp(): Promise<FastifyInstance> {
+    // Pretty logs are for a developer looking at a terminal. A packaged build
+    // has its stdout piped into the desktop shell, where pino-pretty is not
+    // installed and JSON lines are easier to forward.
+    const prettyLogs = !config.isProduction && process.stdout.isTTY;
+
     const app = Fastify({
         logger: {
             level: config.logLevel,
@@ -40,9 +45,8 @@ export async function buildApp(): Promise<FastifyInstance> {
                 paths: ['req.headers.authorization', 'req.headers.cookie', 'req.headers["x-api-key"]'],
                 remove: true,
             },
-            ...(config.isProduction
-                ? {}
-                : {
+            ...(prettyLogs
+                ? {
                       transport: {
                           target: 'pino-pretty',
                           options: {
@@ -50,7 +54,8 @@ export async function buildApp(): Promise<FastifyInstance> {
                               ignore: 'pid,hostname',
                           },
                       },
-                  }),
+                  }
+                : {}),
         },
         bodyLimit: 25 * 1024 * 1024,
     });

@@ -2,12 +2,12 @@
 
 ## Prerequisites
 
-| Tool    | Version                                 | Notes                                        |
-| ------- | --------------------------------------- | -------------------------------------------- |
-| Node.js | **24.x** (>=22.13 supported by engines) | The repo is developed on Node 24             |
-| pnpm    | **11.x**                                | `packageManager` pins `pnpm@11.18.0`         |
-| Git     | 2.40+                                   | GitFlow workflow                             |
-| Rust    | current stable                          | Only needed for the planned Tauri shell (M4) |
+| Tool    | Version                                 | Notes                                |
+| ------- | --------------------------------------- | ------------------------------------ |
+| Node.js | **24.x** (>=22.13 supported by engines) | The repo is developed on Node 24     |
+| pnpm    | **11.x**                                | `packageManager` pins `pnpm@11.18.0` |
+| Git     | 2.40+                                   | GitFlow workflow                     |
+| Rust    | current stable                          | Needed only to build the desktop app |
 
 ## Install and run
 
@@ -32,17 +32,18 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 
 ## Scripts
 
-| Command                             | Description                                        |
-| ----------------------------------- | -------------------------------------------------- |
-| `pnpm dev`                          | Run server (`tsx watch`) and web (`vite`) together |
-| `pnpm build`                        | Build server with tsup and web with Vite           |
-| `pnpm start`                        | Run the built server                               |
-| `pnpm typecheck`                    | TypeScript across all workspace packages           |
-| `pnpm test`                         | Vitest across packages                             |
-| `pnpm lint` / `pnpm lint:fix`       | Biome check / safe fixes                           |
-| `pnpm format`                       | Biome formatter                                    |
-| `pnpm --filter @catcup/server test` | Server tests only                                  |
-| `pnpm --filter @catcup/web build`   | Web build only                                     |
+| Command                               | Description                                             |
+| ------------------------------------- | ------------------------------------------------------- |
+| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together      |
+| `pnpm build`                          | Build server with tsup and web with Vite                |
+| `pnpm start`                          | Run the built server                                    |
+| `pnpm typecheck`                      | TypeScript across all workspace packages                |
+| `pnpm test`                           | Vitest across packages                                  |
+| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                                |
+| `pnpm format`                         | Biome formatter                                         |
+| `pnpm --filter @catcup/server test`   | Server tests only                                       |
+| `pnpm --filter @catcup/web build`     | Web build only                                          |
+| `pnpm --filter @catcup/desktop build` | Windows installer: prepares the bundle, then runs Tauri |
 
 ## Environment variables
 
