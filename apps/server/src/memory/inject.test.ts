@@ -1,7 +1,7 @@
 import { memorySettingsSchema } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
 
-import { buildMemoryInjection } from './inject.js';
+import { buildMemoryInjection, formatMemoryText } from './inject.js';
 
 const context = {
     char: 'Seraphina',
@@ -48,5 +48,11 @@ describe('buildMemoryInjection', () => {
     it('returns null with no summary or position -1', () => {
         expect(buildMemoryInjection(memory(), null, context)).toBeNull();
         expect(buildMemoryInjection(memory({ position: -1 }), { value: 'They met.', index: 0 }, context)).toBeNull();
+    });
+
+    it('still formats the text when the position is none', () => {
+        expect(formatMemoryText(memory({ position: -1 }), { value: 'They met.', index: 0 }, context)).toBe(
+            '[Summary: They met.]',
+        );
     });
 });

@@ -4,7 +4,7 @@ import {
     memorySettingsSchema,
 } from '@catcup/shared';
 import { RotateCcw, Save } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useSettings, useUpdateSettings } from '../hooks/data';
 import { useAppStore } from '../store/app';
@@ -36,8 +36,19 @@ export function MemorySettings() {
     const [form, setForm] = useState<MemorySettingsValue>(() => ({
         ...(settings?.memory ?? memorySettingsSchema.parse({})),
     }));
+    const editedRef = useRef(false);
+
+    // Adopt settings saved elsewhere while this form is untouched, so a stale
+    // tab cannot revert another tab's changes on its next save.
+    useEffect(() => {
+        if (!settings?.memory || editedRef.current) {
+            return;
+        }
+        setForm({ ...settings.memory });
+    }, [settings?.memory]);
 
     const set = <Key extends keyof MemorySettingsValue>(key: Key, value: MemorySettingsValue[Key]) => {
+        editedRef.current = true;
         setForm((current) => ({ ...current, [key]: value }));
     };
 
@@ -45,7 +56,10 @@ export function MemorySettings() {
         updateSettings.mutate(
             { memory: form },
             {
-                onSuccess: () => pushToast('Memory settings saved.', 'success'),
+                onSuccess: () => {
+                    editedRef.current = false;
+                    pushToast('Memory settings saved.', 'success');
+                },
                 onError: (error) =>
                     pushToast(error instanceof Error ? error.message : 'Could not save memory settings.', 'error'),
             },
@@ -69,6 +83,11 @@ export function MemorySettings() {
                 />
                 Update the summary automatically after replies
             </label>
+            {form.enabled && form.promptInterval <= 0 && form.promptForceWords <= 0 ? (
+                <p className="text-[11px] text-amber">
+                    Both update triggers are 0, so automatic updates will not run until one is raised.
+                </p>
+            ) : null}
 
             <div>
                 <label className="label-text" htmlFor="memory-prompt">
@@ -194,8 +213,8 @@ export function MemorySettings() {
                             ))}
                         </select>
                     </div>
-                    {form.position === 1 ? (
-                        <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
+                        {form.position === 1 ? (
                             <div>
                                 <label className="label-text" htmlFor="memory-depth">
                                     Depth
@@ -210,25 +229,25 @@ export function MemorySettings() {
                                     onChange={(event) => set('depth', Number(event.target.value))}
                                 />
                             </div>
-                            <div>
-                                <label className="label-text" htmlFor="memory-role">
-                                    Role
-                                </label>
-                                <select
-                                    id="memory-role"
-                                    className="input-shell"
-                                    value={form.role}
-                                    onChange={(event) => set('role', Number(event.target.value))}
-                                >
-                                    {ROLES.map((role) => (
-                                        <option key={role.value} value={role.value}>
-                                            {role.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                        ) : null}
+                        <div>
+                            <label className="label-text" htmlFor="memory-role">
+                                Role
+                            </label>
+                            <select
+                                id="memory-role"
+                                className="input-shell"
+                                value={form.role}
+                                onChange={(event) => set('role', Number(event.target.value))}
+                            >
+                                {ROLES.map((role) => (
+                                    <option key={role.value} value={role.value}>
+                                        {role.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
-                    ) : null}
+                    </div>
                 </div>
 
                 <label className="mt-4 flex items-center gap-2 text-sm text-parchment-dim">

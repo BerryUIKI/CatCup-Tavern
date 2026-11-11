@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { buildMemoryInjection } from '../memory/inject.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
@@ -79,20 +79,19 @@ async function saveSwipe(context: PersistContext, text: string, extra: Record<st
     swipeInfo.push({ send_date: new Date().toISOString(), extra });
 
     // The reply is being rewritten, so a summary anchored to it no longer
-    // describes the stored text. SillyTavern drops it on regeneration too.
-    const carriedExtra = { ...(existing.extra ?? {}) };
-    delete carriedExtra.memory;
-
+    // describes the stored text. `extraDelete` removes the key from the merged
+    // extra; merely omitting it would keep the stored value.
     return updateMessage(context.character, context.chatId, context.regenerateIndex, {
         mes: text,
         send_date: new Date().toISOString(),
         extra: {
-            ...carriedExtra,
+            ...(existing.extra ?? {}),
             ...extra,
             swipes,
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
+        extraDelete: ['memory'],
     });
 }
 
@@ -134,6 +133,8 @@ async function persistMessage(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
+            // The message grew, so a summary anchored to it is out of date.
+            extraDelete: ['memory'],
         });
     }
 
@@ -237,6 +238,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
         const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
 
         // The scanner needs the whole non-system conversation as its timed
         // effect clock, so it runs before the prompt is trimmed to context.
@@ -253,7 +255,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             regexScripts,
             substitute,
             ...(latestSummary ? { summary: latestSummary.value } : {}),
-            ...(memoryInjection && settings.memory.scan ? { extraScanText: memoryInjection.content } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         await patchChatMetadata(character, body.chatId, {

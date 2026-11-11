@@ -443,7 +443,7 @@ export function ChatView({
                         type="button"
                         className="icon-btn"
                         onClick={() => setMemoryOpen(true)}
-                        disabled={!selectedChatId}
+                        disabled={!selectedChatId || messages.length === 0}
                         title="Memory"
                         aria-label="Memory"
                     >

@@ -22,8 +22,9 @@ const MESSAGE_OVERHEAD = 4;
 /** Allowance for the two messages of a summary request. */
 const REQUEST_OVERHEAD = MESSAGE_OVERHEAD * 2;
 
-const WORD_PATTERN = /\S+/g;
+const WORD_PATTERN = /\b\w+\b/g;
 
+/** Count words the way SillyTavern's `extractAllWords` does. */
 export function countWords(text: string): number {
     return (text.match(WORD_PATTERN) ?? []).length;
 }
@@ -174,6 +175,9 @@ export interface SummaryRequest {
     transcriptMessages: number;
 }
 
+/** Either a ready request or the reason none could be built. */
+export type SummaryRequestResult = { request: SummaryRequest } | { reason: string };
+
 /**
  * Build one summary request: the summarize instruction as a system message and
  * the previous summary plus the new transcript as the user message.
@@ -182,7 +186,7 @@ export interface SummaryRequest {
  * prompt, so the summary request stays independent of the active preset, world
  * info and regex scripts.
  */
-export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequest | null {
+export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestResult {
     const latest = getLatestSummary(input.messages);
     const maxTokens = input.memory.responseLength > 0 ? input.memory.responseLength : input.generation.maxTokens;
     const macroContext = createMacroContext(input.character, input.persona, input.group, latest?.value);
@@ -191,13 +195,13 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequest 
         words: input.memory.promptWords,
     });
     if (!summaryPrompt.trim()) {
-        return null;
+        return { reason: 'The summary prompt is empty.' };
     }
 
     const fixed = input.countTokens(summaryPrompt) + input.countTokens(latest?.value ?? '') + REQUEST_OVERHEAD;
     const budget = input.generation.contextSize - maxTokens - RESERVED_TOKENS - fixed;
     if (budget <= 0) {
-        return null;
+        return { reason: 'The context budget leaves no room for a summary request.' };
     }
 
     const transcript = buildSummaryTranscript({
@@ -208,18 +212,20 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequest 
         maxMessages: input.memory.maxMessages,
     });
     if (!transcript) {
-        return null;
+        return { reason: 'No new messages to summarize.' };
     }
 
     const userContent = [latest?.value ?? '', transcript.text].filter(Boolean).join('\n\n');
 
     return {
-        prompt: [
-            { role: 'system', content: summaryPrompt },
-            { role: 'user', content: userContent },
-        ],
-        maxTokens,
-        lastUsedIndex: transcript.lastUsedIndex,
-        transcriptMessages: transcript.messages,
+        request: {
+            prompt: [
+                { role: 'system', content: summaryPrompt },
+                { role: 'user', content: userContent },
+            ],
+            maxTokens,
+            lastUsedIndex: transcript.lastUsedIndex,
+            transcriptMessages: transcript.messages,
+        },
     };
 }

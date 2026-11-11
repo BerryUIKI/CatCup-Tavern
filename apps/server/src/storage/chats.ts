@@ -420,14 +420,15 @@ export async function setChatGreeting(
             throw new Error('That greeting is empty or missing');
         }
         const { selected, swipes } = picked;
+        // The opening text changes, so a summary anchored to it is stale.
+        const extra = { ...(first.extra ?? {}) };
+        delete extra.memory;
+        extra.swipes = swipes;
+        extra.swipe_id = Math.max(0, swipes.indexOf(selected.text));
         chat.messages[0] = {
             ...first,
             mes: selected.text,
-            extra: {
-                ...(first.extra ?? {}),
-                swipes,
-                swipe_id: Math.max(0, swipes.indexOf(selected.text)),
-            },
+            extra,
         };
         await writeChatFile(filePath, chat);
         return chat;

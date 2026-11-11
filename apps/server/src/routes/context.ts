@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
-import { buildMemoryInjection } from '../memory/inject.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
 import { buildPrompt } from '../prompt/builder.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
@@ -46,6 +46,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
         const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
 
@@ -62,7 +63,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             regexScripts,
             substitute,
             ...(latestSummary ? { summary: latestSummary.value } : {}),
-            ...(memoryInjection && settings.memory.scan ? { extraScanText: memoryInjection.content } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         const assembled = buildPrompt({

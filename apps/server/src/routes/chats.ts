@@ -220,9 +220,8 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                     message: await updateMessage(character, params.chatId, index, {
                         mes: swipe,
                         extra: { swipe_id: body.swipeId },
-                        // A summary anchored to this message describes the
-                        // previous swipe, so switching it clears the summary.
-                        ...(existing.extra?.memory !== undefined ? { extraDelete: ['memory'] } : {}),
+                        // The text changed, so any summary anchored here is stale.
+                        extraDelete: ['memory'],
                     }),
                 };
             }
@@ -246,7 +245,7 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                             ),
                             macroContext,
                         ),
-                        ...(existing.extra?.memory !== undefined ? { extraDelete: ['memory'] } : {}),
+                        extraDelete: ['memory'],
                     }),
                 };
             }

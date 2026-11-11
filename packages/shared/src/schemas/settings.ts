@@ -166,6 +166,29 @@ export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
     responseLength: 0,
 };
 
+/**
+ * A partial memory update for `PATCH /api/settings`.
+ *
+ * `memorySettingsSchema.partial()` still applies each field's default in Zod 4,
+ * so a patch carrying only `enabled` would reset every other memory setting.
+ * This schema keeps unspecified fields absent.
+ */
+export const memorySettingsPatchSchema = z.object({
+    enabled: z.boolean().optional(),
+    prompt: z.string().max(10000).optional(),
+    template: z.string().max(2000).optional(),
+    position: z.number().int().min(-1).max(2).optional(),
+    role: z.number().int().min(0).max(2).optional(),
+    depth: z.number().int().min(0).max(10000).optional(),
+    scan: z.boolean().optional(),
+    promptWords: z.number().int().min(25).max(1000).optional(),
+    promptInterval: z.number().int().min(0).max(250).optional(),
+    promptForceWords: z.number().int().min(0).max(10000).optional(),
+    maxMessages: z.number().int().min(0).max(250).optional(),
+    responseLength: z.number().int().min(0).max(4096).optional(),
+});
+export type MemorySettingsPatch = z.infer<typeof memorySettingsPatchSchema>;
+
 export const appSettingsSchema = z.object({
     version: z.literal(1).default(1),
     activeProviderId: z.string().nullable().default(null),
@@ -197,6 +220,6 @@ export const settingsPatchSchema = z.object({
     ui: uiSettingsSchema.partial().optional(),
     worldInfo: worldInfoConfigSchema.partial().optional(),
     authorNote: authorNoteSchema.partial().optional(),
-    memory: memorySettingsSchema.partial().optional(),
+    memory: memorySettingsPatchSchema.optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;

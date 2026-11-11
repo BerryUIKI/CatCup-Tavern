@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { resolveMembers } from '../group/members.js';
 import { lastAssistantSpeaker } from '../group/selection.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { type MemoryChatSource, type MemoryTarget, summarizeNow } from '../memory/service.js';
+import { type MemoryTarget, summarizeNow, updateMemoryWith } from '../memory/service.js';
 import { chatPersonaId, readChat, updateMessage } from '../storage/chats.js';
 import { getGroup, readGroupChat, updateGroupMessage } from '../storage/groups.js';
 import { getSettings } from '../storage/settings.js';
@@ -91,34 +91,41 @@ async function groupTarget(groupId: string, chatId: string): Promise<MemoryTarge
     };
 }
 
-async function saveMemory(source: MemoryChatSource, text: string): Promise<SummaryRecord> {
+async function saveMemory(target: MemoryTarget, text: string): Promise<SummaryRecord> {
     const value = text.trim();
     if (!value) {
         throw badRequest('The summary is empty');
     }
-    if (source.messages.length === 0) {
-        throw badRequest('This chat has no messages to attach a summary to');
-    }
 
     // Update the existing entry when there is one; otherwise attach the
-    // summary to the message before the newest, as SillyTavern does.
-    const latest = getLatestSummary(source.messages);
-    const index = latest ? latest.index : Math.max(0, source.messages.length - 2);
-    await source.update(index, { extra: { memory: value } });
-    return { value, index };
+    // summary to the message before the newest, as SillyTavern does. The
+    // choice runs under the per-chat memory lock, so it sees a summary that
+    // was still being generated when the request arrived.
+    const stored = await updateMemoryWith(target, (messages) => {
+        if (messages.length === 0) {
+            return null;
+        }
+        const latest = getLatestSummary(messages);
+        const index = latest ? latest.index : Math.max(0, messages.length - 2);
+        return { index, patch: { extra: { memory: value } } };
+    });
+    if (!stored) {
+        throw badRequest('This chat has no messages to attach a summary to');
+    }
+    return { value, index: stored.index };
 }
 
 async function clearMemory(target: MemoryTarget): Promise<SummaryRecord | null> {
-    const source = await target.read();
-    if (!source) {
-        throw notFound('Chat not found');
-    }
-    const latest = getLatestSummary(source.messages);
-    if (!latest) {
+    const removed = await updateMemoryWith(target, (messages) => {
+        const latest = getLatestSummary(messages);
+        if (!latest) {
+            return null;
+        }
+        return { index: latest.index, patch: { extraDelete: ['memory'] } };
+    });
+    if (!removed) {
         return null;
     }
-
-    await source.update(latest.index, { extraDelete: ['memory'] });
 
     // SillyTavern's Restore falls back to an older summary when one exists.
     const fresh = await target.read();
@@ -138,11 +145,7 @@ export async function registerMemoryRoutes(app: FastifyInstance): Promise<void> 
         const body = memoryBodySchema.parse(request.body ?? {});
         const character = await requireCharacter(characterId);
         const target = await characterTarget(character, chatId);
-        const source = await target.read();
-        if (!source) {
-            throw notFound('Chat not found');
-        }
-        return { summary: await saveMemory(source, body.text) };
+        return { summary: await saveMemory(target, body.text) };
     });
 
     app.delete('/api/chats/:characterId/:chatId/memory', async (request) => {
@@ -160,11 +163,7 @@ export async function registerMemoryRoutes(app: FastifyInstance): Promise<void> 
         const { groupId, chatId } = groupChatParamsSchema.parse(request.params);
         const body = memoryBodySchema.parse(request.body ?? {});
         const target = await groupTarget(groupId, chatId);
-        const source = await target.read();
-        if (!source) {
-            throw notFound('Chat not found');
-        }
-        return { summary: await saveMemory(source, body.text) };
+        return { summary: await saveMemory(target, body.text) };
     });
 
     app.delete('/api/groups/:groupId/chats/:chatId/memory', async (request) => {

@@ -134,7 +134,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Persona extras:** a persona is a name and a description. SillyTavern also gives each persona an avatar image and its own description-injection position, depth and role, plus an attached lorebook; none of those are here. The description reaches the prompt through the `personaDescription` marker, which the preset's order controls.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 - **Summary memory:** the summary lives on `extra.memory` exactly as ST writes it, and the position/template/role/depth settings mirror the Memory extension. CatCup summarizes through the active provider with ST's raw transcript builder: the Extras and WebLLM sources, the quiet-prompt builder, `memoryFrozen` and the automatic interval/wording suggestions are not ported. `memory.enabled` is the opt-in for automatic updates, while a stored summary is injected whenever `position` is not `-1`.
-- **Summary invalidation:** editing a message that carries a summary, switching its swipe, or regenerating it clears that summary instead of leaving one that describes different text. SillyTavern drops the memory on the newest message after an edit or swipe; CatCup does it for whichever message holds the summary.
+- **Summary invalidation:** editing a message that carries a summary, switching its swipe or greeting, continuing it, or regenerating it clears that summary instead of leaving one that describes different text. SillyTavern drops the memory on the newest message after an edit or swipe; CatCup does it for whichever message holds the summary.
 
 ## Testing compatibility
 

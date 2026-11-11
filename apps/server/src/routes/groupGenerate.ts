@@ -20,7 +20,7 @@ import { type ResolvedMember, resolveMembers } from '../group/members.js';
 import { cleanGroupReply, stForceAvatarUrl } from '../group/output.js';
 import { findCurrentSpeaker, isNarratorMessage, lastAssistantSpeaker, selectGroupSpeaker } from '../group/selection.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { buildMemoryInjection } from '../memory/inject.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
@@ -114,9 +114,6 @@ async function saveGroupSwipe(
     swipeInfo.push({ send_date: new Date().toISOString(), extra });
 
     // A summary anchored to this reply no longer describes the stored text.
-    const carriedExtra = { ...(existing.extra ?? {}) };
-    delete carriedExtra.memory;
-
     return updateGroupMessage(context.group, context.chatId, context.regenerateIndex, {
         name: context.speaker.name,
         original_avatar: context.speaker.fileName,
@@ -124,12 +121,13 @@ async function saveGroupSwipe(
         mes: text,
         send_date: new Date().toISOString(),
         extra: {
-            ...carriedExtra,
+            ...(existing.extra ?? {}),
             ...extra,
             swipes,
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
+        extraDelete: ['memory'],
     });
 }
 
@@ -175,6 +173,8 @@ async function persistGroupReply(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
+            // The message grew, so a summary anchored to it is out of date.
+            extraDelete: ['memory'],
         });
     }
 
@@ -368,6 +368,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
         const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
 
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
@@ -386,7 +387,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             substitute,
             group: groupMacros,
             ...(latestSummary ? { summary: latestSummary.value } : {}),
-            ...(memoryInjection && settings.memory.scan ? { extraScanText: memoryInjection.content } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         await patchGroupChatMetadata(found.group, chatId, {

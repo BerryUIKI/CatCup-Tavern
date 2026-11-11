@@ -1,7 +1,7 @@
 import { type ChatMessage, getLatestSummary, type MemorySettings } from '@catcup/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { Eraser, RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     type MemoryChatRef,
@@ -18,21 +18,21 @@ import { Spinner } from './Spinner';
 const ROLE_LABELS = ['system', 'user', 'assistant'] as const;
 
 function describePosition(memory: MemorySettings): string {
+    const role = ROLE_LABELS[memory.role] ?? 'system';
     if (memory.position === -1) {
-        return 'Not injected; only the {{summary}} macro sees it.';
+        return 'Not injected; only the {{summary}} macro and world info scanning see it.';
     }
     if (memory.position === 2) {
-        return 'Injected before the main prompt.';
+        return `Injected before the main prompt as a ${role} message.`;
     }
     if (memory.position === 1) {
-        return `Injected in chat at depth ${memory.depth} as a ${ROLE_LABELS[memory.role] ?? 'system'} message.`;
+        return `Injected in chat at depth ${memory.depth} as a ${role} message.`;
     }
-    return 'Injected after the main prompt.';
+    return `Injected after the main prompt as a ${role} message.`;
 }
 
 function wordCount(text: string): number {
-    const trimmed = text.trim();
-    return trimmed ? trimmed.split(/\s+/).length : 0;
+    return (text.match(/\b\w+\b/g) ?? []).length;
 }
 
 interface MemoryDialogProps {
@@ -63,9 +63,13 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
 
     const [draft, setDraft] = useState('');
     const [note, setNote] = useState('');
+    const baselineRef = useRef('');
+    const wasOpenRef = useRef(false);
+    const summaryValue = summary?.value ?? '';
 
-    // An automatic summary may have landed after the chat was last fetched;
-    // opening the panel refreshes the chat so the latest value is shown.
+    // An automatic summary may land after the chat was last fetched. Refresh
+    // on open and keep polling while the panel is visible so a summary that
+    // arrives during an open dialog shows up without a manual reload.
     const targetKind = target?.kind;
     const targetId = target?.id;
     const targetChatId = target?.chatId;
@@ -78,20 +82,34 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                 ? queryKeys.chat(targetId, targetChatId)
                 : queryKeys.groupChat(targetId, targetChatId);
         void queryClient.invalidateQueries({ queryKey: key });
+        const timer = window.setInterval(() => {
+            void queryClient.invalidateQueries({ queryKey: key });
+        }, 2500);
+        return () => window.clearInterval(timer);
     }, [open, targetKind, targetId, targetChatId, queryClient]);
 
-    // Re-sync when the dialog opens or the stored summary changes, so a
-    // background update shows up without wiping an in-progress edit.
+    // Seed the draft when the panel opens, then adopt a background update only
+    // while the draft is untouched; a typed replacement is never wiped.
     useEffect(() => {
         if (!open) {
+            wasOpenRef.current = false;
             return;
         }
-        setDraft(summary?.value ?? '');
-        setNote('');
-    }, [open, summary?.value]);
+        if (!wasOpenRef.current) {
+            setDraft(summaryValue);
+            baselineRef.current = summaryValue;
+            setNote('');
+            wasOpenRef.current = true;
+            return;
+        }
+        setDraft((current) => (current === baselineRef.current ? summaryValue : current));
+        baselineRef.current = summaryValue;
+    }, [open, summaryValue]);
 
     const busy = summarize.isPending || save.isPending || clear.isPending;
-    const dirty = draft.trim() !== (summary?.value ?? '').trim();
+    const dirty = draft.trim() !== summaryValue.trim();
+    const noMessages = messages.length === 0;
+    const autoOn = Boolean(memory?.enabled && ((memory.promptInterval ?? 0) > 0 || (memory.promptForceWords ?? 0) > 0));
 
     const handleSummarize = () => {
         if (!target) {
@@ -157,9 +175,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                 <div className="rounded-xl border border-line-soft bg-ink-soft/50 px-3 py-2.5 text-xs leading-relaxed text-parchment-dim">
                     <p>
                         Automatic updates:{' '}
-                        <span className={memory?.enabled ? 'text-sage' : 'text-parchment-dim'}>
-                            {memory?.enabled ? 'on' : 'off'}
-                        </span>
+                        <span className={autoOn ? 'text-sage' : 'text-parchment-dim'}>{autoOn ? 'on' : 'off'}</span>
                         {memory ? ` · ${describePosition(memory)}` : ''}
                     </p>
                     <p className="mt-1 text-muted">
@@ -187,6 +203,12 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                     </div>
                 </div>
 
+                {noMessages ? (
+                    <p className="text-sm text-amber">
+                        This chat has no messages yet. Start the conversation before creating a summary.
+                    </p>
+                ) : null}
+
                 {note ? <p className="text-sm text-amber">{note}</p> : null}
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -204,7 +226,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                             type="button"
                             className="btn-ghost"
                             onClick={handleSave}
-                            disabled={!dirty || !draft.trim() || !target || busy}
+                            disabled={!dirty || !draft.trim() || !target || noMessages || busy}
                         >
                             {save.isPending ? <Spinner size={15} /> : null}
                             Save
@@ -213,7 +235,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                             type="button"
                             className="btn-primary"
                             onClick={handleSummarize}
-                            disabled={!target || busy}
+                            disabled={!target || noMessages || busy}
                             title="Summarize the conversation now"
                         >
                             {summarize.isPending ? <Spinner size={15} /> : <RefreshCw size={15} />}

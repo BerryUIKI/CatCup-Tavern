@@ -312,6 +312,7 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     // Phase 3.5: summary memory. SillyTavern inserts the formatted memory into
     // the main prompt ("after"/"before") or adds it as an in-chat injection.
     const summaryInjection = input.summaryInjection;
+    let summaryFallback: Injection | null = null;
     if (summaryInjection?.content && summaryInjection.position !== -1) {
         const summaryMessage: CompletionMessage = {
             identifier: 'summary',
@@ -323,9 +324,19 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
             if (completion.has(IDENTIFIER.MAIN)) {
                 completion.insert(IDENTIFIER.MAIN, summaryMessage, summaryInjection.position === 2 ? 'start' : 'end');
             } else {
-                // No main prompt to anchor to; the memory is still worth
-                // sending, so it goes into the prompt on its own.
-                completion.add('summary', null, [summaryMessage]);
+                // When the preset moves the main prompt in chat, ST converts a
+                // relative summary into an in-chat injection beside main,
+                // inheriting main's role, depth and order.
+                const mainPrompt = collection.find((prompt) => prompt.identifier === IDENTIFIER.MAIN);
+                if (mainPrompt?.injection_position === INJECTION_POSITION.ABSOLUTE) {
+                    summaryFallback = {
+                        depth: mainPrompt.injection_depth ?? 4,
+                        order: mainPrompt.injection_order,
+                        role: mainPrompt.role ?? 'system',
+                        content: summaryInjection.content,
+                    };
+                }
+                // With no main prompt at all, SillyTavern sends no summary.
             }
         }
     }
@@ -355,6 +366,10 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
             role: roleOf(summaryInjection.role),
             content: summaryInjection.content,
         });
+    }
+
+    if (summaryFallback) {
+        injections.push(summaryFallback);
     }
 
     for (const bucket of worldInfo?.worldInfoDepth ?? []) {

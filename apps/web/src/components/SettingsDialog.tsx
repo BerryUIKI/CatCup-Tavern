@@ -498,7 +498,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         <button
                             key={item.id}
                             type="button"
-                            onClick={() => setTab(item.id)}
+                            onClick={() => {
+                                setTab(item.id);
+                                setEditingBookId(null);
+                            }}
                             className={cn(
                                 'flex items-center gap-2 rounded-t-lg border-b-2 px-3 py-2 text-sm transition',
                                 tab === item.id
@@ -992,7 +995,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         </div>
                     ) : null}
                 </div>
-            ) : editingBookId ? (
+            ) : editingBookId && tab === 'worldinfo' ? (
                 <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
             ) : tab === 'memory' ? (
                 <MemorySettings />

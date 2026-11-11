@@ -13,11 +13,19 @@ function card(name: string): string {
     return JSON.stringify({
         spec: 'chara_card_v2',
         spec_version: '2.0',
-        data: { name, first_mes: `Hello from ${name}.` },
+        data: {
+            name,
+            first_mes: `Hello from ${name}.`,
+            alternate_greetings: [`Another hello from ${name}.`],
+        },
     });
 }
 
-async function call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, payload?: Record<string, unknown>) {
+async function call(
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
+    url: string,
+    payload?: Record<string, unknown>,
+) {
     return app.inject({ method, url, payload, headers: { cookie } });
 }
 
@@ -83,6 +91,31 @@ describe('memory routes', () => {
         expect(response.statusCode).toBe(400);
     });
 
+    it('clears a summary when the opening greeting changes', async () => {
+        const created = await call('POST', '/api/characters/Aria/chats', {});
+        const chatId = created.json().chat.chatId as string;
+        await call('PUT', `/api/chats/Aria/${chatId}/memory`, { text: 'The opening summary.' });
+
+        const greeting = await call('POST', `/api/chats/Aria/${chatId}/greeting`, { greetingIndex: 1 });
+        expect(greeting.statusCode).toBe(200);
+
+        const chat = await call('GET', `/api/chats/Aria/${chatId}`);
+        expect(chat.json().chat.messages[0].extra).not.toHaveProperty('memory');
+    });
+
+    it('clears a summary when the message swipe changes', async () => {
+        const created = await call('POST', '/api/characters/Aria/chats', {});
+        const chatId = created.json().chat.chatId as string;
+        await call('PUT', `/api/chats/Aria/${chatId}/memory`, { text: 'The opening summary.' });
+
+        const swiped = await call('PATCH', `/api/chats/Aria/${chatId}/messages/0`, { swipeId: 1 });
+        expect(swiped.statusCode).toBe(200);
+        expect(swiped.json().message.mes).toBe('Another hello from Aria.');
+
+        const chat = await call('GET', `/api/chats/Aria/${chatId}`);
+        expect(chat.json().chat.messages[0].extra).not.toHaveProperty('memory');
+    });
+
     it('returns a reason instead of calling the provider when nothing can be summarized', async () => {
         const created = await call('POST', '/api/characters/Aria/chats', {});
         const chatId = created.json().chat.chatId as string;
@@ -91,7 +124,7 @@ describe('memory routes', () => {
         expect(response.statusCode).toBe(200);
         expect(response.json()).toMatchObject({
             summary: null,
-            reason: 'No new messages to summarize',
+            reason: 'No new messages to summarize.',
         });
     });
 

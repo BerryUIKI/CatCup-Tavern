@@ -2,7 +2,13 @@ import type { CharacterDetail, ChatMessage, GenerationSettings } from '@catcup/s
 import { memorySettingsSchema } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
 
-import { buildSummaryRequest, buildSummaryTranscript, shouldAutoSummarize, summaryProgress } from './summary.js';
+import {
+    buildSummaryRequest,
+    buildSummaryTranscript,
+    countWords,
+    shouldAutoSummarize,
+    summaryProgress,
+} from './summary.js';
 
 const character = {
     id: 'Seraphina',
@@ -142,6 +148,13 @@ describe('summaryProgress', () => {
     });
 });
 
+describe('countWords', () => {
+    it("uses SillyTavern's extractAllWords pattern", () => {
+        expect(countWords('one — two... ***')).toBe(2);
+        expect(countWords("don't stop")).toBe(3);
+    });
+});
+
 describe('shouldAutoSummarize', () => {
     const messages = [reply('Welcome.'), user('Hello.'), reply('You came.'), user('I did.')];
 
@@ -193,56 +206,68 @@ describe('buildSummaryRequest', () => {
         user('I did.'),
     ];
 
-    it('builds a system instruction and a transcript with the previous summary', () => {
-        const request = buildSummaryRequest({
-            messages,
-            character,
-            persona,
-            memory: memory(),
-            generation,
-            countTokens: countChars,
-        });
+    function requestOf(result: ReturnType<typeof buildSummaryRequest>) {
+        if ('reason' in result) {
+            throw new Error(result.reason);
+        }
+        return result.request;
+    }
 
-        expect(request).not.toBeNull();
-        expect(request?.prompt).toHaveLength(2);
-        expect(request?.prompt[0]).toMatchObject({ role: 'system' });
-        expect(request?.prompt[0]?.content).toContain('200 words');
-        expect(request?.prompt[0]?.content).not.toContain('{{words}}');
-        expect(request?.prompt[1]?.role).toBe('user');
-        expect(request?.prompt[1]?.content).toBe('They met at the gate.\n\nAlex:\nHello.\n\nSeraphina:\nYou came.');
+    it('builds a system instruction and a transcript with the previous summary', () => {
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory(),
+                generation,
+                countTokens: countChars,
+            }),
+        );
+
+        expect(request.prompt).toHaveLength(2);
+        expect(request.prompt[0]).toMatchObject({ role: 'system' });
+        expect(request.prompt[0]?.content).toContain('200 words');
+        expect(request.prompt[0]?.content).not.toContain('{{words}}');
+        expect(request.prompt[1]?.role).toBe('user');
+        expect(request.prompt[1]?.content).toBe('They met at the gate.\n\nAlex:\nHello.\n\nSeraphina:\nYou came.');
         // The newest message is excluded and the summary is stored on the
         // last covered message.
-        expect(request?.lastUsedIndex).toBe(2);
-        expect(request?.transcriptMessages).toBe(2);
+        expect(request.lastUsedIndex).toBe(2);
+        expect(request.transcriptMessages).toBe(2);
     });
 
     it('expands macros and the target length in the prompt', () => {
-        const request = buildSummaryRequest({
-            messages,
-            character,
-            persona,
-            memory: memory({ prompt: 'Summarize {{char}} for {{user}} in {{words}} words.', promptWords: 120 }),
-            generation,
-            countTokens: countChars,
-        });
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ prompt: 'Summarize {{char}} for {{user}} in {{words}} words.', promptWords: 120 }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
 
-        expect(request?.prompt[0]?.content).toBe('Summarize Seraphina for Alex in 120 words.');
+        expect(request.prompt[0]?.content).toBe('Summarize Seraphina for Alex in 120 words.');
     });
 
     it('uses the response length override', () => {
-        const request = buildSummaryRequest({
-            messages,
-            character,
-            persona,
-            memory: memory({ responseLength: 64 }),
-            generation,
-            countTokens: countChars,
-        });
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ responseLength: 64 }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
 
-        expect(request?.maxTokens).toBe(64);
+        expect(request.maxTokens).toBe(64);
     });
 
-    it('returns null when there is nothing new to summarize', () => {
+    it('reports why there is nothing new to summarize', () => {
         expect(
             buildSummaryRequest({
                 messages: [user('Alone.')],
@@ -252,10 +277,10 @@ describe('buildSummaryRequest', () => {
                 generation,
                 countTokens: countChars,
             }),
-        ).toBeNull();
+        ).toEqual({ reason: 'No new messages to summarize.' });
     });
 
-    it('returns null for an empty prompt', () => {
+    it('reports an empty prompt', () => {
         expect(
             buildSummaryRequest({
                 messages,
@@ -265,20 +290,35 @@ describe('buildSummaryRequest', () => {
                 generation,
                 countTokens: countChars,
             }),
-        ).toBeNull();
+        ).toEqual({ reason: 'The summary prompt is empty.' });
+    });
+
+    it('reports an exhausted context budget', () => {
+        expect(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory(),
+                generation: { ...generation, contextSize: 512, maxTokens: 512 },
+                countTokens: countChars,
+            }),
+        ).toEqual({ reason: 'The context budget leaves no room for a summary request.' });
     });
 
     it('includes the group roster in the macro context', () => {
-        const request = buildSummaryRequest({
-            messages,
-            character,
-            persona,
-            group: { members: ['Seraphina', 'Mira'], enabled: ['Mira'] },
-            memory: memory({ prompt: 'Members: {{group}}; speaking: {{groupNotMuted}}.' }),
-            generation,
-            countTokens: countChars,
-        });
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                group: { members: ['Seraphina', 'Mira'], enabled: ['Mira'] },
+                memory: memory({ prompt: 'Members: {{group}}; speaking: {{groupNotMuted}}.' }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
 
-        expect(request?.prompt[0]?.content).toBe('Members: Seraphina, Mira; speaking: Mira.');
+        expect(request.prompt[0]?.content).toBe('Members: Seraphina, Mira; speaking: Mira.');
     });
 });

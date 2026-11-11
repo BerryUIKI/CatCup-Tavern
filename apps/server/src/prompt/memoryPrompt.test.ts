@@ -131,6 +131,41 @@ describe('summary memory injection', () => {
         expect(prompt.messages.some((message) => message.content === 'Story so far: The gate opened.')).toBe(true);
     });
 
+    it('moves the summary beside an in-chat main prompt', () => {
+        const prompts: PromptEntry[] = ST_DEFAULT_PROMPTS.map((prompt) =>
+            prompt.identifier === IDENTIFIER.MAIN
+                ? { ...prompt, injection_position: 1, injection_depth: 1, injection_order: 50 }
+                : prompt,
+        );
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            promptSettings: {
+                prompts,
+                promptOrder: [
+                    {
+                        character_id: GLOBAL_PROMPT_ORDER_ID,
+                        order: DEFAULT_PROMPT_ORDER.map((entry) => ({ ...entry })),
+                    },
+                ],
+            },
+            generationType: 'normal',
+            summaryInjection: { content: '[Summary: The gate opened.]', position: 0, role: 0, depth: 1 },
+        });
+
+        // The summary joins the absolute main prompt in the same depth bucket
+        // instead of becoming a standalone top-level system message.
+        expect(
+            prompt.messages.some(
+                (message) =>
+                    message.content.includes("Write Seraphina's next reply") &&
+                    message.content.includes('[Summary: The gate opened.]'),
+            ),
+        ).toBe(true);
+    });
+
     it('does not expand an empty summary', () => {
         const prompt = buildPrompt({
             character: speaker,
