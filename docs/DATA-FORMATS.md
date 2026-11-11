@@ -172,6 +172,7 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
 | `swipe_id`     | number     | Zero-based selected swipe index                                                    |
 | `swipe_info`   | unknown[]  | Per-swipe metadata objects                                                         |
 | `gen_id`       | number     | Group chats: the generation batch id SillyTavern uses to group one turn's replies  |
+| `memory`       | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
 
 ### Swipes
 
@@ -194,6 +195,27 @@ A regenerated assistant message keeps all variants:
 ```
 
 `PATCH /api/chats/:characterId/:chatId/messages/:index` with `{ "swipeId": n }` selects a variant without regenerating.
+
+### Summary memory
+
+A rolling summary is stored as `extra.memory` on the message it covers, which is where SillyTavern's Memory extension keeps it:
+
+```json
+{
+    "name": "You",
+    "is_user": true,
+    "mes": "I step through the gate and look around.",
+    "extra": {
+        "memory": "Seraphina met Alex at the old gate; they agreed to enter the forest at dawn."
+    }
+}
+```
+
+The latest `extra.memory` in the chat is the one in effect; older ones remain in the file and come back if the newest is deleted, matching ST's Restore. A summary request always excludes the newest message, so a new summary lands on the last message it actually covered. The injection template and position live in settings, not in the chat file, so a chat copied into SillyTavern still carries its summary but uses SillyTavern's own Memory settings to inject it.
+
+Editing a message that carries a summary, switching its swipe or regenerating it removes that summary: it no longer describes the stored text.
+
+Group chats store summaries the same way; the transcript keeps each member's name.
 
 ### File naming and folder rules
 

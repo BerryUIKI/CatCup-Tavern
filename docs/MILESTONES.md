@@ -291,6 +291,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 - **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages.
 - **Group chat UI and generation** (2026-11-11): a Groups tab with a group editor, a group chat pane with per-member avatars, and server-side replies. Natural, list, manual and pooled selection; each request generates one reply from the chosen member's card, with a group nudge, `Name:` history prefixes, ST's group new-chat marker, reply trimming and a manual speaker picker. New chats seed one greeting per member, muted included.
+- **Summary memory** (2026-11-11): rolling summaries stored as `extra.memory` on the message they cover, exactly where SillyTavern's Memory extension writes them. Automatic updates follow the message or word interval; a Memory panel can summarize now, edit, restore or delete; the injection template and position (after/before the main prompt, or in chat at a depth with a role) mirror the extension. `{{summary}}` and `{{words}}` expand in prompts, and the context inspector has a Memory tab with the injected text and its token cost. Works in group chats too.
 
 ### Scope
 
@@ -308,7 +309,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 ### Acceptance criteria
 
 - [x] Group chat with at least three characters can be created, persisted and reloaded.
-- [ ] Summary memory survives restarts and is visible in the context inspector.
+- [x] Summary memory survives restarts and is visible in the context inspector.
 - [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
 - [ ] A basic Quick Reply executes and appears in the UI.
 - [ ] TTS and image generation have at least one working adapter each and clear configuration docs.
@@ -316,7 +317,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies → TTS → image generation → CharX → library polish.
 
 ## M3 — Scripting and extension compatibility (Planned)
 

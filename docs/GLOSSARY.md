@@ -18,17 +18,19 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Regenerate** — Ask the model for a new assistant reply and store it as a swipe.
 
-**Branch / checkpoint** — A saved fork of a chat from an earlier message. Planned for M1.
+**Branch / checkpoint** — A saved fork of a chat from an earlier message. CatCup can branch from any message into a new chat.
 
-**Persona** — The user's own name and description used in prompts. CatCup currently supports one persona.
+**Persona** — The user's own name and description used in prompts. CatCup keeps a list with a default and a per-chat choice.
 
-**Author's note** — A prompt fragment injected near the end of the context. Planned for M1.
+**Author's note** — A prompt fragment injected near the end of the context. CatCup composes it with world info and injects it in prompt, in chat or before the prompt on a message interval.
 
-**Group chat** — Multiple characters in one conversation. Planned for M2.
+**Group chat** — Multiple characters in one conversation, with speaker selection, per-member identities and SillyTavern-compatible group files. CatCup generates one member's reply per turn.
+
+**Summary memory** — A rolling summary of the conversation, stored on the message it covers as `extra.memory` and injected into later prompts. SillyTavern's Memory extension uses the same storage.
 
 ## Lore and prompts
 
-**World Info / lorebook** — A set of keyed entries injected into the prompt when their keys appear in recent chat. CatCup has the schema; the scanner/editor is planned for M1.
+**World Info / lorebook** — A set of keyed entries injected into the prompt when their keys appear in recent chat. CatCup implements SillyTavern's full scan pipeline and an entry editor.
 
 **Entry** — One World Info record: keys, content, order, position, depth, probability and related flags.
 

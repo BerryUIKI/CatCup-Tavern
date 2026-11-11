@@ -10,7 +10,7 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`.
+Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats and summary memory usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`.
 
 ## Commands
 
@@ -96,7 +96,7 @@ Read before changing behaviour:
 
 - **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
 - **M1** (complete): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
-- **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory, Quick Replies subset, TTS, image generation, CharX, library polish. Regex scripts and card editing/export shipped in 0.2.0.
+- **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory (landed 2026-11-11), Quick Replies subset, TTS, image generation, CharX, library polish. Regex scripts and card editing/export shipped in 0.2.0.
 - **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
 - **M4** (planned): desktop signing, auto-updater, file associations and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
 - **M5** (planned): mobile, i18n, accessibility, CI, performance and v1.0 release.
