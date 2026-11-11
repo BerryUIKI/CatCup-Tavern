@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0 complete** (2026-11-09). **M1 in progress.**
+> Current status: **M0 and M1 complete**. **MVP (0.2.0) in progress.**
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -28,16 +28,55 @@ A milestone item is not done until all of the following are true:
 
 A milestone is complete when all of its acceptance criteria pass and its status table here is updated.
 
+## MVP — 0.2.0, early access
+
+**Goal:** a demo-quality Windows release. Someone who already uses SillyTavern can install it, point it at their existing data, and keep roleplaying single-character stories without going back.
+
+The MVP is not a new milestone number: it pulls a subset of M2 and M4 forward and leaves the rest of both behind.
+
+| Area                    | Work                                                                   | Comes from |
+| ----------------------- | ---------------------------------------------------------------------- | ---------- |
+| Regex scripts           | Engine, storage, per-character scoping, manager UI                     | M2         |
+| Character card editing  | Field editor, PNG `tEXt` write-back, JSON export                       | M2         |
+| Multiple personas       | Persona list, switching, and a per-chat choice                         | M2         |
+| SillyTavern data import | Point at an ST data directory and move cards, chats, worlds, presets   | new        |
+| Desktop shell           | Tauri 2, Node sidecar, Windows installer                               | M4         |
+| Demo packaging          | Sample card, first-run flow, user-facing limitations page, screenshots | new        |
+
+**Explicitly out of the MVP**, and listed as such in the app's limitations page: group chats, Quick Replies and STscript, the extension API, TTS, image generation, summary and vector memory, CharX, mobile and i18n. Two of those — CharX and image generation — are dependencies of a later card-distribution story rather than of roleplay itself.
+
+### Sequencing
+
+1. **Desktop spike.** Prove the Tauri shell can start and stop the Fastify sidecar on Windows: port selection, readiness, clean shutdown with no orphaned process. Throwaway code; if it cannot be made reliable, change the approach before anything is built on it.
+2. **Regex scripts.**
+3. **Character card editing and export.**
+4. **Multiple personas.**
+5. **SillyTavern data import.**
+6. **Desktop packaging.** Installer, icons, first run, shutdown.
+7. **Demo packaging.** Sample card, limitations page, screenshots, version `0.2.0`.
+
+Steps 2–5 have no dependencies between them and can be reordered. Step 1 has to come first and step 6 last.
+
+### Acceptance criteria
+
+- [ ] A Windows installer starts the app, shows the library without a terminal, and exits with no orphaned server process.
+- [ ] Pointing at a SillyTavern `data/` directory imports its characters, chats, world info and presets in one action, and each is usable afterwards.
+- [ ] A regex script that rewrites AI output applies on generation, survives an export, and comes back intact on import.
+- [ ] A character card can be edited in the app and exported to PNG, then re-imported with every edited field intact.
+- [ ] A second persona can be created, selected for a chat, and is the name used in that chat's prompts.
+- [ ] The limitations page matches what the app actually does, with no feature listed that is missing.
+- [ ] Version reads `0.2.0`; `typecheck`, `lint`, `test` and `build` pass.
+
 ## At a glance
 
-| Milestone | Theme                                                                         | Status   | Depends on |
-| --------- | ----------------------------------------------------------------------------- | -------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | Complete | M0         |
-| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | Planned  | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned  | M1, M2     |
-| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | Planned  | M0–M3      |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned  | M0–M4      |
+| Milestone | Theme                                                                         | Status                 | Depends on |
+| --------- | ----------------------------------------------------------------------------- | ---------------------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                            | Complete               | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing     | Complete               | M0         |
+| **M2**    | Extended roleplay: groups, memory, regex, TTS, image generation, card editing | MVP subset in progress | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext    | Planned                | M1, M2     |
+| **M4**    | Desktop: Tauri shell, Node sidecar, updater, packaging                        | MVP subset in progress | M0, M1     |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0        | Planned                | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -218,19 +257,22 @@ M1 is complete. Next is M2.
 - Tokenizer model coverage may lag the model list; always keep the estimator fallback.
 - Scope creep: group chat and STscript must stay out of M1.
 
-## M2 — Extended roleplay (Planned)
+## M2 — Extended roleplay (MVP subset in progress)
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
+Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until after `0.2.0`.
+
 ### Scope
 
+- **Regex scripts** — _MVP_. ST-compatible regex transform rules: placement, flags, scoping, import/export.
+- **Character card editing** — _MVP_. Edit card fields, alternate greetings and the avatar; export PNG/JSON.
+- **Multiple personas** — _MVP_. A persona list instead of the single name and description in settings, with a per-chat choice.
 - **Group chats**: multiple characters in one chat, speaker selection, turn order, ST-compatible group chat storage.
 - **Summary memory**: rolling summaries and memory injection with a visible budget.
-- **Regex scripts**: ST-compatible regex transform rules (import/export, placement, flags).
 - **Quick Replies (subset)**: UI buttons and basic execution; full STscript integration lands in M3.
 - **TTS**: provider-agnostic TTS adapter with at least one local/remote backend.
 - **Image generation**: provider-agnostic image generation adapter and gallery integration.
-- **Character card editing**: edit card fields, alternate greetings, character book, avatar; export PNG/JSON.
 - **CharX / asset bundles**: import/export CharX packages and character assets.
 - **Library improvements**: tags, favorites, sorting and bulk actions.
 
@@ -245,7 +287,7 @@ M1 is complete. Next is M2.
 
 ### Suggested PR slices
 
-Group chat storage → group chat UI → summary memory → regex engine → quick replies → TTS → image generation → card editing/export → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage → group chat UI → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
 
 ## M3 — Scripting and extension compatibility (Planned)
 
@@ -276,18 +318,20 @@ Group chat storage → group chat UI → summary memory → regex engine → qui
 - The sandbox must not become a security bypass.
 - STscript is large; implement by usage frequency and document the gaps.
 
-## M4 — Desktop (Planned)
+## M4 — Desktop (MVP subset in progress)
 
 **Goal:** ship a Windows-first Tauri 2 desktop app that reuses the same server and SPA.
 
+The MVP takes the shell, the sidecar, the first-run path and the installer. Signing, the auto-updater and file associations wait until after `0.2.0`, because they need certificates and a hosting story that a demo does not.
+
 ### Scope
 
-- Tauri 2 shell with a bundled Node sidecar (`CATCUP_DATA_DIR` set to the OS app-data directory).
-- Port selection and readiness handshake; single-instance behaviour.
-- Tray icon, window state, graceful shutdown of the sidecar.
+- _MVP_ — Tauri 2 shell with a bundled Node sidecar (`CATCUP_DATA_DIR` set to the OS app-data directory).
+- _MVP_ — Port selection and readiness handshake; single-instance behaviour.
+- _MVP_ — Tray icon, window state, graceful shutdown of the sidecar.
 - Auto-updater and signed release artifacts.
 - File associations for `.png` / `.json` character cards.
-- Windows installer first; macOS/Linux packaging after.
+- _MVP_ — Windows installer first; macOS/Linux packaging after.
 - LAN mode remains available from the same server.
 
 ### Acceptance criteria

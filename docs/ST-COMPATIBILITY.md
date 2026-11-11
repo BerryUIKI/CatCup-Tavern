@@ -137,13 +137,14 @@ Future compatibility tests should copy small fixtures into a test directory rath
 
 ## Compatibility roadmap
 
-| Milestone | Compatibility work                                                                                          |
-| --------- | ----------------------------------------------------------------------------------------------------------- |
-| M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer               |
-| M2        | Group chats, summary memory, regex, Quick Replies subset, TTS, image generation, card editing/export, CharX |
-| M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix                 |
-| M4        | Desktop packaging; no new ST semantics                                                                      |
-| M5        | Compatibility polish, i18n, release hardening                                                               |
+| Milestone | Compatibility work                                                                            |
+| --------- | --------------------------------------------------------------------------------------------- |
+| M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer |
+| 0.2.0 MVP | Regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell  |
+| M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX               |
+| M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix   |
+| M4        | Desktop signing, auto-updater, file associations, macOS/Linux packaging; no new ST semantics  |
+| M5        | Compatibility polish, i18n, release hardening                                                 |
 
 ## Contributing compatibility fixes
 
