@@ -1,0 +1,97 @@
+// Derived from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
+// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+
+import { parseRegexFromString } from '@catcup/shared';
+
+export { parseRegexFromString };
+
+/** Decorators SillyTavern recognises at the top of an entry's content. */
+const KNOWN_DECORATORS = ['@@activate', '@@dont_activate'] as const;
+
+function isKnownDecorator(line: string): boolean {
+    const candidate = line.startsWith('@@@') ? line.slice(1) : line;
+    return KNOWN_DECORATORS.some((decorator) => candidate.startsWith(decorator));
+}
+
+/**
+ * Split leading `@@decorator` lines from an entry's content.
+ *
+ * Mirrors SillyTavern's `parseDecorators`: a run of known decorator lines is
+ * consumed and only a line that does not start with `@@` ends the run. An
+ * `@@@`-prefixed line is skipped rather than consumed, and is left in the
+ * content only when no later line breaks the run, because the original string
+ * is kept in that case.
+ */
+export function parseDecorators(content: string): { decorators: string[]; content: string } {
+    if (!content.startsWith('@@')) {
+        return { decorators: [], content };
+    }
+
+    const lines = content.split('\n');
+    const decorators: string[] = [];
+    let remaining = content;
+    let fallbacked = false;
+
+    for (let index = 0; index < lines.length; index += 1) {
+        const line = lines[index] ?? '';
+        if (!line.startsWith('@@')) {
+            remaining = lines.slice(index).join('\n');
+            break;
+        }
+
+        if (line.startsWith('@@@') && !fallbacked) {
+            continue;
+        }
+
+        if (isKnownDecorator(line)) {
+            decorators.push(line.startsWith('@@@') ? line.slice(1) : line);
+            fallbacked = false;
+            continue;
+        }
+
+        fallbacked = true;
+    }
+
+    return { decorators, content: remaining };
+}
+
+/** Escape a string so it can be embedded in a regular expression. */
+export function escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export interface KeyMatchOptions {
+    caseSensitive: boolean;
+    matchWholeWords: boolean;
+}
+
+/**
+ * Test one world info key against the scan buffer.
+ *
+ * A key written as `/regex/flags` is applied as a regular expression and
+ * overrides the plain-text options, exactly as SillyTavern does.
+ */
+export function matchesKey(haystack: string, needle: string, options: KeyMatchOptions): boolean {
+    const pattern = parseRegexFromString(needle);
+    if (pattern) {
+        return pattern.test(haystack);
+    }
+
+    const hay = options.caseSensitive ? haystack : haystack.toLowerCase();
+    const key = options.caseSensitive ? needle : needle.toLowerCase();
+
+    // An empty key matches everything, exactly as `String.includes('')` does.
+    // SillyTavern relies on this for whitespace-only keys after trimming.
+    if (!options.matchWholeWords) {
+        return hay.includes(key);
+    }
+
+    // Multi-word keys are matched as a plain substring; single words get
+    // boundary checks that include punctuation and other non-word characters.
+    if (/\s/.test(key)) {
+        return hay.includes(key);
+    }
+
+    return new RegExp(`(?:^|\\W)(${escapeRegex(key)})(?:$|\\W)`).test(hay);
+}

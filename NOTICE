@@ -20,11 +20,20 @@ Portions of this software are derived from, or based on, the following works:
    https://github.com/SillyTavern/SillyTavern
    Copyright (C) SillyTavern contributors
    Licensed under the GNU Affero General Public License, version 3.
+   Includes the Claude tokenizer vocabulary at
+   apps/server/assets/tokenizers/claude.json, copied from SillyTavern's
+   src/tokenizers/claude.json.
 
 2. RisuAI
    https://github.com/kwaroran/RisuAI
    Copyright (C) 2024 Kwaroran
    Licensed under the GNU General Public License, version 3.
    Combined with this AGPL-3.0 project under GNU AGPLv3 section 13.
+
+3. @agnai/web-tokenizers
+   https://github.com/mlc-ai/tokenizers-cpp
+   Copyright (C) MLC AI
+   Licensed under the Apache License, version 2.0.
+   Runtime dependency used to load the Claude vocabulary.
 
 See docs/REUSE.md for the list of adapted modules and the nature of each reuse.

@@ -1,0 +1,27 @@
+{
+    "name": "catcup-tavern",
+    "private": true,
+    "version": "0.2.1",
+    "description": "CatCup Tavern — a SillyTavern-compatible AI roleplay client for web, LAN and desktop.",
+    "license": "AGPL-3.0-only",
+    "type": "module",
+    "packageManager": "pnpm@11.18.0",
+    "engines": {
+        "node": ">=22.13.0"
+    },
+    "scripts": {
+        "dev": "concurrently -n server,web -c cyan,magenta \"pnpm --filter @catcup/server dev\" \"pnpm --filter @catcup/web dev\"",
+        "build": "pnpm --filter @catcup/server build && pnpm --filter @catcup/web build",
+        "start": "node apps/server/dist/index.js",
+        "typecheck": "pnpm -r --if-present typecheck",
+        "test": "pnpm -r --if-present test",
+        "lint": "biome check .",
+        "lint:fix": "biome check --write .",
+        "format": "biome format --write ."
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.6.6",
+        "concurrently": "^10.0.7",
+        "typescript": "^5.9.3"
+    }
+}

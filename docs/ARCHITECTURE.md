@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-11-09 · v0.1 scaffold
+> Last updated: 2026-11-09 · M0 complete, M1 next
 
 ## 1. Goals and principles
 
@@ -122,11 +122,11 @@ The chat folder is named after the character (ST behavior), with the character i
 - World info is modeled after ST's `entries[uid]` structure (key/keysecondary/content/constant/order/position/depth/...).
 - Presets accept ST OpenAI preset fields (`prompts`, `prompt_order`, sampling parameters).
 
-Schemas exist in `packages/shared`; the scanner and prompt-manager execution arrive in M1.
+Schemas exist in `packages/shared`; see [DATA-FORMATS.md](DATA-FORMATS.md). The scanner and prompt-manager execution arrive in M1; see [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
 
 ## 6. API and streaming
 
-REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a session.
+REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a session. Full request and response shapes are documented in [API.md](API.md).
 
 | Method       | Path                              | Purpose                                    |
 | ------------ | --------------------------------- | ------------------------------------------ |
@@ -178,13 +178,13 @@ interface ProviderAdapter {
 | `ollama`     | `http://127.0.0.1:11434`       | native `/api/chat` NDJSON, `/api/tags` models  |
 | `custom`     | user supplied                  | any OpenAI-compatible endpoint                 |
 
-Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`.
+Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`. See [PROVIDERS.md](PROVIDERS.md) for endpoint-level details and limitations.
 
 ## 8. Prompt pipeline (M0, intentionally small)
 
 1. Macro substitution: `{{char}}`, `{{user}}`, `{{persona}}`, `{{description}}`, `{{personality}}`, `{{scenario}}`, `{{time}}`, `{{date}}`.
 2. System message: card `system_prompt` (or ST's default main prompt) + character sheet + user persona.
-3. Chat history, trimmed from newest to oldest by an estimated token budget.
+3. Chat history, trimmed from newest to oldest by the model's token budget — tiktoken for OpenAI models, the bundled Claude vocabulary for Anthropic, an estimate otherwise.
 4. Post-history instructions appended as a final system message.
 
 M1 replaces this with the full ST Prompt Manager ordering, injection positions/depth, world info recursion, author's note and preset import.
@@ -193,12 +193,12 @@ M1 replaces this with the full ST Prompt Manager ordering, injection positions/d
 
 | Tier             | Scope                                                         | Plan                                                        |
 | ---------------- | ------------------------------------------------------------- | ----------------------------------------------------------- |
-| L1 data          | cards, chat JSONL, world info, presets                        | M0–M1                                                       |
-| L2 semantics     | STscript/slash commands, Quick Replies, regex scripts         | M1–M2                                                       |
+| L1 data          | cards, chat JSONL, world info, presets                        | M0–M2                                                       |
+| L2 semantics     | STscript/slash commands, Quick Replies, regex scripts         | M1–M3                                                       |
 | L3 extension API | `SillyTavern.getContext()`, `event_types`, extension settings | M3                                                          |
 | L4 UI extensions | extensions that depend on ST's DOM/jQuery                     | sandboxed iframe / optional compatibility DOM; highest risk |
 
-`st-context.js` is the source of truth for the L3 API surface (~100 functions/objects). Implement by usage frequency, not all at once.
+`st-context.js` is the source of truth for the L3 API surface (~100 functions/objects). Implement by usage frequency, not all at once. See [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) for the current feature matrix.
 
 ## 10. Security
 
@@ -209,17 +209,20 @@ M1 replaces this with the full ST Prompt Manager ordering, injection positions/d
 - Paths: every `:id` / `:chatId` passes through `resolveInside()` to block traversal.
 - Login rate limiting; put the LAN server behind HTTPS when exposing it beyond a trusted network.
 - Uploads: 20 MB per file, `.png` / `.json` only.
+- No trust-proxy support yet; see [SECURITY.md](SECURITY.md) before exposing the server behind a TLS proxy.
 
-## 11. Roadmap
+## 11. Milestones
 
-| Stage | Scope                                                                            |
-| ----- | -------------------------------------------------------------------------------- |
-| M0    | scaffold, auth, card import, chat persistence, four provider families, dark UI   |
-| M1    | world info, prompt manager, ST preset import, swipes/branches, message editing   |
-| M2    | group chats, summary memory, regex scripts, quick replies, TTS, image generation |
-| M3    | full STscript engine + extension compatibility (getContext / events / sandbox)   |
-| M4    | Tauri shell, Node sidecar, updater, file associations                            |
-| M5    | mobile browser polish, i18n, performance and packaging                           |
+The authoritative scope, status and acceptance criteria live in [MILESTONES.md](MILESTONES.md). Summary:
+
+| Milestone | Status   | Theme                                                             |
+| --------- | -------- | ----------------------------------------------------------------- |
+| M0        | Complete | Runnable web + server foundation, ST cards/chats, four providers  |
+| M1        | Next     | World info, Prompt Manager, presets, editing/branching, tokenizer |
+| M2        | Planned  | Group chats, memory, regex, TTS/image generation, card editing    |
+| M3        | Planned  | STscript, Quick Replies, getContext/event bus, extension sandbox  |
+| M4        | Planned  | Tauri desktop shell, Node sidecar, updater, packaging             |
+| M5        | Planned  | Mobile, i18n, accessibility, CI, performance, v1.0                |
 
 ## 12. Decision log
 
@@ -228,3 +231,18 @@ M1 replaces this with the full ST Prompt Manager ordering, injection positions/d
 - **Filesystem storage.** ST's ecosystem is built on files. At single-user scale the migration and hand-editing convenience outweigh SQLite.
 - **Single user + password.** v1 is explicitly not multi-tenant; per-user isolation would add cost to every endpoint and storage path. Revisit if the need appears.
 - **English-first, i18n later.** The initial UI and docs are English; i18n is a deliberate later step rather than a half-built locale layer.
+
+## 13. Related documentation
+
+- [Documentation index](README.md)
+- [Milestones](MILESTONES.md)
+- [API](API.md)
+- [Data formats](DATA-FORMATS.md)
+- [Providers](PROVIDERS.md)
+- [SillyTavern compatibility](ST-COMPATIBILITY.md)
+- [Development](DEVELOPMENT.md)
+- [Deployment](DEPLOYMENT.md)
+- [Security](SECURITY.md)
+- [Troubleshooting](TROUBLESHOOTING.md)
+- [Glossary](GLOSSARY.md)
+- [Code reuse](REUSE.md)
