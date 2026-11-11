@@ -9,6 +9,7 @@ import {
     useCreateChat,
     useImportCharacters,
     useLogout,
+    useSetChatGreeting,
     useSettings,
     useUpdateSettings,
 } from '../hooks/data';
@@ -57,6 +58,7 @@ export function MainApp() {
         }
     };
     const createChatMutation = useCreateChat(selectedCharacterId);
+    const setGreetingMutation = useSetChatGreeting(selectedCharacterId, selectedChatId);
 
     /** Switch the provider every chat uses, from the library footer. */
     const handleSwitchProvider = async (id: string) => {
@@ -69,7 +71,7 @@ export function MainApp() {
         }
     };
     const logoutMutation = useLogout();
-    const [newChatOpen, setNewChatOpen] = useState(false);
+    const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
     const [stImportOpen, setStImportOpen] = useState(false);
 
@@ -147,10 +149,20 @@ export function MainApp() {
                 greetingIndex === undefined ? undefined : { greetingIndex },
             );
             selectChat(chat.chatId);
-            setNewChatOpen(false);
+            setGreetingMode(null);
             pushToast('New chat started.', 'success');
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not create a chat.', 'error');
+        }
+    };
+
+    const handleSwitchGreeting = async (greetingIndex: number) => {
+        try {
+            await setGreetingMutation.mutateAsync(greetingIndex);
+            setGreetingMode(null);
+            pushToast('Greeting switched.', 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not switch the greeting.', 'error');
         }
     };
 
@@ -167,7 +179,7 @@ export function MainApp() {
         }
         // Only interrupt with a picker when there is something to choose.
         if (greetings.length > 1) {
-            setNewChatOpen(true);
+            setGreetingMode('new');
             return;
         }
         void handleCreateChat();
@@ -225,6 +237,7 @@ export function MainApp() {
                     selectedChatId={selectedChatId}
                     onSelectChat={selectChat}
                     onNewChat={handleNewChat}
+                    onSwitchGreeting={() => setGreetingMode('switch')}
                     creatingChat={createChatMutation.isPending}
                     onOpenSettings={() => setSettingsOpen(true)}
                     onOpenSidebar={() => setSidebarOpen(true)}
@@ -239,22 +252,28 @@ export function MainApp() {
             <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
 
             <Modal
-                open={newChatOpen}
-                onClose={() => setNewChatOpen(false)}
-                title="Start a new chat"
+                open={greetingMode !== null}
+                onClose={() => setGreetingMode(null)}
+                title={greetingMode === 'switch' ? 'Switch greeting' : 'Start a new chat'}
                 widthClassName="max-w-2xl"
             >
                 <div className="max-h-[70vh] space-y-2 overflow-y-auto p-5">
                     <p className="text-sm leading-relaxed text-muted">
-                        Choose the greeting this chat opens with. Alternate greetings come from the character card.
+                        {greetingMode === 'switch'
+                            ? 'Replace the opening message. The rest of the conversation is kept.'
+                            : 'Choose the greeting this chat opens with. Alternate greetings come from the character card.'}
                     </p>
                     {greetings.map((greeting) => (
                         <button
                             key={greeting.index}
                             type="button"
                             className="w-full rounded-xl border border-line bg-surface/60 p-3 text-left transition hover:border-amber/40"
-                            onClick={() => void handleCreateChat(greeting.index)}
-                            disabled={createChatMutation.isPending}
+                            onClick={() =>
+                                void (greetingMode === 'switch'
+                                    ? handleSwitchGreeting(greeting.index)
+                                    : handleCreateChat(greeting.index))
+                            }
+                            disabled={createChatMutation.isPending || setGreetingMutation.isPending}
                         >
                             <div className="mb-1 text-[11px] uppercase tracking-wider text-muted">
                                 {greeting.index === 0 ? 'First message' : `Alternate greeting ${greeting.index}`}

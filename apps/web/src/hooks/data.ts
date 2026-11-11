@@ -269,6 +269,23 @@ export function useSetChatPersona(characterId: string | null) {
     });
 }
 
+/** Replace a chat's opening message with another greeting from the card. */
+export function useSetChatGreeting(characterId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (greetingIndex: number) => {
+            if (!characterId || !chatId) {
+                throw new Error('No chat selected');
+            }
+            return api.chats.setGreeting(characterId, chatId, greetingIndex);
+        },
+        onSuccess: (chat) => {
+            queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
 export function useBranchChat(characterId: string | null) {
     const queryClient = useQueryClient();
     return useMutation({

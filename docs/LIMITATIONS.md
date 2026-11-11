@@ -14,7 +14,7 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 
 - Streaming replies with reasoning shown separately when the model sends it.
 - Swipes on a regenerated reply, continue, inline editing, deleting messages, copying.
-- Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings.
+- Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings, and switch a chat's opening to another greeting from the chat header or by swiping the first message.
 - Stop a reply mid-stream; the partial text is kept.
 
 **Lorebooks**
@@ -69,7 +69,6 @@ CatCup Tavern 0.2.0 is early-access software. The goal for this release is narro
 - **Per-character prompt orders are ignored**, and saving the order editor writes only the global list.
 - **There is no Author's Note screen.** The server can apply one, but it is off by default and can only be changed through `settings.json` or the API.
 - **Editing a message with swipes changes only the visible variant**, and text added by Continue is lost the same way.
-- **Alternate greetings are chosen when a chat is created**; there is no way to switch to another afterwards.
 - **Swiping past the last variant does nothing** and does not generate a new one.
 
 **Platform**

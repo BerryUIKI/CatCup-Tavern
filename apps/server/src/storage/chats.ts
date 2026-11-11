@@ -218,11 +218,63 @@ export async function readChat(character: CharacterDetail, chatId: string): Prom
     return readChatFile(filePath, character, chatId);
 }
 
-function greetingFor(character: CharacterDetail, greetingIndex: number | undefined): string {
-    if (greetingIndex === undefined || greetingIndex <= 0) {
-        return character.card.first_mes;
+export interface GreetingOption {
+    /** Index in the card: 0 is `first_mes`, n is `alternate_greetings[n - 1]`. */
+    index: number;
+    text: string;
+}
+
+/**
+ * Every non-empty greeting in card order, after the source transform.
+ *
+ * `index` keeps the card's numbering even when an empty greeting is skipped, so
+ * the chat picker and `greetingIndex` keep agreeing.
+ */
+export function greetingOptions(character: CharacterDetail, transform?: (text: string) => string): GreetingOption[] {
+    return [character.card.first_mes, ...character.card.alternate_greetings]
+        .map((text, index) => {
+            const trimmed = text.trim();
+            return { index, text: trimmed && transform ? transform(trimmed) : trimmed };
+        })
+        .filter((option) => option.text.length > 0);
+}
+
+function selectGreeting(
+    character: CharacterDetail,
+    greetingIndex: number,
+    transform?: (text: string) => string,
+): { selected: GreetingOption; swipes: string[] } | null {
+    const greetings = greetingOptions(character, transform);
+    const selected = greetings.find((greeting) => greeting.index === greetingIndex);
+    return selected ? { selected, swipes: greetings.map((greeting) => greeting.text) } : null;
+}
+
+/**
+ * The first message a chat starts with.
+ *
+ * Every greeting becomes a swipe, as in SillyTavern's `getFirstMessage`, so the
+ * normal swipe controls can switch openings later.
+ */
+export function buildGreetingMessage(
+    character: CharacterDetail,
+    greetingIndex: number | undefined,
+    transform?: (text: string) => string,
+): ChatMessage | null {
+    const cardGreetings = [character.card.first_mes, ...character.card.alternate_greetings];
+    const wanted = greetingIndex ?? 0;
+    const index = wanted >= 0 && wanted < cardGreetings.length ? wanted : 0;
+    const picked = selectGreeting(character, index, transform);
+    if (!picked) {
+        return null;
     }
-    return character.card.alternate_greetings[greetingIndex - 1] ?? character.card.first_mes;
+    const { selected, swipes } = picked;
+    return {
+        name: character.name,
+        is_user: false,
+        send_date: new Date().toISOString(),
+        mes: selected.text,
+        extra: { swipe_id: Math.max(0, swipes.indexOf(selected.text)), swipes },
+    };
 }
 
 /** The persona a chat pinned, if any. */
@@ -257,19 +309,8 @@ export async function createChat(character: CharacterDetail, options: CreateChat
         index += 1;
     }
 
-    const rawGreeting = greetingFor(character, options.greetingIndex).trim();
-    const greeting = rawGreeting && options.transformGreeting ? options.transformGreeting(rawGreeting) : rawGreeting;
-    const messages: ChatMessage[] = greeting
-        ? [
-              {
-                  name: character.name,
-                  is_user: false,
-                  send_date: new Date().toISOString(),
-                  mes: greeting,
-                  extra: {},
-              },
-          ]
-        : [];
+    const message = buildGreetingMessage(character, options.greetingIndex, options.transformGreeting);
+    const messages: ChatMessage[] = message ? [message] : [];
 
     const chat: ChatFile = { header: defaultHeader(), messages };
     const filePath = resolveInside(directory, `${chatId}.jsonl`);
@@ -329,6 +370,52 @@ export async function updateMessage(
         chat.messages[index] = updated;
         await writeChatFile(filePath, chat);
         return updated;
+    });
+}
+
+export interface SetGreetingOptions {
+    greetingIndex: number;
+    transformGreeting?: (text: string) => string;
+}
+
+/**
+ * Replace the opening message with another greeting from the card.
+ *
+ * The rest of the conversation is untouched. Every non-empty greeting is stored
+ * as a swipe, so this also upgrades a chat created before greetings were kept
+ * as swipes.
+ */
+export async function setChatGreeting(
+    character: CharacterDetail,
+    chatId: string,
+    options: SetGreetingOptions,
+): Promise<ChatDetail | null> {
+    const filePath = await chatFilePath(character, chatId);
+    return withFileLock(filePath, async () => {
+        const chat = await readChatFile(filePath, character, chatId);
+        if (!chat) {
+            return null;
+        }
+        const first = chat.messages[0];
+        if (!first || first.is_user) {
+            throw new Error('This chat has no greeting to replace');
+        }
+        const picked = selectGreeting(character, options.greetingIndex, options.transformGreeting);
+        if (!picked) {
+            throw new Error('That greeting is empty or missing');
+        }
+        const { selected, swipes } = picked;
+        chat.messages[0] = {
+            ...first,
+            mes: selected.text,
+            extra: {
+                ...(first.extra ?? {}),
+                swipes,
+                swipe_id: Math.max(0, swipes.indexOf(selected.text)),
+            },
+        };
+        await writeChatFile(filePath, chat);
+        return chat;
     });
 }
 
