@@ -60,6 +60,7 @@ export const groupCreateSchema = z
     .object({
         name: z.string().trim().min(1).max(200).optional(),
         members: memberListSchema,
+        disabled_members: z.array(z.string().min(1).max(300)).optional(),
         avatar_url: z.string().max(2000).optional(),
         allow_self_responses: z.boolean().optional(),
         activation_strategy: z.number().int().min(0).max(3).optional(),
@@ -101,6 +102,10 @@ export interface GroupMember {
     id: string | null;
     name: string;
     avatarUrl: string | null;
+    /** Card fields, so the client can expand display macros per speaker. */
+    description: string;
+    personality: string;
+    scenario: string;
 }
 
 /** A group as the client sees it: the stored metadata plus resolved members. */

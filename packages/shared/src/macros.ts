@@ -17,6 +17,10 @@ export interface MacroContext {
      * expands it once and yields an empty string for later occurrences.
      */
     original?: string;
+    /** Group chats: every member name, including muted members. */
+    group?: readonly string[];
+    /** Group chats: members that may reply. */
+    groupNotMuted?: readonly string[];
 }
 
 const MACRO_PATTERN = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
@@ -47,10 +51,12 @@ export function substituteMacros(text: string, context: MacroContext, options: M
         description: () => context.description,
         personality: () => context.personality,
         scenario: () => context.scenario,
-        // Single-character chats always render the character name; group
-        // chats use a different prompt, which this port does not generate yet.
-        charifnotgroup: () => context.char,
-        group: () => '',
+        // In a group, `{{charIfNotGroup}}` is the member list; otherwise the
+        // character name, as SillyTavern's group macros do.
+        charifnotgroup: () => (context.group?.length ? context.group.join(', ') : context.char),
+        group: () => (context.group ?? []).join(', '),
+        groupnotmuted: () => (context.groupNotMuted ?? context.group ?? []).join(', '),
+        notchar: () => [...(context.group ?? []).filter((name) => name !== context.char), context.user].join(', '),
         original: () => {
             if (originalUsed) {
                 return '';
