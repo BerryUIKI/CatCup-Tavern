@@ -85,11 +85,43 @@ export const characterCardV3Schema = z
     })
     .passthrough();
 
+/**
+ * Fields the character editor may change.
+ *
+ * Merged into the stored card, so `extensions`, the character book, V3 assets
+ * and anything else the editor does not show survive a save.
+ */
+export const characterPatchSchema = z
+    .object({
+        name: z.string().min(1).optional(),
+        description: z.string().optional(),
+        personality: z.string().optional(),
+        scenario: z.string().optional(),
+        first_mes: z.string().optional(),
+        mes_example: z.string().optional(),
+        creator_notes: z.string().optional(),
+        system_prompt: z.string().optional(),
+        post_history_instructions: z.string().optional(),
+        alternate_greetings: z.array(z.string()).optional(),
+        tags: z.array(z.string()).optional(),
+        creator: z.string().optional(),
+        character_version: z.string().optional(),
+        /** Shown in group chats; V3 cards only. */
+        nickname: z.string().optional(),
+        /** Extra openings used in group chats; V3 cards only. */
+        group_only_greetings: z.array(z.string()).optional(),
+    })
+    .strict();
+
+/** How a card is exported. */
+export type CharacterExportFormat = 'png' | 'json';
+
 export type CharacterBookEntry = z.infer<typeof characterBookEntrySchema>;
 export type CharacterBook = z.infer<typeof characterBookSchema>;
 export type CharacterCardData = z.infer<typeof characterCardDataSchema>;
 export type CharacterCardV2 = z.infer<typeof characterCardV2Schema>;
 export type CharacterCardV3 = z.infer<typeof characterCardV3Schema>;
+export type CharacterPatch = z.infer<typeof characterPatchSchema>;
 export type CharacterSpec = 'v2' | 'v3' | 'legacy';
 
 export interface CharacterSummary {
