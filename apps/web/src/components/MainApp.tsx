@@ -17,6 +17,7 @@ import { ChatView } from './ChatView';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
+import { SillyTavernImport } from './SillyTavernImport';
 import { ToastViewport } from './Toast';
 
 const EMPTY_CHARACTERS: CharacterSummary[] = [];
@@ -42,6 +43,7 @@ export function MainApp() {
     const logoutMutation = useLogout();
     const [newChatOpen, setNewChatOpen] = useState(false);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+    const [stImportOpen, setStImportOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
     const chats = chatsQuery.data ?? EMPTY_CHATS;
@@ -168,6 +170,7 @@ export function MainApp() {
                 selectedCharacterId={selectedCharacterId}
                 onSelect={selectCharacter}
                 onEditCharacter={(id) => setEditingCharacterId(id)}
+                onImportSillyTavern={() => setStImportOpen(true)}
                 onImport={(files) => void handleImport(files)}
                 importing={importMutation.isPending}
                 activeProviderName={activeProvider?.name ?? null}
@@ -197,6 +200,8 @@ export function MainApp() {
             </main>
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+            <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
 
             <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
 

@@ -18,6 +18,8 @@ import type {
     RegexScriptPatch,
     SettingsPatch,
     SettingsResponse,
+    SillyTavernImportPlan,
+    SillyTavernImportResult,
     WorldDetail,
     WorldInfoEntryPatch,
     WorldSummary,
@@ -150,6 +152,11 @@ export const api = {
         remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,
     },
+    importFromSillyTavern: (path: string, dryRun: boolean) =>
+        request<{ plan: SillyTavernImportPlan } | { result: SillyTavernImportResult }>('/import/sillytavern', {
+            method: 'POST',
+            body: JSON.stringify({ path, dryRun }),
+        }),
     auth: {
         status: () => request<AuthStatus>('/auth/status'),
         setup: (password: string) =>
