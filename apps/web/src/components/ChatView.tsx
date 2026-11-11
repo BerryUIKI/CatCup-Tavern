@@ -12,8 +12,7 @@ import {
     substituteMacros,
 } from '@catcup/shared';
 import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useBranchChat,
     useChat,
@@ -29,6 +28,7 @@ import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { ContextInspector } from './ContextInspector';
+import { EmptyState } from './EmptyState';
 import { Logo } from './Logo';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
@@ -76,29 +76,6 @@ function subtitleFor(character: CharacterSummary): string {
         return 'Character card v2';
     }
     return 'Character card';
-}
-
-function EmptyState({
-    icon,
-    title,
-    description,
-    action,
-}: {
-    icon: ReactNode;
-    title: string;
-    description: string;
-    action?: ReactNode;
-}) {
-    return (
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-            <div className="mb-4 flex size-16 items-center justify-center rounded-2xl border border-line bg-surface/60">
-                {icon}
-            </div>
-            <h3 className="font-display text-xl text-parchment">{title}</h3>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">{description}</p>
-            {action ? <div className="mt-5">{action}</div> : null}
-        </div>
-    );
 }
 
 export function ChatView({
@@ -184,7 +161,11 @@ export function ChatView({
         });
     }, []);
 
-    const generation = useGeneration(character?.id ?? null, selectedChatId, () => scrollToBottom(true));
+    const generation = useGeneration(
+        character?.id ? { kind: 'character', characterId: character.id } : null,
+        selectedChatId,
+        () => scrollToBottom(true),
+    );
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -344,12 +325,7 @@ export function ChatView({
 
     const header = (
         <header className="flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
-            <button
-                type="button"
-                className="icon-btn md:hidden"
-                onClick={onOpenSidebar}
-                aria-label="Open character library"
-            >
+            <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>
 
@@ -486,7 +462,7 @@ export function ChatView({
                             description="Choose a character from the library, or import a PNG or JSON card to open the first door."
                             action={
                                 <button type="button" className="btn-ghost" onClick={onOpenLibrary}>
-                                    Open character library
+                                    Open the library
                                 </button>
                             }
                         />

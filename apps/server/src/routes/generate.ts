@@ -4,17 +4,17 @@ import {
     applyRegexScripts,
     type CharacterDetail,
     type ChatMessage,
-    errorMessage,
     type GenerateAction,
     REGEX_PLACEMENT,
     type RegexScript,
     resolvePersona,
     sanitizeRegexMacro,
-    type UsageInfo,
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { activeGenerations } from '../generation/registry.js';
+import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
@@ -22,8 +22,6 @@ import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
 import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
-import { getAdapter } from '../providers/index.js';
-import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
 import { appendMessage, chatPersonaId, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
 import { listRegexScripts } from '../storage/regex.js';
@@ -141,8 +139,6 @@ async function persistMessage(
 }
 
 export async function registerGenerateRoutes(app: FastifyInstance): Promise<void> {
-    const activeGenerations = new Map<string, AbortController>();
-
     app.post('/api/generate', async (request, reply) => {
         const body = generateSchema.parse(request.body ?? {});
         const character = await requireCharacter(body.characterId);
@@ -264,9 +260,6 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         }
 
         const generationId = randomUUID();
-        const controller = new AbortController();
-        activeGenerations.set(generationId, controller);
-
         const startedAt = new Date().toISOString();
         const context: PersistContext = {
             character,
@@ -282,91 +275,17 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             substitute,
         };
 
-        let replyInitialized = false;
-        let finished = false;
-        let heartbeat: ReturnType<typeof setInterval> | undefined;
-
-        request.raw.on('close', () => {
-            if (!finished) {
-                controller.abort();
-            }
+        await runGenerationStream({
+            reply,
+            provider,
+            apiKey,
+            prompt,
+            temperature: preset.generation.temperature,
+            topP: preset.generation.topP,
+            maxTokens: preset.generation.maxTokens,
+            generationId,
+            persist: (text, reasoning, stopped) => persistMessage(context, text, reasoning, stopped),
         });
-
-        try {
-            initSse(reply);
-            replyInitialized = true;
-            writeSse(reply, { type: 'start', generationId });
-            heartbeat = setInterval(() => writeSseComment(reply, 'ping'), 15000);
-
-            let text = '';
-            let reasoning = '';
-            let usage: UsageInfo | undefined;
-
-            try {
-                const adapter = getAdapter(provider);
-                for await (const chunk of adapter.streamChat(provider, apiKey, {
-                    model: provider.model,
-                    messages: prompt,
-                    temperature: preset.generation.temperature,
-                    topP: preset.generation.topP,
-                    maxTokens: preset.generation.maxTokens,
-                    signal: controller.signal,
-                })) {
-                    if (chunk.type === 'text') {
-                        text += chunk.text;
-                        writeSse(reply, { type: 'token', text: chunk.text });
-                    } else if (chunk.type === 'reasoning') {
-                        reasoning += chunk.text;
-                        writeSse(reply, { type: 'reasoning', text: chunk.text });
-                    } else if (chunk.type === 'usage') {
-                        usage = {
-                            promptTokens: chunk.promptTokens,
-                            completionTokens: chunk.completionTokens,
-                        };
-                    }
-                }
-
-                if (!text.trim()) {
-                    throw new Error('The model returned no content');
-                }
-
-                const saved = await persistMessage(context, text, reasoning, false);
-                writeSse(reply, {
-                    type: 'done',
-                    message: saved,
-                    ...(usage ? { usage } : {}),
-                });
-            } catch (streamError) {
-                const aborted = controller.signal.aborted;
-
-                if (text.trim()) {
-                    try {
-                        const saved = await persistMessage(context, text, reasoning, true);
-                        if (aborted) {
-                            writeSse(reply, { type: 'done', message: saved });
-                        } else {
-                            writeSse(reply, { type: 'error', message: errorMessage(streamError) });
-                        }
-                    } catch {
-                        writeSse(reply, { type: 'error', message: errorMessage(streamError) });
-                    }
-                } else {
-                    writeSse(reply, {
-                        type: 'error',
-                        message: aborted ? 'Generation stopped' : errorMessage(streamError),
-                    });
-                }
-            }
-        } finally {
-            finished = true;
-            if (heartbeat) {
-                clearInterval(heartbeat);
-            }
-            activeGenerations.delete(generationId);
-            if (replyInitialized) {
-                endSse(reply);
-            }
-        }
     });
 
     app.post('/api/generate/:id/stop', async (request) => {

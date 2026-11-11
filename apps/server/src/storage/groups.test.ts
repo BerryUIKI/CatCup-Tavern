@@ -68,6 +68,16 @@ describe('group storage', () => {
         });
     });
 
+    it('keeps only muted names that are members when creating', async () => {
+        const file = await groups.createGroup({
+            name: 'Muted',
+            members: ['Aria.json'],
+            disabled_members: ['Aria.json', 'Bram.json'],
+        });
+
+        expect(file.group.disabled_members).toEqual(['Aria.json']);
+    });
+
     it('keeps unknown fields when a group is edited', async () => {
         await writeGroupFile('meta', {
             name: 'Old name',
@@ -128,6 +138,19 @@ describe('group chat storage', () => {
 
         const summaries = await groups.listGroupChats(created.group.group);
         expect(summaries).toMatchObject([{ id: 'first night', messageCount: 1 }]);
+    });
+
+    it('appends several greetings in one write', async () => {
+        const { group } = await groups.createGroup({ name: 'Seeded', members: ['Aria.json', 'Bram.json'] });
+        const created = requireCreated(await groups.createGroupChat(group.id, 'seed test'));
+
+        await groups.appendGroupMessages(created.group.group, 'seed test', [
+            { name: 'Aria', is_user: false, mes: 'Hello.' },
+            { name: 'Bram', is_user: false, mes: 'Stew is on.' },
+        ]);
+
+        const chat = await groups.readGroupChat(created.group.group, 'seed test');
+        expect(chat?.messages.map((message) => message.name)).toEqual(['Aria', 'Bram']);
     });
 
     it('renames a chat and moves the group to it', async () => {

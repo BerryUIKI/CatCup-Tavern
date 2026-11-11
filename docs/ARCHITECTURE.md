@@ -128,33 +128,38 @@ Schemas exist in `packages/shared`; see [DATA-FORMATS.md](DATA-FORMATS.md). The 
 
 REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a session. Full request and response shapes are documented in [API.md](API.md).
 
-| Method       | Path                              | Purpose                                    |
-| ------------ | --------------------------------- | ------------------------------------------ |
-| GET          | `/api/auth/status`                | `needsSetup` / `authenticated`             |
-| POST         | `/api/auth/setup`                 | first-run password (loopback only)         |
-| POST         | `/api/auth/login` / `logout`      | session lifecycle                          |
-| GET/POST     | `/api/characters`                 | list / import (multipart)                  |
-| GET/DELETE   | `/api/characters/:id`             | detail / delete                            |
-| GET          | `/api/characters/:id/avatar`      | avatar bytes                               |
-| GET/POST     | `/api/characters/:id/chats`       | chat list / create                         |
-| GET          | `/api/chats/:characterId/:chatId` | full chat                                  |
-| PATCH/DELETE | `/api/chats/.../messages/:index`  | edit / delete (PATCH also selects a swipe) |
-| POST         | `/api/generate`                   | start generation, returns SSE              |
-| POST         | `/api/generate/:id/stop`          | stop generation                            |
-| GET/PATCH    | `/api/settings`                   | app settings                               |
-| CRUD         | `/api/providers`                  | provider configuration; keys go to secrets |
-| POST         | `/api/providers/:id/test`         | connectivity test                          |
-| GET          | `/api/providers/:id/models`       | model list                                 |
+| Method       | Path                                          | Purpose                                    |
+| ------------ | --------------------------------------------- | ------------------------------------------ |
+| GET          | `/api/auth/status`                            | `needsSetup` / `authenticated`             |
+| POST         | `/api/auth/setup`                             | first-run password (loopback only)         |
+| POST         | `/api/auth/login` / `logout`                  | session lifecycle                          |
+| GET/POST     | `/api/characters`                             | list / import (multipart)                  |
+| GET/DELETE   | `/api/characters/:id`                         | detail / delete                            |
+| GET          | `/api/characters/:id/avatar`                  | avatar bytes                               |
+| GET/POST     | `/api/characters/:id/chats`                   | chat list / create                         |
+| GET          | `/api/chats/:characterId/:chatId`             | full chat                                  |
+| PATCH/DELETE | `/api/chats/.../messages/:index`              | edit / delete (PATCH also selects a swipe) |
+| CRUD         | `/api/groups`                                 | group metadata                             |
+| CRUD         | `/api/groups/:groupId/chats`                  | group chats and messages                   |
+| POST         | `/api/groups/:groupId/chats/:chatId/generate` | group reply, returns the same SSE stream   |
+| POST         | `/api/generate`                               | start generation, returns SSE              |
+| POST         | `/api/generate/:id/stop`                      | stop generation                            |
+| GET/PATCH    | `/api/settings`                               | app settings                               |
+| CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
+| POST         | `/api/providers/:id/test`                     | connectivity test                          |
+| GET          | `/api/providers/:id/models`                   | model list                                 |
 
 `POST /api/generate` SSE events:
 
 ```text
-event: start      data: { generationId }
+event: start      data: { generationId, speaker? }
 event: token      data: { text }
 event: reasoning  data: { text }
 event: done       data: { message, usage? }
 event: error      data: { message }
 ```
+
+`speaker` is present on group replies and names the member the server chose.
 
 - The server persists the assistant message before emitting `done`.
 - Client disconnect / Stop aborts the upstream request and saves the partial text with `extra.stopped = true`.
@@ -215,14 +220,14 @@ M1 replaces this with the full ST Prompt Manager ordering, injection positions/d
 
 The authoritative scope, status and acceptance criteria live in [MILESTONES.md](MILESTONES.md). Summary:
 
-| Milestone | Status   | Theme                                                             |
-| --------- | -------- | ----------------------------------------------------------------- |
-| M0        | Complete | Runnable web + server foundation, ST cards/chats, four providers  |
-| M1        | Next     | World info, Prompt Manager, presets, editing/branching, tokenizer |
-| M2        | Planned  | Group chats, memory, regex, TTS/image generation, card editing    |
-| M3        | Planned  | STscript, Quick Replies, getContext/event bus, extension sandbox  |
-| M4        | Planned  | Tauri desktop shell, Node sidecar, updater, packaging             |
-| M5        | Planned  | Mobile, i18n, accessibility, CI, performance, v1.0                |
+| Milestone | Status      | Theme                                                             |
+| --------- | ----------- | ----------------------------------------------------------------- |
+| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers  |
+| M1        | Next        | World info, Prompt Manager, presets, editing/branching, tokenizer |
+| M2        | In progress | Group chats, memory, regex, TTS/image generation, card editing    |
+| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox  |
+| M4        | Planned     | Tauri desktop shell, Node sidecar, updater, packaging             |
+| M5        | Planned     | Mobile, i18n, accessibility, CI, performance, v1.0                |
 
 ## 12. Decision log
 

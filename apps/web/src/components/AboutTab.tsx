@@ -6,6 +6,7 @@ import { Spinner } from './Spinner';
 const WORKS = [
     'Import SillyTavern cards (PNG V2/V3, JSON), chats, lorebooks and OpenAI presets — or point at a whole SillyTavern folder and copy everything at once.',
     'Chat with streaming replies, swipes, regenerate, continue, inline editing, branching and alternate greetings.',
+    'Group chats with their own greetings, per-member avatars and natural, list, manual or pooled reply order.',
     'Lorebooks with SillyTavern’s full scan pipeline, and an editor for every entry field.',
     'OpenAI presets: import, activate, and change prompt order and injection positions.',
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
@@ -15,12 +16,12 @@ const WORKS = [
 ];
 
 const DOES_NOT_WORK = [
-    'Group chats with several characters in one conversation.',
     'Quick Replies and STscript / slash commands.',
     'SillyTavern extensions — none of them load.',
     'Text to speech and image generation.',
     'Summary memory or vector memory for long chats.',
     'CharX (.charx) import and export.',
+    'Group chats answer one member per turn with that member’s own card; SillyTavern’s append modes, automatic turns and multi-member reply batches are not implemented.',
     'Regex scripts are global only: SillyTavern’s per-character and per-preset scopes are not implemented.',
     'Personas have a name and a description only — no avatars and no per-persona injection settings.',
     'Phone-sized layouts and translated interfaces.',

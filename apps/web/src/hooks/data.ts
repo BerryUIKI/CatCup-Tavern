@@ -2,6 +2,11 @@ import type {
     AuthStatus,
     CharacterPatch,
     ChatDetail,
+    ChatSummary,
+    GroupChatDetail,
+    GroupCreate,
+    GroupPatch,
+    GroupView,
     ImportCharactersResponse,
     ProviderInput,
     RegexScriptPatch,
@@ -9,7 +14,7 @@ import type {
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../lib/api';
 
@@ -19,6 +24,9 @@ export const queryKeys = {
     character: (id: string) => ['character', id] as const,
     chats: (characterId: string | null) => ['chats', characterId] as const,
     chat: (characterId: string | null, chatId: string | null) => ['chat', characterId, chatId] as const,
+    groups: ['groups'] as const,
+    groupChats: (groupId: string | null) => ['groupChats', groupId] as const,
+    groupChat: (groupId: string | null, chatId: string | null) => ['groupChat', groupId, chatId] as const,
     settings: ['settings'] as const,
     presets: ['presets'] as const,
     preset: (id: string | null) => ['preset', id] as const,
@@ -102,6 +110,8 @@ export function useImportCharacters() {
         mutationFn: (files) => api.characters.import(files),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // A new card can resolve a member a group lists as missing.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
@@ -116,6 +126,8 @@ export function useUpdateCharacter() {
             // wrapper: the API client already unwraps it.
             queryClient.setQueryData(queryKeys.character(character.id), character);
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // Group member names and avatars come from the card.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
@@ -160,6 +172,7 @@ export function useDeleteCharacter() {
         mutationFn: (id) => api.characters.remove(id),
         onSuccess: (_data, id) => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
             queryClient.removeQueries({ queryKey: queryKeys.character(id) });
             queryClient.removeQueries({ queryKey: queryKeys.chats(id) });
         },
@@ -322,6 +335,274 @@ export function useBranchChat(characterId: string | null) {
         onSuccess: (chat) => {
             queryClient.setQueryData(queryKeys.chat(characterId, chat.chatId), chat);
             void queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) });
+        },
+    });
+}
+
+export function useGroups() {
+    return useQuery({ queryKey: queryKeys.groups, queryFn: api.groups.list });
+}
+
+/**
+ * Put a group into the list cache immediately.
+ *
+ * The list drives the sidebar and the selected-group lookup; waiting for the
+ * invalidation refetch would briefly make a just-created group look deleted.
+ */
+function setGroupInCache(queryClient: QueryClient, group: GroupView): void {
+    queryClient.setQueryData<GroupView[]>(queryKeys.groups, (current) => {
+        if (!current) {
+            return [group];
+        }
+        return current.some((item) => item.id === group.id)
+            ? current.map((item) => (item.id === group.id ? group : item))
+            : [group, ...current];
+    });
+}
+
+export function useCreateGroup() {
+    const queryClient = useQueryClient();
+    return useMutation<GroupView, Error, GroupCreate>({
+        mutationFn: (input) => api.groups.create(input),
+        onSuccess: (group) => {
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useUpdateGroup(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<GroupView, Error, GroupPatch>({
+        mutationFn: (patch) => {
+            if (!id) {
+                throw new Error('No group selected');
+            }
+            return api.groups.update(id, patch);
+        },
+        onSuccess: (group) => {
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useDeleteGroup() {
+    const queryClient = useQueryClient();
+    return useMutation<{ ok: true }, Error, string>({
+        mutationFn: (id) => api.groups.remove(id),
+        onSuccess: (_data, id) => {
+            queryClient.setQueryData<GroupView[]>(queryKeys.groups, (current) =>
+                current ? current.filter((item) => item.id !== id) : current,
+            );
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+            queryClient.removeQueries({ queryKey: queryKeys.groupChats(id) });
+        },
+    });
+}
+
+export function useGroupChats(groupId: string | null) {
+    return useQuery({
+        queryKey: queryKeys.groupChats(groupId),
+        queryFn: () => api.groups.chats.list(groupId as string),
+        enabled: Boolean(groupId),
+    });
+}
+
+export function useGroupChat(groupId: string | null, chatId: string | null) {
+    return useQuery({
+        queryKey: queryKeys.groupChat(groupId, chatId),
+        queryFn: () => api.groups.chats.get(groupId as string, chatId as string),
+        enabled: Boolean(groupId && chatId),
+    });
+}
+
+/**
+ * Start a chat in a group.
+ *
+ * The server seeds one greeting per member, so the returned chat already has
+ * messages. Creating a group passes `groupId` explicitly because the store has
+ * not selected the new group yet.
+ */
+export function useCreateGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<
+        { chat: GroupChatDetail; group: GroupView },
+        Error,
+        { groupId?: string; name?: string } | undefined
+    >({
+        mutationFn: (variables) => {
+            const id = variables?.groupId ?? groupId;
+            if (!id) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.create(id, variables?.name ? { name: variables.name } : {});
+        },
+        onSuccess: ({ chat, group }, variables) => {
+            const id = variables?.groupId ?? groupId;
+            if (!id) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(id, chat.chatId), chat);
+            // Add the chat to the list cache before the invalidation refetch, so
+            // selecting it cannot be undone by an effect that still sees the
+            // previous list.
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(id), (current) => [
+                {
+                    id: chat.chatId,
+                    title: chat.chatId,
+                    updatedAt: Date.now(),
+                    messageCount: chat.messages.length,
+                },
+                ...(current ?? []).filter((item) => item.id !== chat.chatId),
+            ]);
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(id) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useRenameGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, { chatId: string; name: string }>({
+        mutationFn: (variables) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.update(groupId, variables.chatId, { name: variables.name });
+        },
+        onSuccess: ({ chat, group }, variables) => {
+            if (!groupId) {
+                return;
+            }
+            if (variables.chatId !== chat.chatId) {
+                queryClient.removeQueries({ queryKey: queryKeys.groupChat(groupId, variables.chatId) });
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(groupId), (current) =>
+                (current ?? []).map((item) =>
+                    item.id === variables.chatId
+                        ? { ...item, id: chat.chatId, title: chat.chatId, updatedAt: Date.now() }
+                        : item,
+                ),
+            );
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useSetGroupChatPersona(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, string | null>({
+        mutationFn: (personaId) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.update(groupId, chatId, { personaId });
+        },
+        onSuccess: ({ chat, group }) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+        },
+    });
+}
+
+/** Persist which group chat is open, as `chat_id`, so it reopens next time. */
+export function useSetCurrentGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, string>({
+        mutationFn: (chatId) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.update(groupId, chatId, { current: true });
+        },
+        onSuccess: ({ group }) => {
+            if (!groupId) {
+                return;
+            }
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useDeleteGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ ok: true; group: GroupView }, Error, string>({
+        mutationFn: (chatId) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.remove(groupId, chatId);
+        },
+        onSuccess: ({ group }, chatId) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.removeQueries({ queryKey: queryKeys.groupChat(groupId, chatId) });
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(groupId), (current) =>
+                current ? current.filter((item) => item.id !== chatId) : current,
+            );
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useUpdateGroupMessage(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { index: number; message?: string; swipeId?: number }) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.updateMessage(groupId, chatId, variables.index, {
+                ...(variables.message !== undefined ? { message: variables.message } : {}),
+                ...(variables.swipeId !== undefined ? { swipeId: variables.swipeId } : {}),
+            });
+        },
+        onSuccess: (message, variables) => {
+            if (!groupId || !chatId) {
+                return;
+            }
+            queryClient.setQueryData<GroupChatDetail>(queryKeys.groupChat(groupId, chatId), (current) => {
+                if (!current) {
+                    return current;
+                }
+                return {
+                    ...current,
+                    messages: current.messages.map((item, index) => (index === variables.index ? message : item)),
+                };
+            });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+        },
+    });
+}
+
+export function useDeleteGroupMessage(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (index: number) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.deleteMessage(groupId, chatId, index);
+        },
+        onSuccess: (chat) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
         },
     });
 }

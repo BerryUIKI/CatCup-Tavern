@@ -7,6 +7,10 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    GroupChatDetail,
+    GroupCreate,
+    GroupPatch,
+    GroupView,
     HealthResponse,
     ImportCharactersResponse,
     ModelInfo,
@@ -288,6 +292,86 @@ export const api = {
                 { method: 'POST', body: JSON.stringify({ index, name }) },
             );
             return data.chat;
+        },
+    },
+
+    groups: {
+        list: async () => {
+            const data = await request<{ groups: GroupView[] }>('/groups');
+            return data.groups;
+        },
+        get: async (id: string) => {
+            const data = await request<{ group: GroupView }>(`/groups/${encodeURIComponent(id)}`);
+            return data.group;
+        },
+        create: async (input: GroupCreate) => {
+            const data = await request<{ group: GroupView }>('/groups', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.group;
+        },
+        update: async (id: string, patch: GroupPatch) => {
+            const data = await request<{ group: GroupView }>(`/groups/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            });
+            return data.group;
+        },
+        remove: (id: string) => request<{ ok: true }>(`/groups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        chats: {
+            list: async (groupId: string) => {
+                const data = await request<{ chats: ChatSummary[] }>(`/groups/${encodeURIComponent(groupId)}/chats`);
+                return data.chats;
+            },
+            create: async (groupId: string, body: { name?: string } = {}) => {
+                const data = await request<{ chat: GroupChatDetail; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats`,
+                    { method: 'POST', body: JSON.stringify(body) },
+                );
+                return data;
+            },
+            get: async (groupId: string, chatId: string) => {
+                const data = await request<{ chat: GroupChatDetail }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                );
+                return data.chat;
+            },
+            update: async (
+                groupId: string,
+                chatId: string,
+                patch: { name?: string; personaId?: string | null; current?: boolean },
+            ) => {
+                const data = await request<{ chat: GroupChatDetail; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                    { method: 'PATCH', body: JSON.stringify(patch) },
+                );
+                return data;
+            },
+            remove: (groupId: string, chatId: string) =>
+                request<{ ok: true; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                    { method: 'DELETE' },
+                ),
+            updateMessage: async (
+                groupId: string,
+                chatId: string,
+                index: number,
+                body: { message?: string; swipeId?: number },
+            ) => {
+                const data = await request<{ message: ChatMessage }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/messages/${index}`,
+                    { method: 'PATCH', body: JSON.stringify(body) },
+                );
+                return data.message;
+            },
+            deleteMessage: async (groupId: string, chatId: string, index: number) => {
+                const data = await request<{ chat: GroupChatDetail }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/messages/${index}`,
+                    { method: 'DELETE' },
+                );
+                return data.chat;
+            },
         },
     },
 

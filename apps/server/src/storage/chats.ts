@@ -343,6 +343,9 @@ export interface MessagePatch {
     send_date?: string;
     mes?: string;
     extra?: Record<string, unknown>;
+    /** Group chats record the speaker's avatar file name at the message level. */
+    original_avatar?: string;
+    force_avatar?: string;
 }
 
 export async function updateMessage(

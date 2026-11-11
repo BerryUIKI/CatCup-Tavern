@@ -1,9 +1,16 @@
-import type { ChatMessage, GenerateRequest, GenerationEvent, UsageInfo } from '@catcup/shared';
+import type {
+    ChatMessage,
+    GenerateRequest,
+    GenerationEvent,
+    GenerationSpeaker,
+    GroupGenerateRequest,
+    UsageInfo,
+} from '@catcup/shared';
 
 import { ApiError } from './api';
 
 export interface GenerationHandlers {
-    onStart?: (generationId: string) => void;
+    onStart?: (generationId: string, speaker?: GenerationSpeaker) => void;
     onToken?: (text: string) => void;
     onReasoning?: (text: string) => void;
     onDone?: (message: ChatMessage, usage?: UsageInfo) => void;
@@ -30,7 +37,7 @@ function dispatchBlock(block: string, handlers: GenerationHandlers): void {
 
     switch (event.type) {
         case 'start':
-            handlers.onStart?.(event.generationId);
+            handlers.onStart?.(event.generationId, event.speaker);
             break;
         case 'token':
             handlers.onToken?.(event.text);
@@ -48,11 +55,12 @@ function dispatchBlock(block: string, handlers: GenerationHandlers): void {
 }
 
 export async function streamGeneration(
-    body: GenerateRequest,
+    path: string,
+    body: GenerateRequest | GroupGenerateRequest,
     handlers: GenerationHandlers,
     signal?: AbortSignal,
 ): Promise<void> {
-    const response = await fetch('/api/generate', {
+    const response = await fetch(path, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },

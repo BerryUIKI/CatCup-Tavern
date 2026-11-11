@@ -40,4 +40,20 @@ describe('substituteMacros', () => {
             '^Seraphina$',
         );
     });
+
+    it('expands the group macros', () => {
+        const groupContext = { ...context, group: ['Seraphina', 'Mira'], groupNotMuted: ['Mira'] };
+        expect(substituteMacros('{{group}} / {{groupNotMuted}}', groupContext)).toBe('Seraphina, Mira / Mira');
+    });
+
+    it('uses the member list for charIfNotGroup in a group', () => {
+        const groupContext = { ...context, group: ['Seraphina', 'Mira'] };
+        expect(substituteMacros('{{charIfNotGroup}}', groupContext)).toBe('Seraphina, Mira');
+        expect(substituteMacros('{{charIfNotGroup}}', context)).toBe('Seraphina');
+    });
+
+    it('lists the other members and the user for notChar', () => {
+        const groupContext = { ...context, group: ['Seraphina', 'Mira'] };
+        expect(substituteMacros('{{notChar}}', groupContext)).toBe('Mira, Alex');
+    });
 });

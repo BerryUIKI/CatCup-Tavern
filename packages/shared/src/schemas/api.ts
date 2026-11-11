@@ -30,8 +30,27 @@ export interface GenerateRequest {
     message?: string;
 }
 
+/** One member speaking in a group chat. */
+export interface GenerationSpeaker {
+    id: string;
+    /** Character avatar file name, matching the message's `original_avatar`. */
+    fileName: string;
+    name: string;
+    avatarUrl: string;
+}
+
+export interface GroupGenerateRequest {
+    action: GenerateAction;
+    message?: string;
+    /**
+     * Force a member to speak. Manual groups require it; other strategies treat
+     * it as an override.
+     */
+    speaker?: string;
+}
+
 export type GenerationEvent =
-    | { type: 'start'; generationId: string }
+    | { type: 'start'; generationId: string; speaker?: GenerationSpeaker }
     | { type: 'token'; text: string }
     | { type: 'reasoning'; text: string }
     | {

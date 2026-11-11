@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chat storage landed first.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats are usable end to end.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -289,7 +289,8 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Delivered so far
 
-- **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages. Group UI and reply generation are the next slice.
+- **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages.
+- **Group chat UI and generation** (2026-11-11): a Groups tab with a group editor, a group chat pane with per-member avatars, and server-side replies. Natural, list, manual and pooled selection; each request generates one reply from the chosen member's card, with a group nudge, `Name:` history prefixes, ST's group new-chat marker, reply trimming and a manual speaker picker. New chats seed one greeting per member, muted included.
 
 ### Scope
 
@@ -306,7 +307,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Acceptance criteria
 
-- [ ] Group chat with at least three characters can be created, persisted and reloaded.
+- [x] Group chat with at least three characters can be created, persisted and reloaded.
 - [ ] Summary memory survives restarts and is visible in the context inspector.
 - [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
 - [ ] A basic Quick Reply executes and appears in the UI.
@@ -315,7 +316,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
 
 ## M3 — Scripting and extension compatibility (Planned)
 
