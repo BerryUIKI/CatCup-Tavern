@@ -394,6 +394,26 @@ Aborts a running generation by its `generationId`.
 
 `{ "ok": false }` means the generation already finished or the ID is unknown.
 
+## Import
+
+### `POST /api/import/sillytavern`
+
+Copy an existing SillyTavern installation into this one.
+
+```json
+{ "path": "/home/me/SillyTavern/data/default-user", "dryRun": true }
+```
+
+- `path` is an **absolute** path on the machine running CatCup. A relative path, a missing path or a directory with no SillyTavern data is a `400` with a message saying which.
+- `dryRun: true` returns `{ "plan": { characters, chats, worlds, presets, sources, errors } }` and writes nothing. `sources` lists the folders that contributed files.
+- Without `dryRun` it copies, returning `{ "result": { imported: { characters, chats, worlds, presets }, errors, skippedChats } }`.
+
+What is read: `characters/`, `chats/<character>/*.jsonl`, `worlds/`, and OpenAI presets from `openai presets/`, `presets/openai/` or `public/presets/openai/`. Chats are attached to a character by matching the folder name against the imported card's name or id; a chat whose character is not in the same import is reported in `skippedChats` rather than guessed at. Files over 20 MB and kinds beyond 500 files are skipped, with an error per file.
+
+Importing is additive: running it twice adds copies with numeric suffixes instead of overwriting.
+
+Group chats, backgrounds, themes and SillyTavern's own settings are not imported.
+
 ## Settings
 
 ### `GET /api/settings`

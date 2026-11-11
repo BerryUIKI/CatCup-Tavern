@@ -1,5 +1,5 @@
 import type { CharacterSummary } from '@catcup/shared';
-import { BookOpen, LogOut, Pencil, Search, Settings2, Upload, X } from 'lucide-react';
+import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
@@ -13,6 +13,7 @@ interface SidebarProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
+    onImportSillyTavern: () => void;
     onImport: (files: File[]) => void;
     importing: boolean;
     activeProviderName: string | null;
@@ -30,6 +31,7 @@ export function Sidebar({
     selectedCharacterId,
     onSelect,
     onEditCharacter,
+    onImportSillyTavern,
     onImport,
     importing,
     activeProviderName,
@@ -124,6 +126,14 @@ export function Sidebar({
                     className="hidden"
                     onChange={(event) => handleFiles(event.target.files)}
                 />
+                <button
+                    type="button"
+                    className="mt-2 flex w-full items-center justify-center gap-2 text-xs text-muted transition hover:text-parchment"
+                    onClick={onImportSillyTavern}
+                >
+                    <FolderInput size={14} />
+                    Import from SillyTavern
+                </button>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
