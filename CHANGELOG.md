@@ -8,6 +8,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 - Providers can be added, duplicated and deleted in Settings. A new one starts as a custom endpoint, and **Load** fills the model suggestions from the provider's own model list without saving first.
 - The library footer switches the active provider from a list that shows each one's model, so changing servers no longer means opening settings.
+- GitHub Actions CI runs `typecheck`, `lint`, `test` and `build` on every pull request into `dev` or `main`, and on every push to either branch, replacing the manual post-merge checks.
 
 ## 0.2.0 — 2026-11-11
 
