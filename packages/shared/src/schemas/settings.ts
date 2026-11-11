@@ -25,10 +25,22 @@ export const personaSchema = z.object({
 });
 export type PersonaSettings = z.infer<typeof personaSchema>;
 
+/** One of the personas a user can switch between. */
+export const personaEntrySchema = personaSchema.extend({
+    id: z.string().min(1),
+});
+export type Persona = z.infer<typeof personaEntrySchema>;
+
 export const DEFAULT_PERSONA: PersonaSettings = {
     name: 'You',
     description: '',
 };
+
+/**
+ * Id given to the persona derived from the single-persona field that files
+ * written before the persona list existed carry.
+ */
+export const LEGACY_PERSONA_ID = 'default';
 
 export const uiSettingsSchema = z.object({
     /** Reserved for future i18n; the UI is English-only for now. */
@@ -110,7 +122,10 @@ export const appSettingsSchema = z.object({
     /** Active ST OpenAI preset id under `data/presets`, or `null`. */
     activePresetId: z.string().nullable().default(null),
     generation: generationSettingsSchema.default(DEFAULT_GENERATION_SETTINGS),
-    persona: personaSchema.default(DEFAULT_PERSONA),
+    /** The personas a user can switch between. Empty only before migration. */
+    personas: z.array(personaEntrySchema).default([]),
+    /** Default persona for chats that do not pin one. */
+    activePersonaId: z.string().nullable().default(null),
     ui: uiSettingsSchema.default(DEFAULT_UI_SETTINGS),
     worldInfo: worldInfoConfigSchema.default(DEFAULT_WORLD_INFO_CONFIG),
     authorNote: authorNoteSchema.default(DEFAULT_AUTHOR_NOTE),
@@ -125,7 +140,8 @@ export const settingsPatchSchema = z.object({
     activeProviderId: z.string().nullable().optional(),
     activePresetId: z.string().nullable().optional(),
     generation: generationSettingsSchema.partial().optional(),
-    persona: personaSchema.partial().optional(),
+    personas: z.array(personaEntrySchema).optional(),
+    activePersonaId: z.string().nullable().optional(),
     ui: uiSettingsSchema.partial().optional(),
     worldInfo: worldInfoConfigSchema.partial().optional(),
     authorNote: authorNoteSchema.partial().optional(),

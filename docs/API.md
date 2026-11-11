@@ -226,13 +226,21 @@ Returns `{ "chat": ChatDetail }`.
 
 ### `PATCH /api/chats/:characterId/:chatId`
 
-Rename a chat. Chats are files, so this moves the file and returns the chat under its new id.
+Rename a chat, pin it to a persona, or both.
 
 ```json
 { "name": "The forest glade" }
 ```
 
-Response: `{ "chat": ChatDetail }`. A name that is already in use gets a numeric suffix instead of overwriting the other chat; the returned `chatId` is the one actually used.
+```json
+{ "personaId": "persona-uuid" }
+```
+
+- `name` moves the chat file and returns the chat under its new id. A name that is already in use gets a numeric suffix instead of overwriting the other chat; the returned `chatId` is the one actually used.
+- `personaId` stores `persona_id` in the chat's `chat_metadata`, which is what makes the choice travel with the chat file. `null` removes the pin, so the chat follows the account default again.
+- Sending neither is a `400`.
+
+Response: `{ "chat": ChatDetail }`.
 
 ### `POST /api/chats/:characterId/:chatId/branch`
 
@@ -404,7 +412,8 @@ Aborts a running generation by its `generationId`.
             "contextSize": 32768,
             "stream": true
         },
-        "persona": { "name": "You", "description": "" },
+        "personas": [{ "id": "default", "name": "You", "description": "" }],
+        "activePersonaId": "default",
         "ui": { "language": "en", "theme": "tavern-dark" },
         "worldInfo": {
             "globalBooks": [],
@@ -432,7 +441,7 @@ Aborts a running generation by its `generationId`.
 }
 ```
 
-`ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n. `worldInfo.globalBooks` lists world info book ids (file names without `.json`) scanned for every chat; a character's own book, from the card's `extensions.world`, is added automatically. `authorNote.position` is `0` in prompt, `1` in chat, `2` before prompt; `authorNote.role` is `0` system, `1` user, `2` assistant.
+`ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n. `worldInfo.globalBooks` lists world info book ids (file names without `.json`) scanned for every chat; a character's own book, from the card's `extensions.world`, is added automatically. `authorNote.position` is `0` in prompt, `1` in chat, `2` before prompt; `authorNote.role` is `0` system, `1` user, `2` assistant. `personas` is the list a user can speak as and `activePersonaId` picks the default for chats that do not pin one; files written before the list existed are migrated on read, carrying the old single persona over under the id `default`.
 
 ### `PATCH /api/settings`
 
@@ -442,7 +451,8 @@ Partial update. All fields are optional:
 {
     "activeProviderId": "provider-uuid",
     "generation": { "temperature": 0.9, "maxTokens": 4096 },
-    "persona": { "name": "Alex", "description": "A curious traveler." },
+    "personas": [{ "id": "default", "name": "Alex", "description": "A curious traveler." }],
+    "activePersonaId": "default",
     "ui": { "theme": "tavern-dark" },
     "worldInfo": { "globalBooks": ["eldoria"], "recursive": true },
     "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 }

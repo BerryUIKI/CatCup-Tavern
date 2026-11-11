@@ -127,6 +127,8 @@ Chats use SillyTavern's JSON Lines format. The file begins with a header object,
 
 SillyTavern uses `"unused"` for these fields; CatCup keeps the same convention. Unknown `chat_metadata` fields are preserved.
 
+CatCup writes one field of its own into `chat_metadata`: `persona_id`, the persona a chat is pinned to. Keeping it in the header rather than a side file means the choice travels with the chat when the JSONL is copied or exported, and SillyTavern ignores the field it does not know.
+
 ### Message
 
 ```json
@@ -402,7 +404,8 @@ One consequence catches people out: world info is assembled with the prompt flag
         }
     ],
     "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
-    "persona": { "name": "You", "description": "" },
+    "personas": [{ "id": "default", "name": "You", "description": "" }],
+    "activePersonaId": "default",
     "ui": { "language": "en", "theme": "tavern-dark" }
 }
 ```

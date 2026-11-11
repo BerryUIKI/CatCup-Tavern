@@ -10,9 +10,11 @@ import {
     DEFAULT_UI_SETTINGS,
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
+    LEGACY_PERSONA_ID,
     type ProviderConfig,
     type ProviderInput,
     type ProviderPublic,
+    personaSchema,
     type SettingsPatch,
     type SettingsResponse,
 } from '@catcup/shared';
@@ -67,7 +69,8 @@ function createDefaultSettings(): AppSettings {
         providers,
         activePresetId: null,
         generation: { ...DEFAULT_GENERATION_SETTINGS },
-        persona: { ...DEFAULT_PERSONA },
+        personas: [{ id: LEGACY_PERSONA_ID, ...DEFAULT_PERSONA }],
+        activePersonaId: LEGACY_PERSONA_ID,
         ui: { ...DEFAULT_UI_SETTINGS },
         worldInfo: { ...DEFAULT_WORLD_INFO_CONFIG },
         authorNote: { ...DEFAULT_AUTHOR_NOTE },
@@ -105,6 +108,24 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
         !settings.providers.some((provider) => provider.id === settings.activeProviderId)
     ) {
         settings.activeProviderId = settings.providers[0]?.id ?? null;
+        changed = true;
+    }
+
+    // Files written before the persona list carry one `persona` object. Promote
+    // it once so the list is the only source of truth from then on.
+    if (settings.personas.length === 0) {
+        const legacy = personaSchema.safeParse(isRecord(raw) ? raw.persona : undefined);
+        settings.personas = [
+            {
+                id: LEGACY_PERSONA_ID,
+                name: legacy.success ? legacy.data.name : DEFAULT_PERSONA.name,
+                description: legacy.success ? legacy.data.description : DEFAULT_PERSONA.description,
+            },
+        ];
+        settings.activePersonaId = LEGACY_PERSONA_ID;
+        changed = true;
+    } else if (settings.activePersonaId && !settings.personas.some((item) => item.id === settings.activePersonaId)) {
+        settings.activePersonaId = settings.personas[0]?.id ?? null;
         changed = true;
     }
 
@@ -226,8 +247,20 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         if (patch.generation) {
             settings.generation = { ...settings.generation, ...patch.generation };
         }
-        if (patch.persona) {
-            settings.persona = { ...settings.persona, ...patch.persona };
+        if (patch.personas !== undefined) {
+            settings.personas = patch.personas;
+            if (
+                settings.activePersonaId !== null &&
+                !settings.personas.some((item) => item.id === settings.activePersonaId)
+            ) {
+                settings.activePersonaId = settings.personas[0]?.id ?? null;
+            }
+        }
+        if (patch.activePersonaId !== undefined) {
+            settings.activePersonaId =
+                patch.activePersonaId !== null && settings.personas.some((item) => item.id === patch.activePersonaId)
+                    ? patch.activePersonaId
+                    : (settings.personas[0]?.id ?? null);
         }
         if (patch.ui) {
             settings.ui = { ...settings.ui, ...patch.ui };

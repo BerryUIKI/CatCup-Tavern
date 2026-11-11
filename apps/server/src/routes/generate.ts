@@ -8,6 +8,7 @@ import {
     type GenerateAction,
     REGEX_PLACEMENT,
     type RegexScript,
+    resolvePersona,
     sanitizeRegexMacro,
     type UsageInfo,
 } from '@catcup/shared';
@@ -23,7 +24,7 @@ import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
-import { appendMessage, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
+import { appendMessage, chatPersonaId, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
 import { listRegexScripts } from '../storage/regex.js';
 import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
@@ -163,8 +164,9 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
 
         // Scripts and the macro context are resolved once per request; the
         // source transforms below and the prompt transform later share them.
+        const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(character, settings.persona);
+        const macroContext = createMacroContext(character, persona);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 
@@ -187,7 +189,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             // the stored chat and any later export all agree.
             const storedText = applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute });
             const userMessage: ChatMessage = {
-                name: settings.persona.name,
+                name: persona.name,
                 is_user: true,
                 send_date: new Date().toISOString(),
                 mes: storedText,
@@ -218,7 +220,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const worldInfoTurn = await scanWorldInfoForTurn({
             character,
             messages,
-            persona: settings.persona,
+            persona: persona,
             config: settings.worldInfo,
             authorNote: settings.authorNote,
             contextSize: preset.generation.contextSize,
@@ -236,7 +238,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const assembled = buildPrompt({
             character,
             messages,
-            persona: settings.persona,
+            persona: persona,
             settings: preset.generation,
             promptSettings: preset.promptSettings,
             formats: preset.formats,
