@@ -180,10 +180,13 @@ export async function getGroup(id: string): Promise<GroupFile | null> {
 
 export async function createGroup(input: GroupCreate): Promise<GroupFile> {
     const id = await uniqueGroupId();
+    const members = [...new Set(input.members)];
     const group = groupSchema.parse({
         id,
         ...definedEntries(input),
-        members: [...new Set(input.members)],
+        members,
+        // A muted name that is not a member would never apply.
+        disabled_members: (input.disabled_members ?? []).filter((member) => members.includes(member)),
         chat_id: '',
         chats: [],
     });
@@ -266,7 +269,13 @@ export async function deleteGroup(id: string): Promise<boolean> {
 export async function listGroupChats(group: Group): Promise<ChatSummary[]> {
     const summaries = await Promise.all(
         group.chats.map(async (chatId): Promise<ChatSummary | null> => {
-            const filePath = groupChatPath(chatId);
+            let filePath: string;
+            try {
+                filePath = groupChatPath(chatId);
+            } catch {
+                // A corrupt group file must not break the whole chat list.
+                return null;
+            }
             try {
                 const [stats, content] = await Promise.all([stat(filePath), readFile(filePath, 'utf8')]);
                 const parsed = parseChatContent(content);
@@ -287,7 +296,12 @@ export async function listGroupChats(group: Group): Promise<ChatSummary[]> {
 }
 
 export async function readGroupChat(group: Group, chatId: string): Promise<GroupChatDetail | null> {
-    const clean = cleanChatId(chatId);
+    let clean: string;
+    try {
+        clean = cleanChatId(chatId);
+    } catch {
+        return null;
+    }
     if (!group.chats.includes(clean)) {
         return null;
     }
@@ -327,6 +341,29 @@ export async function createGroupChat(id: string, name?: string): Promise<GroupC
             throw new Error('Group file could not be read back');
         }
         return { chat: { ...chat, groupId: cleanId, chatId }, group: updated };
+    });
+}
+
+/** Remember the group chat the user is reading, as SillyTavern's `chat_id` does. */
+export async function setCurrentGroupChat(id: string, chatId: string): Promise<GroupFile | null> {
+    const cleanId = id.replace(/\.json$/i, '');
+    const filePath = groupPath(cleanId);
+
+    return withFileLock(filePath, async () => {
+        const existing = await readGroupFile(filePath, cleanId);
+        if (!existing) {
+            return null;
+        }
+        const clean = cleanChatId(chatId);
+        if (!existing.group.chats.includes(clean)) {
+            return null;
+        }
+        if (existing.group.chat_id === clean) {
+            return existing;
+        }
+        const group = groupSchema.parse({ ...existing.group, chat_id: clean });
+        await writeGroupFile(filePath, group);
+        return readGroupFile(filePath, cleanId);
     });
 }
 
@@ -411,6 +448,24 @@ export async function deleteGroupChat(id: string, chatId: string): Promise<Group
 }
 
 export async function appendGroupMessage(group: Group, chatId: string, message: ChatMessage): Promise<ChatMessage> {
+    const [saved] = await appendGroupMessages(group, chatId, [message]);
+    if (!saved) {
+        throw new Error('Message was not saved');
+    }
+    return saved;
+}
+
+/**
+ * Append several messages in one write.
+ *
+ * Seeding a new group chat starts with one greeting per member; writing them
+ * together keeps the file consistent if one of the cards fails midway.
+ */
+export async function appendGroupMessages(
+    group: Group,
+    chatId: string,
+    messages: readonly ChatMessage[],
+): Promise<ChatMessage[]> {
     const clean = cleanChatId(chatId);
     const filePath = groupChatPath(clean);
     return withFileLock(filePath, async () => {
@@ -421,9 +476,9 @@ export async function appendGroupMessage(group: Group, chatId: string, message: 
         if (!chat) {
             throw new Error('Chat not found');
         }
-        chat.messages.push(message);
+        chat.messages.push(...messages);
         await writeChatFile(filePath, chat);
-        return message;
+        return [...messages];
     });
 }
 
