@@ -43,6 +43,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - Character card editing: `PATCH /api/characters/:id` merges every text field into the stored card and writes it back, preserving `extensions`, the character book and V3 assets. PNG cards get both `chara` and `ccv3` rewritten; the image is untouched.
 - A character editor dialog, opened from the library, with a PNG or JSON export alongside it.
 - `GET /api/characters/:id/export?format=png|json` downloads a card; a legacy flat card is promoted to a V2 wrapper so the file is valid on its own.
+- Multiple personas: a list in settings with one marked default, a persona manager in the Persona tab, and a per-chat pin stored as `chat_metadata.persona_id` so the choice travels with the chat file.
+- A file written before the persona list existed is migrated on read: its single `persona` object becomes the first entry, under the id `default`.
+
+### Changed
+
+- Settings replace `persona` with `personas` and `activePersonaId`. `PATCH /api/settings` accepts the new fields; sending `persona` is now a validation error.
 
 ### Fixed
 

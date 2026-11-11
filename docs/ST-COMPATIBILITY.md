@@ -39,7 +39,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates          |
 | ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                        |
 | Themes                             | ❌ Not implemented | Dark tavern theme only                                                   |
-| Personas                           | 🟡 Single persona  | Name + description; multiple personas planned later                      |
+| Personas                           | ✅ Yes             | A list with a default and a per-chat pin; name and description only      |
 | Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                      |
 
 ## Semantic compatibility
@@ -129,6 +129,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Character card rename:** editing a card's `name` changes only the field; the file keeps its original name, because that name is the character id chats, avatars and world info already reference. SillyTavern keeps a stable avatar file name too, so this lands in the same place, but re-importing is how you rename the file.
 - **Character card avatar and book:** the editor covers the text fields. Replacing the avatar image and editing the embedded character book are not in it yet; a book can be edited from the World Info tab once the card's book is imported as a world.
 - **Legacy cards on export:** a card with no `spec` is promoted to a V2 wrapper when it is written back or exported, because a flat card cannot round-trip losslessly. The fields are kept; only the wrapper is added.
+- **Persona extras:** a persona is a name and a description. SillyTavern also gives each persona an avatar image and its own description-injection position, depth and role, plus an attached lorebook; none of those are here. The description reaches the prompt through the `personaDescription` marker, which the preset's order controls.
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 
 ## Testing compatibility
