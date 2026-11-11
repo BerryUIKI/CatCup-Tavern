@@ -6,11 +6,11 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 - **Web**: Node/Fastify server + React SPA
 - **LAN**: the same server bound to `0.0.0.0`, single user + access password
-- **Desktop**: Tauri 2 shell (planned) hosting the same server as a Node sidecar
+- **Desktop**: a Windows app that runs the same server as a child process and wraps it in a Tauri 2 window
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **M1 complete (2026-11-10)**. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`.
+Current status: **0.2.0 released (2026-11-11)** — M1 and the 0.2.0 MVP are complete. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`.
 
 ## Commands
 
@@ -18,6 +18,7 @@ Current status: **M1 complete (2026-11-10)**. The authoritative scope and accept
 pnpm dev          # server :8000 + web :5173
 pnpm build        # build both workspaces
 pnpm start        # production mode, one port :8000
+pnpm --filter @catcup/desktop build  # Windows installer (needs Rust)
 pnpm typecheck
 pnpm test
 pnpm lint
@@ -39,7 +40,7 @@ apps/web/               React SPA
   src/hooks/            React Query data hooks
   src/lib/              API / SSE clients
   src/store/            Zustand UI state
-apps/desktop/           Tauri 2 shell (MVP); src-tauri/ holds the Rust sidecar host
+apps/desktop/           Tauri 2 shell; src-tauri/ holds the Rust sidecar host
 packages/shared/        Zod schemas, shared types, ST data models
 docs/                   handbook (see docs/README.md)
 .ref/                   SillyTavern / RisuAI reference checkouts (gitignored)
@@ -93,9 +94,9 @@ Read before changing behaviour:
 
 - **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
 - **M1** (complete): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
-- **M2** (planned): group chats, summary memory, regex scripts, Quick Replies subset, TTS, image generation, card editing/export, CharX, library polish.
+- **M2** (planned): group chats, summary memory, Quick Replies subset, TTS, image generation, CharX, library polish. Regex scripts and card editing/export shipped in 0.2.0.
 - **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
-- **M4** (planned): Tauri desktop shell and Node sidecar packaging.
+- **M4** (planned): desktop signing, auto-updater, file associations and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
 - **M5** (planned): mobile, i18n, accessibility, CI, performance and v1.0 release.
 
 The detailed acceptance criteria are in `docs/MILESTONES.md`.
