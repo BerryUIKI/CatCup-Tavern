@@ -1,15 +1,26 @@
 import { readFile } from 'node:fs/promises';
 
-import type { ImportCharactersResponse } from '@catcup/shared';
+import { characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { notFound } from '../http/errors.js';
-import { deleteCharacter, getCharacterFile, importCharacter, listCharacters } from '../storage/characters.js';
+import { buildCardPayload } from '../cards/write.js';
+import { badRequest, notFound } from '../http/errors.js';
+import {
+    deleteCharacter,
+    getCharacterFile,
+    importCharacter,
+    listCharacters,
+    updateCharacter,
+} from '../storage/characters.js';
 import { requireCharacter } from './helpers.js';
 
 const idParamsSchema = z.object({
     id: z.string().min(1).max(200),
+});
+
+const exportQuerySchema = z.object({
+    format: z.enum(['png', 'json']).default('png'),
 });
 
 export async function registerCharacterRoutes(app: FastifyInstance): Promise<void> {
@@ -33,6 +44,50 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
         }
         const buffer = await readFile(found.filePath);
         return reply.header('Cache-Control', 'private, max-age=300').type('image/png').send(buffer);
+    });
+
+    /**
+     * Merge an edit into a card and write it back to its own file.
+     *
+     * A PNG card keeps its image and gets both `chara` and `ccv3` rewritten, so
+     * a reader that prefers V3 and one that only knows V2 agree.
+     */
+    app.patch('/api/characters/:id', async (request) => {
+        const { id } = idParamsSchema.parse(request.params);
+        const patch = characterPatchSchema.parse(request.body ?? {});
+        const character = await updateCharacter(id, patch);
+        if (!character) {
+            throw notFound('Character not found');
+        }
+        return { character };
+    });
+
+    app.get('/api/characters/:id/export', async (request, reply) => {
+        const { id } = idParamsSchema.parse(request.params);
+        const { format } = exportQuerySchema.parse(request.query ?? {});
+        const found = await getCharacterFile(id);
+        if (!found) {
+            throw notFound('Character not found');
+        }
+
+        const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
+
+        if (format === 'png') {
+            if (found.detail.format !== 'png') {
+                throw badRequest('This card has no image; export it as JSON instead.');
+            }
+            const buffer = await readFile(found.filePath);
+            reply
+                .header('Content-Type', 'image/png')
+                .header('Content-Disposition', `attachment; filename="${safeName}.png"`);
+            return reply.send(buffer);
+        }
+
+        const payload = buildCardPayload(found.detail.rawCard, {});
+        return reply
+            .header('Content-Type', 'application/json; charset=utf-8')
+            .header('Content-Disposition', `attachment; filename="${safeName}.json"`)
+            .send(`${JSON.stringify(payload, null, 4)}\n`);
     });
 
     app.post('/api/characters/import', async (request) => {
