@@ -1,0 +1,17 @@
+{
+    "name": "@catcup/desktop",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "prepare:server": "node scripts/prepare-server.mjs",
+        "prepare:node": "node scripts/fetch-node.mjs",
+        "bundle": "pnpm prepare:server && pnpm prepare:node",
+        "tauri": "tauri",
+        "build": "pnpm bundle && tauri build",
+        "dev": "pnpm bundle && tauri dev"
+    },
+    "devDependencies": {
+        "@tauri-apps/cli": "^2.9.4"
+    }
+}

@@ -34,3 +34,7 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# desktop build inputs
+apps/desktop/src-tauri/bundle/
+apps/desktop/src-tauri/binaries/

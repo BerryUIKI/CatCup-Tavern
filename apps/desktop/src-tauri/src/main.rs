@@ -1,6 +1,7 @@
-// Spike: prove that a Tauri shell can start the CatCup server as a child
-// process, wait for it, show it, and shut it down without leaving an orphan.
-// This is throwaway code; the real desktop slice replaces it.
+// The desktop shell.
+//
+// Starts the server as a child process on an OS-chosen port, shows it in a
+// webview, and makes sure the child dies with the window. See docs/DESKTOP.md.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -13,9 +14,49 @@ use std::time::Duration;
 
 use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
-struct Sidecar(Mutex<Option<Child>>);
+struct Sidecar {
+    child: Mutex<Option<Child>>,
+    /// Keeps the child in a job object that is killed when the shell dies,
+    /// including when it is killed without a chance to clean up.
+    #[cfg(windows)]
+    _job: Mutex<Option<job::KillOnClose>>,
+}
 
-fn server_entry() -> PathBuf {
+/// Drop the `\\?\` verbatim prefix Windows APIs hand back.
+///
+/// Node cannot resolve a main module given that prefix and fails with a bare
+/// drive-letter path, so paths are normalised before they are passed on.
+fn plain_path(path: &std::path::Path) -> PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) => PathBuf::from(rest),
+        None => path.to_path_buf(),
+    }
+}
+
+/// The bundled Node runtime sits next to the executable; in development the
+/// one on `PATH` is used instead.
+fn node_binary() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(directory) = exe.parent() {
+            let bundled = directory.join(if cfg!(windows) { "node.exe" } else { "node" });
+            if bundled.exists() {
+                return plain_path(&bundled);
+            }
+        }
+    }
+    std::env::var("CATCUP_NODE").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("node"))
+}
+
+/// The server entry: bundled resources when packaged, the workspace build when
+/// running from `cargo run`.
+fn server_entry(app: &tauri::App) -> PathBuf {
+    if let Ok(resources) = app.path().resource_dir() {
+        let bundled = resources.join("server").join("dist").join("index.js");
+        if bundled.exists() {
+            return plain_path(&bundled);
+        }
+    }
     if let Ok(value) = std::env::var("CATCUP_SERVER_ENTRY") {
         return PathBuf::from(value);
     }
@@ -27,8 +68,10 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
     let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
 
-    let node = std::env::var("CATCUP_NODE").unwrap_or_else(|_| "node".to_string());
-    let entry = server_entry();
+    let node = node_binary();
+    let entry = server_entry(app);
+    println!("[shell] node: {}", node.display());
+    println!("[shell] server: {}", entry.display());
 
     let mut child = Command::new(&node)
         .arg(&entry)
@@ -38,7 +81,7 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
-        .map_err(|e| format!("could not start `{node} {}`: {e}", entry.display()))?;
+        .map_err(|e| format!("could not start `{}`: {e}", node.display()))?;
 
     let stdout = child.stdout.take().ok_or("the server has no stdout")?;
     let (tx, rx) = mpsc::channel::<Result<u16, String>>();
@@ -75,15 +118,32 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
 
 fn main() {
     tauri::Builder::default()
+        // A second launch focuses the window that already exists instead of
+        // starting a second server on the same data directory.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .setup(|app| {
             let (child, port) = start_server(app).map_err(Box::<dyn std::error::Error>::from)?;
             println!("[shell] server ready on port {port}");
-            app.manage(Sidecar(Mutex::new(Some(child))));
+
+            #[cfg(windows)]
+            let job = job::KillOnClose::new(&child);
+
+            app.manage(Sidecar {
+                child: Mutex::new(Some(child)),
+                #[cfg(windows)]
+                _job: Mutex::new(job),
+            });
 
             let url = format!("http://127.0.0.1:{port}");
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url.parse()?))
                 .title("CatCup Tavern")
                 .inner_size(1280.0, 820.0)
+                .min_inner_size(900.0, 620.0)
                 .build()?;
             Ok(())
         })
@@ -92,7 +152,7 @@ fn main() {
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 if let Some(state) = app.try_state::<Sidecar>() {
-                    if let Some(mut child) = state.0.lock().unwrap().take() {
+                    if let Some(mut child) = state.child.lock().unwrap().take() {
                         println!("[shell] stopping the server");
                         let _ = child.kill();
                         let _ = child.wait();
@@ -100,4 +160,67 @@ fn main() {
                 }
             }
         });
+}
+
+#[cfg(windows)]
+mod job {
+    use std::os::windows::io::AsRawHandle;
+    use std::process::Child;
+
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    /// A job object that kills everything inside it when its last handle closes.
+    ///
+    /// The shell already kills the child on a normal exit; this covers the case
+    /// where the shell is killed outright, which leaves no chance to run any
+    /// cleanup. If the process is already in a job that forbids nesting, the
+    /// call is skipped and the shell still behaves as before.
+    ///
+    /// The handle is stored as an integer because a raw pointer is neither
+    /// `Send` nor `Sync`, and this has to live inside Tauri-managed state.
+    pub struct KillOnClose(isize);
+
+    impl KillOnClose {
+        pub fn new(child: &Child) -> Option<Self> {
+            unsafe {
+                let handle = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+                if handle.is_null() {
+                    return None;
+                }
+
+                let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+                limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+
+                let configured = SetInformationJobObject(
+                    handle,
+                    JobObjectExtendedLimitInformation,
+                    &limits as *const _ as *const std::ffi::c_void,
+                    std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+                );
+                if configured == 0 {
+                    CloseHandle(handle);
+                    return None;
+                }
+
+                if AssignProcessToJobObject(handle, child.as_raw_handle() as HANDLE) == 0 {
+                    CloseHandle(handle);
+                    return None;
+                }
+
+                Some(Self(handle as isize))
+            }
+        }
+    }
+
+    impl Drop for KillOnClose {
+        fn drop(&mut self) {
+            unsafe {
+                CloseHandle(self.0 as HANDLE);
+            }
+        }
+    }
 }
