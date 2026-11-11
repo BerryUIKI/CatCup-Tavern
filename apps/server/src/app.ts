@@ -15,6 +15,7 @@ import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
 import { registerContextRoutes } from './routes/context.js';
 import { registerGenerateRoutes } from './routes/generate.js';
+import { registerGroupRoutes } from './routes/groups.js';
 import { registerHealthRoutes } from './routes/health.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerPresetRoutes } from './routes/presets.js';
@@ -129,6 +130,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerAuthRoutes(app);
     await registerCharacterRoutes(app);
     await registerChatRoutes(app);
+    await registerGroupRoutes(app);
     await registerSettingsRoutes(app);
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);

@@ -349,6 +349,80 @@ Deletes one message and returns the full updated chat: `{ "chat": ChatDetail }`.
 
 Deletes the chat file. Response: `{ "ok": true }`.
 
+## Groups
+
+Group chats use SillyTavern's storage shape: metadata in `data/groups/<id>.json` and messages in `data/group chats/<chatId>.jsonl`. `members` and `disabled_members` hold character avatar file names, but a request may identify a member by either its id or its file name; the stored value is always the file name.
+
+A `GroupView` is the stored group object plus two fields the client needs: `memberDetails` (`fileName`, `name`, `id`, `avatarUrl`, with `id: null` when the card is gone) and `updatedAt` (group file mtime in milliseconds). Stored fields include `id`, `name`, `members`, `avatar_url`, `allow_self_responses`, `activation_strategy`, `generation_mode`, `disabled_members`, `fav`, `chat_id`, `chats`, `auto_mode_delay`, `generation_mode_join_prefix` and `generation_mode_join_suffix`.
+
+Group replies are not generated yet; this section covers storage and message maintenance, which is the first M2 step.
+
+### `GET /api/groups`
+
+Lists every group, newest first: `{ "groups": GroupView[] }`.
+
+### `POST /api/groups`
+
+```json
+{
+    "name": "The Cup",
+    "members": ["Seraphina.png", "Mira.json"],
+    "activation_strategy": 0,
+    "generation_mode": 0,
+    "auto_mode_delay": 5
+}
+```
+
+`members` is required and must resolve to character cards. When `name` is omitted it becomes `Group: <member names>`. The new group has no chat yet. Response `201`: `{ "group": GroupView }`.
+
+### `GET /api/groups/:groupId`
+
+Response: `{ "group": GroupView }`.
+
+### `PATCH /api/groups/:groupId`
+
+Accepts any of `name`, `members`, `avatar_url`, `allow_self_responses`, `activation_strategy`, `generation_mode`, `disabled_members`, `fav`, `auto_mode_delay`, `generation_mode_join_prefix` and `generation_mode_join_suffix`. Membership changes remove disabled names that are no longer members. Response: `{ "group": GroupView }`.
+
+### `DELETE /api/groups/:groupId`
+
+Deletes the group file and every chat listed in it. Response: `{ "ok": true }`.
+
+### `GET /api/groups/:groupId/chats`
+
+Lists the chats the group file references, most recently modified first: `{ "chats": ChatSummary[] }`. A listed chat whose file is missing is skipped.
+
+### `POST /api/groups/:groupId/chats`
+
+```json
+{ "name": "first night" }
+```
+
+Starts an empty chat (header only) and makes it the group's `chat_id`. Without a name, the file is named like SillyTavern's group chats (`2026-11-11@08h14m52s123ms`). Response `201`: `{ "chat": GroupChatDetail, "group": GroupView }`.
+
+### `GET /api/groups/:groupId/chats/:chatId`
+
+Response: `{ "chat": GroupChatDetail }`, where `GroupChatDetail` is the usual chat header and messages plus `groupId` and `chatId`.
+
+### `PATCH /api/groups/:groupId/chats/:chatId`
+
+```json
+{ "name": "renamed", "personaId": "default" }
+```
+
+Both fields are optional. `name` moves the chat file and updates `chats` and, when needed, `chat_id`. `personaId` pins the chat to a persona; `null` removes the pin. Response: `{ "chat": GroupChatDetail, "group": GroupView }`.
+
+### `DELETE /api/groups/:groupId/chats/:chatId`
+
+Deletes the chat file and its entry in the group. When it was the current chat, `chat_id` moves to the newest remaining chat or becomes empty. Response: `{ "ok": true, "group": GroupView }`.
+
+### `PATCH /api/groups/:groupId/chats/:chatId/messages/:index`
+
+Same contract as the single-character message edit: `{ "message": "..." }` or `{ "swipeId": n }`. Macros expand against the speaking member (`original_avatar` first, then a name match), and regex source scripts with `runOnEdit` run. Response: `{ "message": ChatMessage }`.
+
+### `DELETE /api/groups/:groupId/chats/:chatId/messages/:index`
+
+Deletes one message. Response: `{ "chat": GroupChatDetail }`.
+
 ## Generation
 
 ### `POST /api/generate`
