@@ -134,6 +134,33 @@ Response:
 
 Partial success is normal: imported cards are saved, failed cards are reported in `errors`.
 
+### `PATCH /api/characters/:id`
+
+Merge edits into the stored card.
+
+```json
+{
+    "name": "Seraphina the Herbalist",
+    "description": "A calm herbalist who guards the glade.",
+    "tags": ["fantasy", "healer"],
+    "alternate_greetings": ["Hello again, traveler."]
+}
+```
+
+- Editable: `name`, `description`, `personality`, `scenario`, `first_mes`, `mes_example`, `creator_notes`, `system_prompt`, `post_history_instructions`, `alternate_greetings`, `tags`, `creator`, `character_version`, `nickname`, `group_only_greetings`.
+- Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions`, the character book, V3 assets — is preserved.
+- The file keeps its name: the id is what chats, avatars and world info reference. Only the card's own `name` changes.
+- A PNG card is re-encoded with both `chara` and `ccv3` chunks rewritten, so a V3 reader and a V2-only reader see the same character.
+
+Response: `{ "character": CharacterDetail }`.
+
+### `GET /api/characters/:id/export`
+
+`?format=png` (default) downloads the stored image with its metadata intact; `?format=json` downloads the card body, promoting a legacy flat card to a V2 wrapper so the result is a valid card on its own.
+
+- `404` when the character does not exist.
+- `400` when `format=png` is asked for a JSON-only card, which has no image.
+
 ### `DELETE /api/characters/:id`
 
 Deletes the card file. Chats are not deleted automatically. Response: `{ "ok": true }`.

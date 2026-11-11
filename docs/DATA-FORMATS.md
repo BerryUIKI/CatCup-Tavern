@@ -104,6 +104,17 @@ Character book entries use V2 character-book fields such as `keys`, `secondary_k
 - 20 MB per file, 50 files per request.
 - The saved file name is the sanitized card name. Name collisions get ` (2)`, ` (3)`, and so on.
 
+### Writing cards back
+
+Editing a card rewrites its file in place. The image bytes are kept; only the metadata changes.
+
+- **PNG.** Both `tEXt` chunks are written, as SillyTavern does: `chara` carries the card body and `ccv3` carries the same payload under the V3 spec. A reader that prefers V3 and one that only knows V2 therefore see the same character. Existing `chara`/`ccv3` chunks are replaced rather than duplicated, and every other chunk — `IHDR`, `IDAT`, and anything a tool added — is re-emitted byte for byte. The chunk CRCs are recomputed, so `png-chunks-extract` (and any other reader) validates the result.
+- **JSON.** The body is written back pretty-printed.
+- **Legacy flat cards** are promoted to a V2 wrapper on the way out: they have no `spec`, so they cannot be written back losslessly as-is. Everything else in the object is kept.
+- **The file name never changes.** It is the character id that chats, avatars and world info already point at; renaming a character changes only the card's `name`. Re-import the card if you want the file renamed.
+
+Export uses the same body builder, so an exported card re-imports with every field — including `extensions` and the character book — intact.
+
 ## Chat JSONL
 
 Chats use SillyTavern's JSON Lines format. The file begins with a header object, followed by one message object per line.
