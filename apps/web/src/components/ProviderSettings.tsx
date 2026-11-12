@@ -142,16 +142,19 @@ function formToInput(form: ProviderForm): ProviderInput {
     };
 }
 
-function formEqualsProvider(form: ProviderForm, provider: ProviderPublic): boolean {
+function formsEqual(left: ProviderForm, right: ProviderForm): boolean {
     return (
-        form.name.trim() === provider.name &&
-        form.kind === provider.kind &&
-        form.baseUrl.trim() === provider.baseUrl &&
-        form.model.trim() === provider.model &&
-        form.enabled === provider.enabled &&
-        form.headers.length === Object.keys(provider.headers).length &&
-        headersEqual(formHeaders(form), provider.headers)
+        left.name.trim() === right.name.trim() &&
+        left.kind === right.kind &&
+        left.baseUrl.trim() === right.baseUrl.trim() &&
+        left.model.trim() === right.model.trim() &&
+        left.enabled === right.enabled &&
+        headersEqual(formHeaders(left), formHeaders(right))
     );
+}
+
+function cloneProviderForm(form: ProviderForm): ProviderForm {
+    return { ...form, headers: form.headers.map((row) => ({ ...row })) };
 }
 
 function validateForm(form: ProviderForm): string | null {
@@ -223,6 +226,9 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
     const [mode, setMode] = useState<Mode>(initialProvider ? 'existing' : 'new');
     const [selectedId, setSelectedId] = useState<string | null>(initialProvider?.id ?? null);
     const [form, setForm] = useState<ProviderForm | null>(initialProvider ? providerToForm(initialProvider) : null);
+    const [savedForm, setSavedForm] = useState<ProviderForm | null>(
+        initialProvider ? providerToForm(initialProvider) : null,
+    );
     const [apiKey, setApiKey] = useState('');
     const [removeKey, setRemoveKey] = useState(false);
     const [showKey, setShowKey] = useState(false);
@@ -236,10 +242,17 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
 
     const previousSelectionRef = useRef<string | null>(initialProvider?.id ?? null);
     const savedTimerRef = useRef<number | null>(null);
+    const savingRef = useRef(false);
+    const testRequestRef = useRef(0);
+    const selectionRef = useRef({ mode, selectedId });
     const saveShortcutRef = useRef<{ save: () => Promise<boolean>; busy: boolean }>({
         save: async () => false,
         busy: false,
     });
+
+    useEffect(() => {
+        selectionRef.current = { mode, selectedId };
+    }, [mode, selectedId]);
 
     useEffect(
         () => () => {
@@ -264,10 +277,9 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
     const dirty =
         mode === 'new'
             ? form !== null
-            : form !== null &&
-              (selectedProvider
-                  ? !formEqualsProvider(form, selectedProvider) || typedKey || removeKey
-                  : typedKey || removeKey);
+            : form !== null && savedForm !== null
+              ? !formsEqual(form, savedForm) || typedKey || removeKey
+              : form !== null;
 
     const flashSaved = () => {
         if (savedTimerRef.current !== null) {
@@ -281,6 +293,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
     };
 
     const clearResultForKey = (key: string) => {
+        testRequestRef.current += 1;
         setTestResults((current) => {
             if (!(key in current)) {
                 return current;
@@ -333,14 +346,18 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         if (!provider) {
             return;
         }
+        const next = providerToForm(provider);
         setMode('existing');
         setSelectedId(provider.id);
-        setForm(providerToForm(provider));
+        setForm(next);
+        setSavedForm(next);
         setApiKey('');
         setRemoveKey(false);
         setShowKey(false);
         setError(null);
         previousSelectionRef.current = provider.id;
+        selectionRef.current = { mode: 'existing', selectedId: provider.id };
+        testRequestRef.current += 1;
     };
 
     const beginCreate = () => {
@@ -348,11 +365,13 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         setMode('new');
         setSelectedId(null);
         setForm(null);
+        setSavedForm(null);
         setApiKey('');
         setRemoveKey(false);
         setShowKey(false);
         setError(null);
         clearResultForKey('draft');
+        selectionRef.current = { mode: 'new', selectedId: null };
     };
 
     const chooseKind = (kind: ProviderKind) => {
@@ -387,10 +406,12 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         setMode('new');
         setSelectedId(null);
         setForm(null);
+        setSavedForm(null);
         setApiKey('');
         setRemoveKey(false);
         setShowKey(false);
         setError(null);
+        selectionRef.current = { mode: 'new', selectedId: null };
     };
 
     const discard = () => {
@@ -398,18 +419,25 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         setApiKey('');
         setRemoveKey(false);
         setShowKey(false);
+        clearResultForKey(resultKey);
         if (mode === 'new') {
             cancelCreate();
             return;
         }
+        if (savedForm) {
+            setForm(cloneProviderForm(savedForm));
+            return;
+        }
         const provider = selectedProvider ?? settings.providers.find((item) => item.id === selectedId) ?? null;
         if (provider) {
-            setForm(providerToForm(provider));
+            const next = providerToForm(provider);
+            setForm(next);
+            setSavedForm(next);
         }
     };
 
     const save = async (): Promise<boolean> => {
-        if (!form) {
+        if (!form || savingRef.current) {
             return false;
         }
         const problem = validateForm(form);
@@ -426,31 +454,51 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
             ...formToInput(form),
             ...(typedKey ? { apiKey: apiKey.trim() } : willRemoveKey ? { apiKey: '' } : {}),
         };
+        const started = { mode, selectedId };
+        savingRef.current = true;
 
         try {
-            if (mode === 'new') {
+            if (started.mode === 'new') {
                 const created = await createProvider.mutateAsync(input);
-                setMode('existing');
-                setSelectedId(created.id);
-                setForm(providerToForm(created));
-                previousSelectionRef.current = created.id;
-                pushToast(`Added ${created.name}.`, 'success');
-            } else {
-                if (!selectedId) {
-                    return false;
+                if (selectionRef.current.mode === 'new') {
+                    const next = providerToForm(created);
+                    setMode('existing');
+                    setSelectedId(created.id);
+                    setForm(next);
+                    setSavedForm(next);
+                    previousSelectionRef.current = created.id;
+                    selectionRef.current = { mode: 'existing', selectedId: created.id };
+                    setApiKey('');
+                    setRemoveKey(false);
+                    setShowKey(false);
+                    flashSaved();
                 }
-                const updated = await updateProvider.mutateAsync({ id: selectedId, input });
-                setForm(providerToForm(updated));
-                pushToast('Provider saved.', 'success');
+                pushToast(`Added ${created.name}.`, 'success');
+                return true;
             }
-            setApiKey('');
-            setRemoveKey(false);
-            setShowKey(false);
-            flashSaved();
+
+            if (!started.selectedId) {
+                return false;
+            }
+            const updated = await updateProvider.mutateAsync({ id: started.selectedId, input });
+            const stillSelected =
+                selectionRef.current.mode === 'existing' && selectionRef.current.selectedId === started.selectedId;
+            if (stillSelected) {
+                const next = providerToForm(updated);
+                setForm(next);
+                setSavedForm(next);
+                setApiKey('');
+                setRemoveKey(false);
+                setShowKey(false);
+                flashSaved();
+            }
+            pushToast('Provider saved.', 'success');
             return true;
         } catch (caught) {
             setError(errorMessage(caught, 'Could not save the provider.'));
             return false;
+        } finally {
+            savingRef.current = false;
         }
     };
 
@@ -490,6 +538,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         }
 
         setError(null);
+        const requestId = ++testRequestRef.current;
         const body: ProviderDraftTestInput = {
             provider: formToInput(form),
             ...(mode === 'existing' && selectedId && !typedKey && !willRemoveKey
@@ -500,11 +549,17 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
 
         try {
             const result = await testDraft.mutateAsync(body);
+            if (testRequestRef.current !== requestId) {
+                return;
+            }
             setTestResults((current) => ({ ...current, [resultKey]: result }));
             if (withModels && result.ok) {
                 setModels((current) => ({ ...current, [resultKey]: result.models ?? [] }));
             }
         } catch (caught) {
+            if (testRequestRef.current !== requestId) {
+                return;
+            }
             setTestResults((current) => ({
                 ...current,
                 [resultKey]: { ok: false, message: errorMessage(caught, 'Connection failed.') },
@@ -586,10 +641,14 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                 ...formToInput(form),
                 name: uniqueName(`${form.name.trim() || 'Provider'} copy`, settings.providers),
             });
+            const next = providerToForm(created);
             setMode('existing');
             setSelectedId(created.id);
-            setForm(providerToForm(created));
+            setForm(next);
+            setSavedForm(next);
             previousSelectionRef.current = created.id;
+            selectionRef.current = { mode: 'existing', selectedId: created.id };
+            testRequestRef.current += 1;
             setApiKey('');
             setRemoveKey(false);
             setShowKey(false);
@@ -615,10 +674,13 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                 setMode('new');
                 setSelectedId(null);
                 setForm(null);
+                setSavedForm(null);
                 setApiKey('');
                 setRemoveKey(false);
                 setShowKey(false);
                 previousSelectionRef.current = null;
+                selectionRef.current = { mode: 'new', selectedId: null };
+                testRequestRef.current += 1;
             }
             pushToast('Provider deleted.', 'success');
         } catch (caught) {
@@ -835,6 +897,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                         {provider.name}
                                         {provider.id === settings.activeProviderId ? ' (active)' : ''}
                                         {!provider.enabled ? ' (disabled)' : ''}
+                                        {requiresKey(provider.kind) && !provider.hasKey ? ' (no key)' : ''}
                                     </option>
                                 ))}
                             </select>
@@ -890,16 +953,27 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             Active provider
                                         </span>
                                     ) : (
-                                        <button
-                                            type="button"
-                                            className="btn-ghost"
-                                            onClick={() => void activateProvider()}
-                                            disabled={dirty || !form.enabled || updateSettings.isPending}
-                                            title={useDisabledReason}
-                                        >
-                                            <Check size={15} />
-                                            Use provider
-                                        </button>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {!form.enabled ? (
+                                                <span className="text-[11px] text-muted">
+                                                    Enable this provider to use it.
+                                                </span>
+                                            ) : dirty ? (
+                                                <span className="text-[11px] text-amber">
+                                                    Save changes to activate.
+                                                </span>
+                                            ) : null}
+                                            <button
+                                                type="button"
+                                                className="btn-ghost"
+                                                onClick={() => void activateProvider()}
+                                                disabled={dirty || !form.enabled || updateSettings.isPending}
+                                                title={useDisabledReason}
+                                            >
+                                                <Check size={15} />
+                                                Use provider
+                                            </button>
+                                        </div>
                                     )
                                 ) : null}
                             </header>
@@ -1185,7 +1259,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             <button
                                                 type="button"
                                                 className="btn-ghost mt-1 px-2.5 py-1.5 text-xs"
-                                                onClick={() =>
+                                                onClick={() => {
                                                     setForm((current) =>
                                                         current
                                                             ? {
@@ -1200,8 +1274,10 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                                   ],
                                                               }
                                                             : current,
-                                                    )
-                                                }
+                                                    );
+                                                    setError(null);
+                                                    clearTest();
+                                                }}
                                             >
                                                 <Plus size={14} />
                                                 Add header
@@ -1298,7 +1374,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
 
                             {error ? (
                                 <div
-                                    className="shrink-0 border-t border-wine/40 bg-wine/10 px-4 py-2 text-sm leading-relaxed text-parchment md:px-5"
+                                    className="max-h-24 shrink-0 overflow-y-auto border-t border-wine/40 bg-wine/10 px-4 py-2 text-sm leading-relaxed text-parchment md:px-5"
                                     role="alert"
                                 >
                                     {error}
@@ -1320,7 +1396,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                     >
                                         {currentResult.ok ? <Check size={14} /> : <X size={14} />}
                                     </span>
-                                    <span className="min-w-0 flex-1">
+                                    <span className="max-h-24 min-w-0 flex-1 overflow-y-auto">
                                         <span className="font-medium text-parchment">
                                             {currentResult.ok ? 'Connection OK' : 'Connection failed'}
                                         </span>
