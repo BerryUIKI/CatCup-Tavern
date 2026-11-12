@@ -193,7 +193,7 @@ pnpm typecheck && pnpm lint && pnpm test && pnpm build
 # restart the service
 ```
 
-There are no automatic data migrations yet. Unknown fields are preserved, but back up first and read the release notes.
+There is no migration framework; the server upgrades a few older shapes on read, such as promoting a pre-persona-list `settings.json` to the persona list. Unknown fields are preserved, but back up first and read the release notes.
 
 ## Ports and firewall
 
