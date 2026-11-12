@@ -1,4 +1,4 @@
-import { providerInputSchema } from '@catcup/shared';
+import { DEFAULT_BASE_URLS, type ProviderConfig, providerDraftTestSchema, providerInputSchema } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -59,6 +59,32 @@ export async function registerProviderRoutes(app: FastifyInstance): Promise<void
             }
             throw error;
         }
+    });
+
+    app.post('/api/providers/test', async (request) => {
+        const input = providerDraftTestSchema.parse(request.body ?? {});
+
+        let apiKey = input.apiKey;
+        if (apiKey === undefined && input.savedProviderId) {
+            const saved = await getProvider(input.savedProviderId);
+            if (!saved) {
+                throw notFound('Provider not found');
+            }
+            apiKey = await getProviderSecret(input.savedProviderId);
+        }
+
+        const config: ProviderConfig = {
+            id: input.savedProviderId ?? 'draft',
+            kind: input.provider.kind,
+            name: input.provider.name,
+            baseUrl: input.provider.baseUrl || DEFAULT_BASE_URLS[input.provider.kind] || '',
+            model: input.provider.model,
+            enabled: input.provider.enabled,
+            headers: input.provider.headers,
+        };
+
+        const result = await getAdapter(config).test(config, apiKey);
+        return { result };
     });
 
     app.post('/api/providers/:id/test', async (request) => {
