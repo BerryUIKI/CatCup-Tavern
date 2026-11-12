@@ -211,7 +211,7 @@ Generated images are stored in `data/user/images/<character or group>/` with a m
 
 - API keys are stored server-side in `data/secrets.json` and are never returned by the API.
 - The client only sees `hasKey` for providers, `ttsHasKey` for text to speech and `imageHasKey` for image generation.
-- A draft connection test (`POST /api/providers/test`) runs on the server. When no replacement key is typed, it reuses the stored key for `savedProviderId`; the key is sent to the base URL in the submitted form, exactly as a normal request to that provider would be. The browser still never receives it.
+- A draft connection test (`POST /api/providers/test`) runs on the server. When no replacement key is typed, it reuses the stored key only when the draft has the same kind and base URL as `savedProviderId`; testing a different endpoint requires re-entering the key. The browser still never receives it. The endpoint accepts only http(s) base URLs and is rate-limited.
 - Provider errors are passed to the UI after being truncated; avoid including keys in custom headers where possible.
 - Do not put keys in `settings.json`, screenshots, logs or issue reports.
 - See [SECURITY.md](SECURITY.md) for the full model.

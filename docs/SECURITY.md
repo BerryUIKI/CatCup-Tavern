@@ -100,7 +100,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 ## Privacy and data at rest
 
 - No telemetry or analytics are sent anywhere.
-- The only outbound requests are to the configured chat provider, the configured TTS and image endpoints, and — during development — package registries and the reference repositories.
+- The only outbound requests are to the configured chat, TTS and image endpoints, the provider connection test (http(s) only and rate-limited; a stored key is reused only for the same provider kind and base URL), and — during development — package registries and the reference repositories.
 - Chats, characters, provider settings and credentials are stored unencrypted in `data/`.
 - `data/`, `.env`, `.ref/` and build output are gitignored. Never commit them or attach them to issues.
 - Backups include credentials; store them accordingly.

@@ -2,7 +2,7 @@ import { DEFAULT_BASE_URLS, type ProviderConfig, providerDraftTestSchema, provid
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
-import { HttpError, notFound } from '../http/errors.js';
+import { badRequest, HttpError, notFound } from '../http/errors.js';
 import { getAdapter } from '../providers/index.js';
 import {
     createProvider,
@@ -23,6 +23,19 @@ const testBodySchema = z.object({
 
 function providerError(error: unknown): HttpError {
     return new HttpError(502, error instanceof Error ? error.message : 'Provider request failed', 'PROVIDER_ERROR');
+}
+
+/** A normalized http(s) base URL, or null when the value is not one. */
+function normalizedBaseUrl(value: string): string | null {
+    try {
+        const url = new URL(value);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return null;
+        }
+        return url.toString().replace(/\/+$/, '');
+    } catch {
+        return null;
+    }
 }
 
 export async function registerProviderRoutes(app: FastifyInstance): Promise<void> {
@@ -61,23 +74,36 @@ export async function registerProviderRoutes(app: FastifyInstance): Promise<void
         }
     });
 
-    app.post('/api/providers/test', async (request) => {
+    app.post('/api/providers/test', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (request) => {
         const input = providerDraftTestSchema.parse(request.body ?? {});
+        const baseUrl = input.provider.baseUrl || DEFAULT_BASE_URLS[input.provider.kind] || '';
+        const draftUrl = normalizedBaseUrl(baseUrl);
+        if (!draftUrl) {
+            throw badRequest('The base URL must be an http(s) URL.', 'INVALID_BASE_URL');
+        }
 
-        let apiKey = input.apiKey;
-        if (apiKey === undefined && input.savedProviderId) {
-            const saved = await getProvider(input.savedProviderId);
+        let saved: Awaited<ReturnType<typeof getProvider>> = null;
+        if (input.savedProviderId) {
+            saved = await getProvider(input.savedProviderId);
             if (!saved) {
                 throw notFound('Provider not found');
             }
-            apiKey = await getProviderSecret(input.savedProviderId);
+        }
+
+        let apiKey = input.apiKey;
+        if (apiKey === undefined && saved) {
+            const savedUrl = normalizedBaseUrl(saved.baseUrl || DEFAULT_BASE_URLS[saved.kind] || '');
+            if (saved.kind !== input.provider.kind || savedUrl !== draftUrl) {
+                throw badRequest('Enter the API key to test a different endpoint.', 'PROVIDER_KEY_REUSE');
+            }
+            apiKey = await getProviderSecret(saved.id);
         }
 
         const config: ProviderConfig = {
             id: input.savedProviderId ?? 'draft',
             kind: input.provider.kind,
             name: input.provider.name,
-            baseUrl: input.provider.baseUrl || DEFAULT_BASE_URLS[input.provider.kind] || '',
+            baseUrl,
             model: input.provider.model,
             enabled: input.provider.enabled,
             headers: input.provider.headers,
