@@ -163,6 +163,9 @@ describe('generate routes', () => {
         expect(messages[1].extra).toMatchObject({ swipe_id: 1, swipes: ['Stub reply.Stub reply.', 'Stub reply.'] });
     });
 
+    // Three sequential SSE round-trips plus two unlocked file rewrites; on a
+    // machine whose worker pool is saturated this exceeds the 5s default, so
+    // give it the same headroom the hooks already get.
     it('clears a stopped marker when continue or regenerate completes the reply', async () => {
         const chatId = await createChat();
         await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
@@ -178,7 +181,7 @@ describe('generate routes', () => {
         chat = await call('GET', `/api/chats/Aria/${encodeURIComponent(chatId)}`);
         messages = chat.json().chat.messages as Array<Record<string, unknown>>;
         expect((messages[1]?.extra as Record<string, unknown> | undefined)?.stopped).toBeUndefined();
-    });
+    }, 20_000);
 
     it('appends a new reply when regenerating after a narrator note', async () => {
         const chatId = await createChat();
