@@ -20,7 +20,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Changed
 
-- An active provider is always enabled. Disabling or deleting the active provider moves `activeProviderId` to the first other enabled provider, or to `null` when none is enabled; enabling a provider while none is active makes it active. The UI cannot disable the active provider.
+- An active provider is always enabled. Disabling or deleting the active provider moves `activeProviderId` to the first other enabled provider, or to `null` when none is enabled; enabling a provider while none is active makes it active. The UI cannot disable the active provider, and `PATCH /api/settings` rejects a disabled provider with `400 PROVIDER_DISABLED`.
 - **Test connection** no longer saves the provider first; it tests the current form through the new draft endpoint. The old **Load** button became **Fetch models**, which also tests the connection. Saving is a separate, explicit action.
 
 ### Fixed

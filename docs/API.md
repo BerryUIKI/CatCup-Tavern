@@ -728,7 +728,7 @@ Partial update. All fields are optional:
 }
 ```
 
-`activeProviderId` must reference an existing provider. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
+`activeProviderId` must reference an existing, enabled provider. A missing id returns `404`; a disabled provider returns `400` with code `PROVIDER_DISABLED`. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
 
 `ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`. `imageApiKey` is the same for image generation, stored under `image` and reported as `imageHasKey`.
 

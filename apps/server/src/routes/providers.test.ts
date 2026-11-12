@@ -241,4 +241,41 @@ describe('active provider invariants', () => {
         expect(after.activeProviderId).not.toBe(provider.id);
         expect(after.providers.find((item) => item.id === after.activeProviderId)?.enabled).toBe(true);
     });
+
+    it('rejects activating a disabled provider through the settings patch', async () => {
+        const created = await call(
+            'POST',
+            '/api/providers',
+            customProvider(`${stubBase}/v1`, 'Disabled candidate'),
+        );
+        const { provider } = created.json() as { provider: { id: string } };
+
+        const disabled = await call('PATCH', `/api/providers/${provider.id}`, {
+            ...customProvider(`${stubBase}/v1`, 'Disabled candidate'),
+            enabled: false,
+        });
+        expect(disabled.statusCode).toBe(200);
+
+        const before = (
+            (await call('GET', '/api/settings')).json() as {
+                settings: { activeProviderId: string | null };
+            }
+        ).settings;
+
+        const response = await call('PATCH', '/api/settings', { activeProviderId: provider.id });
+        expect(response.statusCode).toBe(400);
+        expect((response.json() as { code?: string }).code).toBe('PROVIDER_DISABLED');
+
+        const after = (
+            (await call('GET', '/api/settings')).json() as {
+                settings: { activeProviderId: string | null };
+            }
+        ).settings;
+        expect(after.activeProviderId).toBe(before.activeProviderId);
+    });
+
+    it('returns 404 when activating a provider that does not exist', async () => {
+        const response = await call('PATCH', '/api/settings', { activeProviderId: 'missing-provider' });
+        expect(response.statusCode).toBe(404);
+    });
 });
