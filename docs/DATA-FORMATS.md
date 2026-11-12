@@ -93,28 +93,28 @@ Accepted forms:
 
 The server normalizes every card into the V3 data shape. Unknown fields are preserved via passthrough parsing. The fields the app understands:
 
-| Field                                          | Type       | Notes                                                                                 |
-| ---------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
-| `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                         |
-| `nickname`                                     | string?    | Optional display nickname                                                             |
-| `description`                                  | string     | Character sheet                                                                       |
-| `personality`                                  | string     | Character sheet                                                                       |
-| `scenario`                                     | string     | Character sheet                                                                       |
-| `first_mes`                                    | string     | First greeting; used when creating a chat                                             |
-| `mes_example`                                  | string     | Example dialogue                                                                      |
-| `creator_notes`                                | string     | Metadata                                                                              |
-| `creator_notes_multilingual`                   | record?    | Metadata                                                                              |
-| `system_prompt`                                | string     | Overrides the default main prompt when non-empty                                      |
-| `post_history_instructions`                    | string     | Appended after history                                                                |
-| `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                           |
+| Field                                          | Type       | Notes                                                                                               |
+| ---------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                                       |
+| `nickname`                                     | string?    | Optional display nickname                                                                           |
+| `description`                                  | string     | Character sheet                                                                                     |
+| `personality`                                  | string     | Character sheet                                                                                     |
+| `scenario`                                     | string     | Character sheet                                                                                     |
+| `first_mes`                                    | string     | First greeting; used when creating a chat                                                           |
+| `mes_example`                                  | string     | Example dialogue                                                                                    |
+| `creator_notes`                                | string     | Metadata                                                                                            |
+| `creator_notes_multilingual`                   | record?    | Metadata                                                                                            |
+| `system_prompt`                                | string     | Overrides the default main prompt when non-empty                                                    |
+| `post_history_instructions`                    | string     | Appended after history                                                                              |
+| `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                                         |
 | `group_only_greetings`                         | string[]   | Parsed and preserved, but never used; a group's opening comes from each member's ordinary greetings |
-| `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it |
-| `tags`                                         | string[]   | Library tag chips, search and bulk tag actions; the editor edits a comma list         |
-| `creator`                                      | string     | Sidebar display                                                                       |
-| `character_version`                            | string     | Metadata                                                                              |
-| `extensions`                                   | record     | Free-form; preserved. `fav` holds the library favorite flag                           |
-| `assets`                                       | unknown[]? | V3 assets; preserved, with CharX files under `data/character-assets/`                 |
-| `source`, `creation_date`, `modification_date` | optional   | Preserved; `creation_date` is stamped on the first write when absent                  |
+| `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it               |
+| `tags`                                         | string[]   | Library tag chips, search and bulk tag actions; the editor edits a comma list                       |
+| `creator`                                      | string     | Sidebar display                                                                                     |
+| `character_version`                            | string     | Metadata                                                                                            |
+| `extensions`                                   | record     | Free-form; preserved. `fav` holds the library favorite flag                                         |
+| `assets`                                       | unknown[]? | V3 assets; preserved, with CharX files under `data/character-assets/`                               |
+| `source`, `creation_date`, `modification_date` | optional   | Preserved; `creation_date` is stamped on the first write when absent                                |
 
 Character book entries use V2 character-book fields such as `keys`, `secondary_keys`, `content`, `enabled`, `insertion_order`, `case_sensitive`, `selective`, `constant`, `position` and `extensions`. See `packages/shared/src/schemas/character.ts`.
 
