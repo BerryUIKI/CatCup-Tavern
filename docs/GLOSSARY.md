@@ -54,6 +54,8 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Quick Reply** — A reusable button in a chat's quick reply bar, backed by a SillyTavern version 2 quick reply set. CatCup implements the UI, the set format and a command subset; auto-execution, context menus and STscript-backed replies are M3.
 
+**TTS (text to speech)** — Speaking a reply aloud. CatCup uses either the browser's speech synthesis or an OpenAI-compatible `/audio/speech` endpoint, with per-character voices, a narrator voice and autoplay. Audio is generated on demand and not stored.
+
 **Regex script** — A SillyTavern extension that transforms text or prompts with regular expressions. Planned for M2.
 
 **Extension** — A third-party ST plugin. L3 (API) and L4 (DOM) compatibility are planned for M3.

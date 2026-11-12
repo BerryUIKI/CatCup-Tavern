@@ -99,6 +99,27 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 - Some providers reject the configured `max_tokens` or sampling values; lower them.
 - If a reverse proxy is used, disable buffering for SSE and increase read timeouts.
 
+## Text to speech
+
+**No play button appears**
+
+Settings → TTS must be enabled and saved. The button appears on replies and narrator notes, not on your own messages.
+
+**The browser backend is silent**
+
+`speechSynthesis` needs voices from the operating system. Check that the browser or desktop shell exposes any (some Linux installs ship none); choose one in Settings → TTS or switch to the OpenAI-compatible backend.
+
+**The OpenAI-compatible backend fails**
+
+- The base URL should end at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8880/v1`.
+- `api.openai.com` requires a saved key; a local server usually does not.
+- Check the model, voice and audio format against what the endpoint supports. A `TTS_FAILED` error includes the provider's response detail.
+- The server log has the same message; the browser only sees the error.
+
+**Autoplay does not start**
+
+Browsers block audio that is not tied to a user gesture. Press the play button on the message; the setting still applies to the next reply where the browser permits it.
+
 ## Chat and messages
 
 **The user message appears but the reply fails**

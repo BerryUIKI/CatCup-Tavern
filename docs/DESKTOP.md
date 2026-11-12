@@ -64,6 +64,7 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
+- **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
 - **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have.
 - **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
 

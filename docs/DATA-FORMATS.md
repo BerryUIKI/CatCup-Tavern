@@ -541,15 +541,35 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
     "quickReplies": { "enabled": false, "setList": [] },
+    "tts": {
+        "enabled": false,
+        "backend": "system",
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "tts-1",
+        "voice": "",
+        "format": "mp3",
+        "speed": 1,
+        "instructions": "",
+        "rate": 1,
+        "pitch": 1,
+        "autoplay": true,
+        "narratorVoice": "",
+        "characterVoices": {},
+        "skipCodeBlocks": true,
+        "stripTags": true,
+        "stripAsterisks": true
+    },
     "ui": { "language": "en", "theme": "tavern-dark" }
 }
 ```
 
 No API keys are stored here.
 
+`tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
+
 ### `secrets.json`
 
-A map of provider ID to API key. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
+A map of provider ID to API key, plus the fixed `tts` entry used by the text-to-speech adapter. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
 
 ### `auth.json`
 

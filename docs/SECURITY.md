@@ -8,7 +8,7 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 - the access password;
 - the session cookie;
-- provider API keys in `data/secrets.json`;
+- provider API keys in `data/secrets.json`, plus the text-to-speech key under the fixed `tts` entry;
 - characters, chats and world info in `data/`;
 - the machine and network the server runs on.
 
@@ -55,12 +55,18 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 ## API keys
 
-- Stored only in `data/secrets.json` as provider-ID → key. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
-- Never returned by any API response. The public provider shape exposes `hasKey` only.
+- Stored only in `data/secrets.json` as provider-ID → key, plus the fixed `tts` key for text to speech. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
+- Never returned by any API response. The public provider shape exposes `hasKey` only, and the settings response exposes `ttsHasKey` for the speech key.
 - Fastify logs redact `authorization`, `cookie` and `x-api-key` headers.
 - Provider adapter error messages are returned to the UI; they should not contain keys under normal provider behaviour.
 - Keys are stored unencrypted at rest. Protect the OS account and backups.
 - Rotate a key at the provider if it may have leaked; remove or replace it in Settings.
+
+## Text to speech
+
+- The browser backend uses the browser's speech voices. CatCup makes no server request and needs no key; some browsers' voice lists are themselves network-backed, so treat that as the browser vendor's behaviour rather than CatCup egress.
+- The OpenAI-compatible backend sends the message text being spoken to the configured `/audio/speech` endpoint. Choose a trusted endpoint; this is the same trust boundary as a chat provider.
+- Audio is relayed to the browser with `Cache-Control: no-store` and is not written to `data/`. The speak endpoint requires the session like any other `/api/` route.
 
 ## Files and paths
 

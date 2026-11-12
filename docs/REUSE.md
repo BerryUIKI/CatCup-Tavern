@@ -54,6 +54,7 @@ Requirements:
 | Source | File                                                   | Size                   | Why                                                                                      |
 | ------ | ------------------------------------------------------ | ---------------------- | ---------------------------------------------------------------------------------------- |
 | ST     | `public/scripts/openai.js`                             | 7396 lines             | Prompt construction, message collection, token budgeting; DOM/global coupling            |
+| ST     | `public/scripts/extensions/tts/`                       | ~11.8k lines           | Provider pipeline, browser speech synthesis, voice maps, text cleaning                   |
 | ST     | `public/scripts/world-info.js`                         | 6408 lines             | World info scanning, recursion, position injection, sticky/cooldown; algorithms portable |
 | ST     | `public/scripts/PromptManager.js`                      | 2144 lines             | Prompt entries, ordering, injection position/depth                                       |
 | ST     | `public/scripts/slash-commands.js` + `slash-commands/` | 7122 lines + utilities | STscript parser/executor; depends on Chevrotain and ST context                           |
@@ -139,6 +140,10 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `packages/shared/src/quickReplies.ts`         | ST `public/scripts/slash-commands/SlashCommandParser.js`                          | Command split, quoting, aliases and named-argument semantics for the subset      |
 | `apps/server/src/quickreplies/execute.ts`     | ST `public/scripts/slash-commands.js` + quick-reply `QuickReplySet.js`            | `/send`, `/sys`, `/echo`, `/trigger` and `/run` behaviour, rewritten server-side |
 | `apps/server/src/storage/quickReplies.ts`     | ST `src/endpoints/quick-replies.js`                                               | One file per set, named after the set, with import and export                    |
+| `packages/shared/src/schemas/tts.ts`          | ST `public/scripts/extensions/tts/index.js`                                       | A smaller TTS settings model; field names are CatCup's                           |
+| `packages/shared/src/tts.ts`                  | ST `public/scripts/extensions/tts/index.js`                                       | Own text cleaner and chunker; ST's pipeline is longer                            |
+| `apps/server/src/tts/openaiCompatible.ts`     | ST `public/scripts/extensions/tts/openai.js` + OpenAI speech API                  | Request shape and error handling, rewritten server-side                          |
+| `apps/web/src/hooks/useTts.ts`                | ST `public/scripts/extensions/tts/system.js`                                      | Browser voice selection and chunked utterances, rewritten for React              |
 
 ## 8. Related documentation
 
