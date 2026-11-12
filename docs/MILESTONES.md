@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end.
+> Current status: **M0, M1 and M2 are complete**, released as `0.3.0` on 2026-11-13; `0.2.0` was the first early-access release and `0.2.1` a compatibility patch. M4's shell and packaging are done and the rest of M4 is in progress; M3 and M5 are planned.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -98,9 +98,9 @@ Released after the MVP, before M2:
 | --------- | -------------------------------------------------------------------------- | ----------- | ---------- |
 | **M0**    | Runnable foundation: web + server + ST data basics                         | Complete    | —          |
 | **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete    | M0         |
-| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | In progress | M1         |
+| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Complete    | M1         |
 | **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
-| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned     | M0, M1     |
+| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | In progress | M0, M1     |
 | **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
@@ -282,7 +282,7 @@ M1 is complete. Next is M2.
 - Tokenizer model coverage may lag the model list; always keep the estimator fallback.
 - Scope creep: group chat and STscript must stay out of M1.
 
-## M2 — Extended roleplay (In progress)
+## M2 — Extended roleplay (Complete)
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
@@ -321,7 +321,9 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] Image generation has at least one working adapter with clear configuration docs.
 - [x] The character library supports favorites, tag filters, sorting and bulk actions.
 - [x] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern.
+- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern, which is why M2 closed with this one still unticked.
+
+M2 shipped in `0.3.0` on 2026-11-13. The 434 unit tests the release carries (98 shared, 336 server) cover every item above except the manual ST round trip.
 
 ### Suggested PR slices
 

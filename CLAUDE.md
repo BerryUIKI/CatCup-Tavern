@@ -66,6 +66,7 @@ Read before changing behaviour:
 - `docs/API.md` — REST/SSE contracts.
 - `docs/DATA-FORMATS.md` — ST-compatible cards, chats, world info, presets and internal files.
 - `docs/PROVIDERS.md` — provider adapters and configuration.
+- `docs/LIMITATIONS.md` — user-facing: what this release does and does not do; the About tab links here.
 - `docs/ST-COMPATIBILITY.md` — what works, what is partial, what is planned.
 - `docs/DEVELOPMENT.md` — setup, testing and extension workflows.
 - `docs/DEPLOYMENT.md` — production, LAN, reverse proxy, backup and upgrades.
@@ -104,8 +105,8 @@ Read before changing behaviour:
 
 - **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
 - **M1** (complete): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
-- **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory (landed 2026-11-11), Quick Replies subset (landed 2026-11-12), TTS (landed 2026-11-12), image generation (Automatic1111, ComfyUI and OpenAI-compatible landed 2026-11-12), CharX import/export (landed 2026-11-12), library favorites/tags/sorting/bulk actions (landed 2026-11-12). Regex scripts and card editing/export shipped in 0.2.0.
-- **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
+- **M2** (complete, shipped in 0.3.0): group chats (storage, UI and generation; append modes, auto mode and multi-reply turns are still M3-era work), summary memory, the Quick Replies subset, TTS, image generation (Automatic1111, ComfyUI and OpenAI-compatible), CharX import/export, and library favorites/tags/sorting/bulk actions. Regex scripts and card editing/export shipped in 0.2.0.
+- **M3** (planned): full STscript, the full Quick Replies engine (STscript-backed, with auto-execution and context menus), getContext/event bus and the extension sandbox.
 - **M4** (planned): desktop signing, auto-updater, file associations, tray icon, window-state restore and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
 - **M5** (planned): mobile, i18n, accessibility, UX stages B–E, performance and v1.0 release.
 
