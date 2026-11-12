@@ -8,6 +8,8 @@ import { config } from '../config.js';
 export const paths = {
     root: config.dataDir,
     characters: path.join(config.dataDir, 'characters'),
+    /** Extracted CharX assets, one folder per character id. */
+    characterAssets: path.join(config.dataDir, 'character-assets'),
     chats: path.join(config.dataDir, 'chats'),
     groups: path.join(config.dataDir, 'groups'),
     groupChats: path.join(config.dataDir, 'group chats'),
@@ -25,6 +27,7 @@ export const paths = {
 export async function ensureDataDirs(): Promise<void> {
     await Promise.all([
         mkdir(paths.characters, { recursive: true }),
+        mkdir(paths.characterAssets, { recursive: true }),
         mkdir(paths.chats, { recursive: true }),
         mkdir(paths.groups, { recursive: true }),
         mkdir(paths.groupChats, { recursive: true }),
