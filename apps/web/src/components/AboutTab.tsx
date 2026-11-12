@@ -16,6 +16,7 @@ const WORKS = [
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
     'Several personas, with one default and a per-chat choice.',
     'Edit character cards and export them back to PNG or JSON, or as a CharX package with its assets.',
+    'A character library with tags, favorites, tag and favorite filters, five sort orders, and bulk favorite, tag and delete actions.',
     'Windows desktop app that installs without an administrator and carries its own runtime.',
 ];
 

@@ -1,6 +1,9 @@
 import type {
     AuthStatus,
+    CharacterBulkRequest,
+    CharacterBulkResponse,
     CharacterPatch,
+    CharacterSummary,
     ChatDetail,
     ChatSummary,
     GroupChatDetail,
@@ -141,6 +144,55 @@ export function useAddSampleCharacter() {
         mutationFn: () => api.characters.sample(),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+/** Set or clear the favorite flag on one card. */
+export function useSetCharacterFavorite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; favorite: boolean }) =>
+            api.characters.setFavorite(variables.id, variables.favorite),
+        onMutate: async (variables) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.characters });
+            const previous = queryClient.getQueryData<CharacterSummary[]>(queryKeys.characters);
+            queryClient.setQueryData<CharacterSummary[]>(queryKeys.characters, (current) =>
+                current?.map((character) =>
+                    character.id === variables.id ? { ...character, fav: variables.favorite } : character,
+                ),
+            );
+            return { previous };
+        },
+        onError: (_error, _variables, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(queryKeys.characters, context.previous);
+            }
+        },
+        onSuccess: (character) => {
+            queryClient.setQueryData(queryKeys.character(character.id), character);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+/** Apply one action to several characters and refresh the affected caches. */
+export function useBulkCharacters() {
+    const queryClient = useQueryClient();
+    return useMutation<CharacterBulkResponse, Error, CharacterBulkRequest>({
+        mutationFn: (body) => api.characters.bulk(body),
+        onSuccess: (result) => {
+            for (const character of result.characters) {
+                void queryClient.invalidateQueries({ queryKey: queryKeys.character(character.id) });
+            }
+            for (const id of result.deleted) {
+                queryClient.removeQueries({ queryKey: queryKeys.character(id) });
+            }
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // Group member names, avatars and missing-member state come from cards.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }

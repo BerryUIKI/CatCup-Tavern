@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 import {
     useAddSampleCharacter,
+    useBulkCharacters,
     useCharacter,
     useCharacters,
     useChats,
@@ -12,6 +13,7 @@ import {
     useGroups,
     useImportCharacters,
     useLogout,
+    useSetCharacterFavorite,
     useSetChatGreeting,
     useSettings,
     useUpdateSettings,
@@ -56,6 +58,8 @@ export function MainApp() {
     const characterQuery = useCharacter(selectedCharacterId);
     const importMutation = useImportCharacters();
     const addSampleMutation = useAddSampleCharacter();
+    const favoriteMutation = useSetCharacterFavorite();
+    const bulkMutation = useBulkCharacters();
     const updateSettingsMutation = useUpdateSettings();
 
     // A character and a group are mutually exclusive; the store enforces it.
@@ -210,6 +214,83 @@ export function MainApp() {
         }
     };
 
+    const handleBulkErrors = (errors: Array<{ message: string }>) => {
+        if (errors.length === 0) {
+            return;
+        }
+        pushToast(
+            `${pluralize(errors.length, 'character')} could not be updated: ${errors[0]?.message ?? 'unknown error'}`,
+            'warning',
+        );
+    };
+
+    const handleToggleFavorite = (character: CharacterSummary) => {
+        favoriteMutation.mutate(
+            { id: character.id, favorite: !character.fav },
+            {
+                onSuccess: () =>
+                    pushToast(
+                        character.fav
+                            ? `Removed "${character.name}" from favorites.`
+                            : `Added "${character.name}" to favorites.`,
+                        'success',
+                    ),
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
+    const handleBulkFavorite = (ids: string[], favorite: boolean) => {
+        bulkMutation.mutate(
+            { action: favorite ? 'favorite' : 'unfavorite', ids },
+            {
+                onSuccess: (result) => {
+                    if (result.characters.length > 0) {
+                        pushToast(
+                            `${favorite ? 'Added' : 'Removed'} ${pluralize(result.characters.length, 'character')} ${favorite ? 'to' : 'from'} favorites.`,
+                            'success',
+                        );
+                    }
+                    handleBulkErrors(result.errors);
+                },
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
+    const handleBulkTag = (ids: string[], mode: 'add' | 'remove', tag: string) => {
+        bulkMutation.mutate(
+            { action: mode === 'add' ? 'add-tags' : 'remove-tags', ids, tags: [tag] },
+            {
+                onSuccess: (result) => {
+                    if (result.characters.length > 0) {
+                        pushToast(
+                            `${mode === 'add' ? 'Added' : 'Removed'} the tag "${tag}" ${mode === 'add' ? 'to' : 'from'} ${pluralize(result.characters.length, 'character')}.`,
+                            'success',
+                        );
+                    }
+                    handleBulkErrors(result.errors);
+                },
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
+    const handleBulkDelete = (ids: string[]) => {
+        bulkMutation.mutate(
+            { action: 'delete', ids },
+            {
+                onSuccess: (result) => {
+                    if (result.deleted.length > 0) {
+                        pushToast(`Deleted ${pluralize(result.deleted.length, 'character')}.`, 'success');
+                    }
+                    handleBulkErrors(result.errors);
+                },
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
     const handleCreateChat = async (greetingIndex?: number) => {
         if (!selectedCharacterId) {
             return;
@@ -322,6 +403,11 @@ export function MainApp() {
                 selectedCharacterId={selectedCharacterId}
                 onSelect={selectCharacter}
                 onEditCharacter={(id) => setEditingCharacterId(id)}
+                onToggleFavorite={handleToggleFavorite}
+                onBulkFavorite={handleBulkFavorite}
+                onBulkTag={handleBulkTag}
+                onBulkDelete={handleBulkDelete}
+                libraryBusy={favoriteMutation.isPending || bulkMutation.isPending}
                 groups={groups}
                 groupsLoading={groupsQuery.isLoading}
                 selectedGroupId={selectedGroupId}
