@@ -155,6 +155,7 @@ async function* streamChat(
 async function listModels(config: ProviderConfig, apiKey: string | undefined): Promise<ModelInfo[]> {
     const response = await fetch(joinUrl(requireBaseUrl(config), 'models?limit=1000'), {
         headers: headersFor(config, apiKey),
+        signal: AbortSignal.timeout(15_000),
     });
     await ensureOk(response, config.name || 'Anthropic');
 

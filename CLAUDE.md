@@ -10,7 +10,7 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats, summary memory, a Quick Replies subset, text to speech and image generation usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`.
+Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats, summary memory, a Quick Replies subset, text to speech and image generation usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (phase A: Settings and Providers landed 2026-11-12); follow `docs/DESIGN.md` for interface work.
 
 ## Commands
 
@@ -56,6 +56,7 @@ Read before changing behaviour:
 - `docs/README.md` — documentation index and reading paths.
 - `docs/MILESTONES.md` — source of truth for scope, status and acceptance criteria.
 - `docs/ARCHITECTURE.md` — topology, stack decisions and data flow.
+- `docs/DESIGN.md` — interface principles, layout, tokens, components, interaction and accessibility.
 - `docs/API.md` — REST/SSE contracts.
 - `docs/DATA-FORMATS.md` — ST-compatible cards, chats, world info, presets and internal files.
 - `docs/PROVIDERS.md` — provider adapters and configuration.
@@ -88,6 +89,7 @@ Read before changing behaviour:
 - When adding code adapted from ST or RisuAI, update `NOTICE` and `docs/REUSE.md` in the same change.
 - License: AGPL-3.0-only. SillyTavern is AGPL-3.0; RisuAI is GPL-3.0 (compatible under AGPLv3 §13).
 - Frontend: React + Tailwind 4. Theme tokens live in the `@theme` block of `apps/web/src/styles.css`.
+- Interface work follows `docs/DESIGN.md`: one primary action per surface, explicit save with a leave guard for configuration forms, visible focus, focus-trapped dialogs and no hover-only actions.
 - Chat streaming uses SSE: `start` / `token` / `reasoning` / `done` / `error`. The server owns persistence; the client only renders optimistically.
 - Do not transplant ST's jQuery/DOM code into React. Port algorithms and data semantics only.
 - Never commit `data/`, `.ref/`, `.env`, build output or secrets.

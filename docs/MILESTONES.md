@@ -386,6 +386,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 ### Scope
 
 - Mobile browser polish (chat view, composer, sidebar, settings).
+- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; phases B–E remain.
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
@@ -403,6 +404,10 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - [ ] The v1.0 release checklist and upgrade notes are published.
 
 ## Cross-cutting tracks
+
+### Interface design
+
+Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome; C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
 
 ### Security
 

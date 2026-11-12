@@ -180,10 +180,18 @@ export function MainApp() {
 
     /** Switch the provider every chat uses, from the library footer. */
     const handleSwitchProvider = async (id: string) => {
+        const provider = settings?.providers.find((item) => item.id === id);
+        if (!provider) {
+            pushToast('That provider no longer exists.', 'error');
+            return;
+        }
+        if (!provider.enabled) {
+            pushToast('Enable this provider before using it.', 'error');
+            return;
+        }
         try {
-            const provider = settings?.providers.find((item) => item.id === id);
             await updateSettingsMutation.mutateAsync({ activeProviderId: id });
-            pushToast(`${provider?.name ?? 'Provider'} is now active.`, 'success');
+            pushToast(`${provider.name} is now active.`, 'success');
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not switch the provider.', 'error');
         }

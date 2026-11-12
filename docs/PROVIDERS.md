@@ -12,7 +12,7 @@ CatCup Tavern speaks to four chat provider families through a small adapter inte
 | `ollama`     | `http://127.0.0.1:11434`       | Native Ollama NDJSON                      | No           |
 | `custom`     | user supplied                  | Any OpenAI-compatible `/chat/completions` | Depends      |
 
-The active provider is selected in Settings. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
+The active provider is selected in Settings → Providers. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
 
 ## Configuration
 
@@ -32,7 +32,9 @@ Providers are stored in `data/settings.json` as public configuration:
 
 `headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
-The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. A new provider starts as a `custom` endpoint — the kind that takes any base URL — and the model field accepts any id: **Load** only fills the suggestion list from the provider's own model endpoint.
+The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. Adding a provider starts from a type template (OpenAI, Anthropic, OpenRouter, Ollama or Custom), which fills the default base URL; the name stays editable. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
+
+An active provider is always enabled. Disabling or deleting it moves the active mark to the first other enabled provider; when no provider is enabled, none is active until one is enabled.
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
@@ -66,7 +68,7 @@ Content-Type: application/json
 
 `openrouter` adds `HTTP-Referer` and `X-Title` headers unless the user overrides them. `custom` is the escape hatch for Ollama's OpenAI-compatible endpoint, LM Studio, vLLM, gateways and other `/chat/completions` servers.
 
-**Model list:** `GET <baseUrl>/models`. Some compatible servers do not implement it; in that case "Save & test" fails even though chat may work. Type the model ID manually and use the provider anyway.
+**Model list:** `GET <baseUrl>/models`. Some compatible servers do not implement it; in that case **Test connection** fails even though chat may work. Type the model ID manually and use the provider anyway.
 
 ## Anthropic
 
@@ -209,6 +211,7 @@ Generated images are stored in `data/user/images/<character or group>/` with a m
 
 - API keys are stored server-side in `data/secrets.json` and are never returned by the API.
 - The client only sees `hasKey` for providers, `ttsHasKey` for text to speech and `imageHasKey` for image generation.
+- A draft connection test (`POST /api/providers/test`) runs on the server. When no replacement key is typed, it reuses the stored key only when the draft has the same kind and base URL as `savedProviderId`; testing a different endpoint requires re-entering the key. The browser still never receives it. The endpoint accepts only http(s) base URLs and is rate-limited.
 - Provider errors are passed to the UI after being truncated; avoid including keys in custom headers where possible.
 - Do not put keys in `settings.json`, screenshots, logs or issue reports.
 - See [SECURITY.md](SECURITY.md) for the full model.

@@ -171,6 +171,7 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | GET/DELETE   | `/api/images/:folder/:file`                   | serve or delete one image                  |
 | GET/PATCH    | `/api/settings`                               | app settings                               |
 | CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
+| POST         | `/api/providers/test`                         | test an unsaved provider form              |
 | POST         | `/api/providers/:id/test`                     | connectivity test                          |
 | GET          | `/api/providers/:id/models`                   | model list                                 |
 

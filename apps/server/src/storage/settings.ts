@@ -111,12 +111,13 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
         changed = true;
     }
 
-    if (
-        !settings.activeProviderId ||
-        !settings.providers.some((provider) => provider.id === settings.activeProviderId)
-    ) {
-        settings.activeProviderId = settings.providers[0]?.id ?? null;
-        changed = true;
+    const active = settings.providers.find((provider) => provider.id === settings.activeProviderId);
+    if (!active?.enabled) {
+        const nextActive = settings.providers.find((provider) => provider.enabled)?.id ?? null;
+        if (settings.activeProviderId !== nextActive) {
+            settings.activeProviderId = nextActive;
+            changed = true;
+        }
     }
 
     // Files written before the persona list carry one `persona` object. Promote
@@ -291,11 +292,14 @@ export async function getActiveProvider(): Promise<ProviderConfig | null> {
 async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
     return mutateSettings((settings) => {
         if (patch.activeProviderId !== undefined) {
-            if (
-                patch.activeProviderId !== null &&
-                !settings.providers.some((provider) => provider.id === patch.activeProviderId)
-            ) {
-                throw new Error('Provider not found');
+            if (patch.activeProviderId !== null) {
+                const provider = settings.providers.find((item) => item.id === patch.activeProviderId);
+                if (!provider) {
+                    throw new Error('Provider not found');
+                }
+                if (!provider.enabled) {
+                    throw new Error('Provider is disabled');
+                }
             }
             settings.activeProviderId = patch.activeProviderId;
         }
@@ -402,7 +406,7 @@ export async function createProvider(input: ProviderInput): Promise<ProviderPubl
             headers: input.headers,
         };
         settings.providers.push(provider);
-        if (!settings.activeProviderId) {
+        if (!settings.activeProviderId && provider.enabled) {
             settings.activeProviderId = provider.id;
         }
         return provider;
@@ -425,6 +429,15 @@ export async function updateProvider(providerId: string, input: ProviderInput): 
         provider.model = input.model;
         provider.enabled = input.enabled;
         provider.headers = input.headers;
+
+        // The active provider is always one a generation can actually use.
+        if (settings.activeProviderId === provider.id && !provider.enabled) {
+            settings.activeProviderId =
+                settings.providers.find((candidate) => candidate.id !== provider.id && candidate.enabled)?.id ?? null;
+        } else if (!settings.activeProviderId && provider.enabled) {
+            settings.activeProviderId = provider.id;
+        }
+
         return provider;
     });
 
@@ -441,7 +454,8 @@ export async function deleteProvider(providerId: string): Promise<void> {
         }
         settings.providers.splice(index, 1);
         if (settings.activeProviderId === providerId) {
-            settings.activeProviderId = settings.providers[0]?.id ?? null;
+            // Never leave a disabled provider marked as active.
+            settings.activeProviderId = settings.providers.find((provider) => provider.enabled)?.id ?? null;
         }
     });
 

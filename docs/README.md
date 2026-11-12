@@ -8,6 +8,7 @@ This directory is the project handbook. Start with the path that matches your ro
 - **M1 complete**: world info, Prompt Manager, ST preset import, message editing/branching, tokenization.
 - **0.2.0 released** (2026-11-11): regex scripts, card editing/export, multiple personas, SillyTavern data import, Windows desktop app.
 - **0.2.1 released** (2026-11-11): macros in stored messages, card lorebook import, greeting switching, CI on every pull request.
+- **UX overhaul in progress** (2026-11-12): the design system, the settings shell and the Providers panel were rebuilt; the chat chrome, message experience, editors and the accessibility audit follow.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here
@@ -16,6 +17,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | ------------------------------------------------- | ------------------------------------------ |
 | Understand where the project is going             | [MILESTONES.md](MILESTONES.md)             |
 | Understand how the system is put together         | [ARCHITECTURE.md](ARCHITECTURE.md)         |
+| Build or change the interface                     | [DESIGN.md](DESIGN.md)                     |
 | Set up a development environment                  | [DEVELOPMENT.md](DEVELOPMENT.md)           |
 | Call the HTTP API or consume the SSE stream       | [API.md](API.md)                           |
 | Read or write ST-compatible files                 | [DATA-FORMATS.md](DATA-FORMATS.md)         |
@@ -37,6 +39,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | [MILESTONES.md](MILESTONES.md)             | Scope, sequencing, acceptance criteria and current status                         |
 | [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers              |
+| [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility   |
 | [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes             |
 | [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible character cards, chat JSONL, world info, presets and internal files |
 | [PROVIDERS.md](PROVIDERS.md)               | Provider kinds, endpoint mapping, streaming normalization and adapter guide       |

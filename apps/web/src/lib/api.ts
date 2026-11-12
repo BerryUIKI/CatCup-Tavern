@@ -21,9 +21,9 @@ import type {
     HealthResponse,
     ImageScope,
     ImportCharactersResponse,
-    ModelInfo,
     PresetDetail,
     PresetSummary,
+    ProviderDraftTestInput,
     ProviderInput,
     ProviderPublic,
     ProviderTestResult,
@@ -543,16 +543,12 @@ export const api = {
             return data.provider;
         },
         remove: (id: string) => request<{ ok: true }>(`/providers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        test: async (id: string, apiKey?: string) => {
-            const data = await request<{ result: ProviderTestResult }>(`/providers/${encodeURIComponent(id)}/test`, {
+        testDraft: async (body: ProviderDraftTestInput) => {
+            const data = await request<{ result: ProviderTestResult }>('/providers/test', {
                 method: 'POST',
-                body: JSON.stringify(apiKey === undefined ? {} : { apiKey }),
+                body: JSON.stringify(body),
             });
             return data.result;
-        },
-        models: async (id: string) => {
-            const data = await request<{ models: ModelInfo[] }>(`/providers/${encodeURIComponent(id)}/models`);
-            return data.models;
         },
     },
 

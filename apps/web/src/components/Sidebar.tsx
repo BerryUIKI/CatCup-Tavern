@@ -86,6 +86,7 @@ export function Sidebar({
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const normalizedQuery = query.trim().toLowerCase();
+    const switchableProviders = providers.filter((provider) => provider.enabled);
     const filteredGroups = normalizedQuery
         ? groups.filter(
               (group) =>
@@ -313,14 +314,14 @@ export function Sidebar({
                             title={activeProviderReady ? 'Provider ready' : 'API key may be required'}
                         />
                     </div>
-                    {providers.length > 1 ? (
+                    {switchableProviders.length > 1 ? (
                         <select
                             className="mt-1 w-full rounded border border-line bg-ink px-1.5 py-1 text-xs text-parchment-dim"
                             value={activeProviderId ?? ''}
                             onChange={(event) => onSwitchProvider(event.target.value)}
                             aria-label="Active provider"
                         >
-                            {providers.map((provider) => (
+                            {switchableProviders.map((provider) => (
                                 <option key={provider.id} value={provider.id}>
                                     {provider.name}
                                     {provider.model ? ` — ${provider.model}` : ''}
