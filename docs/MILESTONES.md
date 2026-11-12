@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset, text to speech, image generation and CharX import/export are usable end to end.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -296,6 +296,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - **Text to speech** (2026-11-12): a provider-agnostic TTS layer with two adapters. Browser speech synthesis works offline with the operating system's voices; the OpenAI-compatible adapter calls `/audio/speech` on OpenAI or a local server that implements the same API, keeping its key in `data/secrets.json`. Settings → TTS configures the backend, voices, speed/rate, per-character and narrator voices, autoplay and text cleaning. Every reply gets a play button, and new replies play automatically when autoplay is on. Audio is generated on demand and never written to the data directory.
 - **Image generation** (2026-11-12): a provider-agnostic image layer with Automatic1111/Forge, ComfyUI and OpenAI-compatible `/images/generations` adapters. Settings → Images configures the endpoint, key, dimensions, sampling and prompts; a prompt can be typed or drafted from the chat by the active text model. The ComfyUI adapter fills an API-format workflow pasted into settings, polls the job, downloads the first image and interrupts the job when the browser leaves. Images are stored under `data/user/images/<character or group>/` with a metadata sidecar, shown in a per-character and per-group gallery, and inserted into the chat as SillyTavern `extra.media` messages.
 - **CharX import/export** (2026-11-12): a `.charx` package (RisuAI's ZIP format) imports from the character library. A PNG icon becomes the character image and produces a PNG card; without one the card is stored as JSON. Every `assets/**` entry is kept under `data/character-assets/<character>/`. The character editor exports a V3 `card.json` with the PNG image as its icon and the stored assets, so packages round-trip. Risu `module.risum` bundles, `.charx` embedded-JPEG files and in-app display of non-icon assets are not implemented.
+- **Library improvements** (2026-11-12): favorites use SillyTavern's `data.extensions.fav` flag, with a star on every card, a favorites-only filter and favorite-first sorting. Tag chips filter the list with multi-select AND logic; cards sort by name A–Z/Z–A, recently changed, newest created or favorites first. A selection mode applies favorite/unfavorite, add/remove tag and delete to many cards at once, with per-card errors. Bulk tag edits keep existing spelling and skip no-op writes, and the first write stamps a V2/V3 `creation_date` so the creation sort is durable. CatCup tags are card `data.tags`, not SillyTavern's settings-level tag registry.
 
 ### Scope
 
@@ -317,12 +318,13 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] A basic Quick Reply executes and appears in the UI.
 - [x] TTS has at least one working local or remote adapter with clear configuration docs.
 - [x] Image generation has at least one working adapter with clear configuration docs.
+- [x] The character library supports favorites, tag filters, sorting and bulk actions.
 - [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
 - [ ] Character edits export to a valid PNG/JSON card that ST can open.
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS (**done 2026-11-12**) → image generation (**Automatic1111, ComfyUI and OpenAI-compatible done 2026-11-12**) → CharX (**done 2026-11-12**) → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS (**done 2026-11-12**) → image generation (**Automatic1111, ComfyUI and OpenAI-compatible done 2026-11-12**) → CharX (**done 2026-11-12**) → library polish (**favorites, tags, sorting and bulk actions done 2026-11-12**).
 
 ## M3 — Scripting and extension compatibility (Planned)
 

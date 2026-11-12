@@ -16,6 +16,12 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Character book** — A lorebook embedded inside a character card. CatCup can copy it into the world info library and link it to the card with **Import lore**.
 
+**Favorite** — A per-character library flag stored at `data.extensions.fav` (legacy flat cards keep it at root `fav`). The library can filter to favorites and sort them first; SillyTavern clears the flag when it exports or imports a card.
+
+**Tag filter** — The library chips that narrow the character list by card `data.tags`; selecting several requires all of them (AND). CatCup tags are card tags, not SillyTavern's settings-level tag registry.
+
+**Bulk action** — Favorite/unfavorite, add/remove tag or delete applied to a selection of characters, with per-card success and failure.
+
 **Chat JSONL** — The SillyTavern chat format: one header line followed by one JSON message per line.
 
 **Swipe** — An alternative assistant reply to the same conversation state. Swipes are stored in `extra.swipes`; `extra.swipe_id` selects one.

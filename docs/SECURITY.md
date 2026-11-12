@@ -79,7 +79,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 ## Files and paths
 
-- Character IDs and chat IDs are validated and resolved with `resolveInside()` to block path traversal.
+- Character IDs and chat IDs are validated and resolved with `resolveInside()` to block path traversal, including every id in a bulk character action.
 - Display names are sanitized for filesystem use.
 - Uploads: 20 MB per file, 50 files per request; `.png`, `.json` and `.charx` only.
 - JSON/JSONL parsing does not execute code. `module.risum` files inside a CharX package are skipped, never parsed or executed. Do not assume archive contents are safe if module support is added.
