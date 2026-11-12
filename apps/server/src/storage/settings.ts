@@ -6,6 +6,7 @@ import {
     DEFAULT_AUTHOR_NOTE,
     DEFAULT_BASE_URLS,
     DEFAULT_GENERATION_SETTINGS,
+    DEFAULT_IMAGE_GENERATION_SETTINGS,
     DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
     DEFAULT_QUICK_REPLY_SETTINGS,
@@ -80,6 +81,7 @@ function createDefaultSettings(): AppSettings {
         memory: { ...DEFAULT_MEMORY_SETTINGS },
         quickReplies: { ...DEFAULT_QUICK_REPLY_SETTINGS },
         tts: { ...DEFAULT_TTS_SETTINGS },
+        imageGeneration: { ...DEFAULT_IMAGE_GENERATION_SETTINGS },
     };
 }
 
@@ -196,8 +198,15 @@ export async function getProviderSecret(providerId: string): Promise<string | un
 /** The single TTS key lives beside provider keys, under a fixed name. */
 const TTS_SECRET_KEY = 'tts';
 
+/** The single image generation key lives beside the TTS key. */
+const IMAGE_SECRET_KEY = 'image';
+
 export async function getTtsSecret(): Promise<string | undefined> {
     return (await getSecrets())[TTS_SECRET_KEY];
+}
+
+export async function getImageSecret(): Promise<string | undefined> {
+    return (await getSecrets())[IMAGE_SECRET_KEY];
 }
 
 export async function setTtsSecret(apiKey: string | undefined): Promise<void> {
@@ -210,6 +219,21 @@ export async function setTtsSecret(apiKey: string | undefined): Promise<void> {
             delete secrets[TTS_SECRET_KEY];
         } else {
             secrets[TTS_SECRET_KEY] = apiKey;
+        }
+        await writeJsonFile(paths.secrets, secrets);
+    });
+}
+
+export async function setImageSecret(apiKey: string | undefined): Promise<void> {
+    if (apiKey === undefined) {
+        return;
+    }
+    await withFileLock(paths.secrets, async () => {
+        const secrets = await getSecrets();
+        if (apiKey === '') {
+            delete secrets[IMAGE_SECRET_KEY];
+        } else {
+            secrets[IMAGE_SECRET_KEY] = apiKey;
         }
         await writeJsonFile(paths.secrets, secrets);
     });
@@ -242,7 +266,12 @@ export async function getPublicProviders(): Promise<ProviderPublic[]> {
 export async function getSettingsResponse(): Promise<SettingsResponse> {
     const settings = await getSettings();
     const [providers, secrets] = await Promise.all([getPublicProviders(), getSecrets()]);
-    return { ...settings, providers, ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]) };
+    return {
+        ...settings,
+        providers,
+        ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]),
+        imageHasKey: Boolean(secrets[IMAGE_SECRET_KEY]),
+    };
 }
 
 export async function getProvider(providerId: string): Promise<ProviderConfig | null> {
@@ -309,6 +338,9 @@ async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
         if (patch.tts) {
             settings.tts = { ...settings.tts, ...patch.tts };
         }
+        if (patch.imageGeneration) {
+            settings.imageGeneration = { ...settings.imageGeneration, ...patch.imageGeneration };
+        }
         return settings;
     });
 }
@@ -323,6 +355,9 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
     const settings = await mutateSettingsNow(patch);
     if (patch.ttsApiKey !== undefined) {
         await setTtsSecret(patch.ttsApiKey);
+    }
+    if (patch.imageApiKey !== undefined) {
+        await setImageSecret(patch.imageApiKey);
     }
     return settings;
 }

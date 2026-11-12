@@ -14,6 +14,8 @@ export const paths = {
     worlds: path.join(config.dataDir, 'worlds'),
     presets: path.join(config.dataDir, 'presets'),
     quickReplies: path.join(config.dataDir, 'quickreplies'),
+    /** Generated gallery images, in SillyTavern's `user/images` layout. */
+    userImages: path.join(config.dataDir, 'user', 'images'),
     regex: path.join(config.dataDir, 'regex.json'),
     settings: path.join(config.dataDir, 'settings.json'),
     secrets: path.join(config.dataDir, 'secrets.json'),
@@ -29,6 +31,7 @@ export async function ensureDataDirs(): Promise<void> {
         mkdir(paths.worlds, { recursive: true }),
         mkdir(paths.presets, { recursive: true }),
         mkdir(paths.quickReplies, { recursive: true }),
+        mkdir(paths.userImages, { recursive: true }),
     ]);
 }
 
