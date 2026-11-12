@@ -36,13 +36,13 @@ Prefixes in use: `feat/`, `fix/`, `docs/`, `ci/`, `chore/`, `release/`, `hotfix/
 
 `main` and `dev` are both protected on GitHub:
 
-| Rule | `main` | `dev` |
-| --- | --- | --- |
-| Pull request required | yes | yes |
-| Required status check | `Typecheck, lint, test and build` | `Typecheck, lint, test and build` |
-| Branch must be up to date before merge | yes | no |
-| Force push / branch deletion | blocked | blocked |
-| Rules apply to admins | yes | no |
+| Rule                                   | `main`                            | `dev`                             |
+| -------------------------------------- | --------------------------------- | --------------------------------- |
+| Pull request required                  | yes                               | yes                               |
+| Required status check                  | `Typecheck, lint, test and build` | `Typecheck, lint, test and build` |
+| Branch must be up to date before merge | yes                               | no                                |
+| Force push / branch deletion           | blocked                           | blocked                           |
+| Rules apply to admins                  | yes                               | no                                |
 
 `main` additionally requires the branch to be current with its base before merging, because a release build is cut from it. The maintainer keeps an admin override on `dev` for merging stacked PRs in order; a normal contributor still has to pass CI and open a PR.
 
