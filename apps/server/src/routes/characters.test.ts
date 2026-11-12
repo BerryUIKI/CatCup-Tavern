@@ -1,4 +1,4 @@
-import { mkdtemp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -34,8 +34,8 @@ function charx(name: string, icon: Buffer | null = png): Buffer {
     return Buffer.from(zipSync(files, { level: 0 }));
 }
 
-async function call(method: 'GET' | 'DELETE', url: string) {
-    return app.inject({ method, url, headers: { cookie } });
+async function call(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: Record<string, unknown>) {
+    return app.inject({ method, url, headers: { cookie }, ...(payload === undefined ? {} : { payload }) });
 }
 
 async function upload(fileName: string, buffer: Buffer) {
@@ -174,5 +174,221 @@ describe('CharX routes', () => {
         const deleted = await call('DELETE', '/api/characters/Delete%20Me');
         expect(deleted.statusCode).toBe(200);
         await expect(stat(path.join(root, 'character-assets', 'Delete Me'))).rejects.toMatchObject({ code: 'ENOENT' });
+    });
+});
+
+async function importCharx(name: string): Promise<{ id: string }> {
+    const response = await upload(`${name}.charx`, charx(name));
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { imported: Array<{ id: string }> };
+    const imported = body.imported[0];
+    if (!imported) {
+        throw new Error(`CharX ${name} was not imported`);
+    }
+    return imported;
+}
+
+describe('character library routes', () => {
+    it('lists the favorite flag and creation time in summaries', async () => {
+        const imported = await importCharx('LibFav');
+        const response = await call('GET', '/api/characters');
+        expect(response.statusCode).toBe(200);
+        const summary = (response.json().characters as Array<Record<string, unknown>>).find(
+            (character) => character.id === imported.id,
+        );
+        expect(summary).toMatchObject({ id: 'LibFav', fav: false });
+        expect(typeof summary?.createdAt).toBe('number');
+        expect(typeof summary?.updatedAt).toBe('number');
+    });
+
+    it('toggles a favorite and writes it into the card', async () => {
+        const imported = await importCharx('LibToggle');
+        const set = await call('PATCH', `/api/characters/${imported.id}/favorite`, { favorite: true });
+        expect(set.statusCode).toBe(200);
+        expect(set.json().character.fav).toBe(true);
+        expect(set.json().character.card.extensions.fav).toBe(true);
+        const createdAt = set.json().character.createdAt as number;
+        const updatedAt = set.json().character.updatedAt as number;
+
+        // A redundant toggle is not a write: neither timestamp moves, and the
+        // creation date stamped by the first write survives later writes.
+        const again = await call('PATCH', `/api/characters/${imported.id}/favorite`, { favorite: true });
+        expect(again.json().character.createdAt).toBe(createdAt);
+        expect(again.json().character.updatedAt).toBe(updatedAt);
+
+        const listed = await call('GET', '/api/characters');
+        const summary = (listed.json().characters as Array<{ id: string; fav: boolean }>).find(
+            (character) => character.id === imported.id,
+        );
+        expect(summary?.fav).toBe(true);
+
+        const exported = await call('GET', `/api/characters/${imported.id}/export?format=json`);
+        const card = JSON.parse(exported.rawPayload.toString('utf8')) as {
+            data: { extensions: { fav: boolean } };
+        };
+        expect(card.data.extensions.fav).toBe(true);
+
+        // Rewriting the PNG for the flag must not damage the image.
+        const avatar = await call('GET', `/api/characters/${imported.id}/avatar`);
+        expect(avatar.statusCode).toBe(200);
+        expect(avatar.rawPayload.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
+
+        const cleared = await call('PATCH', `/api/characters/${imported.id}/favorite`, { favorite: false });
+        expect(cleared.json().character.fav).toBe(false);
+        expect(cleared.json().character.createdAt).toBe(createdAt);
+
+        expect((await call('PATCH', '/api/characters/Nobody/favorite', { favorite: true })).statusCode).toBe(404);
+        expect((await call('PATCH', `/api/characters/${imported.id}/favorite`, { favorite: 'yes' })).statusCode).toBe(
+            400,
+        );
+    });
+
+    it('promotes a legacy card when writing a favorite', async () => {
+        await writeFile(
+            path.join(root, 'characters', 'Legacy.json'),
+            JSON.stringify({ name: 'Legacy', first_mes: 'An old card.', fav: true }),
+            'utf8',
+        );
+
+        const listed = await call('GET', '/api/characters');
+        const summary = (listed.json().characters as Array<{ id: string; fav: boolean }>).find(
+            (character) => character.id === 'Legacy',
+        );
+        expect(summary?.fav).toBe(true);
+
+        const set = await call('PATCH', '/api/characters/Legacy/favorite', { favorite: true });
+        expect(set.statusCode).toBe(200);
+        expect(set.json().character.spec).toBe('v2');
+        expect(set.json().character.fav).toBe(true);
+
+        const raw = JSON.parse(await readFile(path.join(root, 'characters', 'Legacy.json'), 'utf8')) as {
+            spec: string;
+            data: { extensions: { fav: boolean } };
+        };
+        expect(raw.spec).toBe('chara_card_v2');
+        expect(raw.data.extensions.fav).toBe(true);
+    });
+
+    it('applies bulk favorites and tags', async () => {
+        const first = await importCharx('BulkA');
+        const second = await importCharx('BulkB');
+
+        const favorited = await call('POST', '/api/characters/bulk', {
+            action: 'favorite',
+            ids: [first.id, second.id],
+        });
+        expect(favorited.statusCode).toBe(200);
+        expect(favorited.json().characters).toHaveLength(2);
+        expect((favorited.json().characters as Array<{ fav: boolean }>).every((character) => character.fav)).toBe(true);
+
+        const tagged = await call('POST', '/api/characters/bulk', {
+            action: 'add-tags',
+            ids: [first.id, first.id, 'Nobody', second.id],
+            tags: [' Fantasy ', 'fantasy', 'Cozy'],
+        });
+        expect(tagged.statusCode).toBe(200);
+        expect(tagged.json().characters).toHaveLength(2);
+        expect((tagged.json().errors as Array<{ id: string }>).map((error) => error.id)).toEqual(['Nobody']);
+        for (const character of tagged.json().characters as Array<{ tags: string[] }>) {
+            expect(character.tags).toEqual(['Fantasy', 'Cozy']);
+        }
+
+        const removed = await call('POST', '/api/characters/bulk', {
+            action: 'remove-tags',
+            ids: [first.id, second.id],
+            tags: ['FANTASY'],
+        });
+        expect(removed.statusCode).toBe(200);
+        for (const character of removed.json().characters as Array<{ tags: string[] }>) {
+            expect(character.tags).toEqual(['Cozy']);
+        }
+
+        const unfavorited = await call('POST', '/api/characters/bulk', {
+            action: 'unfavorite',
+            ids: [first.id, second.id],
+        });
+        expect(unfavorited.statusCode).toBe(200);
+        expect((unfavorited.json().characters as Array<{ fav: boolean }>).every((character) => !character.fav)).toBe(
+            true,
+        );
+    });
+
+    it('preserves existing tag spelling and skips redundant writes', async () => {
+        await writeFile(
+            path.join(root, 'characters', 'TagKeeper.json'),
+            JSON.stringify({
+                spec: 'chara_card_v2',
+                spec_version: '2.0',
+                data: { name: 'TagKeeper', first_mes: 'A card with tags.', tags: ['  Keep  Me  ', 'Fantasy'] },
+            }),
+            'utf8',
+        );
+
+        const added = await call('POST', '/api/characters/bulk', {
+            action: 'add-tags',
+            ids: ['TagKeeper'],
+            tags: ['fantasy', 'Cozy'],
+        });
+        expect(added.statusCode).toBe(200);
+        expect((added.json().characters as Array<{ tags: string[] }>)[0]?.tags).toEqual([
+            '  Keep  Me  ',
+            'Fantasy',
+            'Cozy',
+        ]);
+
+        const updatedAt = (added.json().characters as Array<{ updatedAt: number }>)[0]?.updatedAt;
+        const again = await call('POST', '/api/characters/bulk', {
+            action: 'add-tags',
+            ids: ['TagKeeper'],
+            tags: ['cozy'],
+        });
+        expect((again.json().characters as Array<{ updatedAt: number }>)[0]?.updatedAt).toBe(updatedAt);
+
+        const removed = await call('POST', '/api/characters/bulk', {
+            action: 'remove-tags',
+            ids: ['TagKeeper'],
+            tags: ['keep me', 'FANTASY'],
+        });
+        expect((removed.json().characters as Array<{ tags: string[] }>)[0]?.tags).toEqual(['Cozy']);
+    });
+
+    it('validates bulk requests', async () => {
+        const imported = await importCharx('BulkValidation');
+
+        expect(
+            (await call('POST', '/api/characters/bulk', { action: 'add-tags', ids: [imported.id] })).statusCode,
+        ).toBe(400);
+        expect((await call('POST', '/api/characters/bulk', { action: 'favorite', ids: [] })).statusCode).toBe(400);
+        expect(
+            (
+                await call('POST', '/api/characters/bulk', {
+                    action: 'favorite',
+                    ids: Array.from({ length: 501 }, (_, index) => `id-${index}`),
+                })
+            ).statusCode,
+        ).toBe(400);
+        expect((await call('POST', '/api/characters/bulk', { action: 'archive', ids: [imported.id] })).statusCode).toBe(
+            400,
+        );
+    });
+
+    it('bulk deletes characters and their assets', async () => {
+        const imported = await importCharx('BulkAsset');
+        const assetPath = path.join(root, 'character-assets', 'BulkAsset', 'assets', 'icon', 'image', 'icon.png');
+        expect((await stat(assetPath)).isFile()).toBe(true);
+
+        const deleted = await call('POST', '/api/characters/bulk', {
+            action: 'delete',
+            ids: [imported.id, 'Nobody'],
+        });
+        expect(deleted.statusCode).toBe(200);
+        expect(deleted.json().deleted).toEqual(['BulkAsset']);
+        expect((deleted.json().errors as Array<{ id: string }>)[0]?.id).toBe('Nobody');
+        await expect(stat(path.join(root, 'character-assets', 'BulkAsset'))).rejects.toMatchObject({ code: 'ENOENT' });
+
+        const listed = await call('GET', '/api/characters');
+        expect(
+            (listed.json().characters as Array<{ id: string }>).some((character) => character.id === 'BulkAsset'),
+        ).toBe(false);
     });
 });

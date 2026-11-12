@@ -28,3 +28,7 @@ export function notFound(message = 'Not found'): HttpError {
 export function conflict(message: string, code = 'CONFLICT'): HttpError {
     return new HttpError(409, message, code);
 }
+
+export function internal(message = 'Internal error', code = 'INTERNAL_ERROR'): HttpError {
+    return new HttpError(500, message, code);
+}

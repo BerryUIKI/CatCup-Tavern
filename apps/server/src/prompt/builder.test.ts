@@ -22,6 +22,8 @@ const character = {
     tags: [],
     spec: 'v2',
     hasCharacterBook: false,
+    fav: false,
+    createdAt: 0,
     updatedAt: 0,
     avatarUrl: '',
     rawCard: {},
