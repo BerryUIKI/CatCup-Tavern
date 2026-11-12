@@ -14,7 +14,21 @@ import {
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Brain, Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
+import {
+    Brain,
+    Eye,
+    ImagePlus,
+    Images,
+    Menu,
+    MessageSquarePlus,
+    Pencil,
+    Play,
+    Plus,
+    Settings2,
+    Sparkles,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useBranchChat,
@@ -24,15 +38,20 @@ import {
     useRegexScripts,
     useRenameChat,
     useSetChatPersona,
+    useSettings,
     useUpdateMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
+import type { ImageChatTarget } from '../hooks/useImages';
 import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { ContextInspector } from './ContextInspector';
 import { EmptyState } from './EmptyState';
+import { ImageGalleryDialog } from './ImageGalleryDialog';
+import { ImageGenerationDialog } from './ImageGenerationDialog';
+import { ImageLightbox, type LightboxImage } from './ImageLightbox';
 import { Logo } from './Logo';
 import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
@@ -162,6 +181,9 @@ export function ChatView({
     const [renameValue, setRenameValue] = useState('');
     const [inspectorOpen, setInspectorOpen] = useState(false);
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
+    const [galleryOpen, setGalleryOpen] = useState(false);
+    const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
     const [draft, setDraft] = useState('');
     const [focusRequest, setFocusRequest] = useState(0);
     // A quick reply result arrives after a round trip; read the latest draft
@@ -175,6 +197,8 @@ export function ChatView({
     // biome-ignore lint/correctness/useExhaustiveDependencies: only a different chat should clear the draft
     useEffect(() => {
         setDraft('');
+        setImageDialog(null);
+        setGalleryOpen(false);
     }, [selectedChatId]);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
@@ -200,6 +224,11 @@ export function ChatView({
         () => scrollToBottom(true),
     );
     const tts = useTts();
+    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const imageTarget: ImageChatTarget | null =
+        character && selectedChatId
+            ? { kind: 'character', id: character.id, chatId: selectedChatId, name: character.name }
+            : null;
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -557,6 +586,26 @@ export function ChatView({
                     <button
                         type="button"
                         className="icon-btn"
+                        onClick={() => setImageDialog({})}
+                        disabled={!selectedChatId || !imageEnabled}
+                        title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
+                        aria-label="Generate image"
+                    >
+                        <ImagePlus size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => setGalleryOpen(true)}
+                        disabled={!imageEnabled}
+                        title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
+                        aria-label="Image gallery"
+                    >
+                        <Images size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
                         onClick={() => setMemoryOpen(true)}
                         disabled={!selectedChatId || messages.length === 0}
                         title="Memory"
@@ -666,6 +715,15 @@ export function ChatView({
                                         onEdit={(text) => handleEditMessage(index, text)}
                                         onEditStart={tts.stop}
                                         onBranch={() => handleBranch(index)}
+                                        onOpenImage={(url, title) => setLightbox({ url, title })}
+                                        onIllustrate={
+                                            imageEnabled &&
+                                            !message.is_user &&
+                                            !message.is_system &&
+                                            message.extra?.type !== 'narrator'
+                                                ? () => setImageDialog({ messageIndex: index })
+                                                : undefined
+                                        }
                                         onSpeak={
                                             tts.enabled && !message.is_user && !message.is_system
                                                 ? () => handleSpeak(index, message)
@@ -777,6 +835,20 @@ export function ChatView({
                 messages={messages}
                 title={character?.name ?? 'Memory'}
             />
+
+            {imageDialog && imageTarget ? (
+                <ImageGenerationDialog
+                    target={imageTarget}
+                    messageIndex={imageDialog.messageIndex}
+                    onClose={() => setImageDialog(null)}
+                />
+            ) : null}
+
+            {imageTarget ? (
+                <ImageGalleryDialog open={galleryOpen} onClose={() => setGalleryOpen(false)} target={imageTarget} />
+            ) : null}
+
+            <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">

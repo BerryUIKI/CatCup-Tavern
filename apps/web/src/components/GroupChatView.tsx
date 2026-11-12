@@ -14,7 +14,20 @@ import {
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Brain, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Trash2, Users, X } from 'lucide-react';
+import {
+    Brain,
+    ImagePlus,
+    Images,
+    Menu,
+    MessageSquarePlus,
+    Pencil,
+    Play,
+    Plus,
+    Settings2,
+    Trash2,
+    Users,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -25,14 +38,19 @@ import {
     useRenameGroupChat,
     useSetCurrentGroupChat,
     useSetGroupChatPersona,
+    useSettings,
     useUpdateGroupMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
+import type { ImageChatTarget } from '../hooks/useImages';
 import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { EmptyState } from './EmptyState';
+import { ImageGalleryDialog } from './ImageGalleryDialog';
+import { ImageGenerationDialog } from './ImageGenerationDialog';
+import { ImageLightbox, type LightboxImage } from './ImageLightbox';
 import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
@@ -120,6 +138,9 @@ export function GroupChatView({
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
+    const [galleryOpen, setGalleryOpen] = useState(false);
+    const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
     const [draft, setDraft] = useState('');
     const [focusRequest, setFocusRequest] = useState(0);
     // A quick reply result arrives after a round trip; read the latest draft
@@ -134,6 +155,8 @@ export function GroupChatView({
     // biome-ignore lint/correctness/useExhaustiveDependencies: only a different chat should clear the draft
     useEffect(() => {
         setDraft('');
+        setImageDialog(null);
+        setGalleryOpen(false);
     }, [selectedChatId]);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
@@ -158,6 +181,10 @@ export function GroupChatView({
 
     const generation = useGeneration({ kind: 'group', groupId: group.id }, selectedChatId, () => scrollToBottom(true));
     const tts = useTts();
+    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const imageTarget: ImageChatTarget | null = selectedChatId
+        ? { kind: 'group', id: group.id, chatId: selectedChatId, name: group.name }
+        : null;
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -572,6 +599,26 @@ export function GroupChatView({
                 <button
                     type="button"
                     className="icon-btn"
+                    onClick={() => setImageDialog({})}
+                    disabled={!selectedChatId || !imageEnabled}
+                    title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
+                    aria-label="Generate image"
+                >
+                    <ImagePlus size={17} />
+                </button>
+                <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => setGalleryOpen(true)}
+                    disabled={!imageEnabled}
+                    title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
+                    aria-label="Image gallery"
+                >
+                    <Images size={17} />
+                </button>
+                <button
+                    type="button"
+                    className="icon-btn"
                     onClick={() => setMemoryOpen(true)}
                     disabled={!selectedChatId || messages.length === 0}
                     title="Memory"
@@ -676,6 +723,15 @@ export function GroupChatView({
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
                                         onEditStart={tts.stop}
+                                        onOpenImage={(url, title) => setLightbox({ url, title })}
+                                        onIllustrate={
+                                            imageEnabled &&
+                                            !message.is_user &&
+                                            !message.is_system &&
+                                            !isNarrator(message)
+                                                ? () => setImageDialog({ messageIndex: index })
+                                                : undefined
+                                        }
                                         onSpeak={
                                             tts.enabled && !message.is_user && !message.is_system
                                                 ? () => handleSpeak(index, message)
@@ -802,6 +858,20 @@ export function GroupChatView({
                 messages={messages}
                 title={group.name}
             />
+
+            {imageDialog && imageTarget ? (
+                <ImageGenerationDialog
+                    target={imageTarget}
+                    messageIndex={imageDialog.messageIndex}
+                    onClose={() => setImageDialog(null)}
+                />
+            ) : null}
+
+            {imageTarget ? (
+                <ImageGalleryDialog open={galleryOpen} onClose={() => setGalleryOpen(false)} target={imageTarget} />
+            ) : null}
+
+            <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">
