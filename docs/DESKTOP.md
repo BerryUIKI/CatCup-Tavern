@@ -67,7 +67,7 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
 - **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
 - **Tray icon and window state.** The window is a single webview that closes the app; there is no tray icon, and the window's size and position are not remembered between launches.
-- **The access password.** A fresh install opens the setup screen, and later launches the login screen, exactly as the web build does. Making the desktop build open without a password is tracked in issue #43.
+- **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
 - **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
 
 ## Layout

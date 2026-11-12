@@ -1,5 +1,6 @@
 import type {
     AttachImageRequest,
+    AuthPasswordResponse,
     AuthStatus,
     CharacterBulkRequest,
     CharacterBulkResponse,
@@ -258,6 +259,12 @@ export const api = {
                 body: JSON.stringify({ password }),
             }),
         logout: () => request<{ ok: true }>('/auth/logout', { method: 'POST' }),
+        /** Desktop only: set the password, or pass '' to remove it. */
+        setPassword: (password: string, currentPassword?: string) =>
+            request<AuthPasswordResponse>('/auth/password', {
+                method: 'PUT',
+                body: JSON.stringify({ password, currentPassword }),
+            }),
     },
 
     characters: {

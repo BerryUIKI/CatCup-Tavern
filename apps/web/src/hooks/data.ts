@@ -57,6 +57,7 @@ function useAuthenticated() {
         queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
             needsSetup: false,
             authenticated: true,
+            openSession: false,
         });
         queryClient.removeQueries({
             predicate: (query) => query.queryKey[0] !== 'auth',
@@ -88,9 +89,31 @@ export function useLogout() {
             queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
                 needsSetup: false,
                 authenticated: false,
+                openSession: false,
             });
             queryClient.removeQueries({
                 predicate: (query) => query.queryKey[0] !== 'auth',
+            });
+        },
+    });
+}
+
+/**
+ * Set or remove the desktop password.
+ *
+ * Removing it (`password: ''`) puts the app back into open session, so the
+ * cached status has to say so or the login screen reappears on every reload.
+ */
+export function useSetPassword() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ password, currentPassword }: { password: string; currentPassword?: string }) =>
+            api.auth.setPassword(password, currentPassword),
+        onSuccess: (result) => {
+            queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
+                needsSetup: false,
+                authenticated: true,
+                openSession: result.openSession,
             });
         },
     });

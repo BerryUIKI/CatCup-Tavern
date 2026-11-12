@@ -245,7 +245,7 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 
 - Password: `scrypt` (N=16384, r=8, p=1), constant-time comparison.
 - Session: HMAC-SHA256 signed cookie, `HttpOnly` + `SameSite=Lax`, 30-day default.
-- First-run setup accepts loopback requests only.
+- First-run setup accepts loopback requests only. The desktop build skips setup entirely: with `CATCUP_DESKTOP=1` and no password it serves the API in open session, which is why that mode refuses a non-loopback bind.
 - API keys: only `data/secrets.json`; responses expose `hasKey` only (providers), `ttsHasKey` (text to speech) or `imageHasKey` (image generation); logs redact `authorization`, `cookie` and `x-api-key`.
 - Paths: every `:id` / `:chatId` passes through `resolveInside()` to block traversal.
 - Login rate limiting; put the LAN server behind HTTPS when exposing it beyond a trusted network.

@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
+import { queryKeys, useSetPassword } from '../hooks/data';
 import { api } from '../lib/api';
 import { Spinner } from './Spinner';
 
@@ -83,6 +85,93 @@ export function AboutTab() {
                 Your data stays in the server’s data folder: cards, chats, lorebooks, presets and regex scripts are
                 plain SillyTavern-format files you can copy out at any time. API keys never leave the server.
             </p>
+
+            <DesktopPassword />
         </div>
+    );
+}
+
+/**
+ * The desktop password switch.
+ *
+ * Rendered only in an open desktop session. A web or LAN install never reaches
+ * this state: it always has a password, so `openSession` is false and the
+ * panel stays hidden.
+ */
+function DesktopPassword() {
+    const auth = useQuery({
+        queryKey: queryKeys.auth,
+        queryFn: api.auth.status,
+        staleTime: Number.POSITIVE_INFINITY,
+    });
+    const passwordMutation = useSetPassword();
+    const [password, setPassword] = useState('');
+    const [confirm, setConfirm] = useState('');
+    const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+
+    if (!auth.data?.openSession) {
+        return null;
+    }
+
+    const submit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setMessage(null);
+        if (password !== confirm) {
+            setMessage({ kind: 'error', text: 'The two passwords do not match.' });
+            return;
+        }
+        try {
+            await passwordMutation.mutateAsync({ password });
+            setPassword('');
+            setConfirm('');
+            setMessage({ kind: 'ok', text: 'Password set. The app now asks for it when it starts.' });
+        } catch (caught) {
+            setMessage({
+                kind: 'error',
+                text: caught instanceof Error ? caught.message : 'Could not set the password.',
+            });
+        }
+    };
+
+    return (
+        <form className="rounded-xl border border-brass/25 bg-brass/5 p-4" onSubmit={submit}>
+            <h4 className="text-sm font-medium text-parchment">Access password</h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+                This desktop app opens without a password, because only you can reach it on this machine. Setting one
+                brings back the sign-in screen; remove it again to open directly.
+            </p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <input
+                    type="password"
+                    className="input"
+                    placeholder="New password (8+ characters)"
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                />
+                <input
+                    type="password"
+                    className="input"
+                    placeholder="Repeat the password"
+                    autoComplete="new-password"
+                    value={confirm}
+                    onChange={(event) => setConfirm(event.target.value)}
+                />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button type="submit" className="btn-secondary" disabled={passwordMutation.isPending || !password}>
+                    {passwordMutation.isPending ? <Spinner size={14} /> : null}
+                    Set password
+                </button>
+            </div>
+            {message ? (
+                <p
+                    className={message.kind === 'ok' ? 'mt-2 text-xs text-sage' : 'mt-2 text-xs text-wine'}
+                    role="status"
+                >
+                    {message.text}
+                </p>
+            ) : null}
+        </form>
     );
 }
