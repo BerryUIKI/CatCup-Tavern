@@ -7,10 +7,27 @@ import type { WorldInfoEntry } from './worldinfo.js';
 export interface AuthStatus {
     needsSetup: boolean;
     authenticated: boolean;
+    /** Desktop install with no password: the API is open to the local app. */
+    openSession: boolean;
 }
 
 export interface AuthSetupRequest {
     password: string;
+}
+
+/**
+ * Desktop-only password management. `password: ''` removes the password and
+ * returns the app to open mode; `currentPassword` is required to change or
+ * remove one that is already set.
+ */
+export interface AuthPasswordRequest {
+    password: string;
+    currentPassword?: string;
+}
+
+export interface AuthPasswordResponse {
+    ok: true;
+    openSession: boolean;
 }
 
 export interface AuthLoginRequest {

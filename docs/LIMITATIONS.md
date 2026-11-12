@@ -65,7 +65,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
 - **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
 - **Impersonation** — there is no "reply as me" action.
-- **A change-password screen.** The reset is deleting `data/auth.json`, which signs every device out.
+- **A change-password screen for the web and LAN builds.** Only the desktop app can set or remove its password, from About → Access password. Elsewhere the reset is deleting `data/auth.json`, which signs every device out.
 
 **Partial, and worth knowing before you rely on it**
 
@@ -98,7 +98,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **The SillyTavern folder import usually finds no presets.** SillyTavern 1.19 keeps user presets in OpenAI Settings, which the importer does not read; import them one at a time from Settings → Prompts.
 - **Repeat imports add copies** with numeric suffixes instead of updating what is already there.
 - **Imported books arrive disabled and imported presets arrive active** — the opposite of what you might expect; enable books before they affect a chat.
-- **The desktop app is local-only and keeps its own data folder**, separate from the web build, with no migration between them. It cannot be opened from the LAN.
+- **The desktop app is local-only and keeps its own data folder**, separate from the web build, with no migration between them. It cannot be opened from the LAN. It also opens without an access password, because the desktop is single-user on one machine; set one in About and the sign-in screen returns.
 - **Downloads and sign-in persistence in the desktop app have not been exercised.**
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
 - **The installer is unsigned**, so Windows warns on first run, and there are no automatic updates.

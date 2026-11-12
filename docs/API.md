@@ -61,12 +61,14 @@ Common codes:
 ### `GET /api/auth/status`
 
 ```json
-{ "needsSetup": false, "authenticated": true }
+{ "needsSetup": false, "authenticated": true, "openSession": false }
 ```
+
+`openSession` is true only in a desktop install with no password: the API answers without a session and `needsSetup` stays false so the SPA opens directly.
 
 ### `POST /api/auth/setup`
 
-First-run only. The request must originate from loopback unless `CATCUP_ALLOW_REMOTE_SETUP=true`.
+First-run only. The request must originate from loopback unless `CATCUP_ALLOW_REMOTE_SETUP=true`. Never needed in desktop mode, where an install with no password is already open.
 
 ```json
 { "password": "at-least-8-characters" }
@@ -85,6 +87,20 @@ Response: `{ "ok": true }` and a session cookie. Rate limit: 10 attempts per min
 ### `POST /api/auth/logout`
 
 Clears the cookie. Response: `{ "ok": true }`.
+
+### `PUT /api/auth/password`
+
+Desktop mode only; web and LAN answer `403 FORBIDDEN`. Sets or replaces the password, or removes it to return the app to open mode. Changing or removing an existing password requires `currentPassword`.
+
+```json
+{ "password": "at-least-8-characters", "currentPassword": "only-when-one-exists" }
+```
+
+```json
+{ "password": "" }
+```
+
+Response: `{ "ok": true, "openSession": false }` (or `true` after removal). Rate limit: 10 attempts per minute per client.
 
 ## Health
 

@@ -44,6 +44,13 @@ export const config = {
     dataDir: dataDirValue ? path.resolve(process.cwd(), dataDirValue) : path.join(repoRoot, 'data'),
     logLevel: process.env.CATCUP_LOG_LEVEL?.trim() || 'info',
     allowRemoteSetup: parseBoolean(process.env.CATCUP_ALLOW_REMOTE_SETUP, false),
+    /**
+     * Set by the desktop shell. In this mode an install with no password opens
+     * straight into the app, because the OS session plus the loopback bind is
+     * the boundary. A configured password still applies, and the server refuses
+     * to start with a non-loopback host while no password exists.
+     */
+    desktop: parseBoolean(process.env.CATCUP_DESKTOP, false),
     isProduction: process.env.NODE_ENV === 'production',
 } as const;
 

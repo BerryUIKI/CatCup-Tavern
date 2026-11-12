@@ -41,7 +41,7 @@ export default function App() {
     }
 
     if (!auth.data?.authenticated) {
-        return <LoginScreen />;
+        return <LoginScreen openSession={auth.data?.openSession ?? false} />;
     }
 
     return <MainApp />;

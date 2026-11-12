@@ -78,6 +78,9 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
         .env("CATCUP_HOST", "127.0.0.1")
         .env("CATCUP_PORT", "0")
         .env("CATCUP_DATA_DIR", &data_dir)
+        // Tells the server this is the single-user desktop shape, so an install
+        // with no password opens straight into the app instead of a setup screen.
+        .env("CATCUP_DESKTOP", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()

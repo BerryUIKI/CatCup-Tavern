@@ -2,6 +2,12 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release.
 
+## Unreleased
+
+### Added
+
+- The desktop app opens without an access password. The shell passes `CATCUP_DESKTOP=1`, a fresh install goes straight to the library instead of a setup screen, and About → Access password can set one (the sign-in screen returns) or remove it again. Web and LAN installs keep the password model unchanged. The server refuses to start in this mode when bound to a non-loopback host, so the open API cannot reach the LAN. New endpoint: `PUT /api/auth/password`; `/api/auth/status` gains `openSession`.
+
 ## 0.3.0 — 2026-11-13
 
 ### Added
