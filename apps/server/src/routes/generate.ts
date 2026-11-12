@@ -34,7 +34,7 @@ import { requireCharacter } from './helpers.js';
 const generateSchema = z.object({
     characterId: z.string().min(1).max(200),
     chatId: z.string().min(1).max(300),
-    action: z.enum(['send', 'regenerate', 'continue']),
+    action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
     message: z.string().max(200000).optional(),
 });
 
@@ -214,21 +214,25 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             messages = [...messages, userMessage];
         } else if (body.action === 'regenerate') {
             const last = messages[messages.length - 1];
-            if (last && !last.is_user && !last.is_system) {
+            // A narrator note is not a reply to rewrite, matching the group route.
+            if (last && !last.is_user && !last.is_system && last.extra?.type !== 'narrator') {
                 regenerateIndex = messages.length - 1;
                 originalAssistant = last;
                 messages = messages.slice(0, -1);
             }
-        } else {
+        } else if (body.action === 'continue') {
             const last = messages[messages.length - 1];
-            if (!last || last.is_user || last.is_system) {
+            if (!last || last.is_user || last.is_system || last.extra?.type === 'narrator') {
                 throw badRequest('There is no assistant reply to continue');
             }
             continueIndex = messages.length - 1;
             originalAssistant = last;
         }
+        // `trigger` asks for a fresh reply with no user message, as SillyTavern's
+        // `/trigger` does; there is nothing to change in the history.
 
-        const generationType: GenerationType = body.action === 'send' ? 'normal' : body.action;
+        const generationType: GenerationType =
+            body.action === 'send' || body.action === 'trigger' ? 'normal' : body.action;
 
         // Summary memory is read after the action so a regenerated reply no
         // longer contributes its own summary, and the user's new message is

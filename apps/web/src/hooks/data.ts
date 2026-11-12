@@ -9,6 +9,7 @@ import type {
     GroupView,
     ImportCharactersResponse,
     ProviderInput,
+    QuickReplySet,
     RegexScriptPatch,
     SettingsPatch,
     WorldDetail,
@@ -16,7 +17,7 @@ import type {
 } from '@catcup/shared';
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '../lib/api';
+import { api, type QuickReplyChatRef } from '../lib/api';
 
 export const queryKeys = {
     auth: ['auth'] as const,
@@ -33,6 +34,7 @@ export const queryKeys = {
     worlds: ['worlds'] as const,
     world: (id: string | null) => ['world', id] as const,
     regex: ['regex'] as const,
+    quickReplies: ['quickReplies'] as const,
 };
 
 export function useAuthStatus() {
@@ -615,7 +617,7 @@ export interface MemoryChatRef {
     chatId: string;
 }
 
-function invalidateMemoryChat(queryClient: QueryClient, target: MemoryChatRef): void {
+function invalidateChatTarget(queryClient: QueryClient, target: MemoryChatRef | QuickReplyChatRef): void {
     if (target.kind === 'character') {
         void queryClient.invalidateQueries({ queryKey: queryKeys.chat(target.id, target.chatId) });
         return;
@@ -631,7 +633,7 @@ export function useSummarizeMemory() {
             target.kind === 'character'
                 ? api.chats.summarize(target.id, target.chatId)
                 : api.groups.chats.summarize(target.id, target.chatId),
-        onSuccess: (_result, target) => invalidateMemoryChat(queryClient, target),
+        onSuccess: (_result, target) => invalidateChatTarget(queryClient, target),
     });
 }
 
@@ -643,7 +645,7 @@ export function useSaveMemory() {
             variables.target.kind === 'character'
                 ? api.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text)
                 : api.groups.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text),
-        onSuccess: (_result, variables) => invalidateMemoryChat(queryClient, variables.target),
+        onSuccess: (_result, variables) => invalidateChatTarget(queryClient, variables.target),
     });
 }
 
@@ -655,12 +657,78 @@ export function useClearMemory() {
             target.kind === 'character'
                 ? api.chats.clearMemory(target.id, target.chatId)
                 : api.groups.chats.clearMemory(target.id, target.chatId),
-        onSuccess: (_result, target) => invalidateMemoryChat(queryClient, target),
+        onSuccess: (_result, target) => invalidateChatTarget(queryClient, target),
     });
 }
 
 export function useRegexScripts() {
     return useQuery({ queryKey: queryKeys.regex, queryFn: api.regex.list });
+}
+
+export function useQuickReplies() {
+    return useQuery({ queryKey: queryKeys.quickReplies, queryFn: api.quickReplies.list });
+}
+
+export function useCreateQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (name: string) => api.quickReplies.create(name),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+        },
+    });
+}
+
+/**
+ * Save a set. Renaming can move the file and rewrite the account set list, so
+ * the settings query is refreshed too.
+ */
+export function useSaveQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; set: QuickReplySet }) =>
+            api.quickReplies.save(variables.id, variables.set),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useDeleteQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.quickReplies.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useImportQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { data: unknown; name?: string }) =>
+            api.quickReplies.import(variables.data, variables.name),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+        },
+    });
+}
+
+/** Run a quick reply against a chat; the server appends and returns directives. */
+export function useExecuteQuickReply() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { target: QuickReplyChatRef; setId: string; qrId: number }) =>
+            api.quickReplies.execute(variables.target, variables.setId, variables.qrId),
+        // A failed script can still have persisted an earlier append, so refresh
+        // the chat on errors as well as on success.
+        onSettled: (_result, _error, variables) => {
+            invalidateChatTarget(queryClient, variables.target);
+        },
+    });
 }
 
 export function useCreateRegexScript() {

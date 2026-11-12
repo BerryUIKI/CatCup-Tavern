@@ -19,6 +19,9 @@ import type {
     ProviderInput,
     ProviderPublic,
     ProviderTestResult,
+    QuickReplyExecuteResponse,
+    QuickReplySet,
+    QuickReplySetView,
     RegexScript,
     RegexScriptPatch,
     SampleCharacterResponse,
@@ -42,6 +45,14 @@ export class ApiError extends Error {
         super(message);
         this.name = 'ApiError';
     }
+}
+
+/** A chat addressed for the quick reply execute endpoints. */
+export interface QuickReplyChatRef {
+    kind: 'character' | 'group';
+    /** Character id or group id, depending on `kind`. */
+    id: string;
+    chatId: string;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -144,6 +155,36 @@ export const api = {
                 body: JSON.stringify({ data, mode }),
             }),
         exportUrl: () => '/api/regex/export',
+    },
+    quickReplies: {
+        list: () => request<{ sets: QuickReplySetView[] }>('/quick-replies'),
+        create: (name: string) =>
+            request<{ set: QuickReplySetView }>('/quick-replies', {
+                method: 'POST',
+                body: JSON.stringify({ name }),
+            }),
+        save: (id: string, set: QuickReplySet) =>
+            request<{ set: QuickReplySetView; renamedFrom?: string }>(`/quick-replies/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                body: JSON.stringify(set),
+            }),
+        remove: (id: string) => request<{ ok: true }>(`/quick-replies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        import: (data: unknown, name?: string) =>
+            request<{ set: QuickReplySetView }>('/quick-replies/import', {
+                method: 'POST',
+                body: JSON.stringify({ data, name }),
+            }),
+        exportUrl: (id: string) => `/api/quick-replies/${encodeURIComponent(id)}/export`,
+        execute: (target: QuickReplyChatRef, setId: string, qrId: number) => {
+            const path =
+                target.kind === 'character'
+                    ? `/chats/${encodeURIComponent(target.id)}/${encodeURIComponent(target.chatId)}/quick-replies/execute`
+                    : `/groups/${encodeURIComponent(target.id)}/chats/${encodeURIComponent(target.chatId)}/quick-replies/execute`;
+            return request<QuickReplyExecuteResponse>(path, {
+                method: 'POST',
+                body: JSON.stringify({ setId, qrId }),
+            });
+        },
     },
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),

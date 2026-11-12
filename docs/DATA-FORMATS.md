@@ -18,8 +18,10 @@ data/
 │   └── 1762839291123.json      # ST group metadata
 ├── group chats/
 │   └── 2026-11-11@08h14m52s123ms.jsonl
-├── worlds/                    # World Info JSON (reserved; scanner planned for M1)
-├── presets/                   # ST OpenAI presets (reserved; import planned for M1)
+├── worlds/                    # World Info JSON
+├── presets/                   # ST OpenAI presets
+├── quickreplies/              # ST Quick Replies v2 sets, one JSON per set
+├── regex.json                 # Regex scripts (one ordered list)
 ├── settings.json
 ├── secrets.json               # server-only; never returned by the API
 └── auth.json                  # server-only
@@ -29,14 +31,15 @@ The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data
 
 ### Identity rules
 
-| Object     | ID                                 | Notes                                                                                         |
-| ---------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| Character  | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
-| Avatar     | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
-| Chat       | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
-| Group      | JSON file name without `.json`     | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
-| Group chat | JSONL file name without `.jsonl`   | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
-| Message    | Zero-based array index             | The JSONL header is not a message                                                             |
+| Object          | ID                                 | Notes                                                                                         |
+| --------------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
+| Character       | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
+| Avatar          | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
+| Chat            | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
+| Group           | JSON file name without `.json`     | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
+| Group chat      | JSONL file name without `.jsonl`   | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
+| Quick reply set | JSON file name without `.json`     | `data/quickreplies/<name>.json`; the body's `name` is what the settings set list links to     |
+| Message         | Zero-based array index             | The JSONL header is not a message                                                             |
 
 ## Character cards
 
@@ -133,7 +136,7 @@ Chats use SillyTavern's JSON Lines format. The file begins with a header object,
 
 SillyTavern uses `"unused"` for these fields; CatCup keeps the same convention. Unknown `chat_metadata` fields are preserved.
 
-CatCup writes one field of its own into `chat_metadata`: `persona_id`, the persona a chat is pinned to. Keeping it in the header rather than a side file means the choice travels with the chat when the JSONL is copied or exported, and SillyTavern ignores the field it does not know.
+CatCup writes one field of its own into `chat_metadata`: `persona_id`, the persona a chat is pinned to. Keeping it in the header rather than a side file means the choice travels with the chat when the JSONL is copied or exported, and SillyTavern ignores the field it does not know. A chat may also carry SillyTavern's `chat_metadata.quickReply` set links; CatCup reads them and adds those sets to the bar, but has no editor for them yet.
 
 ### Message
 
@@ -146,6 +149,8 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
     "extra": {}
 }
 ```
+
+A quick reply `/sys` writes a narrator message: `is_user: false`, `is_system` absent, and `extra.type: "narrator"` with `extra.api: "manual"` and `extra.model: "slash command"`, the same marker SillyTavern uses. The prompt sends it as a system turn, and group speaker selection skips it. Messages with `is_system: true` are skipped by the prompt entirely, as in SillyTavern.
 
 | Field             | Type     | Notes                                                                                                                      |
 | ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
@@ -475,6 +480,44 @@ The three-way gate is SillyTavern's:
 
 One consequence catches people out: world info is assembled with the prompt flag set, so a `WORLD_INFO` script must also set `promptOnly`, exactly as in SillyTavern. A plain script with only the world-info placement never runs.
 
+## Quick Replies
+
+SillyTavern's version 2 quick reply sets, one file per set in `data/quickreplies/`:
+
+```json
+{
+    "version": 2,
+    "name": "Combat",
+    "disableSend": false,
+    "placeBeforeInput": false,
+    "injectInput": false,
+    "color": "transparent",
+    "onlyBorderColor": false,
+    "qrList": [
+        {
+            "id": 1,
+            "label": "Attack",
+            "title": "",
+            "message": "/send I attack.",
+            "icon": "",
+            "showLabel": false,
+            "isHidden": false,
+            "preventAutoExecute": true,
+            "contextList": []
+        }
+    ],
+    "idIndex": 1
+}
+```
+
+The file is named after the set, as SillyTavern names its own `QuickReplies/<name>.json` files. The file name without `.json` is the API's set id; the body's `name` is what the account set list and a chat's `chat_metadata.quickReply` links refer to. `qrList` order is button order, and `idIndex` is the highest quick reply id handed out.
+
+A quick reply `message` is plain text or the supported command subset documented in [API.md](API.md#supported-script-subset). Fields CatCup does not show — `icon`, `showLabel`, the `executeOn*` auto-execution flags, `automationId` and `contextList` — are preserved on save, so an imported set exports unchanged apart from edits to the fields the editor does expose.
+
+A file that is not a valid version 2 set is skipped by the library, not loaded or overwritten; remove or fix it by hand in `data/quickreplies/` if one appears.
+
+The bar's enabled flag and set order live in `settings.json` under `quickReplies`. SillyTavern's per-character configs are not implemented; per-chat `chat_metadata.quickReply.setList` links are read but not edited.
+
 ## Internal files (not SillyTavern formats)
 
 ### `settings.json`
@@ -497,6 +540,7 @@ One consequence catches people out: world info is assembled with the prompt flag
     "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
+    "quickReplies": { "enabled": false, "setList": [] },
     "ui": { "language": "en", "theme": "tavern-dark" }
 }
 ```
@@ -517,10 +561,10 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
-- **Not imported:** group chats, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
+- **Not imported:** group chats, quick reply sets, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
 - **Repeat imports add copies.** Names get numeric suffixes; nothing is overwritten. To start clean, back up `data/` and remove the folders you want replaced first.
 
-Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`. The naming rules are the same, and unknown fields are preserved either way.
+Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
 
 ## Backup, restore and upgrades
 

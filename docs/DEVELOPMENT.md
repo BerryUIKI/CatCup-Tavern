@@ -70,7 +70,8 @@ apps/server/src/
   memory/         rolling summaries, schedule and injection
   providers/      OpenAI-compatible / Anthropic / Ollama adapters
   prompt/         prompt assembly and token estimation
-  routes/         auth, characters, chats, groups, memory, generate, providers, settings, health
+  quickreplies/   quick reply command execution and client directives
+  routes/         auth, characters, chats, groups, memory, quick replies, generate, providers, settings, health
   security/       scrypt password, HMAC sessions
   storage/        paths, atomic JSON, locks, settings, characters, chats, groups
   sse.ts          SSE writer
@@ -101,10 +102,10 @@ pnpm --filter @catcup/shared test
 pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
 ```
 
-Current coverage (M0):
+Current coverage:
 
-- shared: schema defaults;
-- server: character card normalization, chat JSONL parsing/round-trip, prompt builder macros and history trimming.
+- shared: schema defaults, macros, memory lookup, the quick reply script parser;
+- server: character card normalization, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, and quick reply storage/routes/execution.
 
 UI testing is manual at this stage: password setup, card import, chat creation, streaming, swipes, settings. Add a unit test for any new parsing/ordering logic. Add a fixture-based test for ST compatibility changes.
 

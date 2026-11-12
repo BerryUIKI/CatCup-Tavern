@@ -7,6 +7,7 @@ import {
     chatPersonaId,
     getLatestSummary,
     type Persona,
+    type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
@@ -34,6 +35,7 @@ import { Logo } from './Logo';
 import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
+import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
 
 interface ChatViewProps {
@@ -57,7 +59,7 @@ interface ChatViewProps {
 function findLastAssistantIndex(messages: ChatMessage[]): number {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
         const message = messages[index];
-        if (message && !message.is_user && !message.is_system) {
+        if (message && !message.is_user && !message.is_system && message.extra?.type !== 'narrator') {
             return index;
         }
     }
@@ -153,6 +155,20 @@ export function ChatView({
     const [renameValue, setRenameValue] = useState('');
     const [inspectorOpen, setInspectorOpen] = useState(false);
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [draft, setDraft] = useState('');
+    const [focusRequest, setFocusRequest] = useState(0);
+    // A quick reply result arrives after a round trip; read the latest draft
+    // instead of the one captured when the button was clicked.
+    const draftRef = useRef(draft);
+    useEffect(() => {
+        draftRef.current = draft;
+    }, [draft]);
+
+    // A quick reply can leave text in the box; switching chats starts fresh.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only a different chat should clear the draft
+    useEffect(() => {
+        setDraft('');
+    }, [selectedChatId]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
@@ -180,7 +196,8 @@ export function ChatView({
         generation.action === 'regenerate' &&
         lastMessage !== undefined &&
         !lastMessage.is_user &&
-        !lastMessage.is_system;
+        !lastMessage.is_system &&
+        lastMessage.extra?.type !== 'narrator';
     const visibleMessages = hideLastAssistant ? messages.slice(0, -1) : messages;
 
     const optimisticMessage: ChatMessage | null = generation.optimisticUser
@@ -214,6 +231,33 @@ export function ChatView({
             return;
         }
         void generation.start('send', text);
+    };
+
+    const handleQuickReplyInput = (action: Extract<QuickReplyAction, { type: 'input' }>) => {
+        const current = draftRef.current;
+        let text = action.text;
+        if (action.inject) {
+            text = action.placeBefore
+                ? [action.text, current].filter(Boolean).join(' ')
+                : [current, action.text].filter(Boolean).join(' ');
+        }
+        if (!action.submit) {
+            setDraft(text);
+            setFocusRequest((current) => current + 1);
+            return;
+        }
+        const outgoing = text.trim();
+        setDraft('');
+        if (outgoing) {
+            void generation.start('send', outgoing);
+        }
+    };
+
+    const handleQuickReplyGenerate = (action: Extract<QuickReplyAction, { type: 'generate' }>) => {
+        if (!selectedChatId) {
+            return;
+        }
+        void generation.start(action.mode);
     };
 
     const handleRegenerate = () => {
@@ -577,7 +621,11 @@ export function ChatView({
                                 />
                             ) : null}
 
-                            {lastMessage && !lastMessage.is_user && !lastMessage.is_system && !generation.streaming ? (
+                            {lastMessage &&
+                            !lastMessage.is_user &&
+                            !lastMessage.is_system &&
+                            lastMessage.extra?.type !== 'narrator' &&
+                            !generation.streaming ? (
                                 <div className="flex justify-center pt-1">
                                     <button
                                         type="button"
@@ -614,10 +662,23 @@ export function ChatView({
                 </div>
             ) : null}
 
+            <QuickReplyBar
+                target={
+                    character && selectedChatId ? { kind: 'character', id: character.id, chatId: selectedChatId } : null
+                }
+                metadata={chatQuery.data?.header.chat_metadata}
+                disabled={!selectedChatId || !character || generation.streaming}
+                onInput={handleQuickReplyInput}
+                onGenerate={handleQuickReplyGenerate}
+            />
+
             <Composer
                 placeholder={character ? `Message ${character.name}…` : 'Choose a character to begin'}
                 disabled={!selectedChatId || !character}
                 streaming={generation.streaming}
+                value={draft}
+                onChange={setDraft}
+                focusRequest={focusRequest}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
             />

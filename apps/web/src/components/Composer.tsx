@@ -1,24 +1,44 @@
 import { Send, Square } from 'lucide-react';
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
 interface ComposerProps {
     placeholder: string;
     disabled: boolean;
     streaming: boolean;
+    /** Controlled so a quick reply can insert or replace the draft. */
+    value: string;
+    onChange: (value: string) => void;
+    /** Bump to focus the box after a quick reply fills it. */
+    focusRequest?: number;
     onSend: (text: string) => void;
     onStop: () => void;
 }
 
-export function Composer({ placeholder, disabled, streaming, onSend, onStop }: ComposerProps) {
-    const [value, setValue] = useState('');
+export function Composer({
+    placeholder,
+    disabled,
+    streaming,
+    value,
+    onChange,
+    focusRequest,
+    onSend,
+    onStop,
+}: ComposerProps) {
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (focusRequest) {
+            textareaRef.current?.focus();
+        }
+    }, [focusRequest]);
 
     const send = () => {
         const text = value.trim();
         if (!text || disabled || streaming) {
             return;
         }
-        setValue('');
+        onChange('');
         onSend(text);
     };
 
@@ -38,8 +58,9 @@ export function Composer({ placeholder, disabled, streaming, onSend, onStop }: C
             <div className="mx-auto w-full max-w-4xl">
                 <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface/85 p-2 shadow-lg shadow-black/25 transition focus-within:border-amber/50 focus-within:ring-2 focus-within:ring-amber/10">
                     <TextareaAutosize
+                        ref={textareaRef}
                         value={value}
-                        onChange={(event) => setValue(event.target.value)}
+                        onChange={(event) => onChange(event.target.value)}
                         onKeyDown={handleKeyDown}
                         minRows={1}
                         maxRows={8}

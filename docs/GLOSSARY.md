@@ -50,9 +50,9 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **STscript** — SillyTavern's slash-command scripting language. Planned for M3.
 
-**Slash command** — A command such as `/send` or `/sys` executed by the STscript engine.
+**Slash command** — A command such as `/send` or `/sys`. CatCup's Quick Replies execute a small subset (`/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate`, `/run`); typed slash commands and full STscript are M3.
 
-**Quick Reply** — A reusable button/command set, often STscript-backed. Planned for M2/M3.
+**Quick Reply** — A reusable button in a chat's quick reply bar, backed by a SillyTavern version 2 quick reply set. CatCup implements the UI, the set format and a command subset; auto-execution, context menus and STscript-backed replies are M3.
 
 **Regex script** — A SillyTavern extension that transforms text or prompts with regular expressions. Planned for M2.
 

@@ -146,6 +146,35 @@ describe('group speaker selection', () => {
         expect(selected?.speaker.fileName).toBe('Aria.json');
     });
 
+    it('uses the last message for a trigger and keeps the last speaker out', () => {
+        const group = makeGroup();
+        const history = [userMessage('Hi'), message('Aria', 'Aria.json', 'Bram, look at this.')];
+        const selected = selectGroupSpeaker({
+            group,
+            members,
+            messages: history,
+            action: 'send',
+            isUserInput: false,
+        });
+        // Aria's own message mentions Bram, so the mention still activates him,
+        // but Aria is banned as the last speaker.
+        expect(selected?.speaker.fileName).toBe('Bram.json');
+        expect(selected?.reason).toBe('natural-mention');
+    });
+
+    it('prefers a silent member for a pooled trigger', () => {
+        const group = makeGroup({ activation_strategy: 3 });
+        const selected = selectGroupSpeaker({
+            group,
+            members,
+            messages: [userMessage('Hi'), message('Aria', 'Aria.json', 'Hello.'), message('Bram', 'Bram.json', 'Hey.')],
+            action: 'send',
+            isUserInput: false,
+            random: () => 0,
+        });
+        expect(selected?.speaker.fileName).toBe('Cass.json');
+    });
+
     it('uses the injected random source for pooled order', () => {
         const group = makeGroup({ activation_strategy: 3 });
         const first = selectGroupSpeaker({

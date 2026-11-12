@@ -8,6 +8,7 @@ const WORKS = [
     'Chat with streaming replies, swipes, regenerate, continue, inline editing, branching and alternate greetings.',
     'Group chats with their own greetings, per-member avatars and natural, list, manual or pooled reply order.',
     'Summary memory: a rolling summary stored in the chat file, with automatic updates, an editable Memory panel and configurable prompt injection.',
+    'Quick Replies (subset): SillyTavern quick reply sets with a button bar, import and export, and the /send, /sys, /echo, /trigger, /continue, /regenerate and /run commands.',
     'Lorebooks with SillyTavern’s full scan pipeline, and an editor for every entry field.',
     'OpenAI presets: import, activate, and change prompt order and injection positions.',
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
@@ -17,7 +18,7 @@ const WORKS = [
 ];
 
 const DOES_NOT_WORK = [
-    'Quick Replies and STscript / slash commands.',
+    'STscript, the full Quick Replies engine (auto-execution, context menus, per-character sets) and typed slash commands.',
     'SillyTavern extensions — none of them load.',
     'Text to speech and image generation.',
     'Vector/embedding memory for long chats; the rolling summary is the only long-term memory.',

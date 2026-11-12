@@ -36,6 +36,7 @@ Common codes:
 | `NEEDS_SETUP`         | 401 / 409 | No password has been configured yet                    |
 | `FORBIDDEN`           | 403       | Origin mismatch or remote first-run setup              |
 | `NOT_FOUND`           | 404       | Character, chat, message, provider or avatar not found |
+| `CONFLICT`            | 409       | A quick reply set name is already taken                |
 | `ALREADY_INITIALIZED` | 409       | Setup attempted after a password exists                |
 | `PAYLOAD_TOO_LARGE`   | 413       | Upload or request body too large                       |
 | `PROVIDER_ERROR`      | 502       | Upstream provider request failed                       |
@@ -463,7 +464,7 @@ Starts a group reply and returns the same SSE stream as `POST /api/generate`. Th
 }
 ```
 
-`action` is `send`, `regenerate` or `continue`. `speaker` selects the member in manual groups and acts as an override for the other strategies; it accepts a member file name, id or name. Without it, manual groups fall back to the first enabled member. The `start` event carries the chosen member:
+`action` is `send`, `regenerate`, `continue` or `trigger`. `speaker` selects the member in manual groups and acts as an override for the other strategies; it accepts a member file name, id or name. Without it, manual groups fall back to the first enabled member. `trigger` asks for a fresh reply without a user message: it uses the last chat message as the activation text, keeps the last speaker from answering again (unless the group allows self-responses), and honours `speaker`; a forced member may be muted. The `start` event carries the chosen member:
 
 ```json
 {
@@ -520,6 +521,7 @@ Starts a generation and returns an SSE stream. The server persists the assistant
 | `send`       | Appends the user message, then generates an assistant reply. `message` is required.                                                                                                                       |
 | `regenerate` | Removes the last assistant message from the prompt and generates a new variant. If a previous assistant message exists, the new text is stored as a swipe; otherwise a new assistant message is appended. |
 | `continue`   | Requires the last message to be an assistant message. Generated text is appended to that message.                                                                                                         |
+| `trigger`    | Generates a new assistant reply without a user message. This is the action behind a Quick Reply `/trigger`. `message` is ignored.                                                                         |
 
 SSE events:
 
@@ -633,6 +635,10 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
             "promptForceWords": 0,
             "maxMessages": 0,
             "responseLength": 0
+        },
+        "quickReplies": {
+            "enabled": true,
+            "setList": [{ "set": "Combat", "isVisible": true }]
         }
     }
 }
@@ -641,6 +647,8 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
 `ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n. `worldInfo.globalBooks` lists world info book ids (file names without `.json`) scanned for every chat; a character's own book, from the card's `extensions.world`, is added automatically. `authorNote.position` is `0` in prompt, `1` in chat, `2` before prompt; `authorNote.role` is `0` system, `1` user, `2` assistant. `personas` is the list a user can speak as and `activePersonaId` picks the default for chats that do not pin one; files written before the list existed are migrated on read, carrying the old single persona over under the id `default`.
 
 `memory.enabled` turns automatic updates on; a stored summary is injected whenever `memory.position` is not `-1`, even with automatic updates off, and the Memory panel can always create or edit one. `position` is `-1` not injected, `0` after the main prompt, `1` in chat at `depth`, `2` before the main prompt; `role` is `0` system, `1` user, `2` assistant. `prompt` is the summarize instruction (`{{words}}` becomes `promptWords`; normal macros also expand). `promptInterval` and `promptForceWords` are the two update triggers, and `0` disables either. `maxMessages` caps one summary request (`0` uses the context budget), and `responseLength` overrides the summary's token limit (`0` uses the generation setting). `scan` adds the summary to the world info scan.
+
+`quickReplies.enabled` shows the quick reply bar above the message box. `setList` is the bar's order; each `set` is a set's name and `isVisible` hides its buttons without removing it. A chat can add its own links in `chat_metadata.quickReply`, in SillyTavern's shape; those are read but have no editor yet.
 
 ### `PATCH /api/settings`
 
@@ -655,7 +663,8 @@ Partial update. All fields are optional:
     "ui": { "theme": "tavern-dark" },
     "worldInfo": { "globalBooks": ["eldoria"], "recursive": true },
     "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 },
-    "memory": { "enabled": true, "promptInterval": 8, "position": 1, "depth": 2 }
+    "memory": { "enabled": true, "promptInterval": 8, "position": 1, "depth": 2 },
+    "quickReplies": { "enabled": true, "setList": [{ "set": "Combat", "isVisible": true }] }
 }
 ```
 
@@ -939,11 +948,113 @@ Returns `{ "scripts": [...] }` as a JSON download.
 | -------------- | ----- | ------------------------------------------------------------------------ |
 | User input     | `1`   | The message the user sends, before it is stored                          |
 | AI output      | `2`   | A generated reply and the greeting of a new chat, before they are stored |
-| Slash commands | `3`   | Reserved; no slash commands yet                                          |
+| Slash commands | `3`   | Reserved; Quick Reply commands do not apply it yet                       |
 | World info     | `5`   | An entry's content as it enters the prompt                               |
 | Reasoning      | `6`   | Reasoning text, before it is stored                                      |
 
 A script with neither `markdownOnly` nor `promptOnly` rewrites the stored text. `promptOnly` rewrites only the copy that goes into the prompt, `markdownOnly` only what the chat view renders. `minDepth` and `maxDepth` count back from the newest message, where `0` is the newest.
+
+## Quick Replies
+
+Sets use SillyTavern's version 2 format, one JSON file per set in `data/quickreplies/`. The API addresses a set by its file id; the set body's `name` is what the account set list and a chat's `chat_metadata.quickReply` links refer to. Unknown fields on a set or its quick replies are preserved.
+
+### `GET /api/quick-replies`
+
+```json
+{ "sets": [{ "id": "Combat", "version": 2, "name": "Combat", "qrList": [], "idIndex": 0 }] }
+```
+
+Each set is the stored body plus `id`.
+
+### `POST /api/quick-replies`
+
+```json
+{ "name": "Combat" }
+```
+
+Creates an empty set named `Combat`, stored as `Combat.json`. Response: `201` with `{ "set": QuickReplySetView }`; `409` when a set with that name (case-insensitive) or file id already exists.
+
+### `PUT /api/quick-replies/:id`
+
+Body is the full set (an `id` field is ignored):
+
+```json
+{
+    "version": 2,
+    "name": "Combat",
+    "disableSend": false,
+    "injectInput": false,
+    "placeBeforeInput": false,
+    "color": "transparent",
+    "onlyBorderColor": false,
+    "qrList": [{ "id": 1, "label": "Attack", "message": "/send I attack." }],
+    "idIndex": 1
+}
+```
+
+Renaming moves the file and rewrites the account set list; `idIndex` is raised to the highest quick reply id. Response: `{ "set": QuickReplySetView }`, `400` for an invalid body (including duplicate quick reply ids), `404` for an unknown id, `409` for a taken name.
+
+### `DELETE /api/quick-replies/:id`
+
+Deletes the file and removes the set from the account set list. Response: `{ "ok": true }`.
+
+### `POST /api/quick-replies/import`
+
+```json
+{ "data": { "version": 2, "name": "Imported", "qrList": [] }, "name": "Optional new name" }
+```
+
+Accepts a version 2 set body or a single quick reply object (which becomes a one-button set named after its label). Response: `201` with `{ "set": QuickReplySetView }`, `400` when the payload is neither, `409` when the name is taken.
+
+### `GET /api/quick-replies/:id/export`
+
+Returns the stored set body without `id` as a JSON attachment.
+
+### `POST /api/chats/:characterId/:chatId/quick-replies/execute`
+
+### `POST /api/groups/:groupId/chats/:chatId/quick-replies/execute`
+
+```json
+{ "setId": "Combat", "qrId": 1 }
+```
+
+Runs one quick reply. The server parses and validates the whole script before it appends anything, then persists chat messages and returns what the client should do next:
+
+```json
+{
+    "actions": [
+        { "type": "toast", "message": "Quick reply sent.", "severity": "info" },
+        { "type": "generate", "mode": "trigger", "speaker": "Bram.json" }
+    ],
+    "appended": [{ "name": "You", "is_user": true, "mes": "Hello from a quick reply." }]
+}
+```
+
+Actions are, in order:
+
+| Type       | Fields                                                   | Meaning                                                                 |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `input`    | `text`, `submit`, `inject`, `placeBefore`                | Put macro-expanded text in the message box, optionally sending it       |
+| `toast`    | `message`, `title?`, `severity`                          | Show a notification (`/echo`)                                           |
+| `generate` | `mode` (`trigger`, `continue`, `regenerate`), `speaker?` | Call the generation endpoint with that action and optional group member |
+
+`appended` lists the messages already written to the chat. A plain-text reply is an `input` action; `/send` and `/sys` only append; `/trigger`, `/continue` and `/regenerate` return a `generate` action.
+
+#### Supported script subset
+
+A quick reply message that does not start with `/` is plain text. Otherwise it is a `|`-separated command list; double quotes protect pipes and spaces, and `\|` escapes a pipe.
+
+| Command             | Aliases                | Behaviour                                                                                                                        |
+| ------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `/send <text>`      |                        | Appends a user message without generating. `name="..."` overrides the display name.                                              |
+| `/sys <text>`       | `/nar`                 | Appends a narrator message (`extra.type: "narrator"`), which the prompt sends as a system turn. `name="..."` overrides "System". |
+| `/echo <text>`      |                        | Shows a toast. `title="..."` and `severity=info\|success\|warning\|error` are supported.                                         |
+| `/trigger [member]` |                        | Asks for a reply without a user message. In a group, `member` is a name or 0-based index.                                        |
+| `/continue`         | `/cont`                | Continues the latest reply.                                                                                                      |
+| `/regenerate`       | `/regen`               | Regenerates the latest reply.                                                                                                    |
+| `/run <label>`      | `/call`, `/exec`, `/:` | Runs another quick reply by label from an active set, or as `Set.Label` for any set.                                             |
+
+`/trigger`, `/continue`, `/regenerate` and a plain-text reply must be the last step: the subset does not await a generation mid-script. Named arguments are command-scoped: `name` on `/send` and `/sys`, `title` and `severity` on `/echo`, and `await`, `return`, `compact` or `raw` only where the command defines them. Those ST arguments are accepted and ignored; `at` and `args` are rejected with `400`, as is any argument a command does not declare. A set's `disableSend` pastes the whole reply into the message box instead of running it; `injectInput` and `placeBeforeInput` apply when text is inserted.
 
 ## Notes and limits
 

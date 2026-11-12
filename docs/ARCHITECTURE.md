@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-11-09 · M0 complete, M1 next
+> Last updated: 2026-11-12 · M0 and M1 complete, M2 in progress
 
 ## 1. Goals and principles
 
@@ -70,7 +70,8 @@ apps/server/
     memory/              rolling summaries: schedule, request building, injection
     providers/           provider adapters (normalized streaming chunks)
     prompt/              prompt assembly, macros, token budget
-    routes/              auth / characters / chats / generate / groups / memory / providers / settings
+    quickreplies/        quick reply parsing target, command execution
+    routes/              auth / characters / chats / generate / groups / memory / quick replies / providers / settings
     security/            scrypt password, HMAC session
     storage/             ST-compatible file storage, atomic writes, file locks
     sse.ts               client SSE writer
@@ -96,8 +97,12 @@ data/
 ├── chats/
 │   └── Seraphina/
 │       └── Seraphina - 2026-11-09_18-00-00.jsonl
+├── groups/                    # ST group metadata
+├── group chats/               # ST group chat JSONL
 ├── worlds/                    # ST World Info JSON
 ├── presets/                   # ST OpenAI preset JSON
+├── quickreplies/              # ST Quick Replies v2 sets
+├── regex.json                 # Regex scripts
 ├── settings.json
 ├── secrets.json               # API keys, server-only
 └── auth.json                  # password hash + session secret
@@ -147,6 +152,9 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | POST         | `/api/groups/:groupId/chats/:chatId/generate` | group reply, returns the same SSE stream   |
 | POST         | `/api/generate`                               | start generation, returns SSE              |
 | POST         | `/api/generate/:id/stop`                      | stop generation                            |
+| CRUD         | `/api/quick-replies`                          | quick reply sets and their files           |
+| POST         | `/api/chats/…/quick-replies/execute`          | run a quick reply, returns client actions  |
+| POST         | `/api/groups/…/quick-replies/execute`         | the same for a group chat                  |
 | GET/PATCH    | `/api/settings`                               | app settings                               |
 | CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
 | POST         | `/api/providers/:id/test`                     | connectivity test                          |
