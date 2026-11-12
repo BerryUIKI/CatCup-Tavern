@@ -6,6 +6,7 @@ import {
     type ChatMessage,
     type GenerationSpeaker,
     type Group,
+    getLatestSummary,
     REGEX_PLACEMENT,
     type RegexScript,
     resolvePersona,
@@ -15,15 +16,12 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { runGenerationStream } from '../generation/stream.js';
+import { type ResolvedMember, resolveMembers } from '../group/members.js';
 import { cleanGroupReply, stForceAvatarUrl } from '../group/output.js';
-import {
-    findCurrentSpeaker,
-    type GroupSpeaker,
-    isNarratorMessage,
-    lastAssistantSpeaker,
-    selectGroupSpeaker,
-} from '../group/selection.js';
+import { findCurrentSpeaker, isNarratorMessage, lastAssistantSpeaker, selectGroupSpeaker } from '../group/selection.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
@@ -56,29 +54,6 @@ const generateSchema = z.object({
     message: z.string().max(200000).optional(),
     speaker: z.string().min(1).max(300).optional(),
 });
-
-interface ResolvedMember {
-    speaker: GroupSpeaker;
-    character: CharacterDetail;
-    enabled: boolean;
-}
-
-/** Every member whose card still exists, in group order. */
-async function resolveMembers(group: Group): Promise<ResolvedMember[]> {
-    const members: ResolvedMember[] = [];
-    for (const fileName of group.members) {
-        const character = await getCharacter(fileName).catch(() => null);
-        if (!character) {
-            continue;
-        }
-        members.push({
-            speaker: { id: character.id, fileName, name: character.name },
-            character,
-            enabled: !group.disabled_members.includes(fileName),
-        });
-    }
-    return members;
-}
 
 function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
     return {
@@ -138,6 +113,7 @@ async function saveGroupSwipe(
     const swipeInfo = Array.isArray(existing.extra?.swipe_info) ? [...existing.extra.swipe_info] : [];
     swipeInfo.push({ send_date: new Date().toISOString(), extra });
 
+    // A summary anchored to this reply no longer describes the stored text.
     return updateGroupMessage(context.group, context.chatId, context.regenerateIndex, {
         name: context.speaker.name,
         original_avatar: context.speaker.fileName,
@@ -145,12 +121,13 @@ async function saveGroupSwipe(
         mes: text,
         send_date: new Date().toISOString(),
         extra: {
-            ...existing.extra,
+            ...(existing.extra ?? {}),
             ...extra,
             swipes,
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
+        extraDelete: ['memory'],
     });
 }
 
@@ -196,6 +173,8 @@ async function persistGroupReply(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
+            // The message grew, so a summary anchored to it is out of date.
+            extraDelete: ['memory'],
         });
     }
 
@@ -333,9 +312,14 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
 
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(speaker, persona, groupMacros);
-        const substitute = (text: string, escapeValues: boolean) =>
-            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const baseMacroContext = createMacroContext(
+            speaker,
+            persona,
+            groupMacros,
+            getLatestSummary(chat.messages)?.value,
+        );
+        const baseSubstitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, baseMacroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 
         let messages = chat.messages;
         let regenerateIndex: number | null = null;
@@ -348,8 +332,8 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
                 throw badRequest('Message is empty');
             }
             const storedText = substituteMacros(
-                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute }),
-                macroContext,
+                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute: baseSubstitute }),
+                baseMacroContext,
             );
             const userMessage: ChatMessage = {
                 name: persona.name,
@@ -379,6 +363,13 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         const generationType: GenerationType =
             body.action === 'send' || (body.action === 'regenerate' && !regeneratingReply) ? 'normal' : body.action;
 
+        const latestSummary = getLatestSummary(messages);
+        const macroContext = createMacroContext(speaker, persona, groupMacros, latestSummary?.value);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
 
@@ -395,6 +386,8 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             regexScripts,
             substitute,
             group: groupMacros,
+            ...(latestSummary ? { summary: latestSummary.value } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         await patchGroupChatMetadata(found.group, chatId, {
@@ -420,6 +413,8 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             prefixCharacterNames: true,
             groupNudge: '[Write the next reply only as {{char}}.]',
             group: groupMacros,
+            ...(latestSummary ? { summaryText: latestSummary.value } : {}),
+            ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
         const prompt = assembled.messages;
 
@@ -459,6 +454,25 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             generationId,
             speaker: toGenerationSpeaker(speaker),
             persist: (text, reasoning, stopped) => persistGroupReply(context, text, reasoning, stopped),
+        });
+
+        // Fire-and-forget: the memory service re-reads the chat, so a summary
+        // only runs when the reply actually landed.
+        void maybeSummarizeAfterTurn({
+            key: `group:${found.group.id}:${chatId}`,
+            character: speaker,
+            persona,
+            group: groupMacros,
+            read: async () => {
+                const fresh = await readGroupChat(found.group, chatId);
+                if (!fresh) {
+                    return null;
+                }
+                return {
+                    messages: fresh.messages,
+                    update: (index, patch) => updateGroupMessage(found.group, chatId, index, patch),
+                };
+            },
         });
     });
 }

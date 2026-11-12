@@ -9,6 +9,7 @@ import type {
 import { DEFAULT_BASE_URLS, PROVIDER_KIND_LABELS } from '@catcup/shared';
 import {
     BookOpen,
+    Brain,
     Check,
     Copy,
     Download,
@@ -46,6 +47,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
+import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
@@ -53,7 +55,7 @@ import { RegexSettings } from './RegexSettings';
 import { Spinner } from './Spinner';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
-type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo' | 'regex' | 'about';
+type Tab = 'connection' | 'generation' | 'persona' | 'prompts' | 'worldinfo' | 'memory' | 'regex' | 'about';
 
 interface ProviderForm {
     name: string;
@@ -155,6 +157,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'persona', label: 'Persona', icon: UserRound },
     { id: 'prompts', label: 'Prompts', icon: SlidersHorizontal },
     { id: 'worldinfo', label: 'World Info', icon: BookOpen },
+    { id: 'memory', label: 'Memory', icon: Brain },
     { id: 'regex', label: 'Regex', icon: Regex },
     { id: 'about', label: 'About', icon: Info },
 ];
@@ -495,7 +498,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         <button
                             key={item.id}
                             type="button"
-                            onClick={() => setTab(item.id)}
+                            onClick={() => {
+                                setTab(item.id);
+                                setEditingBookId(null);
+                            }}
                             className={cn(
                                 'flex items-center gap-2 rounded-t-lg border-b-2 px-3 py-2 text-sm transition',
                                 tab === item.id
@@ -989,8 +995,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         </div>
                     ) : null}
                 </div>
-            ) : editingBookId ? (
+            ) : editingBookId && tab === 'worldinfo' ? (
                 <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
+            ) : tab === 'memory' ? (
+                <MemorySettings />
             ) : tab === 'regex' ? (
                 <RegexSettings />
             ) : tab === 'about' ? (

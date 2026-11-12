@@ -310,6 +310,15 @@ The world info scan runs against a **deep clone** of `chat_metadata`, so timed e
             "budget": { "limit": 8192, "used": 214, "overflowed": false },
             "loops": 1
         },
+        "memory": {
+            "value": "Seraphina met Alex at the old gate.",
+            "index": 3,
+            "tokens": 14,
+            "injection": "[Summary: Seraphina met Alex at the old gate.]",
+            "position": 0,
+            "role": 0,
+            "depth": 2
+        },
         "budget": {
             "exceeded": false,
             "tokenCounts": { "main": 24 },
@@ -324,6 +333,33 @@ The world info scan runs against a **deep clone** of `chat_metadata`, so timed e
 `trace` has one line per candidate entry explaining whether it activated and why, which is what makes a missing or unexpected lorebook hit debuggable.
 
 `budget.counter` names the tokenizer used for every count in the response — `o200k_base`, `cl100k_base`, `p50k_base`, `r50k_base`, `claude`, or an `estimate (...)` label. `counterSource` says whether that is a real vocabulary (`tiktoken`, `claude`) or the character-based fallback (`estimate`). Both come from the active provider's kind and model, so switching the provider changes the numbers.
+
+`memory` is the summary in effect for the chat, or `null`. `index` is the message whose `extra.memory` holds it, `tokens` is the token cost of the injected text (`0` when the position is `-1`), and `injection` is the text after the template and macros are expanded. `position` follows the Memory settings: `-1` not injected, `0` after the main prompt, `1` in chat at `depth`, `2` before the main prompt; `role` is `0` system, `1` user, `2` assistant.
+
+### `POST /api/chats/:characterId/:chatId/summarize`
+
+Runs one summary now, even when automatic updates are off, and stores it on the last message it covered. Response:
+
+```json
+{
+    "summary": { "value": "Seraphina met Alex at the old gate.", "index": 3 },
+    "messages": 4
+}
+```
+
+When there is nothing new to summarize, `summary` is `null` and `reason` explains why. The request covers the messages after the latest summary and always excludes the newest message, as SillyTavern's raw summary builder does.
+
+### `PUT /api/chats/:characterId/:chatId/memory`
+
+```json
+{ "text": "A summary written by hand." }
+```
+
+Stores the text on the latest summary's message, or on the message before the newest when the chat has none. Response: `{ "summary": { "value": "...", "index": 3 } }`.
+
+### `DELETE /api/chats/:characterId/:chatId/memory`
+
+Removes the latest summary. Response: `{ "summary": SummaryRecord | null }`, where a non-null value is an older summary that is now in effect (SillyTavern's Restore behaviour).
 
 ### `PATCH /api/chats/:characterId/:chatId/messages/:index`
 
@@ -452,6 +488,18 @@ Same contract as the single-character message edit: `{ "message": "..." }` or `{
 
 Deletes one message. Response: `{ "chat": GroupChatDetail }`.
 
+### `POST /api/groups/:groupId/chats/:chatId/summarize`
+
+Same contract as the single-character summarize endpoint. The summarize prompt expands against the most recent speaker's card and the group roster, and the transcript keeps each member's name.
+
+### `PUT /api/groups/:groupId/chats/:chatId/memory`
+
+Stores an edited summary. Same body and response as the single-character endpoint.
+
+### `DELETE /api/groups/:groupId/chats/:chatId/memory`
+
+Removes the latest group-chat summary, falling back to an older one when present.
+
 ## Generation
 
 ### `POST /api/generate`
@@ -571,12 +619,28 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
             "depth": 4,
             "role": 0,
             "scan": false
+        },
+        "memory": {
+            "enabled": false,
+            "prompt": "Ignore previous instructions. Summarize … Limit the summary to {{words}} words or less. …",
+            "template": "[Summary: {{summary}}]",
+            "position": 0,
+            "role": 0,
+            "depth": 2,
+            "scan": false,
+            "promptWords": 200,
+            "promptInterval": 10,
+            "promptForceWords": 0,
+            "maxMessages": 0,
+            "responseLength": 0
         }
     }
 }
 ```
 
 `ProviderPublic` includes `hasKey` instead of the API key. `language` is reserved for future i18n. `worldInfo.globalBooks` lists world info book ids (file names without `.json`) scanned for every chat; a character's own book, from the card's `extensions.world`, is added automatically. `authorNote.position` is `0` in prompt, `1` in chat, `2` before prompt; `authorNote.role` is `0` system, `1` user, `2` assistant. `personas` is the list a user can speak as and `activePersonaId` picks the default for chats that do not pin one; files written before the list existed are migrated on read, carrying the old single persona over under the id `default`.
+
+`memory.enabled` turns automatic updates on; a stored summary is injected whenever `memory.position` is not `-1`, even with automatic updates off, and the Memory panel can always create or edit one. `position` is `-1` not injected, `0` after the main prompt, `1` in chat at `depth`, `2` before the main prompt; `role` is `0` system, `1` user, `2` assistant. `prompt` is the summarize instruction (`{{words}}` becomes `promptWords`; normal macros also expand). `promptInterval` and `promptForceWords` are the two update triggers, and `0` disables either. `maxMessages` caps one summary request (`0` uses the context budget), and `responseLength` overrides the summary's token limit (`0` uses the generation setting). `scan` adds the summary to the world info scan.
 
 ### `PATCH /api/settings`
 
@@ -590,7 +654,8 @@ Partial update. All fields are optional:
     "activePersonaId": "default",
     "ui": { "theme": "tavern-dark" },
     "worldInfo": { "globalBooks": ["eldoria"], "recursive": true },
-    "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 }
+    "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 },
+    "memory": { "enabled": true, "promptInterval": 8, "position": 1, "depth": 2 }
 }
 ```
 

@@ -131,6 +131,10 @@ Conclusion: **"ST extension/STscript compatibility" is delivered in layers L1→
 | `packages/shared/src/regex.ts`               | ST `public/scripts/extensions/regex/engine.js`                    | Placement gate, replacement syntax, trim strings and the depth window     |
 | `packages/shared/src/schemas/regex.ts`       | ST `public/scripts/char-data.js` (`RegexScriptData`)              | Script field names, placements and substitution modes                     |
 | `packages/shared/src/schemas/preset.ts`      | ST OpenAI preset                                                  | Preset fields, `prompts` / `prompt_order`                                 |
+| `packages/shared/src/memory.ts`              | ST `public/scripts/extensions/memory/index.js`                    | Latest-summary lookup on `extra.memory`                                   |
+| `apps/server/src/memory/summary.ts`          | ST `public/scripts/extensions/memory/index.js`                    | Update schedule, transcript window, raw summary prompt                    |
+| `apps/server/src/memory/inject.ts`           | ST `public/scripts/extensions/memory/index.js`                    | Injection template and position formatting                                |
+| `apps/server/src/memory/service.ts`          | ST `public/scripts/extensions/memory/index.js`                    | Summary request lifecycle and storage                                     |
 
 ## 8. Related documentation
 

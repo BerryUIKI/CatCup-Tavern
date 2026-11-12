@@ -26,6 +26,8 @@ import type {
     SettingsResponse,
     SillyTavernImportPlan,
     SillyTavernImportResult,
+    SummarizeResponse,
+    SummaryRecord,
     WorldDetail,
     WorldInfoEntryPatch,
     WorldSummary,
@@ -293,6 +295,25 @@ export const api = {
             );
             return data.chat;
         },
+        summarize: (characterId: string, chatId: string) =>
+            request<SummarizeResponse>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/summarize`,
+                { method: 'POST' },
+            ),
+        saveMemory: async (characterId: string, chatId: string, text: string) => {
+            const data = await request<{ summary: SummaryRecord | null }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/memory`,
+                { method: 'PUT', body: JSON.stringify({ text }) },
+            );
+            return data.summary;
+        },
+        clearMemory: async (characterId: string, chatId: string) => {
+            const data = await request<{ summary: SummaryRecord | null }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/memory`,
+                { method: 'DELETE' },
+            );
+            return data.summary;
+        },
     },
 
     groups: {
@@ -371,6 +392,25 @@ export const api = {
                     { method: 'DELETE' },
                 );
                 return data.chat;
+            },
+            summarize: (groupId: string, chatId: string) =>
+                request<SummarizeResponse>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/summarize`,
+                    { method: 'POST' },
+                ),
+            saveMemory: async (groupId: string, chatId: string, text: string) => {
+                const data = await request<{ summary: SummaryRecord | null }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/memory`,
+                    { method: 'PUT', body: JSON.stringify({ text }) },
+                );
+                return data.summary;
+            },
+            clearMemory: async (groupId: string, chatId: string) => {
+                const data = await request<{ summary: SummaryRecord | null }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/memory`,
+                    { method: 'DELETE' },
+                );
+                return data.summary;
             },
         },
     },

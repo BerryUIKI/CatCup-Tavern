@@ -65,9 +65,12 @@ apps/server/
     index.ts             entrypoint
     config.ts            env + default paths
     cards/               PNG tEXt / JSON v2-v3 parsing
+    generation/          shared SSE generation stream and stop registry
+    group/               member resolution, speaker selection, reply cleanup
+    memory/              rolling summaries: schedule, request building, injection
     providers/           provider adapters (normalized streaming chunks)
     prompt/              prompt assembly, macros, token budget
-    routes/              auth / characters / chats / generate / providers / settings
+    routes/              auth / characters / chats / generate / groups / memory / providers / settings
     security/            scrypt password, HMAC session
     storage/             ST-compatible file storage, atomic writes, file locks
     sse.ts               client SSE writer
@@ -185,14 +188,16 @@ interface ProviderAdapter {
 
 Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`. See [PROVIDERS.md](PROVIDERS.md) for endpoint-level details and limitations.
 
-## 8. Prompt pipeline (M0, intentionally small)
+## 8. Prompt pipeline
 
-1. Macro substitution: `{{char}}`, `{{user}}`, `{{persona}}`, `{{description}}`, `{{personality}}`, `{{scenario}}`, `{{time}}`, `{{date}}`.
-2. System message: card `system_prompt` (or ST's default main prompt) + character sheet + user persona.
-3. Chat history, trimmed from newest to oldest by the model's token budget — tiktoken for OpenAI models, the bundled Claude vocabulary for Anthropic, an estimate otherwise.
-4. Post-history instructions appended as a final system message.
+1. Macros expand in prompt entries, world info, the author's note, the summary and stored history.
+2. The Prompt Manager builds the ordered collection from the active preset, or SillyTavern's defaults when none is active, merges the fixed system prompts, applies the card's `main` and `jailbreak` overrides and populates the slots in ST's call order.
+3. World info runs its full scan first; the before/after entries, at-depth buckets and the author's note take their configured positions.
+4. Chat history is trimmed newest-first against the model's context budget; `promptOnly` regex scripts run on the copy that becomes the prompt.
+5. Summary memory is formatted with its template and injected after or before the main prompt, or in chat at a depth with a role. `{{summary}}` expands wherever macros run.
+6. Dialogue examples, the continue nudge and the group nudge are added around the history.
 
-M1 replaces this with the full ST Prompt Manager ordering, injection positions/depth, world info recursion, author's note and preset import.
+The assembled prompt is also what the context inspector shows; `/api/chats/:characterId/:chatId/context` rebuilds it without generating.
 
 ## 9. ST compatibility tiers
 

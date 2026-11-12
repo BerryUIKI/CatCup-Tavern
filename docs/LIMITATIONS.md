@@ -18,6 +18,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings, and switch a chat's opening to another greeting from the chat header or by swiping the first message.
 - Stop a reply mid-stream; the partial text is kept.
 - **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them.
+- **Summary memory**: a rolling summary stored in the chat file, updated automatically after replies or on demand, shown in the Memory panel where it can be edited or deleted, injected after or before the main prompt or at a chat depth, and available as `{{summary}}`.
 
 **Lorebooks**
 
@@ -53,7 +54,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - **SillyTavern extensions.** None load.
 - **Text to speech** and **image generation**.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
-- **Summary or vector memory.** Long chats are trimmed to the token budget.
+- **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
 - **CharX (`.charx`)** import or export.
 - **Impersonation** — there is no "reply as me" action.
 - **A change-password screen.** The reset is deleting `data/auth.json`, which signs every device out.
@@ -61,8 +62,10 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 **Partial, and worth knowing before you rely on it**
 
 - **Group chats reply one member per turn.** SillyTavern can have several members answer the same message and offers append modes that merge every member's card into the prompt; CatCup picks one speaker, uses that member's card, and leaves append modes, automatic turns and the queue UI for later. Manual groups ask you who replies next.
-- **Group prompts use fixed defaults.** A SillyTavern preset's `new_group_chat_prompt` and `group_nudge_prompt` are ignored, and the context inspector covers single-character chats only.
+- **Group prompts use fixed defaults.** A SillyTavern preset's `new_group_chat_prompt` and `group_nudge_prompt` are ignored.
 - **Groups have no picture of their own.** The library uses the first member's avatar as the group icon.
+- **Summary memory uses the active provider only.** There is no Extras or WebLLM summarizer, no quiet-prompt builder and no automatic interval suggestions; the Memory extension's settings live in Settings → Memory.
+- **Group chats have no context inspector.** A group summary is visible in its Memory panel but not in the inspector, and the inspector covers single-character chats only.
 
 - **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.

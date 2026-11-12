@@ -182,6 +182,12 @@ export interface ScanInput {
      */
     substitute?: (text: string) => string;
     /**
+     * Extra text scanned alongside the chat but outside its depth clock, the
+     * way SillyTavern's `WorldInfoBuffer.addInject` takes scan-enabled
+     * extension prompts (for example the summary memory).
+     */
+    injections?: string[];
+    /**
      * Per-entry content transform applied when building prompt buckets, after
      * the budget and before the empty check. Reserved for regex scripts (M2).
      */

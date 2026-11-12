@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { characterCardDataSchema } from './character.js';
 import { groupSchema } from './group.js';
-import { appSettingsSchema, DEFAULT_UI_SETTINGS } from './settings.js';
+import { appSettingsSchema, DEFAULT_MEMORY_SETTINGS, DEFAULT_UI_SETTINGS, settingsPatchSchema } from './settings.js';
 
 describe('shared schemas', () => {
     it('applies app settings defaults', () => {
@@ -10,6 +10,7 @@ describe('shared schemas', () => {
         expect(settings.ui.language).toBe('en');
         expect(settings.personas).toEqual([]);
         expect(settings.activePersonaId).toBeNull();
+        expect(settings.memory).toEqual(DEFAULT_MEMORY_SETTINGS);
         expect(DEFAULT_UI_SETTINGS.theme).toBe('tavern-dark');
     });
 
@@ -18,6 +19,11 @@ describe('shared schemas', () => {
         expect(card.first_mes).toBe('');
         expect(card.alternate_greetings).toEqual([]);
         expect(card.extensions).toEqual({});
+    });
+
+    it('keeps unspecified memory settings out of a partial patch', () => {
+        const patch = settingsPatchSchema.parse({ memory: { enabled: true } });
+        expect(patch.memory).toEqual({ enabled: true });
     });
 
     it('fills SillyTavern group defaults', () => {

@@ -67,9 +67,10 @@ apps/server/src/
   cards/          PNG tEXt / JSON card parsing
   generation/     shared SSE stream and in-flight generation registry
   group/          group speaker selection and reply trimming
+  memory/         rolling summaries, schedule and injection
   providers/      OpenAI-compatible / Anthropic / Ollama adapters
   prompt/         prompt assembly and token estimation
-  routes/         auth, characters, chats, groups, generate, providers, settings, health
+  routes/         auth, characters, chats, groups, memory, generate, providers, settings, health
   security/       scrypt password, HMAC sessions
   storage/        paths, atomic JSON, locks, settings, characters, chats, groups
   sse.ts          SSE writer

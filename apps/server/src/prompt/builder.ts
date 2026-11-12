@@ -1,7 +1,7 @@
 import type { CharacterDetail, ChatMessage, GenerationSettings, PersonaSettings, RegexScript } from '@catcup/shared';
 
 import type { WorldInfoPrompt } from '../worldinfo/types.js';
-import { type AssembleResult, assemblePrompt } from './assemble.js';
+import { type AssembleResult, assemblePrompt, type SummaryInjection } from './assemble.js';
 import type { GenerationType } from './definitions.js';
 import type { PromptSettings } from './manager.js';
 import type { GroupMacroMembers } from './worldInfoTurn.js';
@@ -38,6 +38,10 @@ export interface BuildPromptInput {
     groupNudge?: string;
     /** Member names for `{{group}}` and the other group macros. */
     group?: GroupMacroMembers;
+    /** Latest summary, for `{{summary}}` expansion. */
+    summaryText?: string;
+    /** Formatted summary to inject, following SillyTavern's Memory positions. */
+    summaryInjection?: SummaryInjection;
 }
 
 /**
@@ -69,5 +73,7 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         prefixCharacterNames: input.prefixCharacterNames,
         groupNudge: input.groupNudge,
         group: input.group,
+        summaryText: input.summaryText,
+        summaryInjection: input.summaryInjection,
     });
 }

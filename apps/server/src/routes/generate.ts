@@ -5,6 +5,7 @@ import {
     type CharacterDetail,
     type ChatMessage,
     type GenerateAction,
+    getLatestSummary,
     REGEX_PLACEMENT,
     type RegexScript,
     resolvePersona,
@@ -16,6 +17,8 @@ import { z } from 'zod';
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
@@ -75,16 +78,20 @@ async function saveSwipe(context: PersistContext, text: string, extra: Record<st
     const swipeInfo = Array.isArray(existing.extra?.swipe_info) ? [...existing.extra.swipe_info] : [];
     swipeInfo.push({ send_date: new Date().toISOString(), extra });
 
+    // The reply is being rewritten, so a summary anchored to it no longer
+    // describes the stored text. `extraDelete` removes the key from the merged
+    // extra; merely omitting it would keep the stored value.
     return updateMessage(context.character, context.chatId, context.regenerateIndex, {
         mes: text,
         send_date: new Date().toISOString(),
         extra: {
-            ...existing.extra,
+            ...(existing.extra ?? {}),
             ...extra,
             swipes,
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
+        extraDelete: ['memory'],
     });
 }
 
@@ -126,6 +133,8 @@ async function persistMessage(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
+            // The message grew, so a summary anchored to it is out of date.
+            extraDelete: ['memory'],
         });
     }
 
@@ -162,9 +171,14 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         // source transforms below and the prompt transform later share them.
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(character, persona);
-        const substitute = (text: string, escapeValues: boolean) =>
-            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const baseMacroContext = createMacroContext(
+            character,
+            persona,
+            undefined,
+            getLatestSummary(chat.messages)?.value,
+        );
+        const baseSubstitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, baseMacroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 
         // An active ST preset owns the prompt list, the assembly formats and
         // the sampling parameters; anything it omits falls back to settings.
@@ -186,8 +200,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             // next, exactly as SillyTavern's `sendMessageAsUser` does, so the
             // chat file holds the name the user saw.
             const storedText = substituteMacros(
-                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute }),
-                macroContext,
+                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute: baseSubstitute }),
+                baseMacroContext,
             );
             const userMessage: ChatMessage = {
                 name: persona.name,
@@ -216,6 +230,16 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
 
         const generationType: GenerationType = body.action === 'send' ? 'normal' : body.action;
 
+        // Summary memory is read after the action so a regenerated reply no
+        // longer contributes its own summary, and the user's new message is
+        // part of the transcript in the same way a normal send sees it.
+        const latestSummary = getLatestSummary(messages);
+        const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+
         // The scanner needs the whole non-system conversation as its timed
         // effect clock, so it runs before the prompt is trimmed to context.
         const worldInfoTurn = await scanWorldInfoForTurn({
@@ -230,6 +254,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summary: latestSummary.value } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         await patchChatMetadata(character, body.chatId, {
@@ -252,6 +278,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summaryText: latestSummary.value } : {}),
+            ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
         const prompt = assembled.messages;
 
@@ -285,6 +313,24 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             maxTokens: preset.generation.maxTokens,
             generationId,
             persist: (text, reasoning, stopped) => persistMessage(context, text, reasoning, stopped),
+        });
+
+        // Fire-and-forget: a due summary never delays the reply. The memory
+        // service reads the chat again, so only a persisted reply counts.
+        void maybeSummarizeAfterTurn({
+            key: `character:${character.id}:${body.chatId}`,
+            character,
+            persona,
+            read: async () => {
+                const fresh = await readChat(character, body.chatId);
+                if (!fresh) {
+                    return null;
+                }
+                return {
+                    messages: fresh.messages,
+                    update: (index, patch) => updateMessage(character, body.chatId, index, patch),
+                };
+            },
         });
     });
 

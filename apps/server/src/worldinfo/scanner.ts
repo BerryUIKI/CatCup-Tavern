@@ -79,7 +79,12 @@ interface ScanBuffer {
     text(entry: ScanEntry, state: ScanState): string;
 }
 
-function createScanBuffer(chat: readonly ScanMessage[], global: GlobalScanData, baseDepth: number): ScanBuffer {
+function createScanBuffer(
+    chat: readonly ScanMessage[],
+    global: GlobalScanData,
+    baseDepth: number,
+    injections: readonly string[] = [],
+): ScanBuffer {
     const messages: string[] = [];
     const limit = Math.min(chat.length, MAX_SCAN_DEPTH);
     for (let index = 0; index < limit; index += 1) {
@@ -121,6 +126,11 @@ function createScanBuffer(chat: readonly ScanMessage[], global: GlobalScanData, 
             result += optIn(entry.matchCharacterDepthPrompt, global.characterDepthPrompt);
             result += optIn(entry.matchScenario, global.scenario);
             result += optIn(entry.matchCreatorNotes, global.creatorNotes);
+
+            // Extra scanned text does not shift the chat depth clock.
+            if (injections.length > 0) {
+                result += JOINER + injections.join(JOINER);
+            }
 
             // Minimum-activation passes deliberately exclude the recursion
             // buffer so that depth seeking cannot be satisfied by recursion.
@@ -484,7 +494,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
     }
 
     const budgetLimit = computeBudget(input.maxContext, settings);
-    const buffer = createScanBuffer(input.chat, globalScanData, settings.depth);
+    const buffer = createScanBuffer(input.chat, globalScanData, settings.depth, input.injections);
 
     const timed = createTimedEffects({
         chatLength: input.chat.length,

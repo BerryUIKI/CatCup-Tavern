@@ -96,6 +96,20 @@ describe('world info scanner — matching', () => {
         expect(missed.trace[0]?.reason).toBe('primary-key-miss');
     });
 
+    it('scans injected text without counting it as a chat message', () => {
+        const matched = makeEntry({ key: ['brass key'], content: 'Key lore' });
+        const delayed = makeEntry({ key: ['brass key'], content: 'Delayed lore', delay: 3 });
+
+        const result = scan([matched, delayed], chat('one', 'two'), {
+            injections: ['The brass key is safe.'],
+        });
+
+        expect(result.positions.before).toContain('Key lore');
+        // The delayed entry needs three chat messages; the injection must not
+        // advance the timed-effect clock.
+        expect(result.positions.before).not.toContain('Delayed lore');
+    });
+
     it('honours an entry-level scan depth override', () => {
         const entry = makeEntry({ key: ['dragon'], content: 'Lore', scanDepth: 5 });
         const result = scan([entry], chat('one', 'two', 'three', 'The dragon roars.'));

@@ -72,6 +72,24 @@ export interface AssembleInput {
     groupNudge?: string;
     /** Member names for `{{group}}` and the other group macros. */
     group?: GroupMacroMembers;
+    /** Latest summary, for `{{summary}}` expansion. */
+    summaryText?: string;
+    /** Formatted summary to inject, following SillyTavern's Memory positions. */
+    summaryInjection?: SummaryInjection;
+}
+
+/**
+ * A summary ready to enter the prompt.
+ *
+ * `position` mirrors SillyTavern's `extension_prompt_types`: `-1` none, `0`
+ * after the main prompt, `1` in chat at `depth`, `2` before the main prompt.
+ * `role` is `0` system, `1` user, `2` assistant.
+ */
+export interface SummaryInjection {
+    content: string;
+    position: number;
+    role: number;
+    depth: number;
 }
 
 export interface AssembleResult {
@@ -167,6 +185,7 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         personality: card.personality,
         scenario: card.scenario,
         ...(input.group ? { group: input.group.members, groupNotMuted: input.group.enabled } : {}),
+        ...(input.summaryText ? { summary: input.summaryText } : {}),
     };
     const substitute = (text: string) => substituteMacros(text, macroContext);
 
@@ -290,6 +309,38 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     }
     addByIdentifier(IDENTIFIER.ENHANCE_DEFINITIONS);
 
+    // Phase 3.5: summary memory. SillyTavern inserts the formatted memory into
+    // the main prompt ("after"/"before") or adds it as an in-chat injection.
+    const summaryInjection = input.summaryInjection;
+    let summaryFallback: Injection | null = null;
+    if (summaryInjection?.content && summaryInjection.position !== -1) {
+        const summaryMessage: CompletionMessage = {
+            identifier: 'summary',
+            role: roleOf(summaryInjection.role),
+            content: summaryInjection.content,
+        };
+
+        if (summaryInjection.position !== 1) {
+            if (completion.has(IDENTIFIER.MAIN)) {
+                completion.insert(IDENTIFIER.MAIN, summaryMessage, summaryInjection.position === 2 ? 'start' : 'end');
+            } else {
+                // When the preset moves the main prompt in chat, ST converts a
+                // relative summary into an in-chat injection beside main,
+                // inheriting main's role, depth and order.
+                const mainPrompt = collection.find((prompt) => prompt.identifier === IDENTIFIER.MAIN);
+                if (mainPrompt?.injection_position === INJECTION_POSITION.ABSOLUTE) {
+                    summaryFallback = {
+                        depth: mainPrompt.injection_depth ?? 4,
+                        order: mainPrompt.injection_order,
+                        role: mainPrompt.role ?? 'system',
+                        content: summaryInjection.content,
+                    };
+                }
+                // With no main prompt at all, SillyTavern sends no summary.
+            }
+        }
+    }
+
     // Phase 4: relative injections into main (the Author's Note in prompt).
     if (worldInfo?.authorNote?.value) {
         const note = worldInfo.authorNote;
@@ -307,6 +358,19 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
 
     // Phase 5: in-chat injections.
     const injections: Injection[] = [];
+
+    if (summaryInjection?.content && summaryInjection.position === 1) {
+        injections.push({
+            depth: summaryInjection.depth,
+            order: 100,
+            role: roleOf(summaryInjection.role),
+            content: summaryInjection.content,
+        });
+    }
+
+    if (summaryFallback) {
+        injections.push(summaryFallback);
+    }
 
     for (const bucket of worldInfo?.worldInfoDepth ?? []) {
         injections.push({
