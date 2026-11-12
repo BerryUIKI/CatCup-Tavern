@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 import { DEFAULT_MEMORY_PROMPT, DEFAULT_MEMORY_TEMPLATE } from '../memory.js';
+import {
+    DEFAULT_IMAGE_GENERATION_SETTINGS,
+    imageGenerationPatchSchema,
+    imageGenerationSettingsSchema,
+} from './images.js';
 import { type ProviderPublic, providerConfigSchema } from './provider.js';
 import {
     DEFAULT_QUICK_REPLY_SETTINGS,
@@ -212,6 +217,7 @@ export const appSettingsSchema = z.object({
     memory: memorySettingsSchema.default(DEFAULT_MEMORY_SETTINGS),
     quickReplies: quickReplySettingsSchema.default(DEFAULT_QUICK_REPLY_SETTINGS),
     tts: ttsSettingsSchema.default(DEFAULT_TTS_SETTINGS),
+    imageGeneration: imageGenerationSettingsSchema.default(DEFAULT_IMAGE_GENERATION_SETTINGS),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
@@ -219,6 +225,8 @@ export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
     providers: ProviderPublic[];
     /** Whether a TTS API key is stored; the key itself never leaves the server. */
     ttsHasKey: boolean;
+    /** Whether an image generation API key is stored; the key never leaves the server. */
+    imageHasKey: boolean;
 }
 
 export const settingsPatchSchema = z.object({
@@ -233,7 +241,10 @@ export const settingsPatchSchema = z.object({
     memory: memorySettingsPatchSchema.optional(),
     quickReplies: quickReplySettingsPatchSchema.optional(),
     tts: ttsSettingsPatchSchema.optional(),
+    imageGeneration: imageGenerationPatchSchema.optional(),
     /** Write-only: stored in data/secrets.json, never returned. Empty clears. */
     ttsApiKey: z.string().max(2000).optional(),
+    /** Write-only image generation key, stored beside the TTS key. */
+    imageApiKey: z.string().max(2000).optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;

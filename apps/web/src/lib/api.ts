@@ -1,4 +1,5 @@
 import type {
+    AttachImageRequest,
     AuthStatus,
     CharacterDetail,
     CharacterPatch,
@@ -7,11 +8,15 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    DraftImagePromptRequest,
+    GeneratedImage,
+    GenerateImageRequest,
     GroupChatDetail,
     GroupCreate,
     GroupPatch,
     GroupView,
     HealthResponse,
+    ImageScope,
     ImportCharactersResponse,
     ModelInfo,
     PresetDetail,
@@ -544,4 +549,61 @@ export const api = {
         speak: (text: string, voice?: string, signal?: AbortSignal) =>
             requestBlob('/tts/speak', voice === undefined ? { text } : { text, voice }, signal),
     },
+
+    images: {
+        draft: async (input: DraftImagePromptRequest) => {
+            const data = await request<{ prompt: string }>('/images/draft', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.prompt;
+        },
+        generate: async (input: GenerateImageRequest) => {
+            const data = await request<{ image: GeneratedImage }>('/images/generate', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.image;
+        },
+        attach: async (input: AttachImageRequest) => {
+            const data = await request<{ message: ChatMessage }>('/images/attach', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.message;
+        },
+        list: async (scope: ImageScope) => {
+            const params = new URLSearchParams();
+            if (scope.characterId) {
+                params.set('characterId', scope.characterId);
+            }
+            if (scope.groupId) {
+                params.set('groupId', scope.groupId);
+            }
+            const data = await request<{ images: GeneratedImage[] }>(`/images?${params.toString()}`);
+            return data.images;
+        },
+        remove: (folder: string, file: string) =>
+            request<{ ok: true }>(`/images/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`, {
+                method: 'DELETE',
+            }),
+        test: () => request<{ ok: true }>('/images/test', { method: 'POST' }),
+    },
 };
+
+/**
+ * Turn a SillyTavern media path (`user/images/<folder>/<file>`) into the
+ * authenticated API route. Other media URLs, such as data URLs, pass through.
+ */
+export function galleryImageUrl(url: string): string {
+    const prefix = 'user/images/';
+    if (!url.startsWith(prefix)) {
+        return url;
+    }
+    const [folder, ...rest] = url.slice(prefix.length).split('/');
+    const file = rest.join('/');
+    if (!folder || !file) {
+        return url;
+    }
+    return `/api/images/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`;
+}

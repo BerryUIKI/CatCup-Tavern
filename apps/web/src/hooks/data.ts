@@ -35,6 +35,7 @@ export const queryKeys = {
     world: (id: string | null) => ['world', id] as const,
     regex: ['regex'] as const,
     quickReplies: ['quickReplies'] as const,
+    images: (folder: string) => ['images', folder] as const,
 };
 
 export function useAuthStatus() {

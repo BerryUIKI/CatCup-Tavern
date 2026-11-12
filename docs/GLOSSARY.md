@@ -56,6 +56,12 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **TTS (text to speech)** — Speaking a reply aloud. CatCup uses either the browser's speech synthesis or an OpenAI-compatible `/audio/speech` endpoint, with per-character voices, a narrator voice and autoplay. Audio is generated on demand and not stored.
 
+**Image generation** — Producing an illustration from a text prompt. CatCup calls Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, stores the result under `data/user/images/`, and can insert it into a chat as a SillyTavern media message.
+
+**Gallery** — The per-character or per-group set of generated images under `data/user/images/<folder>/`, listed in a dialog with download, insert and delete actions.
+
+**Media attachment** — SillyTavern's `extra.media` entry describing an image: `url`, `type`, `title`, `negative`, `generation_type` and `source`. CatCup writes the same shape so ST can read an illustrated chat.
+
 **Regex script** — A SillyTavern extension that transforms text or prompts with regular expressions. Planned for M2.
 
 **Extension** — A third-party ST plugin. L3 (API) and L4 (DOM) compatibility are planned for M3.

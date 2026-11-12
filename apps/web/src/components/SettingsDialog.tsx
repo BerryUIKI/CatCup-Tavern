@@ -13,6 +13,7 @@ import {
     Check,
     Copy,
     Download,
+    ImagePlus,
     Info,
     Pencil,
     PlugZap,
@@ -49,6 +50,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
+import { ImageSettings } from './ImageSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
@@ -69,6 +71,7 @@ type Tab =
     | 'quickreplies'
     | 'regex'
     | 'tts'
+    | 'images'
     | 'about';
 
 interface ProviderForm {
@@ -175,6 +178,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'quickreplies', label: 'Quick Replies', icon: Zap },
     { id: 'regex', label: 'Regex', icon: Regex },
     { id: 'tts', label: 'TTS', icon: Volume2 },
+    { id: 'images', label: 'Images', icon: ImagePlus },
     { id: 'about', label: 'About', icon: Info },
 ];
 
@@ -1027,6 +1031,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <RegexSettings />
             ) : tab === 'tts' ? (
                 <TtsSettings />
+            ) : tab === 'images' ? (
+                <ImageSettings />
             ) : tab === 'about' ? (
                 <AboutTab />
             ) : (

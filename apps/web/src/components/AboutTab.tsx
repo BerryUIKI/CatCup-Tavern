@@ -10,6 +10,7 @@ const WORKS = [
     'Summary memory: a rolling summary stored in the chat file, with automatic updates, an editable Memory panel and configurable prompt injection.',
     'Quick Replies (subset): SillyTavern quick reply sets with a button bar, import and export, and the /send, /sys, /echo, /trigger, /continue, /regenerate and /run commands.',
     'Text to speech: browser voices or an OpenAI-compatible /audio/speech endpoint, with per-character voices, a narrator voice, autoplay and a play button on every reply.',
+    'Image generation through Automatic1111/Forge or an OpenAI-compatible /images/generations endpoint, with per-character and per-group galleries and images inserted into the chat as SillyTavern media messages.',
     'Lorebooks with SillyTavern’s full scan pipeline, and an editor for every entry field.',
     'OpenAI presets: import, activate, and change prompt order and injection positions.',
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
@@ -21,7 +22,7 @@ const WORKS = [
 const DOES_NOT_WORK = [
     'STscript, the full Quick Replies engine (auto-execution, context menus, per-character sets) and typed slash commands.',
     'SillyTavern extensions — none of them load.',
-    'Image generation.',
+    'ComfyUI workflow graphs; Automatic1111/Forge and OpenAI-compatible image endpoints are supported.',
     'Vector/embedding memory for long chats; the rolling summary is the only long-term memory.',
     'CharX (.charx) import and export.',
     'Group chats answer one member per turn with that member’s own card; SillyTavern’s append modes, automatic turns and multi-member reply batches are not implemented.',

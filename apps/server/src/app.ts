@@ -18,6 +18,7 @@ import { registerGenerateRoutes } from './routes/generate.js';
 import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
 import { registerGroupRoutes } from './routes/groups.js';
 import { registerHealthRoutes } from './routes/health.js';
+import { registerImageRoutes } from './routes/images.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerMemoryRoutes } from './routes/memory.js';
 import { registerPresetRoutes } from './routes/presets.js';
@@ -137,6 +138,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerGroupRoutes(app);
     await registerSettingsRoutes(app);
     await registerTtsRoutes(app);
+    await registerImageRoutes(app);
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);
     await registerWorldRoutes(app);

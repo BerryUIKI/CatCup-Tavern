@@ -55,8 +55,8 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 ## API keys
 
-- Stored only in `data/secrets.json` as provider-ID → key, plus the fixed `tts` key for text to speech. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
-- Never returned by any API response. The public provider shape exposes `hasKey` only, and the settings response exposes `ttsHasKey` for the speech key.
+- Stored only in `data/secrets.json` as provider-ID → key, plus the fixed `tts` key for text to speech and the fixed `image` key for image generation. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
+- Never returned by any API response. The public provider shape exposes `hasKey` only, and the settings response exposes `ttsHasKey` and `imageHasKey` for the service keys.
 - Fastify logs redact `authorization`, `cookie` and `x-api-key` headers.
 - Provider adapter error messages are returned to the UI; they should not contain keys under normal provider behaviour.
 - Keys are stored unencrypted at rest. Protect the OS account and backups.
@@ -67,6 +67,14 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - The browser backend uses the browser's speech voices. CatCup makes no server request and needs no key; some browsers' voice lists are themselves network-backed, so treat that as the browser vendor's behaviour rather than CatCup egress.
 - The OpenAI-compatible backend sends the message text being spoken to the configured `/audio/speech` endpoint. Choose a trusted endpoint; this is the same trust boundary as a chat provider.
 - Audio is relayed to the browser with `Cache-Control: no-store` and is not written to `data/`. The speak endpoint requires the session like any other `/api/` route.
+
+## Image generation
+
+- The image generation key is stored in `data/secrets.json` under the fixed `image` entry; responses expose only `imageHasKey`.
+- A generation request sends the final prompt (and the configured prefix and negative prompt) to the image backend. **Draft from chat** separately sends the recent chat messages to the active chat provider, so the same trust boundary as normal generation applies.
+- A URL returned by an OpenAI-compatible image endpoint is downloaded by the server. Only `http`/`https` URLs are followed, the response is capped at 25 MB, and the bytes must be a PNG, JPEG or WebP by magic number.
+- Generated images are served through the authenticated `/api/images/:folder/:file` route with `X-Content-Type-Options: nosniff`. Folder and file names are validated and resolved inside `data/user/images/`, so a crafted name cannot read settings or another file.
+- Image content comes from the configured provider and is not scanned or filtered. Treat it like any other unreviewed download.
 
 ## Files and paths
 
@@ -90,7 +98,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 ## Privacy and data at rest
 
 - No telemetry or analytics are sent anywhere.
-- The only outbound requests are to the configured model provider (and, during development, package registries and the reference repositories).
+- The only outbound requests are to the configured chat provider, the configured TTS and image endpoints, and — during development — package registries and the reference repositories.
 - Chats, characters, provider settings and credentials are stored unencrypted in `data/`.
 - `data/`, `.env`, `.ref/` and build output are gitignored. Never commit them or attach them to issues.
 - Backups include credentials; store them accordingly.

@@ -20,6 +20,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them.
 - **Summary memory**: a rolling summary stored in the chat file, updated automatically after replies or on demand, shown in the Memory panel where it can be edited or deleted, injected after or before the main prompt or at a chat depth, and available as `{{summary}}`.
 - **Text to speech**: browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, a play button on every reply, and optional autoplay.
+- **Image generation**: Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, with a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat.
 
 **Lorebooks**
 
@@ -53,7 +54,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 
 - **STscript and typed slash commands.** A line such as `/send hello` typed into the message box is sent to the model as ordinary text. Only Quick Reply buttons run the supported commands.
 - **SillyTavern extensions.** None load.
-- **Image generation.**
+- **ComfyUI image workflows.** Automatic1111/Forge and OpenAI-compatible image endpoints work; a ComfyUI workflow adapter is the next image piece.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
 - **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
 - **CharX (`.charx`)** import or export.
@@ -69,6 +70,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - **Group chats have no context inspector.** A group summary is visible in its Memory panel but not in the inspector, and the inspector covers single-character chats only.
 - **Quick Replies are a subset.** Version 2 sets import, edit and run as buttons, but only `/send`, `/sys` (`/nar`), `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute; auto-execution, context menus, icons and per-character sets are not implemented, and a generation command must be the last step in a button. The account set list shows the same sets in every chat, and a chat's own SillyTavern set links are read but have no editor. Version 1 sets are not migrated; export them from SillyTavern as version 2 first.
 - **Text to speech has two backends.** Browser voices, or any OpenAI-compatible `/audio/speech` endpoint. SillyTavern's other TTS providers (ElevenLabs, Azure, AllTalk, XTTS and the rest), its multi-voice quote/action markers, narration modes and per-provider voice maps are not implemented. Autoplay speaks new assistant replies only; user messages have no play control, and long messages are played in chunks.
+- **Image generation has two backends.** Automatic1111/Forge and OpenAI-compatible `/images/generations`. ComfyUI, Stability, NovelAI, DrawThings and SillyTavern's other sources are not implemented. Generation is manual: one image at a time from the chat header or a message, with one active backend and no image-to-image, inpainting, upscaling or automatic per-message illustration. The gallery is a flat newest-first grid with download, insert and delete; there is no upload, folder management or thumbnail index. A prompt can be drafted from the chat by the active text model, but per-character prompt prefixes stored on ST cards are not read yet, and each generation costs one extra chat request when drafting.
 
 - **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.

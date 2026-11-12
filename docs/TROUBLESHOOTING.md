@@ -120,6 +120,40 @@ Settings → TTS must be enabled and saved. The button appears on replies and na
 
 Browsers block audio that is not tied to a user gesture. Press the play button on the message; the setting still applies to the next reply where the browser permits it.
 
+## Image generation
+
+**No image button appears**
+
+Settings → Images must be enabled and saved. The buttons appear in the chat header and on assistant messages, never on your own messages.
+
+**Automatic1111 fails**
+
+- Run A1111 or Forge with the API enabled (`--api`), and use its root as the base URL, e.g. `http://127.0.0.1:7860`, without `/sdapi/v1`.
+- Check it answers: `curl http://127.0.0.1:7860/sdapi/v1/options`.
+- If the instance uses HTTP Basic auth, enter `user:password` in the key field.
+- The sampler must be one the instance offers; names differ between A1111 builds.
+- A first generation can take a while while a model loads; the request times out after three minutes.
+
+**An OpenAI-compatible image endpoint fails**
+
+- The base URL is the API root, usually ending in `/v1`.
+- `api.openai.com` requires a saved key; a local server usually does not.
+- The model is required. DALL·E and gpt-image models accept only their own sizes, so CatCup maps the configured width and height to the nearest supported size.
+- A `502 IMAGE_FAILED` includes the provider's response detail. The server log has the same message.
+- If the provider returns an image URL, the server downloads it; a URL that is not reachable from the server fails even when the browser could open it.
+
+**“Draft from chat” fails**
+
+Drafting uses the active chat provider, not the image backend. Check that a provider is configured and that the chat has at least one message. `IMAGE_PROMPT_FAILED` is a chat-provider error; `IMAGE_PROMPT_EMPTY` means there was nothing to summarize.
+
+**An image is missing from the gallery**
+
+Images live in `data/user/images/<character name>/` (or the group id). Renaming a card does not rename its folder, so images made before a rename stay under the old name. Check the folder and the server log; deleting an image leaves any chat message that referenced it with a broken image.
+
+**Moving to another machine loses the images**
+
+Copy `data/user/images/` together with `data/chats/` and `data/characters/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
+
 ## Chat and messages
 
 **The user message appears but the reply fails**
