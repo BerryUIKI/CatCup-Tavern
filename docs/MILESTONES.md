@@ -320,8 +320,8 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] TTS has at least one working local or remote adapter with clear configuration docs.
 - [x] Image generation has at least one working adapter with clear configuration docs.
 - [x] The character library supports favorites, tag filters, sorting and bulk actions.
-- [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] Character edits export to a valid PNG/JSON card that ST can open.
+- [x] Regex rules round-trip with ST and apply in prompt/render paths as configured.
+- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern.
 
 ### Suggested PR slices
 

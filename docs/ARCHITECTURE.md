@@ -248,14 +248,14 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 
 The authoritative scope, status and acceptance criteria live in [MILESTONES.md](MILESTONES.md). Summary:
 
-| Milestone | Status      | Theme                                                                 |
-| --------- | ----------- | --------------------------------------------------------------------- |
-| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers      |
-| M1        | Complete    | World info, Prompt Manager, presets, editing/branching, tokenizer     |
-| M2        | In progress | Groups, summary memory, Quick Replies subset, TTS, images, CharX      |
-| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox      |
-| M4        | Planned     | Desktop signing, auto-updater, file associations, macOS/Linux         |
-| M5        | Planned     | Mobile, i18n, accessibility, performance, v1.0                        |
+| Milestone | Status      | Theme                                                               |
+| --------- | ----------- | ------------------------------------------------------------------- |
+| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers    |
+| M1        | Complete    | World info, Prompt Manager, presets, editing/branching, tokenizer   |
+| M2        | In progress | Groups, summary memory, Quick Replies subset, TTS, images, CharX    |
+| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox    |
+| M4        | Planned     | Desktop signing, auto-updater, file associations, tray, macOS/Linux |
+| M5        | Planned     | Mobile, i18n, accessibility, performance, v1.0                      |
 
 ## 12. Decision log
 

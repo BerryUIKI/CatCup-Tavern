@@ -10,7 +10,7 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats, summary memory, a Quick Replies subset, text to speech and image generation usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (phase A: Settings and Providers landed 2026-11-12); follow `docs/DESIGN.md` for interface work.
+Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags and bulk actions usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (phase A: Settings and Providers landed 2026-11-12); follow `docs/DESIGN.md` for interface work.
 
 ## Commands
 
@@ -24,21 +24,27 @@ pnpm test
 pnpm lint
 ```
 
-Releases are built and published by `.github/workflows/release.yml`: push a `v*` tag on `main` and CI attaches the Windows installer to the GitHub release. The release body comes from that version's `CHANGELOG.md` section.
+Releases are cut by merging `dev` into `main` after bumping the version: `.github/workflows/release.yml` notices the untagged `package.json` version, creates the `v<version>` tag on that commit and attaches the Windows installer to the GitHub release. The release body comes from that version's `CHANGELOG.md` section. See `CONTRIBUTING.md#releases`.
 
 ## Layout
 
 ```text
 apps/server/            Fastify server
-  src/cards/            character card parsing (PNG tEXt / JSON v2-v3)
+  src/cards/            character card parsing (PNG tEXt / JSON v2-v3) and CharX packages
   src/providers/        OpenAI-compatible / OpenRouter / Anthropic / Ollama
-  src/prompt/           prompt assembly and token budgeting
+  src/prompt/           prompt assembly, token budgeting and group prompts
   src/worldinfo/        world info loader, scanner, timed effects and prompt buckets
+  src/group/            group member resolution, speaker selection and reply cleanup
+  src/memory/           rolling summaries: schedule, request building and injection
+  src/quickreplies/     quick reply storage target and command execution
+  src/tts/              OpenAI-compatible speech adapter
+  src/images/           A1111 / ComfyUI / OpenAI-compatible image adapters
+  src/import/           SillyTavern folder import
   src/routes/           REST + SSE routes
   src/security/         password hashing, session cookies
   src/storage/          ST-compatible file storage
 apps/web/               React SPA
-  src/components/       layout, chat, settings, auth
+  src/components/       layout, chat, groups, settings, auth
   src/hooks/            React Query data hooks
   src/lib/              API / SSE clients
   src/store/            Zustand UI state
@@ -100,8 +106,8 @@ Read before changing behaviour:
 - **M1** (complete): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
 - **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory (landed 2026-11-11), Quick Replies subset (landed 2026-11-12), TTS (landed 2026-11-12), image generation (Automatic1111, ComfyUI and OpenAI-compatible landed 2026-11-12), CharX import/export (landed 2026-11-12), library favorites/tags/sorting/bulk actions (landed 2026-11-12). Regex scripts and card editing/export shipped in 0.2.0.
 - **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
-- **M4** (planned): desktop signing, auto-updater, file associations and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
-- **M5** (planned): mobile, i18n, accessibility, CI, performance and v1.0 release.
+- **M4** (planned): desktop signing, auto-updater, file associations, tray icon, window-state restore and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
+- **M5** (planned): mobile, i18n, accessibility, UX stages B–E, performance and v1.0 release.
 
 The detailed acceptance criteria are in `docs/MILESTONES.md`.
 
