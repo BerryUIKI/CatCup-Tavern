@@ -33,7 +33,7 @@ OpenAI / OpenRouter / Anthropic / Ollama
 - Production: Fastify serves the SPA and API on the same port, default `127.0.0.1:8000`.
 - LAN mode binds `0.0.0.0`; authentication is a single-user password session.
 
-### Desktop (planned)
+### Desktop
 
 ```text
 Tauri 2 window (loads http://127.0.0.1:<port>)
@@ -41,7 +41,7 @@ Tauri 2 window (loads http://127.0.0.1:<port>)
           └── data dir = OS app-data directory
 ```
 
-The desktop shell owns only process management, port selection, the data directory, tray/updater and file associations. No business logic is duplicated.
+The desktop shell owns only process management, port selection and the data directory. No business logic is duplicated. A tray icon, window-state restore, file associations and the updater are still to come; see [DESKTOP.md](DESKTOP.md).
 
 ## 3. Stack decisions
 
@@ -248,14 +248,14 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 
 The authoritative scope, status and acceptance criteria live in [MILESTONES.md](MILESTONES.md). Summary:
 
-| Milestone | Status      | Theme                                                             |
-| --------- | ----------- | ----------------------------------------------------------------- |
-| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers  |
-| M1        | Next        | World info, Prompt Manager, presets, editing/branching, tokenizer |
-| M2        | In progress | Group chats, memory, regex, TTS/image generation, card editing    |
-| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox  |
-| M4        | Planned     | Tauri desktop shell, Node sidecar, updater, packaging             |
-| M5        | Planned     | Mobile, i18n, accessibility, CI, performance, v1.0                |
+| Milestone | Status      | Theme                                                                 |
+| --------- | ----------- | --------------------------------------------------------------------- |
+| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers      |
+| M1        | Complete    | World info, Prompt Manager, presets, editing/branching, tokenizer     |
+| M2        | In progress | Groups, summary memory, Quick Replies subset, TTS, images, CharX      |
+| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox      |
+| M4        | Planned     | Desktop signing, auto-updater, file associations, macOS/Linux         |
+| M5        | Planned     | Mobile, i18n, accessibility, performance, v1.0                        |
 
 ## 12. Decision log
 

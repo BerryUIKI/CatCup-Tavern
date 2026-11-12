@@ -1,6 +1,6 @@
 # Deployment
 
-This guide covers the current web build. The Tauri desktop build is planned for M4 and is not available yet.
+This guide covers the web and LAN builds. The desktop build is a separate installer that starts the same server on a free port; see [DESKTOP.md](DESKTOP.md).
 
 ## Local development
 
@@ -97,7 +97,7 @@ tavern.example.com {
 Also make sure the proxy:
 
 - does not expose the `data/` directory;
-- does not buffer `/api/generate` (SSE);
+- does not buffer the SSE endpoints, `/api/generate` and `/api/groups/:groupId/chats/:chatId/generate`;
 - allows long-lived responses;
 - preserves the `Host` header so the API's origin check continues to work.
 
@@ -144,7 +144,7 @@ Use Task Scheduler or a service wrapper such as NSSM to run:
 node apps\server\dist\index.js
 ```
 
-with `CATCUP_DATA_DIR` set to an absolute path. The current development machine is Windows; the Tauri installer will eventually provide a first-class desktop experience.
+with `CATCUP_DATA_DIR` set to an absolute path. A service wrapper is only needed for the web/LAN shape on a server; on a desktop the installer carries its own Node runtime and writes to the OS app-data directory.
 
 ## Health checks
 
@@ -155,7 +155,7 @@ curl -fsS http://127.0.0.1:8000/api/health
 Expected:
 
 ```json
-{ "ok": true, "version": "0.1.0", "needsSetup": false }
+{ "ok": true, "version": "0.2.1", "needsSetup": false }
 ```
 
 A `needsSetup: true` response means no `data/auth.json` exists yet.
@@ -202,9 +202,9 @@ There are no automatic data migrations yet. Unknown fields are preserved, but ba
 - In LAN mode, allow the port only from trusted devices.
 - For a reverse proxy, expose only the proxy port publicly.
 
-## Desktop (planned)
+## Desktop
 
-M4 will add a Tauri 2 shell with a bundled Node sidecar. It will use the same server and SPA, set `CATCUP_DATA_DIR` to the OS app-data directory, choose a local port dynamically and manage the sidecar lifecycle. Until then, use the web deployment above.
+The Windows installer is built by CI when a merge into `main` carries a new version, and it is attached to that release. It needs no administrator and no separate Node installation: the shell starts a bundled server on an OS-chosen port and keeps its data in the OS app-data directory, separate from this guide's `data/`. Signing, an auto-updater and file associations are not there yet, so every upgrade is a manual download of the new installer. See [DESKTOP.md](DESKTOP.md).
 
 ## Related docs
 

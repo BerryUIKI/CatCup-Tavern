@@ -48,7 +48,7 @@ Prefixes in use: `feat/`, `fix/`, `docs/`, `ci/`, `chore/`, `release/`, `hotfix/
 
 ### Merging a working branch
 
-After the PR merges, delete the branch — locally and on the remote. Do not keep merged branches around; `git branch --merged dev` and `git ls-remote --merged` should stay short. Branches that were never merged must not be deleted without asking the maintainer.
+After the PR merges, delete the branch — locally and on the remote. Do not keep merged branches around; `git branch --merged dev` and `git branch -r --merged origin/dev` should stay short. Branches that were never merged must not be deleted without asking the maintainer.
 
 ### Stacked PRs
 
@@ -58,7 +58,7 @@ If a change depends on another open PR, branch from the dependency and target `d
 
 Releases are cut from `main` and built by CI automatically:
 
-1. Bump the version across the workspace (`package.json`, the app packages, `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` and `apps/server/src/config.ts`), and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
+1. Bump the version everywhere it is written down — `package.json`, `packages/shared`, `apps/server`, `apps/web`, `apps/desktop`, `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `catcup-desktop` entry in `Cargo.lock`), and `apps/server/src/config.ts` — and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
 2. Merge the release preparation into `dev`, then open a `dev` → `main` pull request and merge it with a merge commit.
 3. That push to `main` is the release. `.github/workflows/release.yml` reads the version from `package.json`, creates the `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest`, and creates the GitHub release with the changelog section as the body and the installer as an asset.
 
@@ -100,7 +100,7 @@ pnpm test
 pnpm build
 ```
 
-For a package-scoped change, the equivalent workspace commands are also acceptable while the stack is incomplete:
+For a package-scoped change, the equivalent workspace commands are also acceptable:
 
 ```bash
 pnpm --filter @catcup/server typecheck

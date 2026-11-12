@@ -44,15 +44,15 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Entry** — One World Info record: keys, content, order, position, depth, probability and related flags.
 
-**Prompt Manager** — SillyTavern's ordered list of prompt segments with roles, injection positions/depths and enable flags. Planned for M1.
+**Prompt Manager** — SillyTavern's ordered list of prompt segments with roles, injection positions/depths and enable flags. CatCup implements the model, the order editor and in-chat injection.
 
-**Preset** — A saved set of sampling parameters and prompt entries/order, usually imported from SillyTavern's OpenAI preset JSON. Planned for M1.
+**Preset** — A saved set of sampling parameters and prompt entries/order, usually imported from SillyTavern's OpenAI preset JSON. CatCup imports, activates, exports and edits presets.
 
 **Macro** — A template token such as `{{char}}` or `{{user}}`, replaced when the prompt is built and when a stored message is displayed.
 
 **Context budget** — The maximum number of tokens sent to the model for a request, split between the prompt and the reply budget.
 
-**Token** — A model's unit of text. CatCup currently uses an approximation; a model-aware tokenizer is planned for M1.
+**Token** — A model's unit of text. CatCup counts with the model's exact tokenizer for OpenAI, OpenAI-compatible and Anthropic models and falls back to a labelled estimate for the rest.
 
 **Reasoning** — Provider-returned "thinking" content separate from the visible reply. CatCup streams it and stores it in `extra.reasoning`.
 
@@ -74,7 +74,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Media attachment** — SillyTavern's `extra.media` entry describing an image: `url`, `type`, `title`, `negative`, `generation_type` and `source`. CatCup writes the same shape so ST can read an illustrated chat.
 
-**Regex script** — A SillyTavern extension that transforms text or prompts with regular expressions. Planned for M2.
+**Regex script** — A SillyTavern extension that transforms text or prompts with regular expressions. CatCup runs them at all four placements from one global list.
 
 **Extension** — A third-party ST plugin. L3 (API) and L4 (DOM) compatibility are planned for M3.
 
@@ -90,7 +90,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **SSE (Server-Sent Events)** — The one-way streaming protocol used for generation events (`start`, `token`, `reasoning`, `done`, `error`).
 
-**Tauri** — The Rust-based desktop shell planned for M4. The React SPA runs in a native window; a Node sidecar hosts the server.
+**Tauri** — The Rust-based desktop shell. The React SPA runs in a native window; a Node sidecar hosts the server. Windows is packaged today; macOS and Linux are not.
 
 **Sidecar** — The bundled Node server process started by the Tauri app.
 

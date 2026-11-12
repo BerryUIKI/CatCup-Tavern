@@ -54,7 +54,7 @@ Captured from the 0.2.0 build.
 | ------- | ------------------------------------------------------- |
 | Web     | React 19 · TypeScript · Vite 8 · Tailwind CSS 4         |
 | Server  | Node.js 24 · Fastify 5                                  |
-| Desktop | Tauri 2 (planned)                                       |
+| Desktop | Tauri 2 (Windows)                                       |
 | Storage | SillyTavern-compatible files (JSON / JSONL / PNG cards) |
 | License | AGPL-3.0-only                                           |
 
@@ -98,10 +98,16 @@ Defaults to `./data` at the repository root; override with `CATCUP_DATA_DIR`.
 ```text
 data/
 ├── characters/          # .png cards with tEXt metadata, or .json cards
+├── character-assets/    # assets unpacked from CharX packages, per character
 ├── chats/
 │   └── <character name>/  # SillyTavern-style JSONL chats
-├── worlds/              # World Info JSON (schema ready; scanner M1)
-├── presets/             # Prompt / sampling presets (schema ready; import M1)
+├── groups/              # SillyTavern group metadata
+├── group chats/         # SillyTavern group chat JSONL
+├── worlds/              # World Info JSON
+├── presets/             # OpenAI presets (prompt order and sampling)
+├── quickreplies/        # SillyTavern version 2 Quick Reply sets
+├── user/images/         # generated images, per character or group
+├── regex.json           # Regex scripts
 ├── settings.json        # App settings
 ├── secrets.json         # API keys (server-only)
 └── auth.json            # Password hash + session secret

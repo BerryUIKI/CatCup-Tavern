@@ -1,14 +1,14 @@
 # What works, and what does not
 
-CatCup Tavern 0.2.1 is early-access software. The goal for this release is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep telling single-character stories without going back. Everything outside that is either partial or absent, and this page says which.
+CatCup Tavern 0.2.1 is early-access software. The goal is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
 
 ## What works
 
 **Getting your data in**
 
-- Import character cards one at a time or in a batch: PNG with V2 or V3 metadata, and JSON.
+- Import character cards one at a time or in a batch: PNG with V2 or V3 metadata, JSON, and CharX packages with their assets.
 - Point at a whole SillyTavern user folder and copy its **characters, chats, world info and OpenAI presets** in one action, after a scan shows what was found.
-- Export cards back to PNG or JSON, and presets, world info and regex scripts back to JSON.
+- Export cards back to PNG, JSON or CharX, and presets, world info and regex scripts back to JSON.
 
 **Chatting**
 
@@ -37,11 +37,19 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 
 - Regex scripts with SillyTavern's field names, import and export, a live test box, and four live placements: your input, the model's output, reasoning, and lorebook content.
 
+**Quick replies**
+
+- SillyTavern version 2 quick reply sets: import, export, rename, edit and delete them in Settings → Quick Replies, and show the enabled sets as a bar above the message box.
+
 **Characters and personas**
 
 - Edit every text field of a card, export it, or delete it from the library.
 - **Import lore** copies a card's embedded lorebook into the world info library and links it to the card, so its entries scan for that character without enabling the book globally.
 - Several personas, one default, with a per-chat choice.
+
+**Library**
+
+- Tags and favorites on every card, filter by tags (multi-select, all must match) or favorites only, sort by name, recently changed, newest created or favorites, and apply favorite, tag or delete in bulk.
 
 **Providers**
 

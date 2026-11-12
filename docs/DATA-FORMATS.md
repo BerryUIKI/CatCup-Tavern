@@ -107,7 +107,7 @@ The server normalizes every card into the V3 data shape. Unknown fields are pres
 | `system_prompt`                                | string     | Overrides the default main prompt when non-empty                                      |
 | `post_history_instructions`                    | string     | Appended after history                                                                |
 | `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                           |
-| `group_only_greetings`                         | string[]   | Parsed; group chats are planned                                                       |
+| `group_only_greetings`                         | string[]   | Parsed and preserved, but never used; a group's opening comes from each member's ordinary greetings |
 | `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it |
 | `tags`                                         | string[]   | Library tag chips, search and bulk tag actions; the editor edits a comma list         |
 | `creator`                                      | string     | Sidebar display                                                                       |
