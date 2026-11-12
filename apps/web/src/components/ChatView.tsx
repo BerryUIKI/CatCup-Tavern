@@ -7,6 +7,7 @@ import {
     chatPersonaId,
     getLatestSummary,
     type Persona,
+    prepareSpeechText,
     type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
@@ -26,6 +27,7 @@ import {
     useUpdateMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
+import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
@@ -64,6 +66,11 @@ function findLastAssistantIndex(messages: ChatMessage[]): number {
         }
     }
     return -1;
+}
+
+/** A cheap identity for "did the newest message change?" after a generation. */
+function messageSignature(message: ChatMessage | undefined): string {
+    return message ? `${message.send_date ?? ''}|${message.mes.length}|${message.mes.slice(-24)}` : '';
 }
 
 function subtitleFor(character: CharacterSummary): string {
@@ -170,6 +177,11 @@ export function ChatView({
         setDraft('');
     }, [selectedChatId]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
+    useEffect(() => {
+        tts.stop();
+    }, [selectedChatId]);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
         const element = scrollRef.current;
@@ -187,6 +199,7 @@ export function ChatView({
         selectedChatId,
         () => scrollToBottom(true),
     );
+    const tts = useTts();
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -226,10 +239,40 @@ export function ChatView({
         scrollToBottom,
     ]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: speak once per completed reply
+    useEffect(() => {
+        const reply = generation.lastReply;
+        if (!reply || generation.replySequence === 0) {
+            return;
+        }
+        if (!tts.enabled || !tts.autoplay) {
+            return;
+        }
+        if (reply.extra?.stopped || reply.is_user || reply.is_system || reply.extra?.type === 'narrator') {
+            return;
+        }
+        const text = prepareSpeechText(display(reply.mes, false, 0), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (text) {
+            void tts.speak(messageSignature(reply), text, tts.voiceFor(character?.id));
+        }
+    }, [generation.replySequence]);
+
+    // The greeting picker replaces the first message in place, without a chat
+    // switch; silence the old opening when that happens.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only the first message's text matters here
+    useEffect(() => {
+        tts.stop();
+    }, [messages[0]?.mes]);
+
     const handleSend = (text: string) => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('send', text);
     };
 
@@ -249,6 +292,7 @@ export function ChatView({
         const outgoing = text.trim();
         setDraft('');
         if (outgoing) {
+            tts.stop();
             void generation.start('send', outgoing);
         }
     };
@@ -257,13 +301,36 @@ export function ChatView({
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start(action.mode);
+    };
+
+    const handleSpeak = (index: number, message: ChatMessage) => {
+        const key = messageSignature(message);
+        if (tts.speakingKey === key) {
+            tts.stop();
+            return;
+        }
+        if (!tts.enabled || !character) {
+            return;
+        }
+        const text = prepareSpeechText(display(message.mes, false, visibleMessages.length - index - 1), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (!text) {
+            pushToast('This message has nothing to speak.', 'info');
+            return;
+        }
+        void tts.speak(key, text, tts.voiceFor(character.id, message.extra?.type === 'narrator'));
     };
 
     const handleRegenerate = () => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('regenerate');
     };
 
@@ -280,6 +347,7 @@ export function ChatView({
         if (next < 0 || next >= swipes.length) {
             return;
         }
+        tts.stop();
         updateMessageMutation.mutate(
             { index, swipeId: next },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -290,6 +358,7 @@ export function ChatView({
         if (!window.confirm('Delete this message? This cannot be undone.')) {
             return;
         }
+        tts.stop();
         deleteMessageMutation.mutate(index, {
             onError: (error) => pushToast(error.message, 'error'),
         });
@@ -306,10 +375,12 @@ export function ChatView({
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('continue');
     };
 
     const handleEditMessage = (index: number, text: string) => {
+        tts.stop();
         updateMessageMutation.mutate(
             { index, message: text },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -593,7 +664,14 @@ export function ChatView({
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
+                                        onEditStart={tts.stop}
                                         onBranch={() => handleBranch(index)}
+                                        onSpeak={
+                                            tts.enabled && !message.is_user && !message.is_system
+                                                ? () => handleSpeak(index, message)
+                                                : undefined
+                                        }
+                                        speaking={tts.speakingKey === messageSignature(message)}
                                     />
                                 );
                             })}

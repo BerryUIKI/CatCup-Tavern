@@ -7,6 +7,7 @@ import {
     type GroupView,
     getLatestSummary,
     type Persona,
+    prepareSpeechText,
     type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
@@ -27,6 +28,7 @@ import {
     useUpdateGroupMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
+import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
@@ -67,6 +69,11 @@ function findLastAssistantIndex(messages: ChatMessage[]): number {
         }
     }
     return -1;
+}
+
+/** A cheap identity for "did the newest message change?" after a generation. */
+function messageSignature(message: ChatMessage | undefined): string {
+    return message ? `${message.send_date ?? ''}|${message.mes.length}|${message.mes.slice(-24)}` : '';
 }
 
 export function GroupChatView({
@@ -129,6 +136,11 @@ export function GroupChatView({
         setDraft('');
     }, [selectedChatId]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
+    useEffect(() => {
+        tts.stop();
+    }, [selectedChatId]);
+
     useEffect(() => {
         if (!enabledMembers.some((member) => member.fileName === manualSpeaker)) {
             setManualSpeaker(enabledMembers[0]?.fileName ?? '');
@@ -145,6 +157,7 @@ export function GroupChatView({
     }, []);
 
     const generation = useGeneration({ kind: 'group', groupId: group.id }, selectedChatId, () => scrollToBottom(true));
+    const tts = useTts();
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -255,10 +268,33 @@ export function GroupChatView({
         scrollToBottom,
     ]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: speak once per completed reply
+    useEffect(() => {
+        const reply = generation.lastReply;
+        if (!reply || generation.replySequence === 0) {
+            return;
+        }
+        if (!tts.enabled || !tts.autoplay) {
+            return;
+        }
+        if (reply.extra?.stopped || reply.is_user || reply.is_system || isNarrator(reply)) {
+            return;
+        }
+        const text = prepareSpeechText(display(reply, Math.max(0, messages.length - 1), reply.mes), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (text) {
+            void tts.speak(messageSignature(reply), text, tts.voiceFor(speakerOf(reply)?.id));
+        }
+    }, [generation.replySequence]);
+
     const handleSend = (text: string) => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('send', text, group.activation_strategy === 2 ? manualSpeaker || undefined : undefined);
     };
 
@@ -278,6 +314,7 @@ export function GroupChatView({
         const outgoing = text.trim();
         setDraft('');
         if (outgoing) {
+            tts.stop();
             void generation.start(
                 'send',
                 outgoing,
@@ -296,13 +333,37 @@ export function GroupChatView({
             action.mode === 'trigger'
                 ? (action.speaker ?? (group.activation_strategy === 2 ? manualSpeaker || undefined : undefined))
                 : undefined;
+        tts.stop();
         void generation.start(action.mode, undefined, speaker);
+    };
+
+    const handleSpeak = (index: number, message: ChatMessage) => {
+        const key = messageSignature(message);
+        if (tts.speakingKey === key) {
+            tts.stop();
+            return;
+        }
+        if (!tts.enabled) {
+            return;
+        }
+        const narrator = isNarrator(message);
+        const text = prepareSpeechText(display(message, index, message.mes), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (!text) {
+            pushToast('This message has nothing to speak.', 'info');
+            return;
+        }
+        void tts.speak(key, text, tts.voiceFor(narrator ? undefined : speakerOf(message)?.id, narrator));
     };
 
     const handleRegenerate = () => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('regenerate');
     };
 
@@ -310,6 +371,7 @@ export function GroupChatView({
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('continue');
     };
 
@@ -326,6 +388,7 @@ export function GroupChatView({
         if (next < 0 || next >= swipes.length) {
             return;
         }
+        tts.stop();
         updateMessageMutation.mutate(
             { index, swipeId: next },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -336,12 +399,14 @@ export function GroupChatView({
         if (!window.confirm('Delete this message? This cannot be undone.')) {
             return;
         }
+        tts.stop();
         deleteMessageMutation.mutate(index, {
             onError: (error) => pushToast(error.message, 'error'),
         });
     };
 
     const handleEditMessage = (index: number, text: string) => {
+        tts.stop();
         updateMessageMutation.mutate(
             { index, message: text },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -610,6 +675,13 @@ export function GroupChatView({
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
+                                        onEditStart={tts.stop}
+                                        onSpeak={
+                                            tts.enabled && !message.is_user && !message.is_system
+                                                ? () => handleSpeak(index, message)
+                                                : undefined
+                                        }
+                                        speaking={tts.speakingKey === messageSignature(message)}
                                     />
                                 );
                             })}
