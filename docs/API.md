@@ -45,7 +45,7 @@ Common codes:
 | `TTS_FAILED`          | 502       | The speech provider request failed                     |
 | `IMAGE_DISABLED`      | 400       | Image generation is switched off                       |
 | `IMAGE_KEY_MISSING`   | 400       | The OpenAI image endpoint has no key                   |
-| `IMAGE_CONFIG`        | 400       | Image base URL or model is missing                     |
+| `IMAGE_CONFIG`        | 400       | Image base URL, model or ComfyUI workflow is invalid   |
 | `IMAGE_PROMPT_EMPTY`  | 400       | There are no messages to draft a prompt from           |
 | `IMAGE_PATH`          | 400       | Invalid gallery folder or file name                    |
 | `IMAGE_SCOPE`         | 400       | Neither a character nor a group was provided           |
@@ -681,7 +681,9 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
             "steps": 20,
             "cfgScale": 7,
             "sampler": "DDIM",
+            "scheduler": "normal",
             "seed": -1,
+            "comfyWorkflow": "{ \"3\": { \"class_type\": \"KSampler\", \"inputs\": { \"seed\": \"%seed%\", … } }, … }",
             "promptPrefix": "best quality, absurdres, aesthetic,",
             "negativePrompt": "lowres, bad anatomy, bad hands, …",
             "promptTemplate": "Ignore previous instructions. …",
@@ -701,7 +703,7 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
 
 `tts.enabled` is the master switch for play buttons and autoplay. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` call). `baseUrl`, `model`, `voice`, `format`, `speed` and `instructions` configure the remote backend; `rate` and `pitch` configure the browser one. `voice` is the default; empty uses the backend default (alloy for OpenAI, the browser voice for system). `characterVoices` maps a character id to a voice, and `narratorVoice` overrides the default for narrator notes. The three `skip`/`strip` flags control text cleaning. `ttsHasKey` reports whether a TTS key is stored; the key itself is never returned.
 
-`imageGeneration.enabled` is the master switch for the chat buttons and the gallery. `backend` is `automatic1111` (a local A1111/Forge `/sdapi/v1/txt2img` call) or `openai-compatible` (any `/images/generations` endpoint). `baseUrl` is the A1111 root or the OpenAI-style API root; `model` is required by OpenAI-style endpoints and is only a label for A1111. `width`/`height`, `steps`, `cfgScale`, `sampler` and `seed` map to the A1111 request; `seed` of `-1` asks for a random seed. `promptPrefix` and `negativePrompt` are added to every generation, and `promptTemplate` instructs the chat model when drafting from chat, over the last `contextMessages` messages. `imageHasKey` reports whether an image key is stored; the key is never returned.
+`imageGeneration.enabled` is the master switch for the chat buttons and the gallery. `backend` is `automatic1111` (a local A1111/Forge `/sdapi/v1/txt2img` call), `comfyui` (an API-format workflow posted to `/prompt`) or `openai-compatible` (any `/images/generations` endpoint). `baseUrl` is the A1111/ComfyUI root or the OpenAI-style API root. `model` is required by OpenAI-style endpoints, is the checkpoint file name substituted for ComfyUI's `%model%`, and is only a label for A1111. `width`/`height`, `steps`, `cfgScale`, `sampler` and `seed` map to the backend request; `seed` of `-1` asks for a random seed. `scheduler` is the ComfyUI KSampler scheduler and is ignored by the other two. `comfyWorkflow` is the ComfyUI graph in API format; its `%prompt%`, `%negative_prompt%`, `%seed%`, `%width%`, `%height%`, `%steps%`, `%scale%`, `%sampler%`, `%scheduler%` and `%model%` placeholders are filled before the graph is posted, with numeric placeholders becoming JSON numbers. A workflow containing `nodes` and `links` arrays (interface format) is rejected with `400 IMAGE_CONFIG`. `promptPrefix` and `negativePrompt` are added to every generation, and `promptTemplate` instructs the chat model when drafting from chat, over the last `contextMessages` messages. `imageHasKey` reports whether an image key is stored; the key is never returned. For ComfyUI an optional key is sent as HTTP Basic auth.
 
 ### `PATCH /api/settings`
 
@@ -1155,6 +1157,8 @@ Errors: `400 IMAGE_DISABLED`, `400 IMAGE_PROMPT_EMPTY` when there are no message
 
 `characterId` or `groupId` picks the gallery folder; the server resolves the character's sanitized display name or the group id. The configured `promptPrefix` is added before the prompt. The image is written to `data/user/images/<folder>/<file>.<ext>` with a `<file>.json` sidecar holding the prompt, negative prompt, backend, model, dimensions, seed and creation time.
 
+For `backend: "comfyui"` the server fills the placeholders in `comfyWorkflow`, posts `{ "prompt": <graph>, "client_id": "<uuid>" }` to `<baseUrl>/prompt`, polls `<baseUrl>/history/<prompt_id>` every 500 ms, and downloads the first output image from `<baseUrl>/view`. The job gets five minutes; if the browser disconnects or the job times out, the server posts `<baseUrl>/interrupt` for the job it queued. A graph rejected at validation returns the offending node and value from `node_errors`; a failed node's `execution_error` traceback is included in the `502` message.
+
 Response:
 
 ```json
@@ -1175,7 +1179,7 @@ Response:
 }
 ```
 
-Errors: `400 IMAGE_DISABLED`, `400 IMAGE_KEY_MISSING` when an `api.openai.com` endpoint has no key, `400 IMAGE_CONFIG` for an invalid base URL or a missing OpenAI model, and `502 IMAGE_FAILED` when the provider fails. A `url` response from an OpenAI-compatible endpoint is downloaded server-side with the same 25 MB cap.
+Errors: `400 IMAGE_DISABLED`, `400 IMAGE_KEY_MISSING` when an `api.openai.com` endpoint has no key, `400 IMAGE_CONFIG` for an invalid base URL, a missing OpenAI model or an invalid/unusable ComfyUI workflow, and `502 IMAGE_FAILED` when the provider fails. A `url` response from an OpenAI-compatible endpoint is downloaded server-side with the same 25 MB cap.
 
 ### `POST /api/images/attach`
 
@@ -1189,7 +1193,7 @@ The new message has `mes` `[<name> sends a picture that contains: <prompt>].` an
 
 ### `POST /api/images/test`
 
-Checks the saved backend without generating an image. A1111 calls `GET /sdapi/v1/options`; an OpenAI-compatible backend calls `GET /models` (advisory — a server can generate images without that route). Response `{ "ok": true }` or `502 IMAGE_FAILED`.
+Checks the saved backend without generating an image. A1111 calls `GET /sdapi/v1/options`; ComfyUI calls `GET /system_stats`; an OpenAI-compatible backend calls `GET /models` (advisory — a server can generate images without that route). Response `{ "ok": true }` or `502 IMAGE_FAILED`.
 
 ### `GET /api/images?characterId=<id>` or `?groupId=<id>`
 

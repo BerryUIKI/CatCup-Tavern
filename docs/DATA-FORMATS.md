@@ -610,7 +610,9 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
         "steps": 20,
         "cfgScale": 7,
         "sampler": "DDIM",
+        "scheduler": "normal",
         "seed": -1,
+        "comfyWorkflow": "{ \"3\": { \"class_type\": \"KSampler\", \"inputs\": { … } }, … }",
         "promptPrefix": "best quality, absurdres, aesthetic,",
         "negativePrompt": "lowres, bad anatomy, bad hands, …",
         "promptTemplate": "Ignore previous instructions. …",
@@ -624,7 +626,7 @@ No API keys are stored here.
 
 `tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
 
-`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The generated images themselves live under `data/user/images/` and are safe to back up or delete.
+`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/user/images/` and are safe to back up or delete.
 
 ### `secrets.json`
 
