@@ -21,6 +21,12 @@ data/
 ├── worlds/                    # World Info JSON
 ├── presets/                   # ST OpenAI presets
 ├── quickreplies/              # ST Quick Replies v2 sets, one JSON per set
+├── user/
+│   └── images/                # generated gallery images, ST's userImages root
+│       ├── Seraphina/
+│       │   ├── image-1762900000000-a1b2c3d4.png
+│       │   └── image-1762900000000-a1b2c3d4.png.json
+│       └── 1762839291123/     # a group's gallery, named by group id
 ├── regex.json                 # Regex scripts (one ordered list)
 ├── settings.json
 ├── secrets.json               # server-only; never returned by the API
@@ -31,15 +37,16 @@ The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data
 
 ### Identity rules
 
-| Object          | ID                                 | Notes                                                                                         |
-| --------------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| Character       | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
-| Avatar          | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
-| Chat            | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
-| Group           | JSON file name without `.json`     | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
-| Group chat      | JSONL file name without `.jsonl`   | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
-| Quick reply set | JSON file name without `.json`     | `data/quickreplies/<name>.json`; the body's `name` is what the settings set list links to     |
-| Message         | Zero-based array index             | The JSONL header is not a message                                                             |
+| Object          | ID                                   | Notes                                                                                         |
+| --------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Character       | File name without `.png` / `.json`   | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
+| Avatar          | `/api/characters/<id>/avatar`        | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
+| Chat            | JSONL file name without `.jsonl`     | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
+| Group           | JSON file name without `.json`       | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
+| Group chat      | JSONL file name without `.jsonl`     | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
+| Quick reply set | JSON file name without `.json`       | `data/quickreplies/<name>.json`; the body's `name` is what the settings set list links to     |
+| Gallery folder  | Sanitized character name or group id | `data/user/images/<folder>/`; ST names the folder after the character name or group           |
+| Message         | Zero-based array index               | The JSONL header is not a message                                                             |
 
 ## Character cards
 
@@ -165,19 +172,23 @@ A quick reply `/sys` writes a narrator message: `is_user: false`, `is_system` ab
 
 ### `extra` fields written by CatCup
 
-| Field          | Type       | Meaning                                                                            |
-| -------------- | ---------- | ---------------------------------------------------------------------------------- |
-| `api`          | string     | Provider kind used for generation (`openai`, `anthropic`, `ollama`, `custom`, ...) |
-| `model`        | string     | Model ID                                                                           |
-| `reasoning`    | string     | Reasoning/thinking text returned by the provider                                   |
-| `gen_started`  | ISO string | Generation start time                                                              |
-| `gen_finished` | ISO string | Generation finish time                                                             |
-| `stopped`      | boolean    | Partial reply saved after stop/disconnect                                          |
-| `swipes`       | string[]   | Alternative assistant replies                                                      |
-| `swipe_id`     | number     | Zero-based selected swipe index                                                    |
-| `swipe_info`   | unknown[]  | Per-swipe metadata objects                                                         |
-| `gen_id`       | number     | Group chats: the generation batch id SillyTavern uses to group one turn's replies  |
-| `memory`       | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
+| Field           | Type       | Meaning                                                                            |
+| --------------- | ---------- | ---------------------------------------------------------------------------------- |
+| `api`           | string     | Provider kind used for generation (`openai`, `anthropic`, `ollama`, `custom`, ...) |
+| `model`         | string     | Model ID                                                                           |
+| `reasoning`     | string     | Reasoning/thinking text returned by the provider                                   |
+| `gen_started`   | ISO string | Generation start time                                                              |
+| `gen_finished`  | ISO string | Generation finish time                                                             |
+| `stopped`       | boolean    | Partial reply saved after stop/disconnect                                          |
+| `swipes`        | string[]   | Alternative assistant replies                                                      |
+| `swipe_id`      | number     | Zero-based selected swipe index                                                    |
+| `swipe_info`    | unknown[]  | Per-swipe metadata objects                                                         |
+| `gen_id`        | number     | Group chats: the generation batch id SillyTavern uses to group one turn's replies  |
+| `memory`        | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
+| `media`         | object[]   | Image attachments in SillyTavern's `MediaAttachment` shape                         |
+| `media_index`   | number     | Selected entry in `media`                                                          |
+| `media_display` | string     | `gallery` or `list`, as SillyTavern stores it                                      |
+| `inline_image`  | boolean    | Whether the image renders full width instead of as a gallery thumbnail             |
 
 ### Swipes
 
@@ -221,6 +232,36 @@ The latest `extra.memory` in the chat is the one in effect; older ones remain in
 Editing a message that carries a summary, switching its swipe, switching the opening greeting, continuing the message or regenerating it removes that summary: it no longer describes the stored text.
 
 Group chats store summaries the same way; the transcript keeps each member's name.
+
+### Image messages
+
+An image inserted from the gallery is a normal assistant message carrying SillyTavern's media attachment:
+
+```json
+{
+    "name": "Seraphina",
+    "is_user": false,
+    "send_date": "2026-11-12T05:00:00.000Z",
+    "mes": "[Seraphina sends a picture that contains: a knight in a candle-lit tavern].",
+    "extra": {
+        "media": [
+            {
+                "url": "user/images/Seraphina/image-1762900000000-a1b2c3d4.png",
+                "type": "image",
+                "title": "a knight in a candle-lit tavern",
+                "negative": "lowres, bad anatomy",
+                "generation_type": -1,
+                "source": "generated"
+            }
+        ],
+        "media_display": "gallery",
+        "media_index": 0,
+        "inline_image": false
+    }
+}
+```
+
+`url` is SillyTavern's client-relative path, not an API route; CatCup maps it to `/api/images/<folder>/<file>` when rendering. The file lives in `data/user/images/<folder>/`, where the folder is the sanitized character name for a single chat and the group id for a group chat. A `<file>.json` sidecar stores CatCup's metadata — `prompt`, `negativePrompt`, `backend`, `model`, `width`, `height`, `seed` and `createdAt`. SillyTavern's gallery ignores files that are not images, so the sidecar does not disturb it. CatCup writes one media entry per message and renders older SillyTavern messages with several entries using the stored `media_index`.
 
 ### File naming and folder rules
 
@@ -559,6 +600,22 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
         "stripTags": true,
         "stripAsterisks": true
     },
+    "imageGeneration": {
+        "enabled": false,
+        "backend": "automatic1111",
+        "baseUrl": "http://127.0.0.1:7860",
+        "model": "",
+        "width": 512,
+        "height": 512,
+        "steps": 20,
+        "cfgScale": 7,
+        "sampler": "DDIM",
+        "seed": -1,
+        "promptPrefix": "best quality, absurdres, aesthetic,",
+        "negativePrompt": "lowres, bad anatomy, bad hands, …",
+        "promptTemplate": "Ignore previous instructions. …",
+        "contextMessages": 10
+    },
     "ui": { "language": "en", "theme": "tavern-dark" }
 }
 ```
@@ -567,9 +624,11 @@ No API keys are stored here.
 
 `tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
 
+`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The generated images themselves live under `data/user/images/` and are safe to back up or delete.
+
 ### `secrets.json`
 
-A map of provider ID to API key, plus the fixed `tts` entry used by the text-to-speech adapter. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
+A map of provider ID to API key, plus the fixed `tts` entry used by the text-to-speech adapter and the fixed `image` entry used by the image generation adapters. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
 
 ### `auth.json`
 

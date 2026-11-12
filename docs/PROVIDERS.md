@@ -178,10 +178,24 @@ Settings → TTS has two backends:
 
 The default voice is used for any character without an entry in the character voice map; `narratorVoice` overrides it for narrator notes. Autoplay speaks each newly completed assistant reply. Text is cleaned of code blocks, HTML tags, images, links and markdown emphasis before it is sent. The full field list is in [API.md](API.md#settings); the text-preparation behavior is described in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
 
+## Image generation
+
+Settings → Images has two backends:
+
+- **Automatic1111 / Forge.** Calls `POST <baseUrl>/sdapi/v1/txt2img` with the prompt, negative prompt, steps, CFG scale, dimensions, sampler and optional seed. The response is `images[0]`, either raw base64 or a data URL. No key is needed; if one is configured it is sent as HTTP Basic auth, so enter `user:password`. Save & test calls `GET /sdapi/v1/options`.
+- **OpenAI-compatible endpoint.** Calls `POST <baseUrl>/images/generations` with the model, prompt, `n: 1` and a model-appropriate size (`dall-e-3`, `gpt-image-*` and other models map differently). DALL·E models are asked for `response_format: b64_json`; the gpt-image family returns base64 by default. A response that contains an image URL instead is downloaded server-side with the same size and protocol limits. The key is stored in `data/secrets.json` under `image` and is required only for an `api.openai.com` host. Save & test calls `GET /models`, which is advisory: a server can generate images without implementing that route.
+
+The prompt sent to the backend is `imageGeneration.promptPrefix` followed by the user's prompt. The negative prompt applies to A1111. **Draft from chat** asks the active chat provider for a prompt using `promptTemplate` over the last `contextMessages` messages; it is an ordinary chat completion and counts against that provider's usage.
+
+Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB and a generation request at 180 seconds. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
+
 ## Current limitations
 
-- Text chat and speech output only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
+- Text chat, speech output and image output only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
 - Text-to-speech supports only the two backends above; SillyTavern's other TTS provider extensions are not implemented.
+- Image generation supports Automatic1111/Forge and OpenAI-compatible endpoints in this release. ComfyUI workflow graphs, Stability, NovelAI and the other ST image sources are not implemented; ComfyUI is the next adapter planned.
+- There is one image generation configuration at a time; per-character backends, image-to-image, inpainting, upscaling, image upload and automatic per-message generation are not available.
+- Images are generated one at a time; the gallery has no thumbnails, folders or bulk export yet.
 - `max_tokens` is sent to OpenAI-compatible providers; models that require `max_completion_tokens` may need a compatibility flag in a future adapter.
 - Only string reasoning fields are mapped; provider-specific reasoning formats may be ignored.
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
@@ -193,7 +207,7 @@ The default voice is used for any character without an entry in the character vo
 ## Security
 
 - API keys are stored server-side in `data/secrets.json` and are never returned by the API.
-- The client only sees `hasKey` for providers and `ttsHasKey` for text to speech.
+- The client only sees `hasKey` for providers, `ttsHasKey` for text to speech and `imageHasKey` for image generation.
 - Provider errors are passed to the UI after being truncated; avoid including keys in custom headers where possible.
 - Do not put keys in `settings.json`, screenshots, logs or issue reports.
 - See [SECURITY.md](SECURITY.md) for the full model.

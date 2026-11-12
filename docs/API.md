@@ -43,6 +43,14 @@ Common codes:
 | `TTS_CONFIG`          | 400       | TTS base URL or model is missing                       |
 | `TTS_SYSTEM_BACKEND`  | 400       | The browser TTS backend cannot be called on the server |
 | `TTS_FAILED`          | 502       | The speech provider request failed                     |
+| `IMAGE_DISABLED`      | 400       | Image generation is switched off                       |
+| `IMAGE_KEY_MISSING`   | 400       | The OpenAI image endpoint has no key                   |
+| `IMAGE_CONFIG`        | 400       | Image base URL or model is missing                     |
+| `IMAGE_PROMPT_EMPTY`  | 400       | There are no messages to draft a prompt from           |
+| `IMAGE_PATH`          | 400       | Invalid gallery folder or file name                    |
+| `IMAGE_SCOPE`         | 400       | Neither a character nor a group was provided           |
+| `IMAGE_FAILED`        | 502       | The image provider request failed                      |
+| `IMAGE_PROMPT_FAILED` | 502       | The chat model could not draft an image prompt         |
 | `PAYLOAD_TOO_LARGE`   | 413       | Upload or request body too large                       |
 | `PROVIDER_ERROR`      | 502       | Upstream provider request failed                       |
 | —                     | 500       | Unhandled server error                                 |
@@ -663,7 +671,24 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
             "stripTags": true,
             "stripAsterisks": true
         },
-        "ttsHasKey": false
+        "imageGeneration": {
+            "enabled": false,
+            "backend": "automatic1111",
+            "baseUrl": "http://127.0.0.1:7860",
+            "model": "",
+            "width": 512,
+            "height": 512,
+            "steps": 20,
+            "cfgScale": 7,
+            "sampler": "DDIM",
+            "seed": -1,
+            "promptPrefix": "best quality, absurdres, aesthetic,",
+            "negativePrompt": "lowres, bad anatomy, bad hands, …",
+            "promptTemplate": "Ignore previous instructions. …",
+            "contextMessages": 10
+        },
+        "ttsHasKey": false,
+        "imageHasKey": false
     }
 }
 ```
@@ -675,6 +700,8 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
 `quickReplies.enabled` shows the quick reply bar above the message box. `setList` is the bar's order; each `set` is a set's name and `isVisible` hides its buttons without removing it. A chat can add its own links in `chat_metadata.quickReply`, in SillyTavern's shape; those are read but have no editor yet.
 
 `tts.enabled` is the master switch for play buttons and autoplay. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` call). `baseUrl`, `model`, `voice`, `format`, `speed` and `instructions` configure the remote backend; `rate` and `pitch` configure the browser one. `voice` is the default; empty uses the backend default (alloy for OpenAI, the browser voice for system). `characterVoices` maps a character id to a voice, and `narratorVoice` overrides the default for narrator notes. The three `skip`/`strip` flags control text cleaning. `ttsHasKey` reports whether a TTS key is stored; the key itself is never returned.
+
+`imageGeneration.enabled` is the master switch for the chat buttons and the gallery. `backend` is `automatic1111` (a local A1111/Forge `/sdapi/v1/txt2img` call) or `openai-compatible` (any `/images/generations` endpoint). `baseUrl` is the A1111 root or the OpenAI-style API root; `model` is required by OpenAI-style endpoints and is only a label for A1111. `width`/`height`, `steps`, `cfgScale`, `sampler` and `seed` map to the A1111 request; `seed` of `-1` asks for a random seed. `promptPrefix` and `negativePrompt` are added to every generation, and `promptTemplate` instructs the chat model when drafting from chat, over the last `contextMessages` messages. `imageHasKey` reports whether an image key is stored; the key is never returned.
 
 ### `PATCH /api/settings`
 
@@ -692,13 +719,15 @@ Partial update. All fields are optional:
     "memory": { "enabled": true, "promptInterval": 8, "position": 1, "depth": 2 },
     "quickReplies": { "enabled": true, "setList": [{ "set": "Combat", "isVisible": true }] },
     "tts": { "enabled": true, "backend": "openai-compatible", "voice": "nova" },
-    "ttsApiKey": "sk-…"
+    "imageGeneration": { "enabled": true, "backend": "automatic1111", "width": 768, "height": 512 },
+    "ttsApiKey": "sk-…",
+    "imageApiKey": "user:password"
 }
 ```
 
 `activeProviderId` must reference an existing provider. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
 
-`ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`.
+`ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`. `imageApiKey` is the same for image generation, stored under `image` and reported as `imageHasKey`.
 
 ## Providers
 
@@ -1101,6 +1130,78 @@ The browser backend (`tts.backend = "system"`) speaks through `speechSynthesis` 
 Errors: `400 TTS_DISABLED` when text to speech is off, `400 TTS_SYSTEM_BACKEND` when the browser backend is selected, `400 TTS_KEY_MISSING` when `baseUrl` is an `api.openai.com` host and no key is stored, `400 TTS_CONFIG` when the base URL or model is empty, and `502 TTS_FAILED` when the upstream request fails or returns empty or JSON audio.
 
 Audio is generated on demand and is not written to the data directory.
+
+## Image generation
+
+Image generation runs on the server. The browser sends a prompt and receives the stored image's metadata; the provider only sees the chat when the user asks for a prompt to be drafted. The key is write-only in `data/secrets.json` under `image`, and `imageHasKey` reports whether one exists. A gallery folder is the sanitized character name for a single chat or the group id for a group chat.
+
+### `POST /api/images/draft`
+
+Asks the active chat provider for an image prompt from the recent conversation.
+
+```json
+{ "characterId": "Aria", "chatId": "2026-11-12", "messageIndex": 12 }
+```
+
+`characterId` and `groupId` are mutually exclusive; `chatId` is required. `messageIndex` includes history up to and including that message; without it the whole chat is used. Response: `{ "prompt": "a moonlit tavern, two travelers, warm light" }`. The result is cleaned to a comma-separated tag list; the request is limited to `imageGeneration.contextMessages` messages.
+
+Errors: `400 IMAGE_DISABLED`, `400 IMAGE_PROMPT_EMPTY` when there are no messages, and `502 IMAGE_PROMPT_FAILED` when the chat provider fails or returns nothing usable.
+
+### `POST /api/images/generate`
+
+```json
+{ "characterId": "Aria", "prompt": "a knight in a candle-lit tavern" }
+```
+
+`characterId` or `groupId` picks the gallery folder; the server resolves the character's sanitized display name or the group id. The configured `promptPrefix` is added before the prompt. The image is written to `data/user/images/<folder>/<file>.<ext>` with a `<file>.json` sidecar holding the prompt, negative prompt, backend, model, dimensions, seed and creation time.
+
+Response:
+
+```json
+{
+    "image": {
+        "folder": "Aria",
+        "file": "image-1762900000000-a1b2c3d4.png",
+        "url": "user/images/Aria/image-1762900000000-a1b2c3d4.png",
+        "prompt": "best quality, a knight in a candle-lit tavern",
+        "negativePrompt": "lowres, blurry",
+        "backend": "automatic1111",
+        "model": "",
+        "width": 512,
+        "height": 512,
+        "seed": 4242,
+        "createdAt": "2026-11-12T05:00:00.000Z"
+    }
+}
+```
+
+Errors: `400 IMAGE_DISABLED`, `400 IMAGE_KEY_MISSING` when an `api.openai.com` endpoint has no key, `400 IMAGE_CONFIG` for an invalid base URL or a missing OpenAI model, and `502 IMAGE_FAILED` when the provider fails. A `url` response from an OpenAI-compatible endpoint is downloaded server-side with the same 25 MB cap.
+
+### `POST /api/images/attach`
+
+Posts a generated image into the chat as a SillyTavern media message.
+
+```json
+{ "characterId": "Aria", "chatId": "2026-11-12", "file": "image-….png", "prompt": "a knight" }
+```
+
+The new message has `mes` `[<name> sends a picture that contains: <prompt>].` and `extra.media` with `{ url: "user/images/<folder>/<file>", type: "image", title, negative, generation_type: -1, source: "generated" }`, plus `media_index: 0`, `media_display: "gallery"` and `inline_image: false`. The group route appends to the group chat file. Response: `{ "message": ChatMessage }`.
+
+### `POST /api/images/test`
+
+Checks the saved backend without generating an image. A1111 calls `GET /sdapi/v1/options`; an OpenAI-compatible backend calls `GET /models` (advisory — a server can generate images without that route). Response `{ "ok": true }` or `502 IMAGE_FAILED`.
+
+### `GET /api/images?characterId=<id>` or `?groupId=<id>`
+
+Lists the character's or group's gallery, newest first. Response: `{ "images": [GeneratedImage] }`. A missing gallery returns an empty list; an invalid character or group id returns `400 IMAGE_PATH`.
+
+### `GET /api/images/:folder/:file`
+
+Returns the image bytes with the correct `Content-Type`, `Cache-Control: private, max-age=3600` and `X-Content-Type-Options: nosniff`. Authentication is required. Only PNG, JPEG and WebP files are accepted.
+
+### `DELETE /api/images/:folder/:file`
+
+Deletes the image and its sidecar. Messages that already reference it keep the reference. Response: `{ "ok": true }`; `404` when the image does not exist.
 
 ## Notes and limits
 

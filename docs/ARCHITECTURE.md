@@ -67,11 +67,12 @@ apps/server/
     cards/               PNG tEXt / JSON v2-v3 parsing
     generation/          shared SSE generation stream and stop registry
     group/               member resolution, speaker selection, reply cleanup
+    images/              image adapters, prompt drafting, connection test
     memory/              rolling summaries: schedule, request building, injection
     providers/           provider adapters (normalized streaming chunks)
     prompt/              prompt assembly, macros, token budget
     quickreplies/        quick reply parsing target, command execution
-    routes/              auth / characters / chats / generate / groups / memory / quick replies / tts / providers / settings
+    routes/              auth / characters / chats / generate / groups / images / memory / quick replies / tts / providers / settings
     security/            scrypt password, HMAC session
     storage/             ST-compatible file storage, atomic writes, file locks
     sse.ts               client SSE writer
@@ -83,7 +84,7 @@ apps/web/
     lib/                 fetch / SSE / formatting
     store/               Zustand
 packages/shared/
-  src/schemas/           character / chat / worldinfo / preset / provider / settings / api
+  src/schemas/           character / chat / worldinfo / preset / provider / settings / images / api
 ```
 
 ## 5. Data layer (SillyTavern compatible)
@@ -103,9 +104,10 @@ data/
 ├── worlds/                    # ST World Info JSON
 ├── presets/                   # ST OpenAI preset JSON
 ├── quickreplies/              # ST Quick Replies v2 sets
+├── user/images/               # generated gallery images, per character or group
 ├── regex.json                 # Regex scripts
 ├── settings.json
-├── secrets.json               # API keys and the TTS key, server-only
+├── secrets.json               # API keys, the TTS key and the image key, server-only
 └── auth.json                  # password hash + session secret
 ```
 
@@ -157,6 +159,12 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | POST         | `/api/chats/…/quick-replies/execute`          | run a quick reply, returns client actions  |
 | POST         | `/api/groups/…/quick-replies/execute`         | the same for a group chat                  |
 | POST         | `/api/tts/speak`                              | text to speech; returns audio bytes        |
+| POST         | `/api/images/draft`                           | draft an image prompt from the chat        |
+| POST         | `/api/images/generate`                        | generate and store one gallery image       |
+| POST         | `/api/images/attach`                          | append a generated image message to a chat |
+| POST         | `/api/images/test`                            | check the saved image backend              |
+| GET          | `/api/images`                                 | list a character or group gallery          |
+| GET/DELETE   | `/api/images/:folder/:file`                   | serve or delete one image                  |
 | GET/PATCH    | `/api/settings`                               | app settings                               |
 | CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
 | POST         | `/api/providers/:id/test`                     | connectivity test                          |
@@ -225,7 +233,7 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 - Password: `scrypt` (N=16384, r=8, p=1), constant-time comparison.
 - Session: HMAC-SHA256 signed cookie, `HttpOnly` + `SameSite=Lax`, 30-day default.
 - First-run setup accepts loopback requests only.
-- API keys: only `data/secrets.json`; responses expose `hasKey` only (providers) or `ttsHasKey` (text to speech); logs redact `authorization`, `cookie` and `x-api-key`.
+- API keys: only `data/secrets.json`; responses expose `hasKey` only (providers), `ttsHasKey` (text to speech) or `imageHasKey` (image generation); logs redact `authorization`, `cookie` and `x-api-key`.
 - Paths: every `:id` / `:chatId` passes through `resolveInside()` to block traversal.
 - Login rate limiting; put the LAN server behind HTTPS when exposing it beyond a trusted network.
 - Uploads: 20 MB per file, `.png` / `.json` only.
