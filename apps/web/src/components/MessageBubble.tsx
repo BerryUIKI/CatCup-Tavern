@@ -56,6 +56,8 @@ export function MessageBubble({
     onBranch,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
+    /** SillyTavern narrator messages carry this type but are not user messages. */
+    const isNarrator = message.extra?.type === 'narrator';
     const reasoning = displayReasoning ?? (typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '');
     const shown = displayText ?? message.mes;
     const rawSwipes = message.extra?.swipes;
@@ -93,8 +95,8 @@ export function MessageBubble({
             data-message-index={index}
         >
             <CharacterAvatar
-                name={isUser ? message.name || 'You' : characterName}
-                src={isUser ? null : avatarUrl}
+                name={isUser ? message.name || 'You' : isNarrator ? message.name || 'System' : characterName}
+                src={isUser || isNarrator ? null : avatarUrl}
                 size={38}
                 className="mt-1"
             />
@@ -107,7 +109,7 @@ export function MessageBubble({
             >
                 <header className={cn('mb-1 flex items-center gap-2 px-1 text-xs', isUser && 'flex-row-reverse')}>
                     <span className="font-medium text-parchment-dim">
-                        {message.name || (isUser ? 'You' : characterName)}
+                        {message.name || (isUser ? 'You' : isNarrator ? 'System' : characterName)}
                     </span>
                     {message.send_date ? (
                         <span className="text-[10px] text-muted/60">{formatMessageTime(message.send_date)}</span>
@@ -159,9 +161,11 @@ export function MessageBubble({
                     <div
                         className={cn(
                             'w-full rounded-2xl border px-4 py-3 text-[15px] shadow-sm',
-                            isUser
-                                ? 'border-amber/20 bg-amber/10 text-parchment'
-                                : 'border-line/80 bg-surface/85 text-parchment',
+                            isNarrator
+                                ? 'border-line/50 bg-ink-soft/50 text-parchment-dim italic'
+                                : isUser
+                                  ? 'border-amber/20 bg-amber/10 text-parchment'
+                                  : 'border-line/80 bg-surface/85 text-parchment',
                         )}
                     >
                         {shown.trim() ? (

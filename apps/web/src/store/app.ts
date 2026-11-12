@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ToastTone = 'info' | 'success' | 'error';
+export type ToastTone = 'info' | 'success' | 'warning' | 'error';
 
 export type LibraryTab = 'characters' | 'groups';
 
@@ -8,6 +8,8 @@ export interface ToastItem {
     id: string;
     message: string;
     tone: ToastTone;
+    /** Optional heading, used by quick reply `/echo title=`. */
+    title?: string;
 }
 
 interface AppState {
@@ -24,7 +26,7 @@ interface AppState {
     setLibraryTab: (tab: LibraryTab) => void;
     setSettingsOpen: (open: boolean) => void;
     setSidebarOpen: (open: boolean) => void;
-    pushToast: (message: string, tone?: ToastTone) => void;
+    pushToast: (message: string, tone?: ToastTone, title?: string) => void;
     dismissToast: (id: string) => void;
 }
 
@@ -60,9 +62,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     setSettingsOpen: (open) => set({ settingsOpen: open }),
     setSidebarOpen: (open) => set({ sidebarOpen: open }),
 
-    pushToast: (message, tone = 'info') => {
+    pushToast: (message, tone = 'info', title) => {
         const id = crypto.randomUUID();
-        set((state) => ({ toasts: [...state.toasts, { id, message, tone }] }));
+        set((state) => ({
+            toasts: [...state.toasts, { id, message, tone, ...(title ? { title } : {}) }],
+        }));
         window.setTimeout(() => get().dismissToast(id), 4500);
     },
 

@@ -7,6 +7,7 @@ import {
     type GroupView,
     getLatestSummary,
     type Persona,
+    type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
@@ -33,6 +34,7 @@ import { EmptyState } from './EmptyState';
 import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
+import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
 
 interface GroupChatViewProps {
@@ -111,7 +113,21 @@ export function GroupChatView({
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [draft, setDraft] = useState('');
+    const [focusRequest, setFocusRequest] = useState(0);
+    // A quick reply result arrives after a round trip; read the latest draft
+    // instead of the one captured when the button was clicked.
+    const draftRef = useRef(draft);
+    useEffect(() => {
+        draftRef.current = draft;
+    }, [draft]);
     const chatSummary = getLatestSummary(chatQuery.data?.messages ?? []);
+
+    // A quick reply can leave text in the box; switching chats starts fresh.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only a different chat should clear the draft
+    useEffect(() => {
+        setDraft('');
+    }, [selectedChatId]);
 
     useEffect(() => {
         if (!enabledMembers.some((member) => member.fileName === manualSpeaker)) {
@@ -244,6 +260,43 @@ export function GroupChatView({
             return;
         }
         void generation.start('send', text, group.activation_strategy === 2 ? manualSpeaker || undefined : undefined);
+    };
+
+    const handleQuickReplyInput = (action: Extract<QuickReplyAction, { type: 'input' }>) => {
+        const current = draftRef.current;
+        let text = action.text;
+        if (action.inject) {
+            text = action.placeBefore
+                ? [action.text, current].filter(Boolean).join(' ')
+                : [current, action.text].filter(Boolean).join(' ');
+        }
+        if (!action.submit) {
+            setDraft(text);
+            setFocusRequest((current) => current + 1);
+            return;
+        }
+        const outgoing = text.trim();
+        setDraft('');
+        if (outgoing) {
+            void generation.start(
+                'send',
+                outgoing,
+                group.activation_strategy === 2 ? manualSpeaker || undefined : undefined,
+            );
+        }
+    };
+
+    const handleQuickReplyGenerate = (action: Extract<QuickReplyAction, { type: 'generate' }>) => {
+        if (!selectedChatId) {
+            return;
+        }
+        // `/trigger <member>` names a speaker; a manual group otherwise uses the
+        // member picked in the studio strip.
+        const speaker =
+            action.mode === 'trigger'
+                ? (action.speaker ?? (group.activation_strategy === 2 ? manualSpeaker || undefined : undefined))
+                : undefined;
+        void generation.start(action.mode, undefined, speaker);
     };
 
     const handleRegenerate = () => {
@@ -625,6 +678,14 @@ export function GroupChatView({
                 </div>
             ) : null}
 
+            <QuickReplyBar
+                target={selectedChatId ? { kind: 'group', id: group.id, chatId: selectedChatId } : null}
+                metadata={chatQuery.data?.header.chat_metadata}
+                disabled={!selectedChatId || enabledMembers.length === 0 || generation.streaming}
+                onInput={handleQuickReplyInput}
+                onGenerate={handleQuickReplyGenerate}
+            />
+
             {group.activation_strategy === 2 ? (
                 <div className="bg-ink/70 px-3 pt-2 md:px-6">
                     <div className="mx-auto flex w-full max-w-4xl items-center gap-2 text-xs text-muted">
@@ -655,6 +716,9 @@ export function GroupChatView({
                 }
                 disabled={!selectedChatId || enabledMembers.length === 0}
                 streaming={generation.streaming}
+                value={draft}
+                onChange={setDraft}
+                focusRequest={focusRequest}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
             />
