@@ -15,7 +15,7 @@ const WORKS = [
     'OpenAI presets: import, activate, and change prompt order and injection positions.',
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
     'Several personas, with one default and a per-chat choice.',
-    'Edit character cards and export them back to PNG or JSON.',
+    'Edit character cards and export them back to PNG or JSON, or as a CharX package with its assets.',
     'Windows desktop app that installs without an administrator and carries its own runtime.',
 ];
 
@@ -23,7 +23,6 @@ const DOES_NOT_WORK = [
     'STscript, the full Quick Replies engine (auto-execution, context menus, per-character sets) and typed slash commands.',
     'SillyTavern extensions — none of them load.',
     'Vector/embedding memory for long chats; the rolling summary is the only long-term memory.',
-    'CharX (.charx) import and export.',
     'Group chats answer one member per turn with that member’s own card; SillyTavern’s append modes, automatic turns and multi-member reply batches are not implemented.',
     'Regex scripts are global only: SillyTavern’s per-character and per-preset scopes are not implemented.',
     'Personas have a name and a description only — no avatars and no per-persona injection settings.',
