@@ -683,7 +683,10 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         <div role="tablist" aria-orientation="vertical" onKeyDown={handleNavKeyDown}>
                             {GROUPS.map((group) => (
                                 <div key={group} role="presentation" className="mb-4 last:mb-0">
-                                    <p className="mb-1 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted">
+                                    <p
+                                        role="presentation"
+                                        className="mb-1 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
+                                    >
                                         {group}
                                     </p>
                                     <div className="space-y-0.5">

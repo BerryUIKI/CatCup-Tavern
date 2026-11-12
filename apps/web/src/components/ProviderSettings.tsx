@@ -787,7 +787,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                         />
                                                     ) : null}
                                                     {!provider.enabled ? (
-                                                        <span className="rounded-full border border-line px-1.5 py-0.5 text-[10px] text-muted">
+                                                        <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">
                                                             Off
                                                         </span>
                                                     ) : null}
