@@ -24,3 +24,7 @@ export function forbidden(message = 'Forbidden', code = 'FORBIDDEN'): HttpError 
 export function notFound(message = 'Not found'): HttpError {
     return new HttpError(404, message, 'NOT_FOUND');
 }
+
+export function conflict(message: string, code = 'CONFLICT'): HttpError {
+    return new HttpError(409, message, code);
+}

@@ -22,6 +22,7 @@ import { registerImportRoutes } from './routes/import.js';
 import { registerMemoryRoutes } from './routes/memory.js';
 import { registerPresetRoutes } from './routes/presets.js';
 import { registerProviderRoutes } from './routes/providers.js';
+import { registerQuickReplyRoutes } from './routes/quickReplies.js';
 import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerWorldRoutes } from './routes/worlds.js';
@@ -138,6 +139,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerPresetRoutes(app);
     await registerWorldRoutes(app);
     await registerRegexRoutes(app);
+    await registerQuickReplyRoutes(app);
     await registerImportRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);

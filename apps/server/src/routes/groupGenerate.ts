@@ -50,7 +50,7 @@ const groupChatParamsSchema = groupParamsSchema.extend({
 });
 
 const generateSchema = z.object({
-    action: z.enum(['send', 'regenerate', 'continue']),
+    action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
     message: z.string().max(200000).optional(),
     speaker: z.string().min(1).max(300).optional(),
 });
@@ -73,7 +73,7 @@ interface PersistContext {
     group: Group;
     chatId: string;
     speaker: CharacterDetail;
-    action: 'send' | 'regenerate' | 'continue';
+    action: 'send' | 'regenerate' | 'continue' | 'trigger';
     regenerateIndex: number | null;
     continueIndex: number | null;
     originalAssistant: ChatMessage | null;
@@ -234,12 +234,31 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         // handing the message to someone else. Regenerate after a failed or
         // deleted reply has nothing to keep, so it runs activation like a send.
         let chosen: ResolvedMember;
-        if (body.action === 'send' || (body.action === 'regenerate' && !lastIsReply)) {
+        const explicitSpeaker = body.speaker?.trim();
+        if (body.action === 'trigger' && explicitSpeaker) {
+            // ST's /trigger can force a member who is muted; forcing is the
+            // explicit request, so it is not an activation.
+            const wanted = explicitSpeaker.toLowerCase();
+            const match = resolvedMembers.find((member) =>
+                [member.speaker.fileName, member.speaker.id, member.speaker.name].some(
+                    (value) => value.toLowerCase() === wanted,
+                ),
+            );
+            if (!match) {
+                throw badRequest('The selected member is not in this group');
+            }
+            chosen = match;
+        } else if (
+            body.action === 'send' ||
+            body.action === 'trigger' ||
+            (body.action === 'regenerate' && !lastIsReply)
+        ) {
             const selection = selectGroupSpeaker({
                 group: found.group,
                 members: members.map((member) => member.speaker),
                 messages: chat.messages,
                 action: 'send',
+                ...(body.action === 'trigger' ? { isUserInput: false } : {}),
                 ...(body.action === 'send' && body.message !== undefined ? { message: body.message } : {}),
                 ...(body.action === 'regenerate' && lastMessage ? { message: lastMessage.mes } : {}),
                 ...(body.action === 'send' && body.speaker !== undefined ? { speaker: body.speaker } : {}),
@@ -344,6 +363,8 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             };
             await appendGroupMessage(found.group, chatId, userMessage);
             messages = [...messages, userMessage];
+        } else if (body.action === 'trigger') {
+            // Ask for a fresh reply with no user message; history is unchanged.
         } else if (body.action === 'regenerate') {
             if (regeneratingReply) {
                 const last = messages[messages.length - 1];
@@ -361,7 +382,9 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         }
 
         const generationType: GenerationType =
-            body.action === 'send' || (body.action === 'regenerate' && !regeneratingReply) ? 'normal' : body.action;
+            body.action === 'send' || body.action === 'trigger' || (body.action === 'regenerate' && !regeneratingReply)
+                ? 'normal'
+                : body.action;
 
         const latestSummary = getLatestSummary(messages);
         const macroContext = createMacroContext(speaker, persona, groupMacros, latestSummary?.value);

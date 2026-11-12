@@ -8,6 +8,7 @@ import {
     DEFAULT_GENERATION_SETTINGS,
     DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
+    DEFAULT_QUICK_REPLY_SETTINGS,
     DEFAULT_UI_SETTINGS,
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
@@ -76,6 +77,7 @@ function createDefaultSettings(): AppSettings {
         worldInfo: { ...DEFAULT_WORLD_INFO_CONFIG },
         authorNote: { ...DEFAULT_AUTHOR_NOTE },
         memory: { ...DEFAULT_MEMORY_SETTINGS },
+        quickReplies: { ...DEFAULT_QUICK_REPLY_SETTINGS },
     };
 }
 
@@ -276,7 +278,38 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         if (patch.memory) {
             settings.memory = { ...settings.memory, ...patch.memory };
         }
+        if (patch.quickReplies) {
+            settings.quickReplies = { ...settings.quickReplies, ...patch.quickReplies };
+        }
         return settings;
+    });
+}
+
+/**
+ * Point the account set list at a renamed set.
+ *
+ * A chat may keep its own `chat_metadata.quickReply` links; those are left
+ * alone, matching SillyTavern's per-chat configuration.
+ */
+export async function renameQuickReplySetReference(oldName: string, newName: string): Promise<void> {
+    await mutateSettings((settings) => {
+        const seen = new Set<string>();
+        settings.quickReplies.setList = settings.quickReplies.setList
+            .map((link) => (link.set === oldName ? { ...link, set: newName } : link))
+            .filter((link) => {
+                if (seen.has(link.set)) {
+                    return false;
+                }
+                seen.add(link.set);
+                return true;
+            });
+    });
+}
+
+/** Drop a deleted set from the account set list. */
+export async function removeQuickReplySetReference(name: string): Promise<void> {
+    await mutateSettings((settings) => {
+        settings.quickReplies.setList = settings.quickReplies.setList.filter((link) => link.set !== name);
     });
 }
 

@@ -30,6 +30,12 @@ export interface SelectGroupSpeakerInput {
     action: 'send' | 'regenerate' | 'continue';
     /** The typed message, for name mentions in natural order. */
     message?: string;
+    /**
+     * Whether the activation came from typed input. A `/trigger` has no input,
+     * so ST uses the last message as the activation text and keeps the last
+     * speaker from answering again. Defaults to `action === 'send'`.
+     */
+    isUserInput?: boolean;
     /** Explicit member file name, id or name. */
     speaker?: string | null;
     /** Injectable for deterministic tests. */
@@ -125,6 +131,8 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
         return null;
     }
 
+    const isUserInput = input.isUserInput ?? input.action === 'send';
+
     const explicit = input.speaker?.trim().toLowerCase();
     if (explicit) {
         const match = enabled.find(
@@ -159,10 +167,10 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
             return { speaker: nextAfter(enabled, current), reason: 'list' };
         }
         case 3: {
-            return { speaker: selectPooled(enabled, input), reason: 'pooled' };
+            return { speaker: selectPooled(enabled, input, isUserInput), reason: 'pooled' };
         }
         default: {
-            return selectNatural(enabled, input, current);
+            return selectNatural(enabled, input, current, isUserInput);
         }
     }
 }
@@ -171,10 +179,14 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
  * ST chooses randomly among members who have not spoken since the user's last
  * message, and otherwise avoids the member who just spoke.
  */
-function selectPooled(enabled: readonly GroupSpeaker[], input: SelectGroupSpeakerInput): GroupSpeaker {
+function selectPooled(
+    enabled: readonly GroupSpeaker[],
+    input: SelectGroupSpeakerInput,
+    isUserInput: boolean,
+): GroupSpeaker {
     const random = input.random ?? Math.random;
 
-    if (input.action === 'send') {
+    if (isUserInput) {
         return enabled[Math.floor(random() * enabled.length)] as GroupSpeaker;
     }
 
@@ -212,12 +224,13 @@ function selectNatural(
     enabled: readonly GroupSpeaker[],
     input: SelectGroupSpeakerInput,
     current: string | null,
+    isUserInput: boolean,
 ): GroupSpeakerSelection {
-    const banned = input.action !== 'send' && !input.group.allow_self_responses ? current : null;
+    const banned = !isUserInput && !input.group.allow_self_responses ? current : null;
     const eligible = banned ? enabled.filter((member) => member.fileName !== banned) : enabled;
     const pool = eligible.length > 0 ? eligible : enabled;
 
-    const text = input.action === 'send' ? (input.message ?? '') : lastMessageText(input.messages);
+    const text = isUserInput ? (input.message ?? '') : lastMessageText(input.messages);
     const textWords = new Set(wordsOf(text));
     if (textWords.size > 0) {
         const mentioned = pool.find((member) => isMentioned(member.name, textWords));
