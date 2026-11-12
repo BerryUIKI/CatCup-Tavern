@@ -15,6 +15,8 @@ describe('shared schemas', () => {
         expect(settings.memory).toEqual(DEFAULT_MEMORY_SETTINGS);
         expect(settings.tts).toEqual(DEFAULT_TTS_SETTINGS);
         expect(settings.imageGeneration).toEqual(DEFAULT_IMAGE_GENERATION_SETTINGS);
+        expect(settings.imageGeneration.scheduler).toBe('normal');
+        expect(settings.imageGeneration.comfyWorkflow).toContain('"%prompt%"');
         expect(DEFAULT_UI_SETTINGS.theme).toBe('tavern-dark');
     });
 
@@ -38,6 +40,13 @@ describe('shared schemas', () => {
     it('keeps unspecified image generation settings out of a partial patch', () => {
         const patch = settingsPatchSchema.parse({ imageGeneration: { enabled: true } });
         expect(patch.imageGeneration).toEqual({ enabled: true });
+    });
+
+    it('keeps ComfyUI workflow fields out of a partial patch unless sent', () => {
+        const patch = settingsPatchSchema.parse({
+            imageGeneration: { scheduler: 'karras', comfyWorkflow: '{"1":{}}' },
+        });
+        expect(patch.imageGeneration).toEqual({ scheduler: 'karras', comfyWorkflow: '{"1":{}}' });
     });
 
     it('fills SillyTavern group defaults', () => {
