@@ -1,6 +1,6 @@
 # Providers
 
-CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech endpoints through a separate adapter. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
+CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech and image generation endpoints through separate adapters. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
 
 ## Provider kinds
 
@@ -160,13 +160,13 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 
 ## Adding a provider adapter
 
-1. Add a `kind` to `providerKindSchema` and the default base URL map in `packages/shared/src/schemas/provider.ts`.
+1. Add a `kind` to `providerKindSchema`, the default base URL map and `PROVIDER_KIND_LABELS` in `packages/shared/src/schemas/provider.ts`.
 2. Implement `ProviderAdapter` in `apps/server/src/providers/<name>.ts`:
    - `streamChat(config, apiKey, request)`;
    - `listModels(config, apiKey)`;
    - `test(config, apiKey)`.
 3. Register it in `apps/server/src/providers/index.ts`.
-4. Add a provider entry to the Settings UI only if it needs custom fields; most adapters use the generic form.
+4. Add the kind to `KIND_ORDER`, `KIND_HINTS` and `KIND_INITIALS` in `apps/web/src/components/ProviderSettings.tsx`; add custom form fields only if the adapter needs them, since most use the generic form.
 5. Add tests with a mocked fetch/stream where practical.
 6. Update this page, [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) and `CHANGELOG.md`.
 7. If the adapter is derived from ST or RisuAI, update `NOTICE` and [REUSE.md](REUSE.md).
@@ -190,7 +190,7 @@ Settings → Images has three backends:
 
 The prompt sent to the backend is `imageGeneration.promptPrefix` followed by the user's prompt. The negative prompt applies to A1111 and ComfyUI. **Draft from chat** asks the active chat provider for a prompt using `promptTemplate` over the last `contextMessages` messages; it is an ordinary chat completion and counts against that provider's usage.
 
-Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB. A1111 and OpenAI-compatible requests time out after 180 seconds; a ComfyUI job gets five minutes because a model load can be slow. If the browser disconnects or the job times out, the adapter posts `/interrupt` for the job it queued, so the backend stops working on an image nobody will see; it never interrupts a job that has already finished. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
+Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB. A1111 and OpenAI-compatible requests time out after 180 seconds; a ComfyUI job gets five minutes because a model load can be slow. If the browser disconnects or the job times out, the ComfyUI adapter posts `/interrupt` for the job it queued, so the backend stops working on an image nobody will see; it never interrupts a job that has already finished. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
 
 ## Current limitations
 

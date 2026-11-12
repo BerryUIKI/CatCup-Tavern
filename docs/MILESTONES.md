@@ -186,7 +186,7 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Model-aware tokenizer**: generation and the context inspector count with the exact tiktoken encoding for the active OpenAI or OpenAI-compatible model (`o200k_base`, `cl100k_base`, `p50k_base` or `r50k_base`), and with the bundled Claude vocabulary for Anthropic providers. Models with their own tokenizer, such as a local Llama, fall back to a character-based estimate. The inspector names the counter in use.
 - 124 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution, world info turn helpers, entry editing, keyword splitting and tokenizer selection, plus the SillyTavern sample book as a fixture.
 
-M1 is complete. Next is M2.
+M1 is complete. M2 shipped in `0.3.0`.
 
 ### Scope
 
@@ -286,7 +286,7 @@ M1 is complete. Next is M2.
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
-Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until after `0.2.0`.
+Three items are pulled into the [MVP](#mvp--020-early-access); the rest shipped in `0.3.0`.
 
 ### Delivered so far
 
@@ -358,7 +358,7 @@ The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: gro
 - The sandbox must not become a security bypass.
 - STscript is large; implement by usage frequency and document the gaps.
 
-## M4 — Desktop (MVP subset in progress)
+## M4 — Desktop (In progress)
 
 **Goal:** ship a Windows-first Tauri 2 desktop app that reuses the same server and SPA.
 
@@ -368,7 +368,8 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 - _MVP_ — Tauri 2 shell with a bundled Node sidecar (`CATCUP_DATA_DIR` set to the OS app-data directory).
 - _MVP_ — Port selection and readiness handshake; single-instance behaviour.
-- _MVP_ — Tray icon, window state, graceful shutdown of the sidecar.
+- _MVP_ — Graceful shutdown of the sidecar.
+- Tray icon and window-state restore.
 - Auto-updater and signed release artifacts.
 - File associations for `.png` / `.json` character cards.
 - _MVP_ — Windows installer first; macOS/Linux packaging after.
@@ -376,9 +377,9 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 ### Acceptance criteria
 
-- [ ] A clean Windows machine can install and run the app without a separate Node installation.
+- [x] A clean Windows machine can install and run the app without a separate Node installation.
 - [ ] The desktop app and the browser/LAN mode share the same data directory and behaviour.
-- [ ] The sidecar stops when the app exits and does not leave orphan processes.
+- [x] The sidecar stops when the app exits and does not leave orphan processes.
 - [ ] Updates and file associations work.
 - [ ] Data can be migrated from the web build.
 
@@ -394,8 +395,8 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
 - CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md).
-- Release automation.
-- Backup/restore and upgrade documentation.
+- Release automation. **Done 2026-11-13** — a merge into `main` with an untagged version creates the tag, builds the installer and publishes the release.
+- Backup/restore and upgrade documentation. **Done** — see [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore) and [DATA-FORMATS.md](DATA-FORMATS.md#backup-restore-and-upgrades).
 - Security hardening: trust-proxy/TLS guidance, optional CSRF tokens, key encryption at rest evaluation.
 - Release notes and v1.0 checklist.
 
@@ -447,7 +448,7 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 | ST extension compatibility is unbounded     | Schedule and scope                | Compatibility tiers; sandbox; document unsupported APIs |
 | World Info/Prompt Manager semantics diverge | Users notice different replies    | Port algorithms; fixture tests; compare with ST         |
 | Tokenizer coverage lags providers           | Context budget wrong              | Estimator fallback; per-family tokenizers               |
-| Tauri sidecar packaging on Windows          | Desktop milestone slips           | Prototype early in M4; keep web mode independent        |
+| Tauri auto-updater and code signing         | Unshipped M4 features             | Deferred deliberately; unsigned installs documented     |
 | Single-user assumption                      | No multi-user LAN                 | Document explicitly; defer multi-user                   |
 | i18n late                                   | Rework if strings scattered       | English-first with centralized UI strings               |
 | Windows release builds are unsigned         | SmartScreen warnings on first run | Documented; signing arrives in M4                       |
@@ -455,3 +456,5 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 ## Document history
 
 - 2026-11-09: Initial milestone document. M0 marked complete; M1 scoped.
+- 2026-11-10: M1 marked complete, including the model-aware tokenizer.
+- 2026-11-13: M2 marked complete and released as `0.3.0`; M4 marked in progress.

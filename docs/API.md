@@ -1,10 +1,10 @@
 # HTTP API
 
-The server exposes a same-origin REST API under `/api` plus one SSE endpoint for generation. In development Vite proxies `/api` to `http://127.0.0.1:8000`; in production Fastify serves the SPA and API from the same port.
+The server exposes a same-origin REST API under `/api` plus two SSE endpoints for generation, `POST /api/generate` and `POST /api/groups/:groupId/chats/:chatId/generate`. In development Vite proxies `/api` to `http://127.0.0.1:8000`; in production Fastify serves the SPA and API from the same port.
 
 - All request and response bodies are JSON unless noted.
 - Authentication is a session cookie (`catcup_session`) set by `POST /api/auth/login`.
-- All endpoints except the public list below require that cookie.
+- All endpoints except the public list below require that cookie. A desktop install with no password runs in an open session and answers without one; see `GET /api/auth/status`.
 - IDs (`characterId`, `chatId`) are URL-encoded path segments. Character IDs are file names without the extension; chat IDs are JSONL file names without `.jsonl`.
 
 Public endpoints:
@@ -50,9 +50,13 @@ Common codes:
 | `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                        |
 | `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided               |
 | `IMAGE_FAILED`          | 502       | The image provider request failed                          |
-| `IMAGE_PROMPT_FAILED`   | 502       | The chat model could not draft an image prompt             |
+| `IMAGE_PROMPT_FAILED`   | 400 / 502 | The chat model could not draft an image prompt             |
 | `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back |
+| `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text             |
 | `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                           |
+| `PROVIDER_DISABLED`     | 400       | The active provider reference is disabled                  |
+| `PROVIDER_KEY_REUSE`    | 400       | A draft test changed the endpoint without a key            |
+| `INVALID_BASE_URL`      | 400       | A provider base URL is not http or https                   |
 | `PROVIDER_ERROR`        | 502       | Upstream provider request failed                           |
 | —                       | 500       | Unhandled server error                                     |
 
@@ -107,7 +111,7 @@ Response: `{ "ok": true, "openSession": false }` (or `true` after removal). Rate
 ### `GET /api/health`
 
 ```json
-{ "ok": true, "version": "0.1.0", "needsSetup": false }
+{ "ok": true, "version": "0.3.0", "needsSetup": false }
 ```
 
 ## Characters
@@ -232,6 +236,10 @@ A redundant tag action that would not change a card does not write it.
 ### `DELETE /api/characters/:id`
 
 Deletes the card file. Chats are not deleted automatically. Response: `{ "ok": true }`.
+
+### `POST /api/characters/sample`
+
+Adds the bundled sample character, so a fresh install has someone to talk to. Response: `{ "character": CharacterDetail, "created": boolean }` — running it twice returns the copy that is already there with `created: false` instead of making a second one.
 
 ## Chats
 

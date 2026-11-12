@@ -96,7 +96,7 @@ The server normalizes every card into the V3 data shape. Unknown fields are pres
 | Field                                          | Type       | Notes                                                                                               |
 | ---------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
 | `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                                       |
-| `nickname`                                     | string?    | Optional display nickname                                                                           |
+| `nickname`                                     | string?    | Parsed and preserved; nothing in the app displays it                                                |
 | `description`                                  | string     | Character sheet                                                                                     |
 | `personality`                                  | string     | Character sheet                                                                                     |
 | `scenario`                                     | string     | Character sheet                                                                                     |
@@ -210,7 +210,7 @@ A quick reply `/sys` writes a narrator message: `is_user: false`, `is_system` ab
 | `memory`        | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
 | `media`         | object[]   | Image attachments in SillyTavern's `MediaAttachment` shape                         |
 | `media_index`   | number     | Selected entry in `media`                                                          |
-| `media_display` | string     | `gallery` or `list`, as SillyTavern stores it                                      |
+| `media_display` | string     | `gallery` only: CatCup writes it and ignores `list`                                |
 | `inline_image`  | boolean    | Whether the image renders full width instead of as a gallery thumbnail             |
 
 ### Swipes
@@ -328,16 +328,16 @@ A group is one metadata file plus one JSONL per conversation, in the same two fo
 }
 ```
 
-| Field                    | Meaning                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them               |
-| `disabled_members`       | Members that stay in the group but do not reply                                             |
-| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                               |
-| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                                   |
-| `chat_id`                | The chat the group last opened                                                              |
-| `chats`                  | Every chat id belonging to the group, oldest first                                          |
-| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step                          |
-| `generation_mode_join_*` | Wrapped around each member's character-card field in append modes; it does not wrap replies |
+| Field                    | Meaning                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them  |
+| `disabled_members`       | Members that stay in the group but do not reply                                |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                  |
+| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                      |
+| `chat_id`                | The chat the group last opened                                                 |
+| `chats`                  | Every chat id belonging to the group, oldest first                             |
+| `auto_mode_delay`        | Seconds between automatic turns in SillyTavern; CatCup stores it but runs none |
+| `generation_mode_join_*` | Stored for SillyTavern's append modes; CatCup always generates in swap mode    |
 
 The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
 
@@ -474,7 +474,7 @@ Because the clock is the non-system message count, a scan must receive the full 
 
 ## Presets
 
-ST OpenAI presets live in `data/presets/` (or a SillyTavern `openai-presets/` folder) as JSON. The fields the shared schema understands include:
+ST OpenAI presets live in `data/presets/` (SillyTavern keeps them in `openai presets/`, which the importer reads) as JSON. The fields the shared schema understands include:
 
 - sampling: `temperature`, `frequency_penalty`, `presence_penalty`, `top_p`, `top_k`, `openai_max_context`, `openai_max_tokens`, `stream_openai`;
 - model: `openai_model`;
@@ -665,14 +665,14 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
-- **Not imported:** group chats, quick reply sets, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
+- **Not imported:** group chats, backgrounds, themes, and SillyTavern's own `settings.json` — its personas, regex scripts and UI settings live in CatCup's own files; a global regex-script list imports separately from the Regex settings tab.
 - **Repeat imports add copies.** Names get numeric suffixes; nothing is overwritten. To start clean, back up `data/` and remove the folders you want replaced first.
 
-Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
+Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/`, `presets/`, `groups/` and `group chats/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
 
 ## Backup, restore and upgrades
 
 - Back up the whole `data/` directory, including `settings.json`, `secrets.json` and `auth.json`.
 - `secrets.json` contains credentials; protect the backup like a password store.
 - Stop the server before copying to avoid reading a chat mid-write.
-- There are no automatic data migrations yet. Back up before upgrading; unknown fields are preserved on read/write, but schema changes may still require manual adjustment.
+- `settings.json` is migrated on read when its shape is older: a single legacy `persona` is promoted into the persona list, and a stale `activePersonaId` or disabled active provider is repaired. Nothing else migrates automatically. Back up before upgrading; unknown fields are preserved on read/write.

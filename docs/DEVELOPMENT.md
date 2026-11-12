@@ -32,18 +32,18 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 
 ## Scripts
 
-| Command                               | Description                                             |
-| ------------------------------------- | ------------------------------------------------------- |
-| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together      |
-| `pnpm build`                          | Build server with tsup and web with Vite                |
-| `pnpm start`                          | Run the built server                                    |
-| `pnpm typecheck`                      | TypeScript across all workspace packages                |
-| `pnpm test`                           | Vitest across packages                                  |
-| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                                |
-| `pnpm format`                         | Biome formatter                                         |
-| `pnpm --filter @catcup/server test`   | Server tests only                                       |
-| `pnpm --filter @catcup/web build`     | Web build only                                          |
-| `pnpm --filter @catcup/desktop build` | Windows installer: prepares the bundle, then runs Tauri |
+| Command                               | Description                                        |
+| ------------------------------------- | -------------------------------------------------- |
+| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together |
+| `pnpm build`                          | Build server with tsup and web with Vite           |
+| `pnpm start`                          | Run the built server                               |
+| `pnpm typecheck`                      | TypeScript across all workspace packages           |
+| `pnpm test`                           | Vitest across packages                             |
+| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                           |
+| `pnpm format`                         | Biome formatter                                    |
+| `pnpm --filter @catcup/server test`   | Server tests only                                  |
+| `pnpm --filter @catcup/web build`     | Web build only                                     |
+| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first  |
 
 ## Environment variables
 
@@ -64,25 +64,31 @@ apps/server/src/
   app.ts          Fastify assembly and hooks
   index.ts        entrypoint and graceful shutdown
   config.ts       env, paths, data dir
-  cards/          PNG tEXt / JSON card parsing
+  assets.ts       shipped asset paths (tokenizer, vocabulary)
+  cards/          PNG tEXt / JSON card parsing, CharX packages, card write-back, favorites
   generation/     shared SSE stream and in-flight generation registry
   group/          group speaker selection and reply trimming
+  http/           HTTP errors and helpers
+  images/         image adapters (A1111, ComfyUI, OpenAI-compatible) and prompt drafting
+  import/         SillyTavern installation import
   memory/         rolling summaries, schedule and injection
   providers/      OpenAI-compatible / Anthropic / Ollama adapters
-  prompt/         prompt assembly and token estimation
+  prompt/         prompt assembly, macros and model-aware token counting
   quickreplies/   quick reply command execution and client directives
-  routes/         auth, characters, chats, groups, memory, quick replies, tts, generate, providers, settings, health
+  routes/         auth, characters, chats, context, generate, groups, health, images, import, memory, presets, providers, quick replies, regex, settings, tts, worlds
   security/       scrypt password, HMAC sessions
-  storage/        paths, atomic JSON, locks, settings, characters, chats, groups
+  storage/        paths, atomic JSON, locks, settings, characters and assets, chats, groups, worlds, presets, quick replies, regex, images
   sse.ts          SSE writer
   tts/            OpenAI-compatible speech adapter
+  worldinfo/      loader, scanner, timed effects and character books
 apps/web/src/
   App.tsx         auth gate
-  components/     auth, sidebar, chat, messages, composer, settings, toasts
-  hooks/          React Query data hooks + generation hook
+  components/     auth, sidebar, library, chat, groups, messages, composer, settings, dialogs, toasts
+  hooks/          React Query data hooks, plus the generation, image and speech hooks
   lib/            HTTP API client, SSE parser, formatting, classnames
   store/          Zustand UI state
 packages/shared/
+  src/            macros, keywords, memory, persona, regex, quick reply and speech helpers
   src/schemas/    Zod schemas and shared types
 ```
 
@@ -105,8 +111,8 @@ pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
 
 Current coverage:
 
-- shared: schema defaults, macros, memory lookup, the quick reply script parser, speech text preparation;
-- server: character card normalization, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, and the TTS adapter/routes against a local speech stub.
+- shared: schema defaults and the character library request schemas, macros, keywords, memory lookup, personas, regex scripts, the quick reply script parser, speech text preparation;
+- server: character card normalization, CharX import/export, card write-back and favorites, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, the TTS adapter/routes against a local speech stub, and the desktop open-session auth model.
 
 Server route tests each build a Fastify app. `apps/server/vitest.config.ts` caps the worker pool at four and raises the hook timeout, because the default one-worker-per-file pool can starve a 6-core machine and trip `beforeAll` timeouts.
 
@@ -140,14 +146,14 @@ See [PROVIDERS.md](PROVIDERS.md). The short version:
 - For authenticated API debugging, log in with curl and keep a cookie jar, or use the browser dev tools.
 - For SSE, use `curl -N` (no buffering) and a POST body. The browser uses `fetch` + `ReadableStream`, not `EventSource`.
 - The data directory is human-readable JSON/JSONL/PNG; inspect it after a failed operation.
-- Stop the preview server before copying or manually editing chats to avoid racing an in-flight write.
+- Stop the server before copying or manually editing chats to avoid racing an in-flight write.
 
 ## Resetting local state
 
 Stop the server first.
 
 - **Reset password / sessions:** delete `data/auth.json` and restart the server. The next visit runs first-time setup again.
-- **Keep chats, reset providers:** delete `data/settings.json` and `data/secrets.json`; defaults are recreated.
+- **Keep chats, reset settings and providers:** delete `data/settings.json` and `data/secrets.json`; defaults are recreated.
 - **Full reset:** back up and remove `data/`. This deletes characters, chats and credentials. Destructive; confirm first.
 
 Do not commit any file under `data/`.
@@ -156,7 +162,7 @@ Do not commit any file under `data/`.
 
 `.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
 
-The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither branch accepts a push or a force push, and both only change through a pull request. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
+The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither accepts a force push or deletion, and both change through a pull request — with `dev` keeping an admin override for merging stacked PRs in order. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
 
 The release workflow, `.github/workflows/release.yml`, is separate. It runs when a `dev` → `main` merge lands: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. A push whose version already has a tag is skipped, so an ordinary merge into `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
 The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
