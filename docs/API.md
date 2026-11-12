@@ -773,9 +773,45 @@ Partial update. All fields are optional:
 
 Same body shape as `POST`. Omit `apiKey` to keep the existing key; send an empty string to clear it. Response: `{ "provider": ProviderPublic }`.
 
+Disabling the active provider moves `activeProviderId` to the first other enabled provider, or to `null` when none is enabled. Enabling a provider while `activeProviderId` is `null` makes it active.
+
 ### `DELETE /api/providers/:id`
 
-Removes the provider and its stored key. Response: `{ "ok": true }`.
+Removes the provider and its stored key. Deleting the active provider moves `activeProviderId` to the first remaining enabled provider, or to `null`. Response: `{ "ok": true }`.
+
+### `POST /api/providers/test`
+
+Tests an unsaved provider form without creating or changing a provider. This is what the **Test connection** and **Fetch models** buttons use.
+
+```json
+{
+    "provider": {
+        "kind": "custom",
+        "name": "Local OpenAI-compatible",
+        "baseUrl": "http://127.0.0.1:8080/v1",
+        "model": "example-model",
+        "enabled": true,
+        "headers": {}
+    },
+    "savedProviderId": "optional-provider-id",
+    "apiKey": "optional-test-key"
+}
+```
+
+- `provider` uses the same fields as `POST /api/providers`, minus `apiKey`. An empty `baseUrl` falls back to the kind's default.
+- When `apiKey` is omitted and `savedProviderId` names an existing provider, the server tests with that provider's stored key; the key itself never reaches the browser. A supplied `apiKey` always wins, and an empty string tests without a key.
+- An unknown `savedProviderId` returns `404`. An invalid body returns `400`.
+- A failed connection returns HTTP `200` with `result.ok: false`; only request problems are 4xx.
+
+```json
+{
+    "result": {
+        "ok": true,
+        "message": "Connected. 3 model(s) available",
+        "models": [{ "id": "model-id", "name": "Model name" }]
+    }
+}
+```
 
 ### `POST /api/providers/:id/test`
 
