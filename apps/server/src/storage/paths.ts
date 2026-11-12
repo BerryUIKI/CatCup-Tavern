@@ -8,9 +8,16 @@ import { config } from '../config.js';
 export const paths = {
     root: config.dataDir,
     characters: path.join(config.dataDir, 'characters'),
+    /** Extracted CharX assets, one folder per character id. */
+    characterAssets: path.join(config.dataDir, 'character-assets'),
     chats: path.join(config.dataDir, 'chats'),
+    groups: path.join(config.dataDir, 'groups'),
+    groupChats: path.join(config.dataDir, 'group chats'),
     worlds: path.join(config.dataDir, 'worlds'),
     presets: path.join(config.dataDir, 'presets'),
+    quickReplies: path.join(config.dataDir, 'quickreplies'),
+    /** Generated gallery images, in SillyTavern's `user/images` layout. */
+    userImages: path.join(config.dataDir, 'user', 'images'),
     regex: path.join(config.dataDir, 'regex.json'),
     settings: path.join(config.dataDir, 'settings.json'),
     secrets: path.join(config.dataDir, 'secrets.json'),
@@ -20,9 +27,14 @@ export const paths = {
 export async function ensureDataDirs(): Promise<void> {
     await Promise.all([
         mkdir(paths.characters, { recursive: true }),
+        mkdir(paths.characterAssets, { recursive: true }),
         mkdir(paths.chats, { recursive: true }),
+        mkdir(paths.groups, { recursive: true }),
+        mkdir(paths.groupChats, { recursive: true }),
         mkdir(paths.worlds, { recursive: true }),
         mkdir(paths.presets, { recursive: true }),
+        mkdir(paths.quickReplies, { recursive: true }),
+        mkdir(paths.userImages, { recursive: true }),
     ]);
 }
 

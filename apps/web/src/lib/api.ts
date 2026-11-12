@@ -1,20 +1,35 @@
 import type {
+    AttachImageRequest,
     AuthStatus,
+    CharacterBulkRequest,
+    CharacterBulkResponse,
     CharacterDetail,
+    CharacterExportFormat,
     CharacterPatch,
     CharacterSummary,
     ChatDetail,
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    DraftImagePromptRequest,
+    GeneratedImage,
+    GenerateImageRequest,
+    GroupChatDetail,
+    GroupCreate,
+    GroupPatch,
+    GroupView,
     HealthResponse,
+    ImageScope,
     ImportCharactersResponse,
-    ModelInfo,
     PresetDetail,
     PresetSummary,
+    ProviderDraftTestInput,
     ProviderInput,
     ProviderPublic,
     ProviderTestResult,
+    QuickReplyExecuteResponse,
+    QuickReplySet,
+    QuickReplySetView,
     RegexScript,
     RegexScriptPatch,
     SampleCharacterResponse,
@@ -22,6 +37,8 @@ import type {
     SettingsResponse,
     SillyTavernImportPlan,
     SillyTavernImportResult,
+    SummarizeResponse,
+    SummaryRecord,
     WorldDetail,
     WorldInfoEntryPatch,
     WorldSummary,
@@ -36,6 +53,14 @@ export class ApiError extends Error {
         super(message);
         this.name = 'ApiError';
     }
+}
+
+/** A chat addressed for the quick reply execute endpoints. */
+export interface QuickReplyChatRef {
+    kind: 'character' | 'group';
+    /** Character id or group id, depending on `kind`. */
+    id: string;
+    chatId: string;
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -74,6 +99,36 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
         return undefined as T;
     }
     return (await response.json()) as T;
+}
+
+/** POST a JSON body and read the response as bytes (TTS audio). */
+async function requestBlob(path: string, body: unknown, signal?: AbortSignal): Promise<Blob> {
+    const response = await fetch(`/api${path}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        ...(signal ? { signal } : {}),
+    });
+
+    if (response.status === 401) {
+        window.dispatchEvent(new Event('catcup:unauthorized'));
+    }
+    if (!response.ok) {
+        let payload: unknown = null;
+        try {
+            payload = await response.json();
+        } catch {
+            // Binary or empty error bodies fall back to the status text.
+        }
+        const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+        throw new ApiError(
+            typeof record.error === 'string' ? record.error : response.statusText || 'Request failed',
+            response.status,
+            typeof record.code === 'string' ? record.code : undefined,
+        );
+    }
+    return response.blob();
 }
 
 export const api = {
@@ -139,6 +194,36 @@ export const api = {
             }),
         exportUrl: () => '/api/regex/export',
     },
+    quickReplies: {
+        list: () => request<{ sets: QuickReplySetView[] }>('/quick-replies'),
+        create: (name: string) =>
+            request<{ set: QuickReplySetView }>('/quick-replies', {
+                method: 'POST',
+                body: JSON.stringify({ name }),
+            }),
+        save: (id: string, set: QuickReplySet) =>
+            request<{ set: QuickReplySetView; renamedFrom?: string }>(`/quick-replies/${encodeURIComponent(id)}`, {
+                method: 'PUT',
+                body: JSON.stringify(set),
+            }),
+        remove: (id: string) => request<{ ok: true }>(`/quick-replies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        import: (data: unknown, name?: string) =>
+            request<{ set: QuickReplySetView }>('/quick-replies/import', {
+                method: 'POST',
+                body: JSON.stringify({ data, name }),
+            }),
+        exportUrl: (id: string) => `/api/quick-replies/${encodeURIComponent(id)}/export`,
+        execute: (target: QuickReplyChatRef, setId: string, qrId: number) => {
+            const path =
+                target.kind === 'character'
+                    ? `/chats/${encodeURIComponent(target.id)}/${encodeURIComponent(target.chatId)}/quick-replies/execute`
+                    : `/groups/${encodeURIComponent(target.id)}/chats/${encodeURIComponent(target.chatId)}/quick-replies/execute`;
+            return request<QuickReplyExecuteResponse>(path, {
+                method: 'POST',
+                body: JSON.stringify({ setId, qrId }),
+            });
+        },
+    },
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),
         get: (id: string) => request<{ preset: PresetDetail }>(`/presets/${encodeURIComponent(id)}`),
@@ -191,7 +276,22 @@ export const api = {
             });
             return data.character;
         },
-        exportUrl: (id: string, format: 'png' | 'json') =>
+        setFavorite: async (id: string, favorite: boolean) => {
+            const data = await request<{ character: CharacterDetail }>(
+                `/characters/${encodeURIComponent(id)}/favorite`,
+                {
+                    method: 'PATCH',
+                    body: JSON.stringify({ favorite }),
+                },
+            );
+            return data.character;
+        },
+        bulk: (body: CharacterBulkRequest) =>
+            request<CharacterBulkResponse>('/characters/bulk', {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }),
+        exportUrl: (id: string, format: CharacterExportFormat) =>
             `/api/characters/${encodeURIComponent(id)}/export?format=${format}`,
         import: (files: File[]) => {
             const form = new FormData();
@@ -289,6 +389,124 @@ export const api = {
             );
             return data.chat;
         },
+        summarize: (characterId: string, chatId: string) =>
+            request<SummarizeResponse>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/summarize`,
+                { method: 'POST' },
+            ),
+        saveMemory: async (characterId: string, chatId: string, text: string) => {
+            const data = await request<{ summary: SummaryRecord | null }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/memory`,
+                { method: 'PUT', body: JSON.stringify({ text }) },
+            );
+            return data.summary;
+        },
+        clearMemory: async (characterId: string, chatId: string) => {
+            const data = await request<{ summary: SummaryRecord | null }>(
+                `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/memory`,
+                { method: 'DELETE' },
+            );
+            return data.summary;
+        },
+    },
+
+    groups: {
+        list: async () => {
+            const data = await request<{ groups: GroupView[] }>('/groups');
+            return data.groups;
+        },
+        get: async (id: string) => {
+            const data = await request<{ group: GroupView }>(`/groups/${encodeURIComponent(id)}`);
+            return data.group;
+        },
+        create: async (input: GroupCreate) => {
+            const data = await request<{ group: GroupView }>('/groups', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.group;
+        },
+        update: async (id: string, patch: GroupPatch) => {
+            const data = await request<{ group: GroupView }>(`/groups/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            });
+            return data.group;
+        },
+        remove: (id: string) => request<{ ok: true }>(`/groups/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        chats: {
+            list: async (groupId: string) => {
+                const data = await request<{ chats: ChatSummary[] }>(`/groups/${encodeURIComponent(groupId)}/chats`);
+                return data.chats;
+            },
+            create: async (groupId: string, body: { name?: string } = {}) => {
+                const data = await request<{ chat: GroupChatDetail; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats`,
+                    { method: 'POST', body: JSON.stringify(body) },
+                );
+                return data;
+            },
+            get: async (groupId: string, chatId: string) => {
+                const data = await request<{ chat: GroupChatDetail }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                );
+                return data.chat;
+            },
+            update: async (
+                groupId: string,
+                chatId: string,
+                patch: { name?: string; personaId?: string | null; current?: boolean },
+            ) => {
+                const data = await request<{ chat: GroupChatDetail; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                    { method: 'PATCH', body: JSON.stringify(patch) },
+                );
+                return data;
+            },
+            remove: (groupId: string, chatId: string) =>
+                request<{ ok: true; group: GroupView }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
+                    { method: 'DELETE' },
+                ),
+            updateMessage: async (
+                groupId: string,
+                chatId: string,
+                index: number,
+                body: { message?: string; swipeId?: number },
+            ) => {
+                const data = await request<{ message: ChatMessage }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/messages/${index}`,
+                    { method: 'PATCH', body: JSON.stringify(body) },
+                );
+                return data.message;
+            },
+            deleteMessage: async (groupId: string, chatId: string, index: number) => {
+                const data = await request<{ chat: GroupChatDetail }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/messages/${index}`,
+                    { method: 'DELETE' },
+                );
+                return data.chat;
+            },
+            summarize: (groupId: string, chatId: string) =>
+                request<SummarizeResponse>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/summarize`,
+                    { method: 'POST' },
+                ),
+            saveMemory: async (groupId: string, chatId: string, text: string) => {
+                const data = await request<{ summary: SummaryRecord | null }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/memory`,
+                    { method: 'PUT', body: JSON.stringify({ text }) },
+                );
+                return data.summary;
+            },
+            clearMemory: async (groupId: string, chatId: string) => {
+                const data = await request<{ summary: SummaryRecord | null }>(
+                    `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/memory`,
+                    { method: 'DELETE' },
+                );
+                return data.summary;
+            },
+        },
     },
 
     settings: {
@@ -325,16 +543,12 @@ export const api = {
             return data.provider;
         },
         remove: (id: string) => request<{ ok: true }>(`/providers/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        test: async (id: string, apiKey?: string) => {
-            const data = await request<{ result: ProviderTestResult }>(`/providers/${encodeURIComponent(id)}/test`, {
+        testDraft: async (body: ProviderDraftTestInput) => {
+            const data = await request<{ result: ProviderTestResult }>('/providers/test', {
                 method: 'POST',
-                body: JSON.stringify(apiKey === undefined ? {} : { apiKey }),
+                body: JSON.stringify(body),
             });
             return data.result;
-        },
-        models: async (id: string) => {
-            const data = await request<{ models: ModelInfo[] }>(`/providers/${encodeURIComponent(id)}/models`);
-            return data.models;
         },
     },
 
@@ -344,4 +558,66 @@ export const api = {
                 method: 'POST',
             }),
     },
+
+    tts: {
+        speak: (text: string, voice?: string, signal?: AbortSignal) =>
+            requestBlob('/tts/speak', voice === undefined ? { text } : { text, voice }, signal),
+    },
+
+    images: {
+        draft: async (input: DraftImagePromptRequest) => {
+            const data = await request<{ prompt: string }>('/images/draft', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.prompt;
+        },
+        generate: async (input: GenerateImageRequest) => {
+            const data = await request<{ image: GeneratedImage }>('/images/generate', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.image;
+        },
+        attach: async (input: AttachImageRequest) => {
+            const data = await request<{ message: ChatMessage }>('/images/attach', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.message;
+        },
+        list: async (scope: ImageScope) => {
+            const params = new URLSearchParams();
+            if (scope.characterId) {
+                params.set('characterId', scope.characterId);
+            }
+            if (scope.groupId) {
+                params.set('groupId', scope.groupId);
+            }
+            const data = await request<{ images: GeneratedImage[] }>(`/images?${params.toString()}`);
+            return data.images;
+        },
+        remove: (folder: string, file: string) =>
+            request<{ ok: true }>(`/images/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`, {
+                method: 'DELETE',
+            }),
+        test: () => request<{ ok: true }>('/images/test', { method: 'POST' }),
+    },
 };
+
+/**
+ * Turn a SillyTavern media path (`user/images/<folder>/<file>`) into the
+ * authenticated API route. Other media URLs, such as data URLs, pass through.
+ */
+export function galleryImageUrl(url: string): string {
+    const prefix = 'user/images/';
+    if (!url.startsWith(prefix)) {
+        return url;
+    }
+    const [folder, ...rest] = url.slice(prefix.length).split('/');
+    const file = rest.join('/');
+    if (!folder || !file) {
+        return url;
+    }
+    return `/api/images/${encodeURIComponent(folder)}/${encodeURIComponent(file)}`;
+}

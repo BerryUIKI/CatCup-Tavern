@@ -65,12 +65,17 @@ apps/server/src/
   index.ts        entrypoint and graceful shutdown
   config.ts       env, paths, data dir
   cards/          PNG tEXt / JSON card parsing
+  generation/     shared SSE stream and in-flight generation registry
+  group/          group speaker selection and reply trimming
+  memory/         rolling summaries, schedule and injection
   providers/      OpenAI-compatible / Anthropic / Ollama adapters
   prompt/         prompt assembly and token estimation
-  routes/         auth, characters, chats, generate, providers, settings, health
+  quickreplies/   quick reply command execution and client directives
+  routes/         auth, characters, chats, groups, memory, quick replies, tts, generate, providers, settings, health
   security/       scrypt password, HMAC sessions
-  storage/        paths, atomic JSON, locks, settings, characters, chats
+  storage/        paths, atomic JSON, locks, settings, characters, chats, groups
   sse.ts          SSE writer
+  tts/            OpenAI-compatible speech adapter
 apps/web/src/
   App.tsx         auth gate
   components/     auth, sidebar, chat, messages, composer, settings, toasts
@@ -98,12 +103,14 @@ pnpm --filter @catcup/shared test
 pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
 ```
 
-Current coverage (M0):
+Current coverage:
 
-- shared: schema defaults;
-- server: character card normalization, chat JSONL parsing/round-trip, prompt builder macros and history trimming.
+- shared: schema defaults, macros, memory lookup, the quick reply script parser, speech text preparation;
+- server: character card normalization, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, and the TTS adapter/routes against a local speech stub.
 
-UI testing is manual at this stage: password setup, card import, chat creation, streaming, swipes, settings. Add a unit test for any new parsing/ordering logic. Add a fixture-based test for ST compatibility changes.
+Server route tests each build a Fastify app. `apps/server/vitest.config.ts` caps the worker pool at four and raises the hook timeout, because the default one-worker-per-file pool can starve a 6-core machine and trip `beforeAll` timeouts.
+
+UI testing is manual at this stage: password setup, card import, chat creation, streaming, swipes, settings navigation, provider management and the unsaved-changes guard. Add a unit test for any new parsing/ordering logic. Add a fixture-based test for ST compatibility changes.
 
 ## Adding a feature
 
@@ -149,8 +156,9 @@ Do not commit any file under `data/`.
 
 `.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
 
-The release workflow, `.github/workflows/release.yml`, is separate. Pushing a `v*` tag builds the Windows installer on `windows-latest` and creates or updates the matching GitHub release, using that version's `CHANGELOG.md` section as the body. A tag without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes.
+The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither branch accepts a push or a force push, and both only change through a pull request. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
 
+The release workflow, `.github/workflows/release.yml`, is separate. It runs when a `dev` → `main` merge lands: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. A push whose version already has a tag is skipped, so an ordinary merge into `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
 The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 Run the same gates locally before pushing — CI is a backstop, not a substitute:

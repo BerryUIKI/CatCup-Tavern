@@ -1,5 +1,5 @@
 import type { CharacterPatch } from '@catcup/shared';
-import { BookOpen, Download, Plus, Save, Trash2 } from 'lucide-react';
+import { BookOpen, Download, Package, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { useCharacter, useDeleteCharacter, useImportCharacterBook, useUpdateCharacter } from '../hooks/data';
@@ -231,6 +231,10 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                                 PNG
                             </span>
                         )}
+                        <a className="btn-ghost" href={api.characters.exportUrl(character.id, 'charx')} download>
+                            <Package size={15} />
+                            CharX
+                        </a>
                         {character.hasCharacterBook ? (
                             <button
                                 type="button"

@@ -7,7 +7,7 @@ A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
 - **Data** — reads and writes SillyTavern's own files: PNG/JSON character cards (V2/V3), chat JSONL, world info, OpenAI presets and regex scripts
 - **Providers** — OpenAI-compatible APIs, OpenRouter, Anthropic and Ollama
 
-> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character roleplay end to end. Group chats, Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
+> **Status: 0.3.0, early access.** Moves your SillyTavern data in and handles single-character and group roleplay end to end, with lorebooks, presets, memory, a Quick Replies subset, text to speech and image generation. STscript, the full Quick Replies engine and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
 > See [docs/MILESTONES.md](docs/MILESTONES.md) for what comes next.
 
 ## Why another tavern?
@@ -23,16 +23,22 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 - **Your SillyTavern data in.** Point the importer at an ST user folder and copy characters, chats, lorebooks and OpenAI presets in one action, after a scan shows what it found. Or import files one at a time.
 - **Chat.** Streaming replies with reasoning, swipes, regenerate, continue, inline editing, branching, alternate greetings, rename and delete.
+- **Group chats.** Several characters in one room with their own greetings and avatars, natural, list, manual or pooled reply order, and per-member mute. Replies are stored in SillyTavern's group files.
+- **Summary memory.** A rolling summary stored in the chat file the way SillyTavern's Memory extension stores it, with automatic updates, an editable Memory panel, configurable injection position and template, and a Memory tab in the context inspector.
+- **Quick Replies (subset).** SillyTavern version 2 quick reply sets, imported or built in Settings → Quick Replies, shown as a bar above the message box. Plain-text buttons fill the composer; `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute, chained with `|`. Group chats can pick who a `/trigger` asks.
+- **Text to speech.** Browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, autoplay, and a play button on every reply.
+- **Image generation.** Automatic1111/Forge, a ComfyUI API workflow or an OpenAI-compatible `/images/generations` endpoint, a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat as SillyTavern media messages.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
-- **Characters.** Edit any text field and write the card back to PNG or JSON, keeping fields the editor does not show.
+- **Characters.** Edit any text field and write the card back to PNG or JSON, or export a CharX package with the card and its assets.
+- **Library.** Tags and favorites on every card, multi-tag and favorites-only filters, five sort orders, and bulk favorite, tag and delete actions.
 - **Personas.** Several, one default, and a per-chat choice.
 - **Desktop.** A Windows installer that needs no administrator and starts the server on a free port.
 
 ### What is next
 
-Group chats, Quick Replies and STscript, SillyTavern extensions, TTS, image generation and memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+STscript and the full Quick Replies engine, SillyTavern extensions and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
 
 ### Screenshots
 
@@ -48,7 +54,7 @@ Captured from the 0.2.0 build.
 | ------- | ------------------------------------------------------- |
 | Web     | React 19 · TypeScript · Vite 8 · Tailwind CSS 4         |
 | Server  | Node.js 24 · Fastify 5                                  |
-| Desktop | Tauri 2 (planned)                                       |
+| Desktop | Tauri 2 (Windows)                                       |
 | Storage | SillyTavern-compatible files (JSON / JSONL / PNG cards) |
 | License | AGPL-3.0-only                                           |
 
@@ -92,10 +98,16 @@ Defaults to `./data` at the repository root; override with `CATCUP_DATA_DIR`.
 ```text
 data/
 ├── characters/          # .png cards with tEXt metadata, or .json cards
+├── character-assets/    # assets unpacked from CharX packages, per character
 ├── chats/
 │   └── <character name>/  # SillyTavern-style JSONL chats
-├── worlds/              # World Info JSON (schema ready; scanner M1)
-├── presets/             # Prompt / sampling presets (schema ready; import M1)
+├── groups/              # SillyTavern group metadata
+├── group chats/         # SillyTavern group chat JSONL
+├── worlds/              # World Info JSON
+├── presets/             # OpenAI presets (prompt order and sampling)
+├── quickreplies/        # SillyTavern version 2 Quick Reply sets
+├── user/images/         # generated images, per character or group
+├── regex.json           # Regex scripts
 ├── settings.json        # App settings
 ├── secrets.json         # API keys (server-only)
 └── auth.json            # Password hash + session secret

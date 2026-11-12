@@ -7,6 +7,8 @@ import type { ChatMessage } from '@catcup/shared';
 export interface HistoryEntry {
     role: 'system' | 'user' | 'assistant';
     content: string;
+    /** The stored speaker name; group chats prefix the prompt with it. */
+    name?: string;
 }
 
 /** SillyTavern's `system_message_types.NARRATOR`. */
@@ -29,7 +31,11 @@ export function toHistoryEntries(messages: readonly ChatMessage[]): HistoryEntry
 
         const narrator = message.extra?.type === NARRATOR;
         const role: HistoryEntry['role'] = message.is_user ? 'user' : narrator ? 'system' : 'assistant';
-        entries.push({ role, content: message.mes.replace(/\r/g, '') });
+        entries.push({
+            role,
+            content: message.mes.replace(/\r/g, ''),
+            ...(message.name ? { name: message.name } : {}),
+        });
     }
 
     return entries;

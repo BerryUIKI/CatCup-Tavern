@@ -1,30 +1,45 @@
 import { readFile } from 'node:fs/promises';
 
-import { characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
+import {
+    type CharacterBulkResponse,
+    type CharacterDetail,
+    type CharacterSummary,
+    characterBulkRequestSchema,
+    characterFavoriteRequestSchema,
+    characterIdSchema,
+    characterPatchSchema,
+    type ImportCharactersResponse,
+} from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
+import { buildCharx, parseCharx } from '../cards/charx.js';
 import { parseJsonCard } from '../cards/parse.js';
-import { buildCardPayload } from '../cards/write.js';
-import { badRequest, notFound } from '../http/errors.js';
+import { buildCardPayload, writePngCard } from '../cards/write.js';
+import { badRequest, internal, notFound } from '../http/errors.js';
+import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';
 import {
     deleteCharacter,
     getCharacterFile,
     importCharacter,
     listCharacters,
+    normalizeCharacterId,
+    setCharacterFavorite,
     setCharacterWorld,
+    toSummary,
     updateCharacter,
+    updateCharacterTags,
 } from '../storage/characters.js';
 import { createWorld, readWorld } from '../storage/worlds.js';
 import { convertCharacterBook } from '../worldinfo/characterBook.js';
 import { requireCharacter } from './helpers.js';
 
 const idParamsSchema = z.object({
-    id: z.string().min(1).max(200),
+    id: characterIdSchema,
 });
 
 const exportQuerySchema = z.object({
-    format: z.enum(['png', 'json']).default('png'),
+    format: z.enum(['png', 'json', 'charx']).default('png'),
 });
 
 /** The card that ships with the app, relative to the assets folder. */
@@ -70,6 +85,68 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
     });
 
     /**
+     * Set or clear SillyTavern's favorite flag on a card.
+     *
+     * The flag lives at `data.extensions.fav`. CatCup keeps it on its own
+     * exports; SillyTavern clears favorites when it exports or imports a card.
+     */
+    app.patch('/api/characters/:id/favorite', async (request) => {
+        const { id } = idParamsSchema.parse(request.params);
+        const body = characterFavoriteRequestSchema.parse(request.body ?? {});
+        const result = await setCharacterFavorite(id, body.favorite);
+        if (result.status === 'missing') {
+            throw notFound('Character not found');
+        }
+        if (result.status === 'unreadable') {
+            throw internal('The card could not be read back after writing', 'CHARACTER_READ_FAILED');
+        }
+        return { character: result.character };
+    });
+
+    /**
+     * Apply one library action to several characters.
+     *
+     * Each id is handled independently so one missing or unreadable card does
+     * not stop the rest; the caller gets the updated summaries, the deleted ids
+     * and the failures.
+     */
+    app.post('/api/characters/bulk', async (request) => {
+        const body = characterBulkRequestSchema.parse(request.body ?? {});
+        const ids = [...new Set(body.ids.map(normalizeCharacterId))];
+        const characters: CharacterSummary[] = [];
+        const deleted: string[] = [];
+        const errors: CharacterBulkResponse['errors'] = [];
+
+        for (const id of ids) {
+            try {
+                if (body.action === 'delete') {
+                    if (!(await deleteCharacter(id))) {
+                        throw new Error('Character not found');
+                    }
+                    deleted.push(id);
+                    continue;
+                }
+
+                const result =
+                    body.action === 'favorite' || body.action === 'unfavorite'
+                        ? await setCharacterFavorite(id, body.action === 'favorite')
+                        : await updateCharacterTags(id, body.tags ?? [], body.action === 'add-tags' ? 'add' : 'remove');
+                if (result.status === 'missing') {
+                    throw new Error('Character not found');
+                }
+                if (result.status === 'unreadable') {
+                    throw new Error('The card could not be read back after writing');
+                }
+                characters.push(toSummary(result.character));
+            } catch (error) {
+                errors.push({ id, message: error instanceof Error ? error.message : 'Bulk action failed' });
+            }
+        }
+
+        return { characters, deleted, errors } satisfies CharacterBulkResponse;
+    });
+
+    /**
      * Import the card's embedded lorebook and link it through `extensions.world`.
      *
      * SillyTavern offers the same action when a card with a book is selected and
@@ -108,6 +185,22 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
         }
 
         const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
+
+        if (format === 'charx') {
+            const assets = await readCharacterAssets(found.detail.id);
+            const avatar = found.detail.format === 'png' ? await readFile(found.filePath) : null;
+            const archive = buildCharx({
+                rawCard: found.detail.rawCard,
+                name: found.detail.name,
+                id: found.detail.id,
+                avatar,
+                assets,
+            });
+            return reply
+                .header('Content-Type', 'application/zip')
+                .header('Content-Disposition', `attachment; filename="${safeName}.charx"`)
+                .send(archive);
+        }
 
         if (format === 'png') {
             if (found.detail.format !== 'png') {
@@ -161,13 +254,29 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             const fileName = part.filename ?? 'card';
             const buffer = await part.toBuffer();
 
-            if (!/\.(png|json)$/i.test(fileName)) {
-                errors.push({ fileName, message: 'Only .png and .json character cards are supported' });
+            if (!/\.(png|json|charx)$/i.test(fileName)) {
+                errors.push({ fileName, message: 'Only .png, .json and .charx character cards are supported' });
                 continue;
             }
 
             try {
-                const detail = await importCharacter(fileName, buffer);
+                let detail: CharacterDetail;
+                if (/\.charx$/i.test(fileName)) {
+                    const parsed = parseCharx(buffer);
+                    const payload = buildCardPayload(parsed.card.raw, {});
+                    if (parsed.icon) {
+                        const png = writePngCard(new Uint8Array(parsed.icon), payload);
+                        detail = await importCharacter('character.png', Buffer.from(png));
+                    } else {
+                        const json = `${JSON.stringify(payload, null, 2)}\n`;
+                        detail = await importCharacter('character.json', Buffer.from(json, 'utf8'));
+                    }
+                    await storeCharacterAssets(detail.id, parsed.assets).catch((error) => {
+                        request.log.warn({ err: error, characterId: detail.id }, 'CharX assets were not stored');
+                    });
+                } else {
+                    detail = await importCharacter(fileName, buffer);
+                }
                 const { card: _card, rawCard: _rawCard, ...summary } = detail;
                 imported.push(summary);
             } catch (error) {

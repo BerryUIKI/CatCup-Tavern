@@ -11,11 +11,26 @@ data/
 ├── characters/
 │   ├── Seraphina.png
 │   └── Custom.json
+├── character-assets/          # assets extracted from CharX packages
+│   └── Seraphina/
+│       └── assets/…
 ├── chats/
 │   └── Seraphina/
 │       └── Seraphina - 2026-11-09_18-42-29.jsonl
-├── worlds/                    # World Info JSON (reserved; scanner planned for M1)
-├── presets/                   # ST OpenAI presets (reserved; import planned for M1)
+├── groups/
+│   └── 1762839291123.json      # ST group metadata
+├── group chats/
+│   └── 2026-11-11@08h14m52s123ms.jsonl
+├── worlds/                    # World Info JSON
+├── presets/                   # ST OpenAI presets
+├── quickreplies/              # ST Quick Replies v2 sets, one JSON per set
+├── user/
+│   └── images/                # generated gallery images, ST's userImages root
+│       ├── Seraphina/
+│       │   ├── image-1762900000000-a1b2c3d4.png
+│       │   └── image-1762900000000-a1b2c3d4.png.json
+│       └── 1762839291123/     # a group's gallery, named by group id
+├── regex.json                 # Regex scripts (one ordered list)
 ├── settings.json
 ├── secrets.json               # server-only; never returned by the API
 └── auth.json                  # server-only
@@ -25,12 +40,17 @@ The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data
 
 ### Identity rules
 
-| Object    | ID                                 | Notes                                                                                         |
-| --------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| Character | File name without `.png` / `.json` | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
-| Avatar    | `/api/characters/<id>/avatar`      | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
-| Chat      | JSONL file name without `.jsonl`   | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
-| Message   | Zero-based array index             | The JSONL header is not a message                                                             |
+| Object          | ID                                   | Notes                                                                                         |
+| --------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Character       | File name without `.png` / `.json`   | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
+| Avatar          | `/api/characters/<id>/avatar`        | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
+| Character asset | Archive path under the character id  | `data/character-assets/<id>/assets/…`; copied from a CharX package and used on export         |
+| Chat            | JSONL file name without `.jsonl`     | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
+| Group           | JSON file name without `.json`       | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
+| Group chat      | JSONL file name without `.jsonl`     | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
+| Quick reply set | JSON file name without `.json`       | `data/quickreplies/<name>.json`; the body's `name` is what the settings set list links to     |
+| Gallery folder  | Sanitized character name or group id | `data/user/images/<folder>/`; ST names the folder after the character name or group           |
+| Message         | Zero-based array index               | The JSONL header is not a message                                                             |
 
 ## Character cards
 
@@ -45,7 +65,7 @@ Character metadata is stored in PNG `tEXt` chunks:
 
 `ccv3` takes precedence over `chara`, matching SillyTavern. A PNG without either chunk is rejected during import.
 
-The avatar is the PNG itself. Card import is read-only today; writing edited metadata back into a PNG is planned for M2.
+The avatar is the PNG itself. Editing a card rewrites the `chara` and `ccv3` chunks in place; see “Writing cards back” below.
 
 ### JSON cards
 
@@ -73,36 +93,55 @@ Accepted forms:
 
 The server normalizes every card into the V3 data shape. Unknown fields are preserved via passthrough parsing. The fields the app understands:
 
-| Field                                          | Type       | Notes                                                                                 |
-| ---------------------------------------------- | ---------- | ------------------------------------------------------------------------------------- |
-| `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                         |
-| `nickname`                                     | string?    | Optional display nickname                                                             |
-| `description`                                  | string     | Character sheet                                                                       |
-| `personality`                                  | string     | Character sheet                                                                       |
-| `scenario`                                     | string     | Character sheet                                                                       |
-| `first_mes`                                    | string     | First greeting; used when creating a chat                                             |
-| `mes_example`                                  | string     | Example dialogue                                                                      |
-| `creator_notes`                                | string     | Metadata                                                                              |
-| `creator_notes_multilingual`                   | record?    | Metadata                                                                              |
-| `system_prompt`                                | string     | Overrides the default main prompt when non-empty                                      |
-| `post_history_instructions`                    | string     | Appended after history                                                                |
-| `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                           |
-| `group_only_greetings`                         | string[]   | Parsed; group chats are planned                                                       |
-| `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it |
-| `tags`                                         | string[]   | Sidebar search/display                                                                |
-| `creator`                                      | string     | Sidebar display                                                                       |
-| `character_version`                            | string     | Metadata                                                                              |
-| `extensions`                                   | record     | Free-form; preserved                                                                  |
-| `assets`                                       | unknown[]? | V3 assets; preserved                                                                  |
-| `source`, `creation_date`, `modification_date` | optional   | Preserved                                                                             |
+| Field                                          | Type       | Notes                                                                                               |
+| ---------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                                       |
+| `nickname`                                     | string?    | Optional display nickname                                                                           |
+| `description`                                  | string     | Character sheet                                                                                     |
+| `personality`                                  | string     | Character sheet                                                                                     |
+| `scenario`                                     | string     | Character sheet                                                                                     |
+| `first_mes`                                    | string     | First greeting; used when creating a chat                                                           |
+| `mes_example`                                  | string     | Example dialogue                                                                                    |
+| `creator_notes`                                | string     | Metadata                                                                                            |
+| `creator_notes_multilingual`                   | record?    | Metadata                                                                                            |
+| `system_prompt`                                | string     | Overrides the default main prompt when non-empty                                                    |
+| `post_history_instructions`                    | string     | Appended after history                                                                              |
+| `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                                         |
+| `group_only_greetings`                         | string[]   | Parsed and preserved, but never used; a group's opening comes from each member's ordinary greetings |
+| `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it               |
+| `tags`                                         | string[]   | Library tag chips, search and bulk tag actions; the editor edits a comma list                       |
+| `creator`                                      | string     | Sidebar display                                                                                     |
+| `character_version`                            | string     | Metadata                                                                                            |
+| `extensions`                                   | record     | Free-form; preserved. `fav` holds the library favorite flag                                         |
+| `assets`                                       | unknown[]? | V3 assets; preserved, with CharX files under `data/character-assets/`                               |
+| `source`, `creation_date`, `modification_date` | optional   | Preserved; `creation_date` is stamped on the first write when absent                                |
 
 Character book entries use V2 character-book fields such as `keys`, `secondary_keys`, `content`, `enabled`, `insertion_order`, `case_sensitive`, `selective`, `constant`, `position` and `extensions`. See `packages/shared/src/schemas/character.ts`.
 
+### Library metadata
+
+Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON and CharX exports.
+
+Tags are `data.tags`, a string array. Bulk add/remove compares case- and whitespace-insensitively, keeps the spelling already on each card and never rewrites unrelated tags; a redundant action does not write the file. New tags cannot contain commas because the character editor splits the field on commas. CatCup does not reproduce SillyTavern's settings-level tag registry (`tags`/`tag_map` in `settings.json`, with colors, folders and manual order).
+
+The library's creation sort reads `data.creation_date` (Unix seconds), then a root `create_date` (ISO string), then the file birth time. A card without either date gets `data.creation_date` the first time CatCup writes it, so later atomic file writes do not reset the sort.
+
 ### Import limits
 
-- `.png` and `.json` only; `.charx` is not supported yet.
-- 20 MB per file, 50 files per request.
+- `.png`, `.json` and `.charx`; other extensions are reported per file.
+- 20 MB per uploaded file, 50 files per request.
+- A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
 - The saved file name is the sanitized card name. Name collisions get ` (2)`, ` (3)`, and so on.
+
+### CharX packages
+
+A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. CatCup imports it as a normal character:
+
+- A PNG icon asset (`type: "icon"`, `uri: "embeded://assets/…"`) becomes the character image, and the card is stored as a PNG card with `chara` and `ccv3` chunks. Without a PNG icon the card is stored as JSON and has no avatar.
+- Every safe `assets/**` entry is written under `data/character-assets/<character id>/` with its archive-relative path. CatCup does not display these files yet; they are kept so an export can include them.
+- `module.risum` and root files other than `card.json` are skipped. `.charx` embedded-JPEG files (`charxJpeg`) are not recognized.
+
+`GET /api/characters/:id/export?format=charx` writes a V3 `card.json` and the stored assets. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
 
 ### Writing cards back
 
@@ -127,7 +166,7 @@ Chats use SillyTavern's JSON Lines format. The file begins with a header object,
 
 SillyTavern uses `"unused"` for these fields; CatCup keeps the same convention. Unknown `chat_metadata` fields are preserved.
 
-CatCup writes one field of its own into `chat_metadata`: `persona_id`, the persona a chat is pinned to. Keeping it in the header rather than a side file means the choice travels with the chat when the JSONL is copied or exported, and SillyTavern ignores the field it does not know.
+CatCup writes one field of its own into `chat_metadata`: `persona_id`, the persona a chat is pinned to. Keeping it in the header rather than a side file means the choice travels with the chat when the JSONL is copied or exported, and SillyTavern ignores the field it does not know. A chat may also carry SillyTavern's `chat_metadata.quickReply` set links; CatCup reads them and adds those sets to the bar, but has no editor for them yet.
 
 ### Message
 
@@ -141,28 +180,38 @@ CatCup writes one field of its own into `chat_metadata`: `persona_id`, the perso
 }
 ```
 
-| Field       | Type     | Notes                                                                                 |
-| ----------- | -------- | ------------------------------------------------------------------------------------- |
-| `name`      | string   | Display name of the speaker                                                           |
-| `is_user`   | boolean  | User message when true                                                                |
-| `is_system` | boolean? | System/note messages; skipped by the current prompt builder                           |
-| `send_date` | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings |
-| `mes`       | string   | Message text                                                                          |
-| `extra`     | object?  | Metadata; unknown keys preserved                                                      |
+A quick reply `/sys` writes a narrator message: `is_user: false`, `is_system` absent, and `extra.type: "narrator"` with `extra.api: "manual"` and `extra.model: "slash command"`, the same marker SillyTavern uses. The prompt sends it as a system turn, and group speaker selection skips it. Messages with `is_system: true` are skipped by the prompt entirely, as in SillyTavern.
+
+| Field             | Type     | Notes                                                                                                                      |
+| ----------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `name`            | string   | Display name of the speaker                                                                                                |
+| `is_user`         | boolean  | User message when true                                                                                                     |
+| `is_system`       | boolean? | System/note messages; skipped by the current prompt builder                                                                |
+| `send_date`       | string?  | ISO 8601 from CatCup; ST writes humanized strings; both are treated as opaque strings                                      |
+| `mes`             | string   | Message text                                                                                                               |
+| `extra`           | object?  | Metadata; unknown keys preserved                                                                                           |
+| `original_avatar` | string?  | Group chats only: the speaker's avatar file name, as ST writes it                                                          |
+| `force_avatar`    | string?  | Group chats only: an ST thumbnail URL; CatCup writes it for ST readers and resolves its own avatars from `original_avatar` |
 
 ### `extra` fields written by CatCup
 
-| Field          | Type       | Meaning                                                                            |
-| -------------- | ---------- | ---------------------------------------------------------------------------------- |
-| `api`          | string     | Provider kind used for generation (`openai`, `anthropic`, `ollama`, `custom`, ...) |
-| `model`        | string     | Model ID                                                                           |
-| `reasoning`    | string     | Reasoning/thinking text returned by the provider                                   |
-| `gen_started`  | ISO string | Generation start time                                                              |
-| `gen_finished` | ISO string | Generation finish time                                                             |
-| `stopped`      | boolean    | Partial reply saved after stop/disconnect                                          |
-| `swipes`       | string[]   | Alternative assistant replies                                                      |
-| `swipe_id`     | number     | Zero-based selected swipe index                                                    |
-| `swipe_info`   | unknown[]  | Per-swipe metadata objects                                                         |
+| Field           | Type       | Meaning                                                                            |
+| --------------- | ---------- | ---------------------------------------------------------------------------------- |
+| `api`           | string     | Provider kind used for generation (`openai`, `anthropic`, `ollama`, `custom`, ...) |
+| `model`         | string     | Model ID                                                                           |
+| `reasoning`     | string     | Reasoning/thinking text returned by the provider                                   |
+| `gen_started`   | ISO string | Generation start time                                                              |
+| `gen_finished`  | ISO string | Generation finish time                                                             |
+| `stopped`       | boolean    | Partial reply saved after stop/disconnect                                          |
+| `swipes`        | string[]   | Alternative assistant replies                                                      |
+| `swipe_id`      | number     | Zero-based selected swipe index                                                    |
+| `swipe_info`    | unknown[]  | Per-swipe metadata objects                                                         |
+| `gen_id`        | number     | Group chats: the generation batch id SillyTavern uses to group one turn's replies  |
+| `memory`        | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
+| `media`         | object[]   | Image attachments in SillyTavern's `MediaAttachment` shape                         |
+| `media_index`   | number     | Selected entry in `media`                                                          |
+| `media_display` | string     | `gallery` or `list`, as SillyTavern stores it                                      |
+| `inline_image`  | boolean    | Whether the image renders full width instead of as a gallery thumbnail             |
 
 ### Swipes
 
@@ -186,6 +235,57 @@ A regenerated assistant message keeps all variants:
 
 `PATCH /api/chats/:characterId/:chatId/messages/:index` with `{ "swipeId": n }` selects a variant without regenerating.
 
+### Summary memory
+
+A rolling summary is stored as `extra.memory` on the message it covers, which is where SillyTavern's Memory extension keeps it:
+
+```json
+{
+    "name": "You",
+    "is_user": true,
+    "mes": "I step through the gate and look around.",
+    "extra": {
+        "memory": "Seraphina met Alex at the old gate; they agreed to enter the forest at dawn."
+    }
+}
+```
+
+The latest `extra.memory` in the chat is the one in effect; older ones remain in the file and come back if the newest is deleted, matching ST's Restore. A summary request always excludes the newest message, so a new summary lands on the last message it actually covered. The injection template and position live in settings, not in the chat file, so a chat copied into SillyTavern still carries its summary but uses SillyTavern's own Memory settings to inject it.
+
+Editing a message that carries a summary, switching its swipe, switching the opening greeting, continuing the message or regenerating it removes that summary: it no longer describes the stored text.
+
+Group chats store summaries the same way; the transcript keeps each member's name.
+
+### Image messages
+
+An image inserted from the gallery is a normal assistant message carrying SillyTavern's media attachment:
+
+```json
+{
+    "name": "Seraphina",
+    "is_user": false,
+    "send_date": "2026-11-12T05:00:00.000Z",
+    "mes": "[Seraphina sends a picture that contains: a knight in a candle-lit tavern].",
+    "extra": {
+        "media": [
+            {
+                "url": "user/images/Seraphina/image-1762900000000-a1b2c3d4.png",
+                "type": "image",
+                "title": "a knight in a candle-lit tavern",
+                "negative": "lowres, bad anatomy",
+                "generation_type": -1,
+                "source": "generated"
+            }
+        ],
+        "media_display": "gallery",
+        "media_index": 0,
+        "inline_image": false
+    }
+}
+```
+
+`url` is SillyTavern's client-relative path, not an API route; CatCup maps it to `/api/images/<folder>/<file>` when rendering. The file lives in `data/user/images/<folder>/`, where the folder is the sanitized character name for a single chat and the group id for a group chat. A `<file>.json` sidecar stores CatCup's metadata — `prompt`, `negativePrompt`, `backend`, `model`, `width`, `height`, `seed` and `createdAt`. SillyTavern's gallery ignores files that are not images, so the sidecar does not disturb it. CatCup writes one media entry per message and renders older SillyTavern messages with several entries using the stored `media_index`.
+
 ### File naming and folder rules
 
 - Folder: sanitized character **name** (e.g. `chats/Seraphina/`), with the sanitized character **id** accepted as a read fallback.
@@ -200,6 +300,66 @@ A regenerated assistant message keeps all variants:
 - The header is always rewritten in the ST shape even if the input lacked one (a synthesized header is used).
 - Malformed JSONL lines are skipped and logged; the rest of the chat remains readable.
 - Back up chats before bulk manual edits.
+
+## Group chats
+
+A group is one metadata file plus one JSONL per conversation, in the same two folders SillyTavern uses.
+
+### Group metadata
+
+`data/groups/<id>.json`:
+
+```json
+{
+    "id": "1762839291123",
+    "name": "The Cup",
+    "members": ["Mira.png", "Seraphina.png"],
+    "avatar_url": "",
+    "allow_self_responses": false,
+    "activation_strategy": 0,
+    "generation_mode": 0,
+    "disabled_members": [],
+    "fav": false,
+    "chat_id": "2026-11-11@08h14m52s123ms",
+    "chats": ["2026-11-11@08h14m52s123ms"],
+    "auto_mode_delay": 5,
+    "generation_mode_join_prefix": "",
+    "generation_mode_join_suffix": ""
+}
+```
+
+| Field                    | Meaning                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------- |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them               |
+| `disabled_members`       | Members that stay in the group but do not reply                                             |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                               |
+| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                                   |
+| `chat_id`                | The chat the group last opened                                                              |
+| `chats`                  | Every chat id belonging to the group, oldest first                                          |
+| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step                          |
+| `generation_mode_join_*` | Wrapped around each member's character-card field in append modes; it does not wrap replies |
+
+The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
+
+A new chat is seeded with one greeting per member, muted members included, as SillyTavern does. CatCup keeps each member's greetings as swipes on that opening message, so the opening can be changed without losing the alternatives. The greeting's macros are expanded with the member who owns it before it is stored — SillyTavern expands a group greeting with the same member — so a later speaker cannot rewrite an earlier greeting.
+
+### Group chat JSONL
+
+Group chats use the same header and message format as single-character chats, with one addition: SillyTavern writes the speaker's avatar file name at the top level of each message, and sometimes a `force_avatar` URL.
+
+```json
+{
+    "name": "Mira",
+    "is_user": false,
+    "mes": "Sit. The rain can wait.",
+    "original_avatar": "Mira.png",
+    "extra": {}
+}
+```
+
+The header's `chat_metadata.persona_id` pins the group chat to a persona exactly as it does for a single-character chat.
+
+When the prompt is assembled, each history message whose name is not the user persona is prefixed with that name (`Mira: Sit down.`), and the group nudge `[Write the next reply only as {{char}}.]` is appended after the history, as SillyTavern's Chat Completion prompt does.
 
 ## World Info
 
@@ -384,6 +544,44 @@ The three-way gate is SillyTavern's:
 
 One consequence catches people out: world info is assembled with the prompt flag set, so a `WORLD_INFO` script must also set `promptOnly`, exactly as in SillyTavern. A plain script with only the world-info placement never runs.
 
+## Quick Replies
+
+SillyTavern's version 2 quick reply sets, one file per set in `data/quickreplies/`:
+
+```json
+{
+    "version": 2,
+    "name": "Combat",
+    "disableSend": false,
+    "placeBeforeInput": false,
+    "injectInput": false,
+    "color": "transparent",
+    "onlyBorderColor": false,
+    "qrList": [
+        {
+            "id": 1,
+            "label": "Attack",
+            "title": "",
+            "message": "/send I attack.",
+            "icon": "",
+            "showLabel": false,
+            "isHidden": false,
+            "preventAutoExecute": true,
+            "contextList": []
+        }
+    ],
+    "idIndex": 1
+}
+```
+
+The file is named after the set, as SillyTavern names its own `QuickReplies/<name>.json` files. The file name without `.json` is the API's set id; the body's `name` is what the account set list and a chat's `chat_metadata.quickReply` links refer to. `qrList` order is button order, and `idIndex` is the highest quick reply id handed out.
+
+A quick reply `message` is plain text or the supported command subset documented in [API.md](API.md#supported-script-subset). Fields CatCup does not show — `icon`, `showLabel`, the `executeOn*` auto-execution flags, `automationId` and `contextList` — are preserved on save, so an imported set exports unchanged apart from edits to the fields the editor does expose.
+
+A file that is not a valid version 2 set is skipped by the library, not loaded or overwritten; remove or fix it by hand in `data/quickreplies/` if one appears.
+
+The bar's enabled flag and set order live in `settings.json` under `quickReplies`. SillyTavern's per-character configs are not implemented; per-chat `chat_metadata.quickReply.setList` links are read but not edited.
+
 ## Internal files (not SillyTavern formats)
 
 ### `settings.json`
@@ -406,15 +604,56 @@ One consequence catches people out: world info is assembled with the prompt flag
     "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
+    "quickReplies": { "enabled": false, "setList": [] },
+    "tts": {
+        "enabled": false,
+        "backend": "system",
+        "baseUrl": "https://api.openai.com/v1",
+        "model": "tts-1",
+        "voice": "",
+        "format": "mp3",
+        "speed": 1,
+        "instructions": "",
+        "rate": 1,
+        "pitch": 1,
+        "autoplay": true,
+        "narratorVoice": "",
+        "characterVoices": {},
+        "skipCodeBlocks": true,
+        "stripTags": true,
+        "stripAsterisks": true
+    },
+    "imageGeneration": {
+        "enabled": false,
+        "backend": "automatic1111",
+        "baseUrl": "http://127.0.0.1:7860",
+        "model": "",
+        "width": 512,
+        "height": 512,
+        "steps": 20,
+        "cfgScale": 7,
+        "sampler": "DDIM",
+        "scheduler": "normal",
+        "seed": -1,
+        "comfyWorkflow": "{ \"3\": { \"class_type\": \"KSampler\", \"inputs\": { … } }, … }",
+        "promptPrefix": "best quality, absurdres, aesthetic,",
+        "negativePrompt": "lowres, bad anatomy, bad hands, …",
+        "promptTemplate": "Ignore previous instructions. …",
+        "contextMessages": 10
+    },
     "ui": { "language": "en", "theme": "tavern-dark" }
 }
 ```
 
 No API keys are stored here.
 
+`tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
+
+`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/user/images/` and are safe to back up or delete.
+
 ### `secrets.json`
 
-A map of provider ID to API key. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
+A map of provider ID to API key, plus the fixed `tts` entry used by the text-to-speech adapter and the fixed `image` entry used by the image generation adapters. It is read only by the server, written with mode `0600` on POSIX, and never included in an API response. Do not copy it into bug reports.
 
 ### `auth.json`
 
@@ -426,10 +665,10 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
-- **Not imported:** group chats, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
+- **Not imported:** group chats, quick reply sets, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
 - **Repeat imports add copies.** Names get numeric suffixes; nothing is overwritten. To start clean, back up `data/` and remove the folders you want replaced first.
 
-Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`. The naming rules are the same, and unknown fields are preserved either way.
+Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
 
 ## Backup, restore and upgrades
 

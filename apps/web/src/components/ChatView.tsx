@@ -5,15 +5,31 @@ import {
     type ChatMessage,
     type ChatSummary,
     chatPersonaId,
+    getLatestSummary,
     type Persona,
+    prepareSpeechText,
+    type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Eye, Menu, MessageSquarePlus, Pencil, Play, Plus, Settings2, Sparkles, Trash2, X } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-
+import {
+    Brain,
+    Eye,
+    ImagePlus,
+    Images,
+    Menu,
+    MessageSquarePlus,
+    Pencil,
+    Play,
+    Plus,
+    Settings2,
+    Sparkles,
+    Trash2,
+    X,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useBranchChat,
     useChat,
@@ -22,16 +38,25 @@ import {
     useRegexScripts,
     useRenameChat,
     useSetChatPersona,
+    useSettings,
     useUpdateMessage,
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
+import type { ImageChatTarget } from '../hooks/useImages';
+import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { ContextInspector } from './ContextInspector';
+import { EmptyState } from './EmptyState';
+import { ImageGalleryDialog } from './ImageGalleryDialog';
+import { ImageGenerationDialog } from './ImageGenerationDialog';
+import { ImageLightbox, type LightboxImage } from './ImageLightbox';
 import { Logo } from './Logo';
+import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
+import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
 
 interface ChatViewProps {
@@ -55,11 +80,16 @@ interface ChatViewProps {
 function findLastAssistantIndex(messages: ChatMessage[]): number {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
         const message = messages[index];
-        if (message && !message.is_user && !message.is_system) {
+        if (message && !message.is_user && !message.is_system && message.extra?.type !== 'narrator') {
             return index;
         }
     }
     return -1;
+}
+
+/** A cheap identity for "did the newest message change?" after a generation. */
+function messageSignature(message: ChatMessage | undefined): string {
+    return message ? `${message.send_date ?? ''}|${message.mes.length}|${message.mes.slice(-24)}` : '';
 }
 
 function subtitleFor(character: CharacterSummary): string {
@@ -76,29 +106,6 @@ function subtitleFor(character: CharacterSummary): string {
         return 'Character card v2';
     }
     return 'Character card';
-}
-
-function EmptyState({
-    icon,
-    title,
-    description,
-    action,
-}: {
-    icon: ReactNode;
-    title: string;
-    description: string;
-    action?: ReactNode;
-}) {
-    return (
-        <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
-            <div className="mb-4 flex size-16 items-center justify-center rounded-2xl border border-line bg-surface/60">
-                {icon}
-            </div>
-            <h3 className="font-display text-xl text-parchment">{title}</h3>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">{description}</p>
-            {action ? <div className="mt-5">{action}</div> : null}
-        </div>
-    );
 }
 
 export function ChatView({
@@ -135,12 +142,14 @@ export function ChatView({
     // Stored messages keep their raw macros, as SillyTavern does; the same
     // expansion the server applies to the prompt is applied here for display.
     const card = characterDetail?.card;
+    const chatSummary = getLatestSummary(chatQuery.data?.messages ?? []);
     const macroContext = {
         char: card?.name || character?.name || '',
         user: persona.name,
         description: card?.description ?? '',
         personality: card?.personality ?? '',
         scenario: card?.scenario ?? '',
+        ...(chatSummary ? { summary: chatSummary.value } : {}),
     };
     const display = (text: string, isUser: boolean, depth: number, isReasoning = false) =>
         substituteMacros(
@@ -171,6 +180,31 @@ export function ChatView({
     const [renameOpen, setRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState('');
     const [inspectorOpen, setInspectorOpen] = useState(false);
+    const [memoryOpen, setMemoryOpen] = useState(false);
+    const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
+    const [galleryOpen, setGalleryOpen] = useState(false);
+    const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
+    const [draft, setDraft] = useState('');
+    const [focusRequest, setFocusRequest] = useState(0);
+    // A quick reply result arrives after a round trip; read the latest draft
+    // instead of the one captured when the button was clicked.
+    const draftRef = useRef(draft);
+    useEffect(() => {
+        draftRef.current = draft;
+    }, [draft]);
+
+    // A quick reply can leave text in the box; switching chats starts fresh.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only a different chat should clear the draft
+    useEffect(() => {
+        setDraft('');
+        setImageDialog(null);
+        setGalleryOpen(false);
+    }, [selectedChatId]);
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
+    useEffect(() => {
+        tts.stop();
+    }, [selectedChatId]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
     const scrollToBottom = useCallback((smooth = false) => {
@@ -184,7 +218,17 @@ export function ChatView({
         });
     }, []);
 
-    const generation = useGeneration(character?.id ?? null, selectedChatId, () => scrollToBottom(true));
+    const generation = useGeneration(
+        character?.id ? { kind: 'character', characterId: character.id } : null,
+        selectedChatId,
+        () => scrollToBottom(true),
+    );
+    const tts = useTts();
+    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const imageTarget: ImageChatTarget | null =
+        character && selectedChatId
+            ? { kind: 'character', id: character.id, chatId: selectedChatId, name: character.name }
+            : null;
 
     const messages = chatQuery.data?.messages ?? [];
     const lastAssistantIndex = findLastAssistantIndex(messages);
@@ -194,7 +238,8 @@ export function ChatView({
         generation.action === 'regenerate' &&
         lastMessage !== undefined &&
         !lastMessage.is_user &&
-        !lastMessage.is_system;
+        !lastMessage.is_system &&
+        lastMessage.extra?.type !== 'narrator';
     const visibleMessages = hideLastAssistant ? messages.slice(0, -1) : messages;
 
     const optimisticMessage: ChatMessage | null = generation.optimisticUser
@@ -223,17 +268,98 @@ export function ChatView({
         scrollToBottom,
     ]);
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: speak once per completed reply
+    useEffect(() => {
+        const reply = generation.lastReply;
+        if (!reply || generation.replySequence === 0) {
+            return;
+        }
+        if (!tts.enabled || !tts.autoplay) {
+            return;
+        }
+        if (reply.extra?.stopped || reply.is_user || reply.is_system || reply.extra?.type === 'narrator') {
+            return;
+        }
+        const text = prepareSpeechText(display(reply.mes, false, 0), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (text) {
+            void tts.speak(messageSignature(reply), text, tts.voiceFor(character?.id));
+        }
+    }, [generation.replySequence]);
+
+    // The greeting picker replaces the first message in place, without a chat
+    // switch; silence the old opening when that happens.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: only the first message's text matters here
+    useEffect(() => {
+        tts.stop();
+    }, [messages[0]?.mes]);
+
     const handleSend = (text: string) => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('send', text);
+    };
+
+    const handleQuickReplyInput = (action: Extract<QuickReplyAction, { type: 'input' }>) => {
+        const current = draftRef.current;
+        let text = action.text;
+        if (action.inject) {
+            text = action.placeBefore
+                ? [action.text, current].filter(Boolean).join(' ')
+                : [current, action.text].filter(Boolean).join(' ');
+        }
+        if (!action.submit) {
+            setDraft(text);
+            setFocusRequest((current) => current + 1);
+            return;
+        }
+        const outgoing = text.trim();
+        setDraft('');
+        if (outgoing) {
+            tts.stop();
+            void generation.start('send', outgoing);
+        }
+    };
+
+    const handleQuickReplyGenerate = (action: Extract<QuickReplyAction, { type: 'generate' }>) => {
+        if (!selectedChatId) {
+            return;
+        }
+        tts.stop();
+        void generation.start(action.mode);
+    };
+
+    const handleSpeak = (index: number, message: ChatMessage) => {
+        const key = messageSignature(message);
+        if (tts.speakingKey === key) {
+            tts.stop();
+            return;
+        }
+        if (!tts.enabled || !character) {
+            return;
+        }
+        const text = prepareSpeechText(display(message.mes, false, visibleMessages.length - index - 1), {
+            skipCodeBlocks: tts.settings?.skipCodeBlocks,
+            stripTags: tts.settings?.stripTags,
+            stripAsterisks: tts.settings?.stripAsterisks,
+        });
+        if (!text) {
+            pushToast('This message has nothing to speak.', 'info');
+            return;
+        }
+        void tts.speak(key, text, tts.voiceFor(character.id, message.extra?.type === 'narrator'));
     };
 
     const handleRegenerate = () => {
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('regenerate');
     };
 
@@ -250,6 +376,7 @@ export function ChatView({
         if (next < 0 || next >= swipes.length) {
             return;
         }
+        tts.stop();
         updateMessageMutation.mutate(
             { index, swipeId: next },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -260,6 +387,7 @@ export function ChatView({
         if (!window.confirm('Delete this message? This cannot be undone.')) {
             return;
         }
+        tts.stop();
         deleteMessageMutation.mutate(index, {
             onError: (error) => pushToast(error.message, 'error'),
         });
@@ -276,10 +404,12 @@ export function ChatView({
         if (!selectedChatId) {
             return;
         }
+        tts.stop();
         void generation.start('continue');
     };
 
     const handleEditMessage = (index: number, text: string) => {
+        tts.stop();
         updateMessageMutation.mutate(
             { index, message: text },
             { onError: (error) => pushToast(error.message, 'error') },
@@ -344,12 +474,7 @@ export function ChatView({
 
     const header = (
         <header className="flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
-            <button
-                type="button"
-                className="icon-btn md:hidden"
-                onClick={onOpenSidebar}
-                aria-label="Open character library"
-            >
+            <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>
 
@@ -461,6 +586,36 @@ export function ChatView({
                     <button
                         type="button"
                         className="icon-btn"
+                        onClick={() => setImageDialog({})}
+                        disabled={!selectedChatId || !imageEnabled}
+                        title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
+                        aria-label="Generate image"
+                    >
+                        <ImagePlus size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => setGalleryOpen(true)}
+                        disabled={!imageEnabled}
+                        title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
+                        aria-label="Image gallery"
+                    >
+                        <Images size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => setMemoryOpen(true)}
+                        disabled={!selectedChatId || messages.length === 0}
+                        title="Memory"
+                        aria-label="Memory"
+                    >
+                        <Brain size={18} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn"
                         onClick={() => setInspectorOpen(true)}
                         disabled={!selectedChatId}
                         title="Inspect context"
@@ -486,7 +641,7 @@ export function ChatView({
                             description="Choose a character from the library, or import a PNG or JSON card to open the first door."
                             action={
                                 <button type="button" className="btn-ghost" onClick={onOpenLibrary}>
-                                    Open character library
+                                    Open the library
                                 </button>
                             }
                         />
@@ -558,7 +713,23 @@ export function ChatView({
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
+                                        onEditStart={tts.stop}
                                         onBranch={() => handleBranch(index)}
+                                        onOpenImage={(url, title) => setLightbox({ url, title })}
+                                        onIllustrate={
+                                            imageEnabled &&
+                                            !message.is_user &&
+                                            !message.is_system &&
+                                            message.extra?.type !== 'narrator'
+                                                ? () => setImageDialog({ messageIndex: index })
+                                                : undefined
+                                        }
+                                        onSpeak={
+                                            tts.enabled && !message.is_user && !message.is_system
+                                                ? () => handleSpeak(index, message)
+                                                : undefined
+                                        }
+                                        speaking={tts.speakingKey === messageSignature(message)}
                                     />
                                 );
                             })}
@@ -586,7 +757,11 @@ export function ChatView({
                                 />
                             ) : null}
 
-                            {lastMessage && !lastMessage.is_user && !lastMessage.is_system && !generation.streaming ? (
+                            {lastMessage &&
+                            !lastMessage.is_user &&
+                            !lastMessage.is_system &&
+                            lastMessage.extra?.type !== 'narrator' &&
+                            !generation.streaming ? (
                                 <div className="flex justify-center pt-1">
                                     <button
                                         type="button"
@@ -623,10 +798,23 @@ export function ChatView({
                 </div>
             ) : null}
 
+            <QuickReplyBar
+                target={
+                    character && selectedChatId ? { kind: 'character', id: character.id, chatId: selectedChatId } : null
+                }
+                metadata={chatQuery.data?.header.chat_metadata}
+                disabled={!selectedChatId || !character || generation.streaming}
+                onInput={handleQuickReplyInput}
+                onGenerate={handleQuickReplyGenerate}
+            />
+
             <Composer
                 placeholder={character ? `Message ${character.name}…` : 'Choose a character to begin'}
                 disabled={!selectedChatId || !character}
                 streaming={generation.streaming}
+                value={draft}
+                onChange={setDraft}
+                focusRequest={focusRequest}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
             />
@@ -637,6 +825,30 @@ export function ChatView({
                 characterId={character?.id ?? null}
                 chatId={selectedChatId}
             />
+
+            <MemoryDialog
+                open={memoryOpen}
+                onClose={() => setMemoryOpen(false)}
+                target={
+                    character && selectedChatId ? { kind: 'character', id: character.id, chatId: selectedChatId } : null
+                }
+                messages={messages}
+                title={character?.name ?? 'Memory'}
+            />
+
+            {imageDialog && imageTarget ? (
+                <ImageGenerationDialog
+                    target={imageTarget}
+                    messageIndex={imageDialog.messageIndex}
+                    onClose={() => setImageDialog(null)}
+                />
+            ) : null}
+
+            {imageTarget ? (
+                <ImageGalleryDialog open={galleryOpen} onClose={() => setGalleryOpen(false)} target={imageTarget} />
+            ) : null}
+
+            <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">

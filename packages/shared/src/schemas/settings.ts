@@ -1,6 +1,18 @@
 import { z } from 'zod';
 
+import { DEFAULT_MEMORY_PROMPT, DEFAULT_MEMORY_TEMPLATE } from '../memory.js';
+import {
+    DEFAULT_IMAGE_GENERATION_SETTINGS,
+    imageGenerationPatchSchema,
+    imageGenerationSettingsSchema,
+} from './images.js';
 import { type ProviderPublic, providerConfigSchema } from './provider.js';
+import {
+    DEFAULT_QUICK_REPLY_SETTINGS,
+    quickReplySettingsPatchSchema,
+    quickReplySettingsSchema,
+} from './quickreplies.js';
+import { DEFAULT_TTS_SETTINGS, ttsSettingsPatchSchema, ttsSettingsSchema } from './tts.js';
 
 export const generationSettingsSchema = z.object({
     temperature: z.number().min(0).max(2).default(1),
@@ -115,6 +127,79 @@ export const DEFAULT_AUTHOR_NOTE: AuthorNoteSettings = {
     scan: false,
 };
 
+/**
+ * Summary memory, mirroring SillyTavern's Memory extension.
+ *
+ * `enabled` is CatCup's opt-in for automatic updates; a summary that already
+ * exists is still injected (unless `position` is -1) and can always be created
+ * or edited by hand. SillyTavern instead has a `memoryFrozen` pause switch and
+ * opt-in by enabling the extension.
+ */
+export const memorySettingsSchema = z.object({
+    /** Update the summary automatically after replies. */
+    enabled: z.boolean().default(false),
+    /** Prompt sent to the model to request a summary; `{{words}}` is expanded. */
+    prompt: z.string().max(10000).default(DEFAULT_MEMORY_PROMPT),
+    /** Template wrapped around the summary when it enters the prompt. */
+    template: z.string().max(2000).default(DEFAULT_MEMORY_TEMPLATE),
+    /** `-1` none, `0` after the main prompt, `1` in chat at `depth`, `2` before it. */
+    position: z.number().int().min(-1).max(2).default(0),
+    /** `0` system, `1` user, `2` assistant. */
+    role: z.number().int().min(0).max(2).default(0),
+    depth: z.number().int().min(0).max(10000).default(2),
+    /** Let world info scan the summary. */
+    scan: z.boolean().default(false),
+    /** Target summary length, in words. */
+    promptWords: z.number().int().min(25).max(1000).default(200),
+    /** Update every N messages since the last summary; `0` disables. */
+    promptInterval: z.number().int().min(0).max(250).default(10),
+    /** Update every N words since the last summary; `0` disables. */
+    promptForceWords: z.number().int().min(0).max(10000).default(0),
+    /** Cap on messages sent in one summary request; `0` uses the context budget. */
+    maxMessages: z.number().int().min(0).max(250).default(0),
+    /** Summary response length; `0` uses the generation setting. */
+    responseLength: z.number().int().min(0).max(4096).default(0),
+});
+export type MemorySettings = z.infer<typeof memorySettingsSchema>;
+
+export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
+    enabled: false,
+    prompt: DEFAULT_MEMORY_PROMPT,
+    template: DEFAULT_MEMORY_TEMPLATE,
+    position: 0,
+    role: 0,
+    depth: 2,
+    scan: false,
+    promptWords: 200,
+    promptInterval: 10,
+    promptForceWords: 0,
+    maxMessages: 0,
+    responseLength: 0,
+};
+
+/**
+ * A partial memory update for `PATCH /api/settings`.
+ *
+ * `memorySettingsSchema.partial()` still applies each field's default in Zod 4,
+ * so a patch carrying only `enabled` would reset every other memory setting.
+ * This schema keeps unspecified fields absent.
+ */
+export const memorySettingsPatchSchema = z.object({
+    enabled: z.boolean().optional(),
+    prompt: z.string().max(10000).optional(),
+    template: z.string().max(2000).optional(),
+    position: z.number().int().min(-1).max(2).optional(),
+    role: z.number().int().min(0).max(2).optional(),
+    depth: z.number().int().min(0).max(10000).optional(),
+    scan: z.boolean().optional(),
+    promptWords: z.number().int().min(25).max(1000).optional(),
+    promptInterval: z.number().int().min(0).max(250).optional(),
+    promptForceWords: z.number().int().min(0).max(10000).optional(),
+    maxMessages: z.number().int().min(0).max(250).optional(),
+    responseLength: z.number().int().min(0).max(4096).optional(),
+});
+export type MemorySettingsPatch = z.infer<typeof memorySettingsPatchSchema>;
+
 export const appSettingsSchema = z.object({
     version: z.literal(1).default(1),
     activeProviderId: z.string().nullable().default(null),
@@ -129,11 +214,19 @@ export const appSettingsSchema = z.object({
     ui: uiSettingsSchema.default(DEFAULT_UI_SETTINGS),
     worldInfo: worldInfoConfigSchema.default(DEFAULT_WORLD_INFO_CONFIG),
     authorNote: authorNoteSchema.default(DEFAULT_AUTHOR_NOTE),
+    memory: memorySettingsSchema.default(DEFAULT_MEMORY_SETTINGS),
+    quickReplies: quickReplySettingsSchema.default(DEFAULT_QUICK_REPLY_SETTINGS),
+    tts: ttsSettingsSchema.default(DEFAULT_TTS_SETTINGS),
+    imageGeneration: imageGenerationSettingsSchema.default(DEFAULT_IMAGE_GENERATION_SETTINGS),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
 export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
     providers: ProviderPublic[];
+    /** Whether a TTS API key is stored; the key itself never leaves the server. */
+    ttsHasKey: boolean;
+    /** Whether an image generation API key is stored; the key never leaves the server. */
+    imageHasKey: boolean;
 }
 
 export const settingsPatchSchema = z.object({
@@ -145,5 +238,13 @@ export const settingsPatchSchema = z.object({
     ui: uiSettingsSchema.partial().optional(),
     worldInfo: worldInfoConfigSchema.partial().optional(),
     authorNote: authorNoteSchema.partial().optional(),
+    memory: memorySettingsPatchSchema.optional(),
+    quickReplies: quickReplySettingsPatchSchema.optional(),
+    tts: ttsSettingsPatchSchema.optional(),
+    imageGeneration: imageGenerationPatchSchema.optional(),
+    /** Write-only: stored in data/secrets.json, never returned. Empty clears. */
+    ttsApiKey: z.string().max(2000).optional(),
+    /** Write-only image generation key, stored beside the TTS key. */
+    imageApiKey: z.string().max(2000).optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;

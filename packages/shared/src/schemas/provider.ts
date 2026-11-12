@@ -26,6 +26,18 @@ export const providerInputSchema = z.object({
 });
 export type ProviderInput = z.infer<typeof providerInputSchema>;
 
+/**
+ * Test an unsaved form. `savedProviderId` lets the server reuse a stored key
+ * that the browser never sees; a supplied `apiKey` always wins, and an empty
+ * string tests without a key.
+ */
+export const providerDraftTestSchema = z.object({
+    provider: providerInputSchema.omit({ apiKey: true }),
+    savedProviderId: z.string().min(1).max(200).optional(),
+    apiKey: z.string().max(2000).optional(),
+});
+export type ProviderDraftTestInput = z.infer<typeof providerDraftTestSchema>;
+
 export interface ProviderPublic extends ProviderConfig {
     hasKey: boolean;
 }

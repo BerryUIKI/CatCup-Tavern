@@ -80,6 +80,7 @@ export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: (
                 setResult(data.result);
                 setPlan(null);
                 void queryClient.invalidateQueries({ queryKey: ['characters'] });
+                void queryClient.invalidateQueries({ queryKey: ['groups'] });
                 void queryClient.invalidateQueries({ queryKey: ['worlds'] });
                 void queryClient.invalidateQueries({ queryKey: ['presets'] });
                 pushToast(

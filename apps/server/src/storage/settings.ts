@@ -6,7 +6,11 @@ import {
     DEFAULT_AUTHOR_NOTE,
     DEFAULT_BASE_URLS,
     DEFAULT_GENERATION_SETTINGS,
+    DEFAULT_IMAGE_GENERATION_SETTINGS,
+    DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
+    DEFAULT_QUICK_REPLY_SETTINGS,
+    DEFAULT_TTS_SETTINGS,
     DEFAULT_UI_SETTINGS,
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
@@ -74,6 +78,10 @@ function createDefaultSettings(): AppSettings {
         ui: { ...DEFAULT_UI_SETTINGS },
         worldInfo: { ...DEFAULT_WORLD_INFO_CONFIG },
         authorNote: { ...DEFAULT_AUTHOR_NOTE },
+        memory: { ...DEFAULT_MEMORY_SETTINGS },
+        quickReplies: { ...DEFAULT_QUICK_REPLY_SETTINGS },
+        tts: { ...DEFAULT_TTS_SETTINGS },
+        imageGeneration: { ...DEFAULT_IMAGE_GENERATION_SETTINGS },
     };
 }
 
@@ -103,12 +111,13 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
         changed = true;
     }
 
-    if (
-        !settings.activeProviderId ||
-        !settings.providers.some((provider) => provider.id === settings.activeProviderId)
-    ) {
-        settings.activeProviderId = settings.providers[0]?.id ?? null;
-        changed = true;
+    const active = settings.providers.find((provider) => provider.id === settings.activeProviderId);
+    if (!active?.enabled) {
+        const nextActive = settings.providers.find((provider) => provider.enabled)?.id ?? null;
+        if (settings.activeProviderId !== nextActive) {
+            settings.activeProviderId = nextActive;
+            changed = true;
+        }
     }
 
     // Files written before the persona list carry one `persona` object. Promote
@@ -187,6 +196,50 @@ export async function getProviderSecret(providerId: string): Promise<string | un
     return secrets[providerId];
 }
 
+/** The single TTS key lives beside provider keys, under a fixed name. */
+const TTS_SECRET_KEY = 'tts';
+
+/** The single image generation key lives beside the TTS key. */
+const IMAGE_SECRET_KEY = 'image';
+
+export async function getTtsSecret(): Promise<string | undefined> {
+    return (await getSecrets())[TTS_SECRET_KEY];
+}
+
+export async function getImageSecret(): Promise<string | undefined> {
+    return (await getSecrets())[IMAGE_SECRET_KEY];
+}
+
+export async function setTtsSecret(apiKey: string | undefined): Promise<void> {
+    if (apiKey === undefined) {
+        return;
+    }
+    await withFileLock(paths.secrets, async () => {
+        const secrets = await getSecrets();
+        if (apiKey === '') {
+            delete secrets[TTS_SECRET_KEY];
+        } else {
+            secrets[TTS_SECRET_KEY] = apiKey;
+        }
+        await writeJsonFile(paths.secrets, secrets);
+    });
+}
+
+export async function setImageSecret(apiKey: string | undefined): Promise<void> {
+    if (apiKey === undefined) {
+        return;
+    }
+    await withFileLock(paths.secrets, async () => {
+        const secrets = await getSecrets();
+        if (apiKey === '') {
+            delete secrets[IMAGE_SECRET_KEY];
+        } else {
+            secrets[IMAGE_SECRET_KEY] = apiKey;
+        }
+        await writeJsonFile(paths.secrets, secrets);
+    });
+}
+
 async function setProviderSecret(providerId: string, apiKey: string | undefined): Promise<void> {
     if (apiKey === undefined) {
         return;
@@ -213,7 +266,13 @@ export async function getPublicProviders(): Promise<ProviderPublic[]> {
 
 export async function getSettingsResponse(): Promise<SettingsResponse> {
     const settings = await getSettings();
-    return { ...settings, providers: await getPublicProviders() };
+    const [providers, secrets] = await Promise.all([getPublicProviders(), getSecrets()]);
+    return {
+        ...settings,
+        providers,
+        ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]),
+        imageHasKey: Boolean(secrets[IMAGE_SECRET_KEY]),
+    };
 }
 
 export async function getProvider(providerId: string): Promise<ProviderConfig | null> {
@@ -230,14 +289,17 @@ export async function getActiveProvider(): Promise<ProviderConfig | null> {
     return settings.providers.find((provider) => provider.enabled) ?? null;
 }
 
-export async function updateSettings(patch: SettingsPatch): Promise<AppSettings> {
+async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
     return mutateSettings((settings) => {
         if (patch.activeProviderId !== undefined) {
-            if (
-                patch.activeProviderId !== null &&
-                !settings.providers.some((provider) => provider.id === patch.activeProviderId)
-            ) {
-                throw new Error('Provider not found');
+            if (patch.activeProviderId !== null) {
+                const provider = settings.providers.find((item) => item.id === patch.activeProviderId);
+                if (!provider) {
+                    throw new Error('Provider not found');
+                }
+                if (!provider.enabled) {
+                    throw new Error('Provider is disabled');
+                }
             }
             settings.activeProviderId = patch.activeProviderId;
         }
@@ -271,7 +333,64 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         if (patch.authorNote) {
             settings.authorNote = { ...settings.authorNote, ...patch.authorNote };
         }
+        if (patch.memory) {
+            settings.memory = { ...settings.memory, ...patch.memory };
+        }
+        if (patch.quickReplies) {
+            settings.quickReplies = { ...settings.quickReplies, ...patch.quickReplies };
+        }
+        if (patch.tts) {
+            settings.tts = { ...settings.tts, ...patch.tts };
+        }
+        if (patch.imageGeneration) {
+            settings.imageGeneration = { ...settings.imageGeneration, ...patch.imageGeneration };
+        }
         return settings;
+    });
+}
+
+/**
+ * Persist settings and, when the patch carries one, the TTS key.
+ *
+ * The key is written to `secrets.json` only after the settings save succeeds,
+ * so a failed patch cannot leave a new key behind.
+ */
+export async function updateSettings(patch: SettingsPatch): Promise<AppSettings> {
+    const settings = await mutateSettingsNow(patch);
+    if (patch.ttsApiKey !== undefined) {
+        await setTtsSecret(patch.ttsApiKey);
+    }
+    if (patch.imageApiKey !== undefined) {
+        await setImageSecret(patch.imageApiKey);
+    }
+    return settings;
+}
+
+/**
+ * Point the account set list at a renamed set.
+ *
+ * A chat may keep its own `chat_metadata.quickReply` links; those are left
+ * alone, matching SillyTavern's per-chat configuration.
+ */
+export async function renameQuickReplySetReference(oldName: string, newName: string): Promise<void> {
+    await mutateSettings((settings) => {
+        const seen = new Set<string>();
+        settings.quickReplies.setList = settings.quickReplies.setList
+            .map((link) => (link.set === oldName ? { ...link, set: newName } : link))
+            .filter((link) => {
+                if (seen.has(link.set)) {
+                    return false;
+                }
+                seen.add(link.set);
+                return true;
+            });
+    });
+}
+
+/** Drop a deleted set from the account set list. */
+export async function removeQuickReplySetReference(name: string): Promise<void> {
+    await mutateSettings((settings) => {
+        settings.quickReplies.setList = settings.quickReplies.setList.filter((link) => link.set !== name);
     });
 }
 
@@ -287,7 +406,7 @@ export async function createProvider(input: ProviderInput): Promise<ProviderPubl
             headers: input.headers,
         };
         settings.providers.push(provider);
-        if (!settings.activeProviderId) {
+        if (!settings.activeProviderId && provider.enabled) {
             settings.activeProviderId = provider.id;
         }
         return provider;
@@ -310,6 +429,15 @@ export async function updateProvider(providerId: string, input: ProviderInput): 
         provider.model = input.model;
         provider.enabled = input.enabled;
         provider.headers = input.headers;
+
+        // The active provider is always one a generation can actually use.
+        if (settings.activeProviderId === provider.id && !provider.enabled) {
+            settings.activeProviderId =
+                settings.providers.find((candidate) => candidate.id !== provider.id && candidate.enabled)?.id ?? null;
+        } else if (!settings.activeProviderId && provider.enabled) {
+            settings.activeProviderId = provider.id;
+        }
+
         return provider;
     });
 
@@ -326,7 +454,8 @@ export async function deleteProvider(providerId: string): Promise<void> {
         }
         settings.providers.splice(index, 1);
         if (settings.activeProviderId === providerId) {
-            settings.activeProviderId = settings.providers[0]?.id ?? null;
+            // Never leave a disabled provider marked as active.
+            settings.activeProviderId = settings.providers.find((provider) => provider.enabled)?.id ?? null;
         }
     });
 

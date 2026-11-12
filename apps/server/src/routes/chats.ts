@@ -220,6 +220,8 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                     message: await updateMessage(character, params.chatId, index, {
                         mes: swipe,
                         extra: { swipe_id: body.swipeId },
+                        // The text changed, so any summary anchored here is stale.
+                        extraDelete: ['memory'],
                     }),
                 };
             }
@@ -243,6 +245,7 @@ export async function registerChatRoutes(app: FastifyInstance): Promise<void> {
                             ),
                             macroContext,
                         ),
+                        extraDelete: ['memory'],
                     }),
                 };
             }

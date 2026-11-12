@@ -1,8 +1,9 @@
-import { type ContextPreview, resolvePersona, sanitizeRegexMacro } from '@catcup/shared';
+import { type ContextPreview, getLatestSummary, resolvePersona, sanitizeRegexMacro } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
 import { buildPrompt } from '../prompt/builder.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
@@ -40,9 +41,12 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const tokenCounter = provider ? createTokenCounter(provider.kind, provider.model) : ESTIMATE_COUNTER;
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(character, persona);
+        const latestSummary = getLatestSummary(chat.messages);
+        const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
 
@@ -58,6 +62,8 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summary: latestSummary.value } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         const assembled = buildPrompt({
@@ -76,6 +82,8 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summaryText: latestSummary.value } : {}),
+            ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
 
         const scan = worldInfoTurn.scan;
@@ -111,6 +119,17 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
                 budget: scan.budget,
                 loops: scan.loops,
             },
+            memory: latestSummary
+                ? {
+                      value: latestSummary.value,
+                      index: latestSummary.index,
+                      tokens: memoryInjection ? tokenCounter.count(memoryInjection.content) : 0,
+                      injection: memoryInjection?.content ?? '',
+                      position: settings.memory.position,
+                      role: settings.memory.role,
+                      depth: settings.memory.depth,
+                  }
+                : null,
             budget: {
                 exceeded: assembled.budgetExceeded,
                 tokenCounts: assembled.tokenCounts,

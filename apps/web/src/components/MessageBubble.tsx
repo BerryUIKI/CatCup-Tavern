@@ -1,9 +1,23 @@
 import type { ChatMessage } from '@catcup/shared';
-import { Check, ChevronLeft, ChevronRight, Copy, GitBranch, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
+import {
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    Copy,
+    GitBranch,
+    ImagePlus,
+    Pencil,
+    RefreshCw,
+    Square,
+    Trash2,
+    Volume2,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+import { galleryImageUrl } from '../lib/api';
 import { cn } from '../lib/cn';
 import { formatMessageTime } from '../lib/format';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -37,6 +51,46 @@ interface MessageBubbleProps {
     onSwipe?: (delta: number) => void;
     onEdit?: (text: string) => void;
     onBranch?: () => void;
+    /** Stop playback when the inline editor opens. */
+    onEditStart?: () => void;
+    /** Present when TTS is enabled for this message. */
+    onSpeak?: () => void;
+    /** Whether this message is the one currently being spoken. */
+    speaking?: boolean;
+    /** Open the image lightbox for a media attachment. */
+    onOpenImage?: (url: string, title?: string) => void;
+    /** Present when image generation is enabled and this message can seed a prompt. */
+    onIllustrate?: () => void;
+}
+
+interface MessageMedia {
+    url: string;
+    title?: string;
+}
+
+function readMedia(message: ChatMessage): MessageMedia[] {
+    const raw = message.extra?.media;
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+    return raw.flatMap((item) => {
+        if (!item || typeof item !== 'object') {
+            return [];
+        }
+        const record = item as Record<string, unknown>;
+        if (record.type !== undefined && record.type !== 'image') {
+            return [];
+        }
+        if (typeof record.url !== 'string' || !record.url) {
+            return [];
+        }
+        return [
+            {
+                url: record.url,
+                ...(typeof record.title === 'string' && record.title ? { title: record.title } : {}),
+            },
+        ];
+    });
 }
 
 export function MessageBubble({
@@ -54,8 +108,15 @@ export function MessageBubble({
     onSwipe,
     onEdit,
     onBranch,
+    onEditStart,
+    onSpeak,
+    speaking,
+    onOpenImage,
+    onIllustrate,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
+    /** SillyTavern narrator messages carry this type but are not user messages. */
+    const isNarrator = message.extra?.type === 'narrator';
     const reasoning = displayReasoning ?? (typeof message.extra?.reasoning === 'string' ? message.extra.reasoning : '');
     const shown = displayText ?? message.mes;
     const rawSwipes = message.extra?.swipes;
@@ -64,6 +125,17 @@ export function MessageBubble({
         : [];
     const swipeId = typeof message.extra?.swipe_id === 'number' ? message.extra.swipe_id : 0;
     const canSwipe = swipes.length > 1;
+
+    const media = readMedia(message);
+    const savedMediaIndex = typeof message.extra?.media_index === 'number' ? message.extra.media_index : 0;
+    const [mediaIndex, setMediaIndex] = useState(savedMediaIndex);
+    const inlineImage = message.extra?.inline_image === true;
+
+    useEffect(() => {
+        setMediaIndex(Math.min(Math.max(savedMediaIndex, 0), Math.max(media.length - 1, 0)));
+    }, [savedMediaIndex, media.length]);
+
+    const activeMedia = media[mediaIndex];
 
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState(message.mes);
@@ -76,6 +148,7 @@ export function MessageBubble({
     }, [editing]);
 
     const startEditing = () => {
+        onEditStart?.();
         setDraft(message.mes);
         setEditing(true);
     };
@@ -93,8 +166,8 @@ export function MessageBubble({
             data-message-index={index}
         >
             <CharacterAvatar
-                name={isUser ? message.name || 'You' : characterName}
-                src={isUser ? null : avatarUrl}
+                name={isUser ? message.name || 'You' : isNarrator ? message.name || 'System' : characterName}
+                src={isUser || isNarrator ? null : avatarUrl}
                 size={38}
                 className="mt-1"
             />
@@ -107,7 +180,7 @@ export function MessageBubble({
             >
                 <header className={cn('mb-1 flex items-center gap-2 px-1 text-xs', isUser && 'flex-row-reverse')}>
                     <span className="font-medium text-parchment-dim">
-                        {message.name || (isUser ? 'You' : characterName)}
+                        {message.name || (isUser ? 'You' : isNarrator ? 'System' : characterName)}
                     </span>
                     {message.send_date ? (
                         <span className="text-[10px] text-muted/60">{formatMessageTime(message.send_date)}</span>
@@ -159,9 +232,11 @@ export function MessageBubble({
                     <div
                         className={cn(
                             'w-full rounded-2xl border px-4 py-3 text-[15px] shadow-sm',
-                            isUser
-                                ? 'border-amber/20 bg-amber/10 text-parchment'
-                                : 'border-line/80 bg-surface/85 text-parchment',
+                            isNarrator
+                                ? 'border-line/50 bg-ink-soft/50 text-parchment-dim italic'
+                                : isUser
+                                  ? 'border-amber/20 bg-amber/10 text-parchment'
+                                  : 'border-line/80 bg-surface/85 text-parchment',
                         )}
                     >
                         {shown.trim() ? (
@@ -169,6 +244,59 @@ export function MessageBubble({
                         ) : (
                             <span className="text-sm italic text-muted">Empty message</span>
                         )}
+
+                        {activeMedia ? (
+                            <div
+                                className={cn(
+                                    'relative mx-auto mt-3 overflow-hidden rounded-xl border border-line-soft bg-ink-soft/60',
+                                    inlineImage ? 'w-full' : 'max-w-sm',
+                                )}
+                            >
+                                <button
+                                    type="button"
+                                    className="block w-full"
+                                    onClick={() => onOpenImage?.(activeMedia.url, activeMedia.title)}
+                                    aria-label={activeMedia.title || 'Open image'}
+                                >
+                                    <img
+                                        src={galleryImageUrl(activeMedia.url)}
+                                        alt={activeMedia.title || 'Generated image'}
+                                        className={cn(
+                                            'w-full object-contain',
+                                            inlineImage ? 'max-h-[480px]' : 'max-h-64',
+                                        )}
+                                        loading="lazy"
+                                    />
+                                </button>
+                                {media.length > 1 ? (
+                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 px-2 py-1 text-xs text-white">
+                                        <button
+                                            type="button"
+                                            className="icon-btn size-6 text-white"
+                                            onClick={() => setMediaIndex((current) => Math.max(0, current - 1))}
+                                            disabled={mediaIndex <= 0}
+                                            aria-label="Previous image"
+                                        >
+                                            <ChevronLeft size={14} />
+                                        </button>
+                                        <span className="tabular-nums">
+                                            {mediaIndex + 1}/{media.length}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className="icon-btn size-6 text-white"
+                                            onClick={() =>
+                                                setMediaIndex((current) => Math.min(media.length - 1, current + 1))
+                                            }
+                                            disabled={mediaIndex >= media.length - 1}
+                                            aria-label="Next image"
+                                        >
+                                            <ChevronRight size={14} />
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
                     </div>
                 )}
 
@@ -203,6 +331,30 @@ export function MessageBubble({
                                     <ChevronRight size={14} />
                                 </button>
                             </div>
+                        ) : null}
+
+                        {onSpeak ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={onSpeak}
+                                title={speaking ? 'Stop voice' : 'Play voice'}
+                                aria-label={speaking ? 'Stop voice' : 'Play voice'}
+                            >
+                                {speaking ? <Square size={13} fill="currentColor" /> : <Volume2 size={14} />}
+                            </button>
+                        ) : null}
+
+                        {onIllustrate ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={onIllustrate}
+                                title="Illustrate this message"
+                                aria-label="Illustrate this message"
+                            >
+                                <ImagePlus size={14} />
+                            </button>
                         ) : null}
 
                         <button

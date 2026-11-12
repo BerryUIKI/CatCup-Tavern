@@ -2,6 +2,8 @@ name: Release
 
 on:
     push:
+        branches:
+            - main
         tags:
             - "v*"
     workflow_dispatch:
@@ -12,25 +14,67 @@ on:
                 type: string
 
 concurrency:
-    group: release-${{ inputs.tag || github.ref_name }}
+    group: release-${{ github.ref }}
     cancel-in-progress: false
 
 permissions:
     contents: write
 
-env:
-    RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-
 jobs:
+    prepare:
+        name: Resolve the release version
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        outputs:
+            tag: ${{ steps.version.outputs.tag }}
+            version: ${{ steps.version.outputs.version }}
+            ref: ${{ steps.version.outputs.ref }}
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Decide whether this push is a release
+              id: version
+              shell: bash
+              run: |
+                  if [ -n "${{ inputs.tag }}" ]; then
+                      # A manual run names the existing tag to rebuild.
+                      tag="${{ inputs.tag }}"
+                      ref="$tag"
+                  elif [ "${{ github.ref_type }}" = "tag" ]; then
+                      tag="${{ github.ref_name }}"
+                      ref="$tag"
+                  else
+                      # A push to main releases only when package.json holds a
+                      # version that has no tag yet. Ordinary merges into main
+                      # after a release are skipped, so the workflow stays quiet.
+                      version=$(node -p "require('./package.json').version")
+                      tag="v${version}"
+                      if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+                          echo "No release: tag ${tag} already exists." >> "$GITHUB_STEP_SUMMARY"
+                          exit 0
+                      fi
+                      ref="${{ github.sha }}"
+                  fi
+                  echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+                  echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+                  echo "ref=${ref}" >> "$GITHUB_OUTPUT"
+                  echo "Releasing ${tag}." >> "$GITHUB_STEP_SUMMARY"
+
     windows:
         name: Build and publish the Windows installer
+        needs: prepare
+        if: needs.prepare.outputs.tag != ''
         runs-on: windows-latest
         timeout-minutes: 60
         steps:
-            - name: Check out the tag
+            - name: Check out the release commit
               uses: actions/checkout@v5
               with:
-                  ref: ${{ env.RELEASE_TAG }}
+                  ref: ${{ needs.prepare.outputs.ref }}
+                  fetch-depth: 0
 
             - name: Set up pnpm
               uses: pnpm/action-setup@v4
@@ -66,7 +110,7 @@ jobs:
             - name: Write release notes
               shell: bash
               run: |
-                  version="${RELEASE_TAG#v}"
+                  version="${{ needs.prepare.outputs.version }}"
                   if ! grep -q "^## ${version} " CHANGELOG.md; then
                       echo "CHANGELOG.md has no '## ${version}' section. Add one before tagging." >&2
                       exit 1
@@ -82,17 +126,31 @@ jobs:
                       cat "$RUNNER_TEMP/section.md"
                   } > "$RUNNER_TEMP/release-notes.md"
 
+            - name: Create the tag
+              shell: bash
+              run: |
+                  # Pushes to main have no tag yet; create it on the commit being
+                  # released, so the tag and the assets always match.
+                  tag="${{ needs.prepare.outputs.tag }}"
+                  if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+                      git config user.name "github-actions[bot]"
+                      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                      git tag -a "$tag" -m "CatCup Tavern ${tag#v}"
+                      git push origin "refs/tags/${tag}"
+                  fi
+
             - name: Publish the release
               shell: bash
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
+                  tag="${{ needs.prepare.outputs.tag }}"
                   installer=$(ls apps/desktop/src-tauri/target/release/bundle/nsis/*.exe | head -n 1)
-                  title="CatCup Tavern ${RELEASE_TAG#v}"
-                  if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-                      gh release upload "$RELEASE_TAG" "$installer" --clobber
+                  title="CatCup Tavern ${tag#v}"
+                  if gh release view "$tag" >/dev/null 2>&1; then
+                      gh release upload "$tag" "$installer" --clobber
                   else
-                      gh release create "$RELEASE_TAG" "$installer" \
+                      gh release create "$tag" "$installer" \
                           --title "$title" \
                           --notes-file "$RUNNER_TEMP/release-notes.md"
                   fi

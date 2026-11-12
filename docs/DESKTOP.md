@@ -1,6 +1,6 @@
 # Desktop shell
 
-> Status: packaging implemented; the installer is built and published by GitHub Actions on a `v*` tag, 2026-11-11. See [MILESTONES.md](MILESTONES.md) for the release step.
+> Status: packaging implemented 2026-11-11; since 2026-11-13 a merge into `main` that carries an untagged version builds and publishes the installer. See [MILESTONES.md](MILESTONES.md) for the release step.
 
 The desktop build is a Tauri 2 window around the same Fastify server and React SPA the web build uses. It is not a second implementation: the shell starts the bundled server as a child process and points a webview at it.
 
@@ -38,11 +38,11 @@ Four things had to change to make the packaged layout behave like the developmen
 
 The shell starts the server with:
 
-| Variable          | Value            | Why                                                    |
-| ----------------- | ---------------- | ------------------------------------------------------ |
-| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only unless LAN is enabled |
-| `CATCUP_PORT`     | `0`              | The OS picks a free port                               |
-| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory        |
+| Variable          | Value            | Why                                                  |
+| ----------------- | ---------------- | ---------------------------------------------------- |
+| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only; it has no LAN mode |
+| `CATCUP_PORT`     | `0`              | The OS picks a free port                             |
+| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory      |
 
 Once listening, the server writes exactly one line to stdout:
 
@@ -64,7 +64,10 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
-- **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have.
+- **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
+- **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
+- **Tray icon and window state.** The window is a single webview that closes the app; there is no tray icon, and the window's size and position are not remembered between launches.
+- **The access password.** A fresh install opens the setup screen, and later launches the login screen, exactly as the web build does. Making the desktop build open without a password is tracked in issue #43.
 - **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
 
 ## Layout
@@ -86,7 +89,7 @@ pnpm --filter @catcup/desktop build                        # prepares, then taur
 
 The installer lands in `apps/desktop/src-tauri/target/release/bundle/nsis/`.
 
-GitHub Actions runs the same three steps on `windows-latest` for every `v*` tag and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
+GitHub Actions runs the same three steps on `windows-latest` when a merge into `main` carries an untagged version, or when a `v*` tag is pushed, and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
 
 Two environment variables help when iterating: `CATCUP_SERVER_ENTRY` points the shell at a different server entry file, and `CATCUP_NODE` selects a different Node binary. Both are ignored when the bundled copies exist.
 

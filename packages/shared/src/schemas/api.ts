@@ -1,6 +1,7 @@
 import type { CharacterDetail, CharacterSummary } from './character.js';
 import type { ChatMessage } from './chat.js';
 import type { ModelInfo } from './provider.js';
+import type { QuickReplySet } from './quickreplies.js';
 import type { WorldInfoEntry } from './worldinfo.js';
 
 export interface AuthStatus {
@@ -21,7 +22,7 @@ export interface ApiErrorBody {
     code?: string;
 }
 
-export type GenerateAction = 'send' | 'regenerate' | 'continue';
+export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger';
 
 export interface GenerateRequest {
     characterId: string;
@@ -30,8 +31,27 @@ export interface GenerateRequest {
     message?: string;
 }
 
+/** One member speaking in a group chat. */
+export interface GenerationSpeaker {
+    id: string;
+    /** Character avatar file name, matching the message's `original_avatar`. */
+    fileName: string;
+    name: string;
+    avatarUrl: string;
+}
+
+export interface GroupGenerateRequest {
+    action: GenerateAction;
+    message?: string;
+    /**
+     * Force a member to speak. Manual groups require it; other strategies treat
+     * it as an override.
+     */
+    speaker?: string;
+}
+
 export type GenerationEvent =
-    | { type: 'start'; generationId: string }
+    | { type: 'start'; generationId: string; speaker?: GenerationSpeaker }
     | { type: 'token'; text: string }
     | { type: 'reasoning'; text: string }
     | {
@@ -40,6 +60,62 @@ export type GenerationEvent =
           usage?: { promptTokens?: number; completionTokens?: number };
       }
     | { type: 'error'; message: string };
+
+/** A summary stored on a chat message's `extra.memory`. */
+export interface SummaryRecord {
+    value: string;
+    /** Index of the message that carries it. */
+    index: number;
+}
+
+export interface SummarizeResponse {
+    summary: SummaryRecord | null;
+    /** Why nothing was summarized, when `summary` is null. */
+    reason?: string;
+    /** How many chat messages this request covered. */
+    messages?: number;
+}
+
+/** A quick reply set as the API addresses it: the file id plus the stored body. */
+export type QuickReplySetView = QuickReplySet & { id: string };
+
+/** What clicking a quick reply asks the client to do after the server's appends. */
+export type QuickReplyAction =
+    | {
+          type: 'input';
+          /** Macro-expanded text for the message box. */
+          text: string;
+          /** Whether the client should send it immediately. */
+          submit: boolean;
+          /** Merge with whatever is already typed instead of replacing it. */
+          inject: boolean;
+          /** With `inject`, put the text before the existing input. */
+          placeBefore: boolean;
+      }
+    | {
+          type: 'toast';
+          message: string;
+          title?: string;
+          severity: 'info' | 'success' | 'warning' | 'error';
+      }
+    | {
+          type: 'generate';
+          mode: 'trigger' | 'continue' | 'regenerate';
+          /** Group member chosen by `/trigger <name>`; the server validates it. */
+          speaker?: string;
+      };
+
+export interface QuickReplyExecuteRequest {
+    setId: string;
+    qrId: number;
+}
+
+export interface QuickReplyExecuteResponse {
+    /** Directives in execution order. Chat appends are already persisted. */
+    actions: QuickReplyAction[];
+    /** Messages the reply appended to the chat. */
+    appended: ChatMessage[];
+}
 
 export interface UsageInfo {
     promptTokens?: number;
@@ -184,6 +260,17 @@ export interface ContextPreviewWorldInfo {
 export interface ContextPreview {
     messages: ContextPreviewMessage[];
     worldInfo: ContextPreviewWorldInfo;
+    /** The summary in effect for this chat, or null when none is stored. */
+    memory: {
+        value: string;
+        index: number;
+        tokens: number;
+        /** Formatted with the injection template; empty when position is -1. */
+        injection: string;
+        position: number;
+        role: number;
+        depth: number;
+    } | null;
     budget: {
         exceeded: boolean;
         tokenCounts: Record<string, number>;

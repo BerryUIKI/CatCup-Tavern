@@ -4,26 +4,27 @@ import {
     applyRegexScripts,
     type CharacterDetail,
     type ChatMessage,
-    errorMessage,
     type GenerateAction,
+    getLatestSummary,
     REGEX_PLACEMENT,
     type RegexScript,
     resolvePersona,
     sanitizeRegexMacro,
-    type UsageInfo,
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { activeGenerations } from '../generation/registry.js';
+import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
 import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
-import { getAdapter } from '../providers/index.js';
-import { endSse, initSse, writeSse, writeSseComment } from '../sse.js';
 import { appendMessage, chatPersonaId, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
 import { listRegexScripts } from '../storage/regex.js';
@@ -33,7 +34,7 @@ import { requireCharacter } from './helpers.js';
 const generateSchema = z.object({
     characterId: z.string().min(1).max(200),
     chatId: z.string().min(1).max(300),
-    action: z.enum(['send', 'regenerate', 'continue']),
+    action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
     message: z.string().max(200000).optional(),
 });
 
@@ -56,7 +57,12 @@ interface PersistContext {
     substitute: (text: string, escapeValues: boolean) => string;
 }
 
-async function saveSwipe(context: PersistContext, text: string, extra: Record<string, unknown>): Promise<ChatMessage> {
+async function saveSwipe(
+    context: PersistContext,
+    text: string,
+    extra: Record<string, unknown>,
+    stopped: boolean,
+): Promise<ChatMessage> {
     if (context.regenerateIndex === null) {
         throw new Error('No message to regenerate');
     }
@@ -77,16 +83,21 @@ async function saveSwipe(context: PersistContext, text: string, extra: Record<st
     const swipeInfo = Array.isArray(existing.extra?.swipe_info) ? [...existing.extra.swipe_info] : [];
     swipeInfo.push({ send_date: new Date().toISOString(), extra });
 
+    // The reply is being rewritten, so a summary anchored to it no longer
+    // describes the stored text. `extraDelete` removes the key from the merged
+    // extra; merely omitting it would keep the stored value. A completed
+    // rewrite also clears the old partial marker.
     return updateMessage(context.character, context.chatId, context.regenerateIndex, {
         mes: text,
         send_date: new Date().toISOString(),
         extra: {
-            ...existing.extra,
+            ...(existing.extra ?? {}),
             ...extra,
             swipes,
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
+        extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
     });
 }
 
@@ -115,7 +126,7 @@ async function persistMessage(
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
-        return saveSwipe(context, storedText, extra);
+        return saveSwipe(context, storedText, extra, stopped);
     }
 
     if (context.action === 'continue' && context.continueIndex !== null && context.originalAssistant) {
@@ -128,6 +139,9 @@ async function persistMessage(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
+            // The message grew, so a summary anchored to it is out of date. A
+            // completed continuation also clears the old partial marker.
+            extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
         });
     }
 
@@ -141,8 +155,6 @@ async function persistMessage(
 }
 
 export async function registerGenerateRoutes(app: FastifyInstance): Promise<void> {
-    const activeGenerations = new Map<string, AbortController>();
-
     app.post('/api/generate', async (request, reply) => {
         const body = generateSchema.parse(request.body ?? {});
         const character = await requireCharacter(body.characterId);
@@ -166,9 +178,14 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         // source transforms below and the prompt transform later share them.
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
-        const macroContext = createMacroContext(character, persona);
-        const substitute = (text: string, escapeValues: boolean) =>
-            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const baseMacroContext = createMacroContext(
+            character,
+            persona,
+            undefined,
+            getLatestSummary(chat.messages)?.value,
+        );
+        const baseSubstitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, baseMacroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
 
         // An active ST preset owns the prompt list, the assembly formats and
         // the sampling parameters; anything it omits falls back to settings.
@@ -190,8 +207,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             // next, exactly as SillyTavern's `sendMessageAsUser` does, so the
             // chat file holds the name the user saw.
             const storedText = substituteMacros(
-                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute }),
-                macroContext,
+                applyRegexScripts(regexScripts, text, REGEX_PLACEMENT.USER_INPUT, { substitute: baseSubstitute }),
+                baseMacroContext,
             );
             const userMessage: ChatMessage = {
                 name: persona.name,
@@ -204,21 +221,35 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             messages = [...messages, userMessage];
         } else if (body.action === 'regenerate') {
             const last = messages[messages.length - 1];
-            if (last && !last.is_user && !last.is_system) {
+            // A narrator note is not a reply to rewrite, matching the group route.
+            if (last && !last.is_user && !last.is_system && last.extra?.type !== 'narrator') {
                 regenerateIndex = messages.length - 1;
                 originalAssistant = last;
                 messages = messages.slice(0, -1);
             }
-        } else {
+        } else if (body.action === 'continue') {
             const last = messages[messages.length - 1];
-            if (!last || last.is_user || last.is_system) {
+            if (!last || last.is_user || last.is_system || last.extra?.type === 'narrator') {
                 throw badRequest('There is no assistant reply to continue');
             }
             continueIndex = messages.length - 1;
             originalAssistant = last;
         }
+        // `trigger` asks for a fresh reply with no user message, as SillyTavern's
+        // `/trigger` does; there is nothing to change in the history.
 
-        const generationType: GenerationType = body.action === 'send' ? 'normal' : body.action;
+        const generationType: GenerationType =
+            body.action === 'send' || body.action === 'trigger' ? 'normal' : body.action;
+
+        // Summary memory is read after the action so a regenerated reply no
+        // longer contributes its own summary, and the user's new message is
+        // part of the transcript in the same way a normal send sees it.
+        const latestSummary = getLatestSummary(messages);
+        const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
+        const substitute = (text: string, escapeValues: boolean) =>
+            substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
+        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
+        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
 
         // The scanner needs the whole non-system conversation as its timed
         // effect clock, so it runs before the prompt is trimmed to context.
@@ -234,6 +265,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summary: latestSummary.value } : {}),
+            ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
         await patchChatMetadata(character, body.chatId, {
@@ -256,6 +289,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            ...(latestSummary ? { summaryText: latestSummary.value } : {}),
+            ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
         const prompt = assembled.messages;
 
@@ -264,9 +299,6 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         }
 
         const generationId = randomUUID();
-        const controller = new AbortController();
-        activeGenerations.set(generationId, controller);
-
         const startedAt = new Date().toISOString();
         const context: PersistContext = {
             character,
@@ -282,91 +314,35 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             substitute,
         };
 
-        let replyInitialized = false;
-        let finished = false;
-        let heartbeat: ReturnType<typeof setInterval> | undefined;
-
-        request.raw.on('close', () => {
-            if (!finished) {
-                controller.abort();
-            }
+        await runGenerationStream({
+            reply,
+            provider,
+            apiKey,
+            prompt,
+            temperature: preset.generation.temperature,
+            topP: preset.generation.topP,
+            maxTokens: preset.generation.maxTokens,
+            generationId,
+            persist: (text, reasoning, stopped) => persistMessage(context, text, reasoning, stopped),
         });
 
-        try {
-            initSse(reply);
-            replyInitialized = true;
-            writeSse(reply, { type: 'start', generationId });
-            heartbeat = setInterval(() => writeSseComment(reply, 'ping'), 15000);
-
-            let text = '';
-            let reasoning = '';
-            let usage: UsageInfo | undefined;
-
-            try {
-                const adapter = getAdapter(provider);
-                for await (const chunk of adapter.streamChat(provider, apiKey, {
-                    model: provider.model,
-                    messages: prompt,
-                    temperature: preset.generation.temperature,
-                    topP: preset.generation.topP,
-                    maxTokens: preset.generation.maxTokens,
-                    signal: controller.signal,
-                })) {
-                    if (chunk.type === 'text') {
-                        text += chunk.text;
-                        writeSse(reply, { type: 'token', text: chunk.text });
-                    } else if (chunk.type === 'reasoning') {
-                        reasoning += chunk.text;
-                        writeSse(reply, { type: 'reasoning', text: chunk.text });
-                    } else if (chunk.type === 'usage') {
-                        usage = {
-                            promptTokens: chunk.promptTokens,
-                            completionTokens: chunk.completionTokens,
-                        };
-                    }
+        // Fire-and-forget: a due summary never delays the reply. The memory
+        // service reads the chat again, so only a persisted reply counts.
+        void maybeSummarizeAfterTurn({
+            key: `character:${character.id}:${body.chatId}`,
+            character,
+            persona,
+            read: async () => {
+                const fresh = await readChat(character, body.chatId);
+                if (!fresh) {
+                    return null;
                 }
-
-                if (!text.trim()) {
-                    throw new Error('The model returned no content');
-                }
-
-                const saved = await persistMessage(context, text, reasoning, false);
-                writeSse(reply, {
-                    type: 'done',
-                    message: saved,
-                    ...(usage ? { usage } : {}),
-                });
-            } catch (streamError) {
-                const aborted = controller.signal.aborted;
-
-                if (text.trim()) {
-                    try {
-                        const saved = await persistMessage(context, text, reasoning, true);
-                        if (aborted) {
-                            writeSse(reply, { type: 'done', message: saved });
-                        } else {
-                            writeSse(reply, { type: 'error', message: errorMessage(streamError) });
-                        }
-                    } catch {
-                        writeSse(reply, { type: 'error', message: errorMessage(streamError) });
-                    }
-                } else {
-                    writeSse(reply, {
-                        type: 'error',
-                        message: aborted ? 'Generation stopped' : errorMessage(streamError),
-                    });
-                }
-            }
-        } finally {
-            finished = true;
-            if (heartbeat) {
-                clearInterval(heartbeat);
-            }
-            activeGenerations.delete(generationId);
-            if (replyInitialized) {
-                endSse(reply);
-            }
-        }
+                return {
+                    messages: fresh.messages,
+                    update: (index, patch) => updateMessage(character, body.chatId, index, patch),
+                };
+            },
+        });
     });
 
     app.post('/api/generate/:id/stop', async (request) => {

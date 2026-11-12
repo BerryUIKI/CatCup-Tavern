@@ -42,7 +42,7 @@ function timestampForFile(date = new Date()): string {
     ].join('');
 }
 
-function cleanChatId(chatId: string): string {
+export function cleanChatId(chatId: string): string {
     const clean = chatId.replace(/\.jsonl$/i, '');
     assertSimpleName(clean);
     return clean;
@@ -343,6 +343,11 @@ export interface MessagePatch {
     send_date?: string;
     mes?: string;
     extra?: Record<string, unknown>;
+    /** Keys to remove from `extra`, e.g. `memory` when a summary is cleared. */
+    extraDelete?: string[];
+    /** Group chats record the speaker's avatar file name at the message level. */
+    original_avatar?: string;
+    force_avatar?: string;
 }
 
 export async function updateMessage(
@@ -362,10 +367,20 @@ export async function updateMessage(
             throw new Error('Message not found');
         }
 
+        const { extraDelete, ...fields } = patch;
+        const hasExtra = existing.extra !== undefined || patch.extra !== undefined || (extraDelete?.length ?? 0) > 0;
+        const extra = { ...(existing.extra ?? {}) };
+        if (patch.extra) {
+            Object.assign(extra, patch.extra);
+        }
+        for (const key of extraDelete ?? []) {
+            delete extra[key];
+        }
+
         const updated: ChatMessage = {
             ...existing,
-            ...patch,
-            extra: patch.extra === undefined ? existing.extra : { ...(existing.extra ?? {}), ...patch.extra },
+            ...fields,
+            ...(hasExtra ? { extra } : {}),
         };
         chat.messages[index] = updated;
         await writeChatFile(filePath, chat);
@@ -405,14 +420,15 @@ export async function setChatGreeting(
             throw new Error('That greeting is empty or missing');
         }
         const { selected, swipes } = picked;
+        // The opening text changes, so a summary anchored to it is stale.
+        const extra = { ...(first.extra ?? {}) };
+        delete extra.memory;
+        extra.swipes = swipes;
+        extra.swipe_id = Math.max(0, swipes.indexOf(selected.text));
         chat.messages[0] = {
             ...first,
             mes: selected.text,
-            extra: {
-                ...(first.extra ?? {}),
-                swipes,
-                swipe_id: Math.max(0, swipes.indexOf(selected.text)),
-            },
+            extra,
         };
         await writeChatFile(filePath, chat);
         return chat;

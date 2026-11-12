@@ -15,12 +15,18 @@ import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
 import { registerContextRoutes } from './routes/context.js';
 import { registerGenerateRoutes } from './routes/generate.js';
+import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
+import { registerGroupRoutes } from './routes/groups.js';
 import { registerHealthRoutes } from './routes/health.js';
+import { registerImageRoutes } from './routes/images.js';
 import { registerImportRoutes } from './routes/import.js';
+import { registerMemoryRoutes } from './routes/memory.js';
 import { registerPresetRoutes } from './routes/presets.js';
 import { registerProviderRoutes } from './routes/providers.js';
+import { registerQuickReplyRoutes } from './routes/quickReplies.js';
 import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerTtsRoutes } from './routes/tts.js';
 import { registerWorldRoutes } from './routes/worlds.js';
 import { ensureDataDirs } from './storage/paths.js';
 
@@ -129,14 +135,20 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerAuthRoutes(app);
     await registerCharacterRoutes(app);
     await registerChatRoutes(app);
+    await registerGroupRoutes(app);
     await registerSettingsRoutes(app);
+    await registerTtsRoutes(app);
+    await registerImageRoutes(app);
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);
     await registerWorldRoutes(app);
     await registerRegexRoutes(app);
+    await registerQuickReplyRoutes(app);
     await registerImportRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);
+    await registerGroupGenerateRoutes(app);
+    await registerMemoryRoutes(app);
 
     const webDist = path.resolve(import.meta.dirname, '../../web/dist');
     if (existsSync(webDist)) {

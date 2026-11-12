@@ -24,6 +24,12 @@ export const chatMessageSchema = z
         send_date: z.string().optional(),
         mes: z.string().default(''),
         extra: z.record(z.string(), z.unknown()).optional(),
+        /**
+         * Group chats record the speaker's avatar file name at the top level,
+         * as SillyTavern does; `force_avatar` is the URL it renders from.
+         */
+        original_avatar: z.string().optional(),
+        force_avatar: z.string().optional(),
     })
     .passthrough();
 

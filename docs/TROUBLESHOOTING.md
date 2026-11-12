@@ -62,7 +62,7 @@ Stop the server, back up `data/`, delete `data/auth.json`, start the server and 
 
 ## Providers
 
-**“Save & test” fails but chat might still work**
+**“Test connection” fails but chat might still work**
 
 The test calls the provider's model-list endpoint. Some OpenAI-compatible servers do not implement `/models`. Type the model ID manually and try a generation; the test failure is advisory.
 
@@ -70,7 +70,7 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 
 - Check the API key and that it is saved (the UI shows a “has key” state).
 - Check the base URL ends at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8080/v1`.
-- Some gateways need extra headers; add them in the provider's `headers` field via the API, or use a custom provider configuration.
+- Some gateways need extra headers; add them under **Advanced → custom headers** in the provider form.
 
 **OpenRouter errors**
 
@@ -99,6 +99,96 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 - Some providers reject the configured `max_tokens` or sampling values; lower them.
 - If a reverse proxy is used, disable buffering for SSE and increase read timeouts.
 
+## Text to speech
+
+**No play button appears**
+
+Settings → TTS must be enabled and saved. The button appears on replies and narrator notes, not on your own messages.
+
+**The browser backend is silent**
+
+`speechSynthesis` needs voices from the operating system. Check that the browser or desktop shell exposes any (some Linux installs ship none); choose one in Settings → TTS or switch to the OpenAI-compatible backend.
+
+**The OpenAI-compatible backend fails**
+
+- The base URL should end at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8880/v1`.
+- `api.openai.com` requires a saved key; a local server usually does not.
+- Check the model, voice and audio format against what the endpoint supports. A `TTS_FAILED` error includes the provider's response detail.
+- The server log has the same message; the browser only sees the error.
+
+**Autoplay does not start**
+
+Browsers block audio that is not tied to a user gesture. Press the play button on the message; the setting still applies to the next reply where the browser permits it.
+
+## Image generation
+
+**No image button appears**
+
+Settings → Images must be enabled and saved. The buttons appear in the chat header and on assistant messages, never on your own messages.
+
+**Automatic1111 fails**
+
+- Run A1111 or Forge with the API enabled (`--api`), and use its root as the base URL, e.g. `http://127.0.0.1:7860`, without `/sdapi/v1`.
+- Check it answers: `curl http://127.0.0.1:7860/sdapi/v1/options`.
+- If the instance uses HTTP Basic auth, enter `user:password` in the key field.
+- The sampler must be one the instance offers; names differ between A1111 builds.
+- A first generation can take a while while a model loads; the request times out after three minutes.
+
+**An OpenAI-compatible image endpoint fails**
+
+- The base URL is the API root, usually ending in `/v1`.
+- `api.openai.com` requires a saved key; a local server usually does not.
+- The model is required. DALL·E and gpt-image models accept only their own sizes, so CatCup maps the configured width and height to the nearest supported size.
+- A `502 IMAGE_FAILED` includes the provider's response detail. The server log has the same message.
+- If the provider returns an image URL, the server downloads it; a URL that is not reachable from the server fails even when the browser could open it.
+
+**ComfyUI fails**
+
+- Use the ComfyUI root as the base URL, e.g. `http://127.0.0.1:8188`, without `/prompt`.
+- Check it answers: `curl http://127.0.0.1:8188/system_stats`.
+- The workflow must be the **API format** export from ComfyUI (**Save (API Format)**), not the regular save. A graph with `nodes` and `links` arrays is rejected with `400 IMAGE_CONFIG`.
+- The default workflow uses `%model%`, so enter the checkpoint file name exactly as ComfyUI lists it, including the extension. Leave Model empty only when the workflow names its own checkpoint.
+- Sampler and scheduler names must be ones the installed ComfyUI offers; check its KSampler dropdown. A wrong name is rejected when the graph is submitted, and the error names the node and the rejected value.
+- “ComfyUI finished without an image” means the workflow has no `SaveImage` output node.
+- A generation gets five minutes. If the browser disconnects or the job times out, CatCup posts `/interrupt` for the job it queued; a job that has already finished is left alone.
+- A missing custom node or a bad input is reported when ComfyUI validates the graph, with the node and the reason. A node that is present but fails while running adds its traceback to the `502 IMAGE_FAILED` message, e.g. `KSampler [3] RuntimeError: …`.
+- If a reverse proxy protects ComfyUI with HTTP Basic auth, enter `user:password` in the key field.
+- The workflow is sent as-is apart from placeholder substitution. Only point CatCup at a ComfyUI instance you trust, since its custom nodes run with that instance's permissions.
+
+**“Draft from chat” fails**
+
+Drafting uses the active chat provider, not the image backend. Check that a provider is configured and that the chat has at least one message. `IMAGE_PROMPT_FAILED` is a chat-provider error; `IMAGE_PROMPT_EMPTY` means there was nothing to summarize.
+
+**An image is missing from the gallery**
+
+Images live in `data/user/images/<character name>/` (or the group id). Renaming a card does not rename its folder, so images made before a rename stay under the old name. Check the folder and the server log; deleting an image leaves any chat message that referenced it with a broken image.
+
+**Moving to another machine loses the images**
+
+Copy `data/user/images/` together with `data/chats/` and `data/characters/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
+
+## Character library
+
+**A favorite does not appear in another app**
+
+CatCup stores the flag at `data.extensions.fav` and keeps it in its own exports. SillyTavern clears favorites when it exports or imports a card, and its library tags are a separate settings-level registry, so a favorite or a CatCup tag will not show up in ST's tag manager until the card tags are imported there.
+
+**A tag is missing or a bulk tag action did nothing**
+
+Library tags are the card's `data.tags`. Tag add/remove matches case- and whitespace-insensitively; adding `fantasy` to a card that already has `Fantasy` is a no-op, and a no-op does not rewrite the card. Tags containing commas cannot be added because the character editor's tag field splits on commas; rename or remove such a tag in the editor or with the API if one arrives from an import.
+
+**“Newest created” order looks wrong**
+
+The sort uses `data.creation_date`, then a root `create_date`, then the file's birth time. A card without a date is stamped on its first CatCup write, so cards imported before this feature may all share the import time until they are edited. “Recently changed” follows the card file's modification time, which a favorite or tag toggle also updates.
+
+**A bulk action changed some cards only**
+
+Bulk actions report per-card errors and leave the other cards updated. A missing or unreadable card is listed by id; refresh the library and retry the failed ones.
+
+**Deleting characters left chats behind**
+
+Bulk and single delete remove the card file and `data/character-assets/<id>/` but keep chat files on disk, as single delete always did. The chats are no longer reachable from the library; back up or remove the folders under `data/chats/` by hand.
+
 ## Chat and messages
 
 **The user message appears but the reply fails**
@@ -125,7 +215,10 @@ Regenerate stores the previous assistant text in `extra.swipes` and selects the 
 
 - PNG cards need a `chara` or `ccv3` `tEXt` chunk.
 - JSON cards must be a V2/V3 wrapper or a legacy flat object.
-- `.charx` is not supported yet.
+- CharX packages need a `card.json` at the archive root; without one the file is reported in `errors` and nothing is imported.
+- A PNG icon becomes the character image; a JPEG/WebP icon leaves the card as JSON without an avatar.
+- `.charx` archives are capped at 200 entries, 25 MB per entry and 60 MB extracted. `module.risum` bundles are skipped because CatCup cannot run Risu modules.
+- Extracted assets live in `data/character-assets/<character id>/`. They are kept for export but not displayed in the app.
 - Files over 20 MB or more than 50 files per request are rejected.
 - The card is saved under the sanitized display name; collisions get a numeric suffix.
 

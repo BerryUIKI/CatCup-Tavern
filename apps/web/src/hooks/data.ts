@@ -1,17 +1,27 @@
 import type {
     AuthStatus,
+    CharacterBulkRequest,
+    CharacterBulkResponse,
     CharacterPatch,
+    CharacterSummary,
     ChatDetail,
+    ChatSummary,
+    GroupChatDetail,
+    GroupCreate,
+    GroupPatch,
+    GroupView,
     ImportCharactersResponse,
+    ProviderDraftTestInput,
     ProviderInput,
+    QuickReplySet,
     RegexScriptPatch,
     SettingsPatch,
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '../lib/api';
+import { api, type QuickReplyChatRef } from '../lib/api';
 
 export const queryKeys = {
     auth: ['auth'] as const,
@@ -19,12 +29,17 @@ export const queryKeys = {
     character: (id: string) => ['character', id] as const,
     chats: (characterId: string | null) => ['chats', characterId] as const,
     chat: (characterId: string | null, chatId: string | null) => ['chat', characterId, chatId] as const,
+    groups: ['groups'] as const,
+    groupChats: (groupId: string | null) => ['groupChats', groupId] as const,
+    groupChat: (groupId: string | null, chatId: string | null) => ['groupChat', groupId, chatId] as const,
     settings: ['settings'] as const,
     presets: ['presets'] as const,
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
     world: (id: string | null) => ['world', id] as const,
     regex: ['regex'] as const,
+    quickReplies: ['quickReplies'] as const,
+    images: (folder: string) => ['images', folder] as const,
 };
 
 export function useAuthStatus() {
@@ -102,6 +117,8 @@ export function useImportCharacters() {
         mutationFn: (files) => api.characters.import(files),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // A new card can resolve a member a group lists as missing.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
@@ -116,6 +133,8 @@ export function useUpdateCharacter() {
             // wrapper: the API client already unwraps it.
             queryClient.setQueryData(queryKeys.character(character.id), character);
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // Group member names and avatars come from the card.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
@@ -126,6 +145,55 @@ export function useAddSampleCharacter() {
         mutationFn: () => api.characters.sample(),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+/** Set or clear the favorite flag on one card. */
+export function useSetCharacterFavorite() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; favorite: boolean }) =>
+            api.characters.setFavorite(variables.id, variables.favorite),
+        onMutate: async (variables) => {
+            await queryClient.cancelQueries({ queryKey: queryKeys.characters });
+            const previous = queryClient.getQueryData<CharacterSummary[]>(queryKeys.characters);
+            queryClient.setQueryData<CharacterSummary[]>(queryKeys.characters, (current) =>
+                current?.map((character) =>
+                    character.id === variables.id ? { ...character, fav: variables.favorite } : character,
+                ),
+            );
+            return { previous };
+        },
+        onError: (_error, _variables, context) => {
+            if (context?.previous) {
+                queryClient.setQueryData(queryKeys.characters, context.previous);
+            }
+        },
+        onSuccess: (character) => {
+            queryClient.setQueryData(queryKeys.character(character.id), character);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+/** Apply one action to several characters and refresh the affected caches. */
+export function useBulkCharacters() {
+    const queryClient = useQueryClient();
+    return useMutation<CharacterBulkResponse, Error, CharacterBulkRequest>({
+        mutationFn: (body) => api.characters.bulk(body),
+        onSuccess: (result) => {
+            for (const character of result.characters) {
+                void queryClient.invalidateQueries({ queryKey: queryKeys.character(character.id) });
+            }
+            for (const id of result.deleted) {
+                queryClient.removeQueries({ queryKey: queryKeys.character(id) });
+            }
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            // Group member names, avatars and missing-member state come from cards.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
@@ -160,6 +228,7 @@ export function useDeleteCharacter() {
         mutationFn: (id) => api.characters.remove(id),
         onSuccess: (_data, id) => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
             queryClient.removeQueries({ queryKey: queryKeys.character(id) });
             queryClient.removeQueries({ queryKey: queryKeys.chats(id) });
         },
@@ -326,8 +395,394 @@ export function useBranchChat(characterId: string | null) {
     });
 }
 
+export function useGroups() {
+    return useQuery({ queryKey: queryKeys.groups, queryFn: api.groups.list });
+}
+
+/**
+ * Put a group into the list cache immediately.
+ *
+ * The list drives the sidebar and the selected-group lookup; waiting for the
+ * invalidation refetch would briefly make a just-created group look deleted.
+ */
+function setGroupInCache(queryClient: QueryClient, group: GroupView): void {
+    queryClient.setQueryData<GroupView[]>(queryKeys.groups, (current) => {
+        if (!current) {
+            return [group];
+        }
+        return current.some((item) => item.id === group.id)
+            ? current.map((item) => (item.id === group.id ? group : item))
+            : [group, ...current];
+    });
+}
+
+export function useCreateGroup() {
+    const queryClient = useQueryClient();
+    return useMutation<GroupView, Error, GroupCreate>({
+        mutationFn: (input) => api.groups.create(input),
+        onSuccess: (group) => {
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useUpdateGroup(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<GroupView, Error, GroupPatch>({
+        mutationFn: (patch) => {
+            if (!id) {
+                throw new Error('No group selected');
+            }
+            return api.groups.update(id, patch);
+        },
+        onSuccess: (group) => {
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useDeleteGroup() {
+    const queryClient = useQueryClient();
+    return useMutation<{ ok: true }, Error, string>({
+        mutationFn: (id) => api.groups.remove(id),
+        onSuccess: (_data, id) => {
+            queryClient.setQueryData<GroupView[]>(queryKeys.groups, (current) =>
+                current ? current.filter((item) => item.id !== id) : current,
+            );
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+            queryClient.removeQueries({ queryKey: queryKeys.groupChats(id) });
+        },
+    });
+}
+
+export function useGroupChats(groupId: string | null) {
+    return useQuery({
+        queryKey: queryKeys.groupChats(groupId),
+        queryFn: () => api.groups.chats.list(groupId as string),
+        enabled: Boolean(groupId),
+    });
+}
+
+export function useGroupChat(groupId: string | null, chatId: string | null) {
+    return useQuery({
+        queryKey: queryKeys.groupChat(groupId, chatId),
+        queryFn: () => api.groups.chats.get(groupId as string, chatId as string),
+        enabled: Boolean(groupId && chatId),
+    });
+}
+
+/**
+ * Start a chat in a group.
+ *
+ * The server seeds one greeting per member, so the returned chat already has
+ * messages. Creating a group passes `groupId` explicitly because the store has
+ * not selected the new group yet.
+ */
+export function useCreateGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<
+        { chat: GroupChatDetail; group: GroupView },
+        Error,
+        { groupId?: string; name?: string } | undefined
+    >({
+        mutationFn: (variables) => {
+            const id = variables?.groupId ?? groupId;
+            if (!id) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.create(id, variables?.name ? { name: variables.name } : {});
+        },
+        onSuccess: ({ chat, group }, variables) => {
+            const id = variables?.groupId ?? groupId;
+            if (!id) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(id, chat.chatId), chat);
+            // Add the chat to the list cache before the invalidation refetch, so
+            // selecting it cannot be undone by an effect that still sees the
+            // previous list.
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(id), (current) => [
+                {
+                    id: chat.chatId,
+                    title: chat.chatId,
+                    updatedAt: Date.now(),
+                    messageCount: chat.messages.length,
+                },
+                ...(current ?? []).filter((item) => item.id !== chat.chatId),
+            ]);
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(id) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useRenameGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, { chatId: string; name: string }>({
+        mutationFn: (variables) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.update(groupId, variables.chatId, { name: variables.name });
+        },
+        onSuccess: ({ chat, group }, variables) => {
+            if (!groupId) {
+                return;
+            }
+            if (variables.chatId !== chat.chatId) {
+                queryClient.removeQueries({ queryKey: queryKeys.groupChat(groupId, variables.chatId) });
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(groupId), (current) =>
+                (current ?? []).map((item) =>
+                    item.id === variables.chatId
+                        ? { ...item, id: chat.chatId, title: chat.chatId, updatedAt: Date.now() }
+                        : item,
+                ),
+            );
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useSetGroupChatPersona(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, string | null>({
+        mutationFn: (personaId) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.update(groupId, chatId, { personaId });
+        },
+        onSuccess: ({ chat, group }) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+        },
+    });
+}
+
+/** Persist which group chat is open, as `chat_id`, so it reopens next time. */
+export function useSetCurrentGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ chat: GroupChatDetail; group: GroupView }, Error, string>({
+        mutationFn: (chatId) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.update(groupId, chatId, { current: true });
+        },
+        onSuccess: ({ group }) => {
+            if (!groupId) {
+                return;
+            }
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useDeleteGroupChat(groupId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation<{ ok: true; group: GroupView }, Error, string>({
+        mutationFn: (chatId) => {
+            if (!groupId) {
+                throw new Error('No group selected');
+            }
+            return api.groups.chats.remove(groupId, chatId);
+        },
+        onSuccess: ({ group }, chatId) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.removeQueries({ queryKey: queryKeys.groupChat(groupId, chatId) });
+            queryClient.setQueryData<ChatSummary[]>(queryKeys.groupChats(groupId), (current) =>
+                current ? current.filter((item) => item.id !== chatId) : current,
+            );
+            setGroupInCache(queryClient, group);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useUpdateGroupMessage(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { index: number; message?: string; swipeId?: number }) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.updateMessage(groupId, chatId, variables.index, {
+                ...(variables.message !== undefined ? { message: variables.message } : {}),
+                ...(variables.swipeId !== undefined ? { swipeId: variables.swipeId } : {}),
+            });
+        },
+        onSuccess: (message, variables) => {
+            if (!groupId || !chatId) {
+                return;
+            }
+            queryClient.setQueryData<GroupChatDetail>(queryKeys.groupChat(groupId, chatId), (current) => {
+                if (!current) {
+                    return current;
+                }
+                return {
+                    ...current,
+                    messages: current.messages.map((item, index) => (index === variables.index ? message : item)),
+                };
+            });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+        },
+    });
+}
+
+export function useDeleteGroupMessage(groupId: string | null, chatId: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (index: number) => {
+            if (!groupId || !chatId) {
+                throw new Error('No group chat selected');
+            }
+            return api.groups.chats.deleteMessage(groupId, chatId, index);
+        },
+        onSuccess: (chat) => {
+            if (!groupId) {
+                return;
+            }
+            queryClient.setQueryData(queryKeys.groupChat(groupId, chat.chatId), chat);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(groupId) });
+        },
+    });
+}
+
+/** A chat addressed for the memory endpoints. */
+export interface MemoryChatRef {
+    kind: 'character' | 'group';
+    /** Character id or group id, depending on `kind`. */
+    id: string;
+    chatId: string;
+}
+
+function invalidateChatTarget(queryClient: QueryClient, target: MemoryChatRef | QuickReplyChatRef): void {
+    if (target.kind === 'character') {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.chat(target.id, target.chatId) });
+        return;
+    }
+    void queryClient.invalidateQueries({ queryKey: queryKeys.groupChat(target.id, target.chatId) });
+}
+
+/** Run one summary for the chat and store it on the covered message. */
+export function useSummarizeMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (target: MemoryChatRef) =>
+            target.kind === 'character'
+                ? api.chats.summarize(target.id, target.chatId)
+                : api.groups.chats.summarize(target.id, target.chatId),
+        onSuccess: (_result, target) => invalidateChatTarget(queryClient, target),
+    });
+}
+
+/** Replace the stored summary with edited text. */
+export function useSaveMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { target: MemoryChatRef; text: string }) =>
+            variables.target.kind === 'character'
+                ? api.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text)
+                : api.groups.chats.saveMemory(variables.target.id, variables.target.chatId, variables.text),
+        onSuccess: (_result, variables) => invalidateChatTarget(queryClient, variables.target),
+    });
+}
+
+/** Remove the latest summary, falling back to an older one when present. */
+export function useClearMemory() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (target: MemoryChatRef) =>
+            target.kind === 'character'
+                ? api.chats.clearMemory(target.id, target.chatId)
+                : api.groups.chats.clearMemory(target.id, target.chatId),
+        onSuccess: (_result, target) => invalidateChatTarget(queryClient, target),
+    });
+}
+
 export function useRegexScripts() {
     return useQuery({ queryKey: queryKeys.regex, queryFn: api.regex.list });
+}
+
+export function useQuickReplies() {
+    return useQuery({ queryKey: queryKeys.quickReplies, queryFn: api.quickReplies.list });
+}
+
+export function useCreateQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (name: string) => api.quickReplies.create(name),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+        },
+    });
+}
+
+/**
+ * Save a set. Renaming can move the file and rewrite the account set list, so
+ * the settings query is refreshed too.
+ */
+export function useSaveQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; set: QuickReplySet }) =>
+            api.quickReplies.save(variables.id, variables.set),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useDeleteQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.quickReplies.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useImportQuickReplySet() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { data: unknown; name?: string }) =>
+            api.quickReplies.import(variables.data, variables.name),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+        },
+    });
+}
+
+/** Run a quick reply against a chat; the server appends and returns directives. */
+export function useExecuteQuickReply() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { target: QuickReplyChatRef; setId: string; qrId: number }) =>
+            api.quickReplies.execute(variables.target, variables.setId, variables.qrId),
+        // A failed script can still have persisted an earlier append, so refresh
+        // the chat on errors as well as on success.
+        onSettled: (_result, _error, variables) => {
+            invalidateChatTarget(queryClient, variables.target);
+        },
+    });
 }
 
 export function useCreateRegexScript() {
@@ -556,15 +1011,9 @@ export function useDeleteProvider() {
     });
 }
 
-export function useTestProvider() {
+export function useTestProviderDraft() {
     return useMutation({
-        mutationFn: (variables: { id: string; apiKey?: string }) => api.providers.test(variables.id, variables.apiKey),
-    });
-}
-
-export function useProviderModels() {
-    return useMutation({
-        mutationFn: (id: string) => api.providers.models(id),
+        mutationFn: (body: ProviderDraftTestInput) => api.providers.testDraft(body),
     });
 }
 

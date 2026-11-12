@@ -6,12 +6,14 @@ import { type ToastTone, useAppStore } from '../store/app';
 const TONE_STYLES: Record<ToastTone, string> = {
     info: 'border-line bg-surface text-parchment',
     success: 'border-sage/40 bg-sage/10 text-parchment',
+    warning: 'border-amber/50 bg-amber/10 text-parchment',
     error: 'border-wine/60 bg-wine/15 text-parchment',
 };
 
 const TONE_ICONS: Record<ToastTone, typeof Info> = {
     info: Info,
     success: CheckCircle2,
+    warning: AlertTriangle,
     error: AlertTriangle,
 };
 
@@ -43,11 +45,18 @@ export function ToastViewport() {
                                 toast.tone === 'success'
                                     ? 'text-sage'
                                     : toast.tone === 'error'
-                                      ? 'text-amber'
-                                      : 'text-muted',
+                                      ? 'text-wine'
+                                      : toast.tone === 'warning'
+                                        ? 'text-amber'
+                                        : 'text-muted',
                             )}
                         />
-                        <span className="min-w-0 flex-1 leading-relaxed">{toast.message}</span>
+                        <div className="min-w-0 flex-1">
+                            {toast.title ? (
+                                <div className="mb-0.5 font-medium leading-snug text-parchment">{toast.title}</div>
+                            ) : null}
+                            <span className="block leading-relaxed">{toast.message}</span>
+                        </div>
                         <button
                             type="button"
                             className="shrink-0 rounded p-0.5 text-muted transition hover:text-parchment"

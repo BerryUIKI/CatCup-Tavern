@@ -1,6 +1,6 @@
 # Providers
 
-CatCup Tavern speaks to four provider families through a small adapter interface. All provider calls happen on the server, so API keys never reach the browser.
+CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech endpoints through a separate adapter. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
 
 ## Provider kinds
 
@@ -12,7 +12,7 @@ CatCup Tavern speaks to four provider families through a small adapter interface
 | `ollama`     | `http://127.0.0.1:11434`       | Native Ollama NDJSON                      | No           |
 | `custom`     | user supplied                  | Any OpenAI-compatible `/chat/completions` | Depends      |
 
-The active provider is selected in Settings. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
+The active provider is selected in Settings → Providers. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
 
 ## Configuration
 
@@ -30,9 +30,11 @@ Providers are stored in `data/settings.json` as public configuration:
 }
 ```
 
-`headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID. The API returns `hasKey` only; it never returns the key.
+`headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
-The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. A new provider starts as a `custom` endpoint — the kind that takes any base URL — and the model field accepts any id: **Load** only fills the suggestion list from the provider's own model endpoint.
+The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. Adding a provider starts from a type template (OpenAI, Anthropic, OpenRouter, Ollama or Custom), which fills the default base URL; the name stays editable. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
+
+An active provider is always enabled. Disabling or deleting it moves the active mark to the first other enabled provider; when no provider is enabled, none is active until one is enabled.
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
@@ -66,7 +68,7 @@ Content-Type: application/json
 
 `openrouter` adds `HTTP-Referer` and `X-Title` headers unless the user overrides them. `custom` is the escape hatch for Ollama's OpenAI-compatible endpoint, LM Studio, vLLM, gateways and other `/chat/completions` servers.
 
-**Model list:** `GET <baseUrl>/models`. Some compatible servers do not implement it; in that case "Save & test" fails even though chat may work. Type the model ID manually and use the provider anyway.
+**Model list:** `GET <baseUrl>/models`. Some compatible servers do not implement it; in that case **Test connection** fails even though chat may work. Type the model ID manually and use the provider anyway.
 
 ## Anthropic
 
@@ -169,9 +171,34 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 6. Update this page, [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) and `CHANGELOG.md`.
 7. If the adapter is derived from ST or RisuAI, update `NOTICE` and [REUSE.md](REUSE.md).
 
+## Text to speech
+
+Settings → TTS has two backends:
+
+- **Browser voices (local).** Uses the browser's `speechSynthesis` voices. CatCup makes no server request and needs no key; some browsers' voice lists are network-backed, which is the browser vendor's behaviour. Configure the default voice, rate (0.1–2) and pitch (0–2); per-character voices are chosen from the same list.
+- **OpenAI-compatible endpoint.** Calls `POST <baseUrl>/audio/speech` with the configured model, voice, format and speed, plus `instructions` when the model is `gpt-4o-mini-tts`. The key is stored in `data/secrets.json` under `tts` and is required only for an `api.openai.com` host; a local server that needs no key works without one. Works with OpenAI and with local servers that expose the same endpoint (for example openedai-speech or Kokoro-FastAPI).
+
+The default voice is used for any character without an entry in the character voice map; `narratorVoice` overrides it for narrator notes. Autoplay speaks each newly completed assistant reply. Text is cleaned of code blocks, HTML tags, images, links and markdown emphasis before it is sent. The full field list is in [API.md](API.md#settings); the text-preparation behavior is described in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
+
+## Image generation
+
+Settings → Images has three backends:
+
+- **Automatic1111 / Forge.** Calls `POST <baseUrl>/sdapi/v1/txt2img` with the prompt, negative prompt, steps, CFG scale, dimensions, sampler and optional seed. The response is `images[0]`, either raw base64 or a data URL. No key is needed; if one is configured it is sent as HTTP Basic auth, so enter `user:password`. Save & test calls `GET /sdapi/v1/options`.
+- **ComfyUI.** Posts the API-format workflow from `imageGeneration.comfyWorkflow` to `POST <baseUrl>/prompt` after filling its placeholders: `%prompt%`, `%negative_prompt%`, `%seed%`, `%width%`, `%height%`, `%steps%`, `%scale%` (CFG), `%sampler%`, `%scheduler%` and `%model%`. Only a string that is exactly `%name%` is replaced, and numeric placeholders become JSON numbers, so KSampler accepts them. The adapter polls `GET /history/<id>` every 500 ms, reads `status.messages` for an `execution_error` traceback when the job fails, formats `node_errors` when `/prompt` rejects the graph (naming the node and the rejected value), downloads the first `images` entry from `GET /view` and stores it with the same 25 MB cap as the other adapters. A workflow exported in ComfyUI's interface format is rejected with a hint to use **Save (API Format)**. Save & test calls `GET /system_stats`. No key is needed; a configured key is sent as HTTP Basic auth for a proxy in front of ComfyUI.
+- **OpenAI-compatible endpoint.** Calls `POST <baseUrl>/images/generations` with the model, prompt, `n: 1` and a model-appropriate size (`dall-e-3`, `gpt-image-*` and other models map differently). DALL·E models are asked for `response_format: b64_json`; the gpt-image family returns base64 by default. A response that contains an image URL instead is downloaded server-side with the same size and protocol limits. The key is stored in `data/secrets.json` under `image` and is required only for an `api.openai.com` host. Save & test calls `GET /models`, which is advisory: a server can generate images without implementing that route.
+
+The prompt sent to the backend is `imageGeneration.promptPrefix` followed by the user's prompt. The negative prompt applies to A1111 and ComfyUI. **Draft from chat** asks the active chat provider for a prompt using `promptTemplate` over the last `contextMessages` messages; it is an ordinary chat completion and counts against that provider's usage.
+
+Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB. A1111 and OpenAI-compatible requests time out after 180 seconds; a ComfyUI job gets five minutes because a model load can be slow. If the browser disconnects or the job times out, the adapter posts `/interrupt` for the job it queued, so the backend stops working on an image nobody will see; it never interrupts a job that has already finished. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
+
 ## Current limitations
 
-- Text chat only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API.
+- Text chat, speech output and image output only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
+- Text-to-speech supports only the two backends above; SillyTavern's other TTS provider extensions are not implemented.
+- Image generation supports Automatic1111/Forge, ComfyUI API workflows and OpenAI-compatible endpoints in this release. Stability, NovelAI and the other ST image sources are not implemented. The ComfyUI adapter has no workflow file manager or model/sampler pickers from `/object_info`; the workflow is edited as JSON in Settings.
+- There is one image generation configuration at a time; per-character backends, image-to-image, inpainting, upscaling, image upload and automatic per-message generation are not available.
+- Images are generated one at a time; the gallery has no thumbnails, folders or bulk export yet.
 - `max_tokens` is sent to OpenAI-compatible providers; models that require `max_completion_tokens` may need a compatibility flag in a future adapter.
 - Only string reasoning fields are mapped; provider-specific reasoning formats may be ignored.
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
@@ -183,7 +210,8 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 ## Security
 
 - API keys are stored server-side in `data/secrets.json` and are never returned by the API.
-- The client only sees `hasKey`.
+- The client only sees `hasKey` for providers, `ttsHasKey` for text to speech and `imageHasKey` for image generation.
+- A draft connection test (`POST /api/providers/test`) runs on the server. When no replacement key is typed, it reuses the stored key only when the draft has the same kind and base URL as `savedProviderId`; testing a different endpoint requires re-entering the key. The browser still never receives it. The endpoint accepts only http(s) base URLs and is rate-limited.
 - Provider errors are passed to the UI after being truncated; avoid including keys in custom headers where possible.
 - Do not put keys in `settings.json`, screenshots, logs or issue reports.
 - See [SECURITY.md](SECURITY.md) for the full model.

@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. Next: M2.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -86,21 +86,22 @@ Released after the MVP, before M2:
 - A chat's opening greeting can be switched from the chat header or by swiping the first message.
 - GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
 
-### Release automation (2026-11-11)
+### Release automation (2026-11-11, updated 2026-11-13)
 
-- `.github/workflows/release.yml` builds the Windows installer on `windows-latest` when a `v*` tag is pushed and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
+- `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
+- Since 2026-11-13 a release is a merge into `main` whose `package.json` version has no tag yet: the workflow creates the `v<version>` tag on the merged commit and publishes in the same run, so tagging by hand is no longer part of the flow. A merge whose version is already tagged is skipped.
 - The workflow can be dispatched manually with an existing tag to rebuild or republish an installer; the `v0.2.1` release was the first to get its asset this way.
 
 ## At a glance
 
-| Milestone | Theme                                                                      | Status   | Depends on |
-| --------- | -------------------------------------------------------------------------- | -------- | ---------- |
-| **M0**    | Runnable foundation: web + server + ST data basics                         | Complete | —          |
-| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete | M0         |
-| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Planned  | M1         |
-| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned  | M1, M2     |
-| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned  | M0, M1     |
-| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned  | M0–M4      |
+| Milestone | Theme                                                                      | Status      | Depends on |
+| --------- | -------------------------------------------------------------------------- | ----------- | ---------- |
+| **M0**    | Runnable foundation: web + server + ST data basics                         | Complete    | —          |
+| **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete    | M0         |
+| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | In progress | M1         |
+| **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
+| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned     | M0, M1     |
+| **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -162,7 +163,7 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - [x] The four required provider families are implemented.
 - [x] The project builds and tests cleanly from a fresh checkout.
 
-## M1 — Core SillyTavern experience (In progress)
+## M1 — Core SillyTavern experience (Complete)
 
 **Goal:** make single-character roleplay genuinely useful day to day. This is the milestone that turns the scaffold into a proper SillyTavern-compatible tavern.
 
@@ -281,11 +282,22 @@ M1 is complete. Next is M2.
 - Tokenizer model coverage may lag the model list; always keep the estimator fallback.
 - Scope creep: group chat and STscript must stay out of M1.
 
-## M2 — Extended roleplay (MVP subset in progress)
+## M2 — Extended roleplay (In progress)
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
 Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until after `0.2.0`.
+
+### Delivered so far
+
+- **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages.
+- **Group chat UI and generation** (2026-11-11): a Groups tab with a group editor, a group chat pane with per-member avatars, and server-side replies. Natural, list, manual and pooled selection; each request generates one reply from the chosen member's card, with a group nudge, `Name:` history prefixes, ST's group new-chat marker, reply trimming and a manual speaker picker. New chats seed one greeting per member, muted included.
+- **Summary memory** (2026-11-11): rolling summaries stored as `extra.memory` on the message they cover, exactly where SillyTavern's Memory extension writes them. Automatic updates follow the message or word interval; a Memory panel can summarize now, edit, restore or delete; the injection template and position (after/before the main prompt, or in chat at a depth with a role) mirror the extension. `{{summary}}` and `{{words}}` expand in prompts, and the context inspector has a Memory tab with the injected text and its token cost. Works in group chats too.
+- **Quick Replies (subset)** (2026-11-12): SillyTavern version 2 quick reply sets live one file per set under `data/quickreplies/`, with import, export, rename and delete. The bar above the message box shows the enabled sets in account order; Settings → Quick Replies edits sets, buttons, colors and bar order. Plain text fills the composer (or pastes literally when the set disables sending), and `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute and chain with `|`. A new `trigger` generation action lets a button ask for a reply without a user message, choosing a group speaker by name or index. Per-chat set links in `chat_metadata.quickReply` are honoured.
+- **Text to speech** (2026-11-12): a provider-agnostic TTS layer with two adapters. Browser speech synthesis works offline with the operating system's voices; the OpenAI-compatible adapter calls `/audio/speech` on OpenAI or a local server that implements the same API, keeping its key in `data/secrets.json`. Settings → TTS configures the backend, voices, speed/rate, per-character and narrator voices, autoplay and text cleaning. Every reply gets a play button, and new replies play automatically when autoplay is on. Audio is generated on demand and never written to the data directory.
+- **Image generation** (2026-11-12): a provider-agnostic image layer with Automatic1111/Forge, ComfyUI and OpenAI-compatible `/images/generations` adapters. Settings → Images configures the endpoint, key, dimensions, sampling and prompts; a prompt can be typed or drafted from the chat by the active text model. The ComfyUI adapter fills an API-format workflow pasted into settings, polls the job, downloads the first image and interrupts the job when the browser leaves. Images are stored under `data/user/images/<character or group>/` with a metadata sidecar, shown in a per-character and per-group gallery, and inserted into the chat as SillyTavern `extra.media` messages.
+- **CharX import/export** (2026-11-12): a `.charx` package (RisuAI's ZIP format) imports from the character library. A PNG icon becomes the character image and produces a PNG card; without one the card is stored as JSON. Every `assets/**` entry is kept under `data/character-assets/<character>/`. The character editor exports a V3 `card.json` with the PNG image as its icon and the stored assets, so packages round-trip. Risu `module.risum` bundles, `.charx` embedded-JPEG files and in-app display of non-icon assets are not implemented.
+- **Library improvements** (2026-11-12): favorites use SillyTavern's `data.extensions.fav` flag, with a star on every card, a favorites-only filter and favorite-first sorting. Tag chips filter the list with multi-select AND logic; cards sort by name A–Z/Z–A, recently changed, newest created or favorites first. A selection mode applies favorite/unfavorite, add/remove tag and delete to many cards at once, with per-card errors. Bulk tag edits keep existing spelling and skip no-op writes, and the first write stamps a V2/V3 `creation_date` so the creation sort is durable. CatCup tags are card `data.tags`, not SillyTavern's settings-level tag registry.
 
 ### Scope
 
@@ -302,16 +314,18 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 
 ### Acceptance criteria
 
-- [ ] Group chat with at least three characters can be created, persisted and reloaded.
-- [ ] Summary memory survives restarts and is visible in the context inspector.
-- [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] A basic Quick Reply executes and appears in the UI.
-- [ ] TTS and image generation have at least one working adapter each and clear configuration docs.
-- [ ] Character edits export to a valid PNG/JSON card that ST can open.
+- [x] Group chat with at least three characters can be created, persisted and reloaded.
+- [x] Summary memory survives restarts and is visible in the context inspector.
+- [x] A basic Quick Reply executes and appears in the UI.
+- [x] TTS has at least one working local or remote adapter with clear configuration docs.
+- [x] Image generation has at least one working adapter with clear configuration docs.
+- [x] The character library supports favorites, tag filters, sorting and bulk actions.
+- [x] Regex rules round-trip with ST and apply in prompt/render paths as configured.
+- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern.
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage → group chat UI → summary memory → Quick Replies → TTS → image generation → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS (**done 2026-11-12**) → image generation (**Automatic1111, ComfyUI and OpenAI-compatible done 2026-11-12**) → CharX (**done 2026-11-12**) → library polish (**favorites, tags, sorting and bulk actions done 2026-11-12**).
 
 ## M3 — Scripting and extension compatibility (Planned)
 
@@ -373,6 +387,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 ### Scope
 
 - Mobile browser polish (chat view, composer, sidebar, settings).
+- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; phases B–E remain.
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
@@ -390,6 +405,10 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - [ ] The v1.0 release checklist and upgrade notes are published.
 
 ## Cross-cutting tracks
+
+### Interface design
+
+Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome; C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
 
 ### Security
 

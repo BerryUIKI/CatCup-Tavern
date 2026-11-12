@@ -1,9 +1,10 @@
 import type { CharacterDetail, ChatMessage, GenerationSettings, PersonaSettings, RegexScript } from '@catcup/shared';
 
 import type { WorldInfoPrompt } from '../worldinfo/types.js';
-import { type AssembleResult, assemblePrompt } from './assemble.js';
+import { type AssembleResult, assemblePrompt, type SummaryInjection } from './assemble.js';
 import type { GenerationType } from './definitions.js';
 import type { PromptSettings } from './manager.js';
+import type { GroupMacroMembers } from './worldInfoTurn.js';
 
 export type { MacroContext } from './macros.js';
 export { substituteMacros } from './macros.js';
@@ -31,6 +32,16 @@ export interface BuildPromptInput {
     regexScripts?: readonly RegexScript[];
     /** Macro expansion for those scripts. */
     substitute?: (text: string, escapeValues: boolean) => string;
+    /** Prefix assistant history messages with the speaker name (group chats). */
+    prefixCharacterNames?: boolean;
+    /** Instruction appended after the history (group chats). */
+    groupNudge?: string;
+    /** Member names for `{{group}}` and the other group macros. */
+    group?: GroupMacroMembers;
+    /** Latest summary, for `{{summary}}` expansion. */
+    summaryText?: string;
+    /** Formatted summary to inject, following SillyTavern's Memory positions. */
+    summaryInjection?: SummaryInjection;
 }
 
 /**
@@ -59,5 +70,10 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         countTokens: input.countTokens,
         regexScripts: input.regexScripts,
         substitute: input.substitute,
+        prefixCharacterNames: input.prefixCharacterNames,
+        groupNudge: input.groupNudge,
+        group: input.group,
+        summaryText: input.summaryText,
+        summaryInjection: input.summaryInjection,
     });
 }

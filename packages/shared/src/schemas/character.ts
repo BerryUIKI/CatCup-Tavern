@@ -113,8 +113,52 @@ export const characterPatchSchema = z
     })
     .strict();
 
+/** A character id: a file name without path traversal. */
+export const characterIdSchema = z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .refine((id) => !/[\\/]/.test(id) && id !== '.' && id !== '..', 'Invalid character id');
+
+/** Bulk library actions the character routes accept. */
+export const CHARACTER_BULK_ACTIONS = ['favorite', 'unfavorite', 'add-tags', 'remove-tags', 'delete'] as const;
+export type CharacterBulkAction = (typeof CHARACTER_BULK_ACTIONS)[number];
+
+const characterTagSchema = z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .refine((tag) => !tag.includes(','), 'Tags cannot contain commas');
+
+export const characterFavoriteRequestSchema = z
+    .object({
+        favorite: z.boolean(),
+    })
+    .strict();
+export type CharacterFavoriteRequest = z.infer<typeof characterFavoriteRequestSchema>;
+
+export const characterBulkRequestSchema = z
+    .object({
+        action: z.enum(CHARACTER_BULK_ACTIONS),
+        /** Character ids; duplicates are collapsed by the server. */
+        ids: z.array(characterIdSchema).min(1).max(500),
+        /** Required for `add-tags` and `remove-tags`, rejected otherwise. */
+        tags: z.array(characterTagSchema).min(1).max(50).optional(),
+    })
+    .strict()
+    .refine(
+        (value) => {
+            const tagAction = value.action === 'add-tags' || value.action === 'remove-tags';
+            return tagAction ? (value.tags?.length ?? 0) > 0 : value.tags === undefined;
+        },
+        { message: 'Provide at least one tag for a tag action, and no tags otherwise', path: ['tags'] },
+    );
+export type CharacterBulkRequest = z.infer<typeof characterBulkRequestSchema>;
+
 /** How a card is exported. */
-export type CharacterExportFormat = 'png' | 'json';
+export type CharacterExportFormat = 'png' | 'json' | 'charx';
 
 export type CharacterBookEntry = z.infer<typeof characterBookEntrySchema>;
 export type CharacterBook = z.infer<typeof characterBookSchema>;
@@ -132,8 +176,12 @@ export interface CharacterSummary {
     name: string;
     creator: string;
     tags: string[];
+    /** SillyTavern's `data.extensions.fav` flag; legacy string `'true'` also counts. */
+    fav: boolean;
     spec: CharacterSpec;
     hasCharacterBook: boolean;
+    /** File creation time in milliseconds; falls back to the change time where birthtime is unavailable. */
+    createdAt: number;
     updatedAt: number;
     avatarUrl: string;
 }
@@ -141,4 +189,14 @@ export interface CharacterSummary {
 export interface CharacterDetail extends CharacterSummary {
     card: CharacterCardData;
     rawCard: unknown;
+}
+
+/** Result of a bulk favorite, tag or delete action. */
+export interface CharacterBulkResponse {
+    /** Updated characters, with the fields the library displays. */
+    characters: CharacterSummary[];
+    /** Ids whose card was deleted. */
+    deleted: string[];
+    /** Ids that could not be processed, with the reason. */
+    errors: { id: string; message: string }[];
 }

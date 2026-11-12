@@ -34,6 +34,7 @@ import {
 } from './manager.js';
 import { ChatCompletion, type CompletionMessage, type CompletionRole } from './messages.js';
 import { estimateTokens } from './tokenizer.js';
+import type { GroupMacroMembers } from './worldInfoTurn.js';
 
 export interface AssembleInput {
     promptSettings?: Partial<PromptSettings>;
@@ -59,6 +60,36 @@ export interface AssembleInput {
     regexScripts?: readonly RegexScript[];
     /** Macro expansion for those scripts. */
     substitute?: (text: string, escapeValues: boolean) => string;
+    /**
+     * Prefix assistant history messages with the speaker's name, the way
+     * SillyTavern's default `names_behavior` formats group chats.
+     */
+    prefixCharacterNames?: boolean;
+    /**
+     * A system instruction appended after the history. Group chats use
+     * `[Write the next reply only as {{char}}.]`.
+     */
+    groupNudge?: string;
+    /** Member names for `{{group}}` and the other group macros. */
+    group?: GroupMacroMembers;
+    /** Latest summary, for `{{summary}}` expansion. */
+    summaryText?: string;
+    /** Formatted summary to inject, following SillyTavern's Memory positions. */
+    summaryInjection?: SummaryInjection;
+}
+
+/**
+ * A summary ready to enter the prompt.
+ *
+ * `position` mirrors SillyTavern's `extension_prompt_types`: `-1` none, `0`
+ * after the main prompt, `1` in chat at `depth`, `2` before the main prompt.
+ * `role` is `0` system, `1` user, `2` assistant.
+ */
+export interface SummaryInjection {
+    content: string;
+    position: number;
+    role: number;
+    depth: number;
 }
 
 export interface AssembleResult {
@@ -153,6 +184,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         description: card.description,
         personality: card.personality,
         scenario: card.scenario,
+        ...(input.group ? { group: input.group.members, groupNotMuted: input.group.enabled } : {}),
+        ...(input.summaryText ? { summary: input.summaryText } : {}),
     };
     const substitute = (text: string) => substituteMacros(text, macroContext);
 
@@ -276,6 +309,38 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     }
     addByIdentifier(IDENTIFIER.ENHANCE_DEFINITIONS);
 
+    // Phase 3.5: summary memory. SillyTavern inserts the formatted memory into
+    // the main prompt ("after"/"before") or adds it as an in-chat injection.
+    const summaryInjection = input.summaryInjection;
+    let summaryFallback: Injection | null = null;
+    if (summaryInjection?.content && summaryInjection.position !== -1) {
+        const summaryMessage: CompletionMessage = {
+            identifier: 'summary',
+            role: roleOf(summaryInjection.role),
+            content: summaryInjection.content,
+        };
+
+        if (summaryInjection.position !== 1) {
+            if (completion.has(IDENTIFIER.MAIN)) {
+                completion.insert(IDENTIFIER.MAIN, summaryMessage, summaryInjection.position === 2 ? 'start' : 'end');
+            } else {
+                // When the preset moves the main prompt in chat, ST converts a
+                // relative summary into an in-chat injection beside main,
+                // inheriting main's role, depth and order.
+                const mainPrompt = collection.find((prompt) => prompt.identifier === IDENTIFIER.MAIN);
+                if (mainPrompt?.injection_position === INJECTION_POSITION.ABSOLUTE) {
+                    summaryFallback = {
+                        depth: mainPrompt.injection_depth ?? 4,
+                        order: mainPrompt.injection_order,
+                        role: mainPrompt.role ?? 'system',
+                        content: summaryInjection.content,
+                    };
+                }
+                // With no main prompt at all, SillyTavern sends no summary.
+            }
+        }
+    }
+
     // Phase 4: relative injections into main (the Author's Note in prompt).
     if (worldInfo?.authorNote?.value) {
         const note = worldInfo.authorNote;
@@ -293,6 +358,19 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
 
     // Phase 5: in-chat injections.
     const injections: Injection[] = [];
+
+    if (summaryInjection?.content && summaryInjection.position === 1) {
+        injections.push({
+            depth: summaryInjection.depth,
+            order: 100,
+            role: roleOf(summaryInjection.role),
+            content: summaryInjection.content,
+        });
+    }
+
+    if (summaryFallback) {
+        injections.push(summaryFallback);
+    }
 
     for (const bucket of worldInfo?.worldInfoDepth ?? []) {
         injections.push({
@@ -331,24 +409,33 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     // still carries `{{char}}` reaches the model with the name filled in.
     const rawHistory = toHistoryEntries(input.messages);
     const depthOffset = generationType === 'continue' ? 2 : 1;
-    const history = rawHistory.map(
-        (entry, index): CompletionMessage => ({
+    const history = rawHistory.map((entry, index): CompletionMessage => {
+        const content = substitute(
+            applyRegexScripts(
+                input.regexScripts ?? [],
+                entry.content,
+                regexPlacementForMessage(entry.role === 'user'),
+                {
+                    isPrompt: true,
+                    depth: rawHistory.length - index - depthOffset,
+                    substitute: input.substitute,
+                },
+            ),
+        );
+
+        // SillyTavern prepends the speaker's name in group chats, after the
+        // content transforms. Its default rule prefixes every message whose
+        // name is not the user persona, which also covers narrator and sendas
+        // messages, not only assistant turns.
+        return {
             identifier: `chatHistory-${index}`,
             role: entry.role,
-            content: substitute(
-                applyRegexScripts(
-                    input.regexScripts ?? [],
-                    entry.content,
-                    regexPlacementForMessage(entry.role === 'user'),
-                    {
-                        isPrompt: true,
-                        depth: rawHistory.length - index - depthOffset,
-                        substitute: input.substitute,
-                    },
-                ),
-            ),
-        }),
-    );
+            content:
+                input.prefixCharacterNames && entry.name && entry.name !== input.persona.name
+                    ? `${entry.name}: ${content}`
+                    : content,
+        };
+    });
 
     const historyLength = history.length;
     const byIndex = new Map<number, Injection[]>();
@@ -379,10 +466,19 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         content: substitute(input.newChatPrompt ?? DEFAULT_MESSAGES.newChat),
     };
 
+    // ST reserves budget for the group nudge next to the new-chat marker and
+    // appends it after the history. Squashing never merges it.
+    const groupNudgeMessage: CompletionMessage | null = input.groupNudge
+        ? { identifier: 'groupNudge', role: 'system', content: substitute(input.groupNudge) }
+        : null;
+
     if (collection.some((prompt) => prompt.identifier === IDENTIFIER.CHAT_HISTORY)) {
         const index = collection.findIndex((prompt) => prompt.identifier === IDENTIFIER.CHAT_HISTORY);
 
-        let available = completion.remaining - completion.cost([newChatMessage]);
+        let available =
+            completion.remaining -
+            completion.cost([newChatMessage]) -
+            (groupNudgeMessage ? completion.cost([groupNudgeMessage]) : 0);
         const kept: CompletionMessage[] = [];
 
         for (let position = chronological.length - 1; position >= 0; position -= 1) {
@@ -399,6 +495,11 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         }
 
         completion.add(IDENTIFIER.CHAT_HISTORY, index, [newChatMessage, ...kept]);
+        if (groupNudgeMessage) {
+            completion.insert(IDENTIFIER.CHAT_HISTORY, groupNudgeMessage, 'end');
+        }
+    } else if (groupNudgeMessage) {
+        completion.add('groupNudge', null, [groupNudgeMessage]);
     }
 
     // Phase 7: dialogue examples.

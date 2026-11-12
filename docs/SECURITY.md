@@ -8,7 +8,7 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 - the access password;
 - the session cookie;
-- provider API keys in `data/secrets.json`;
+- provider API keys in `data/secrets.json`, plus the text-to-speech key under the fixed `tts` entry and the image generation key under `image`;
 - characters, chats and world info in `data/`;
 - the machine and network the server runs on.
 
@@ -55,19 +55,35 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 ## API keys
 
-- Stored only in `data/secrets.json` as provider-ID → key. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
-- Never returned by any API response. The public provider shape exposes `hasKey` only.
+- Stored only in `data/secrets.json` as provider-ID → key, plus the fixed `tts` key for text to speech and the fixed `image` key for image generation. It is written with mode `0600` on POSIX; Windows file ACLs apply instead.
+- Never returned by any API response. The public provider shape exposes `hasKey` only, and the settings response exposes `ttsHasKey` and `imageHasKey` for the service keys.
 - Fastify logs redact `authorization`, `cookie` and `x-api-key` headers.
 - Provider adapter error messages are returned to the UI; they should not contain keys under normal provider behaviour.
 - Keys are stored unencrypted at rest. Protect the OS account and backups.
 - Rotate a key at the provider if it may have leaked; remove or replace it in Settings.
 
+## Text to speech
+
+- The browser backend uses the browser's speech voices. CatCup makes no server request and needs no key; some browsers' voice lists are themselves network-backed, so treat that as the browser vendor's behaviour rather than CatCup egress.
+- The OpenAI-compatible backend sends the message text being spoken to the configured `/audio/speech` endpoint. Choose a trusted endpoint; this is the same trust boundary as a chat provider.
+- Audio is relayed to the browser with `Cache-Control: no-store` and is not written to `data/`. The speak endpoint requires the session like any other `/api/` route.
+
+## Image generation
+
+- The image generation key is stored in `data/secrets.json` under the fixed `image` entry; responses expose only `imageHasKey`.
+- A generation request sends the final prompt (and the configured prefix and negative prompt) to the image backend. **Draft from chat** separately sends the recent chat messages to the active chat provider, so the same trust boundary as normal generation applies.
+- A URL returned by an OpenAI-compatible image endpoint is downloaded by the server. Only `http`/`https` URLs are followed, the response is capped at 25 MB, and the bytes must be a PNG, JPEG or WebP by magic number.
+- ComfyUI receives the workflow graph from `imageGeneration.comfyWorkflow`, with the prompt and sampling values substituted. CatCup does not execute the workflow; custom nodes run on the ComfyUI host with that host's permissions, so point CatCup only at an instance you trust. The adapter also posts `/interrupt` to that base URL when the browser disconnects or the job times out, and only for the job it queued.
+- Generated images are served through the authenticated `/api/images/:folder/:file` route with `X-Content-Type-Options: nosniff`. Folder and file names are validated and resolved inside `data/user/images/`, so a crafted name cannot read settings or another file.
+- Image content comes from the configured provider and is not scanned or filtered. Treat it like any other unreviewed download.
+
 ## Files and paths
 
-- Character IDs and chat IDs are validated and resolved with `resolveInside()` to block path traversal.
+- Character IDs and chat IDs are validated and resolved with `resolveInside()` to block path traversal, including every id in a bulk character action.
 - Display names are sanitized for filesystem use.
-- Uploads: 20 MB per file, 50 files per request; `.png` and `.json` only.
-- JSON/JSONL parsing does not execute code. `.charx` is not supported yet; do not assume archive contents are safe when support is added.
+- Uploads: 20 MB per file, 50 files per request; `.png`, `.json` and `.charx` only.
+- JSON/JSONL parsing does not execute code. `module.risum` files inside a CharX package are skipped, never parsed or executed. Do not assume archive contents are safe if module support is added.
+- A CharX ZIP is read with caps (200 entries, 25 MB per entry, 60 MB extracted, 10 MB `card.json`); entry names are validated and only `assets/**` is extracted. Extracted files are written under `data/character-assets/<character id>/` through a staging folder, and are not served by any HTTP route. Exporting a character re-reads that folder with the same count and size caps.
 - The SillyTavern import reads a directory the user names on the server host. It requires an absolute path, only reads the known subfolders (`characters/`, `chats/`, `worlds/`, preset folders), caps file size and count, and never writes outside `data/`. It is accessible to any authenticated session, which on a LAN deployment means a household member could ask the server to read a path they can name — the files are copied into the shared library. Keep LAN access to people you would give the library to anyway.
 - Chat and settings writes are atomic and serialized per file.
 - The static SPA is public; the API is protected. Do not serve the API without authentication.
@@ -84,7 +100,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 ## Privacy and data at rest
 
 - No telemetry or analytics are sent anywhere.
-- The only outbound requests are to the configured model provider (and, during development, package registries and the reference repositories).
+- The only outbound requests are to the configured chat, TTS and image endpoints, the provider connection test (http(s) only and rate-limited; a stored key is reused only for the same provider kind and base URL), and — during development — package registries and the reference repositories.
 - Chats, characters, provider settings and credentials are stored unencrypted in `data/`.
 - `data/`, `.env`, `.ref/` and build output are gitignored. Never commit them or attach them to issues.
 - Backups include credentials; store them accordingly.

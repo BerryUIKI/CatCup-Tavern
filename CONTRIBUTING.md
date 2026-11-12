@@ -11,22 +11,44 @@ Thanks for helping build CatCup Tavern. The project is English-first and AGPL-3.
 
 ## GitFlow
 
-- `main` is the release baseline.
-- `dev` is the integration branch.
-- Create feature branches from `dev` and target `dev` in pull requests.
-- Use merge commits (not squash) when merging PRs so stacked branches keep clean diffs.
-- `release/*` and `hotfix/*` branches may be used for release preparation later.
+- `main` is the release baseline. It only ever receives merges from `dev` (releases) or from `hotfix/*` (emergencies).
+- `dev` is the integration branch. Every feature lands here first.
+- Create working branches from `dev` and target `dev` in pull requests.
+- Use merge commits (not squash) when merging PRs so stacked branches keep clean diffs and history stays reconstructible.
+- Cut `release/<version>` from `dev` only when a release needs stabilising commits; otherwise promote `dev` directly.
+- Cut `hotfix/<version>` from `main` for a fix that cannot wait for the next release, then merge it back into both `main` and `dev`.
 
 Branch names should be short and scoped:
 
 ```text
-feature/world-info
-feature/prompt-manager
+feat/world-info
+feat/prompt-manager
 fix/chat-swipe
 docs/milestones
+ci/release-workflow
+release/0.3.0
+hotfix/0.2.2
 ```
 
-No long descriptive branch names are required. The PR title carries the detail.
+Prefixes in use: `feat/`, `fix/`, `docs/`, `ci/`, `chore/`, `release/`, `hotfix/`. No long descriptive branch names are required; the PR title carries the detail.
+
+### Branch protection
+
+`main` and `dev` are both protected on GitHub:
+
+| Rule                                   | `main`                            | `dev`                             |
+| -------------------------------------- | --------------------------------- | --------------------------------- |
+| Pull request required                  | yes                               | yes                               |
+| Required status check                  | `Typecheck, lint, test and build` | `Typecheck, lint, test and build` |
+| Branch must be up to date before merge | yes                               | no                                |
+| Force push / branch deletion           | blocked                           | blocked                           |
+| Rules apply to admins                  | yes                               | no                                |
+
+`main` additionally requires the branch to be current with its base before merging, because a release build is cut from it. The maintainer keeps an admin override on `dev` for merging stacked PRs in order; a normal contributor still has to pass CI and open a PR.
+
+### Merging a working branch
+
+After the PR merges, delete the branch — locally and on the remote. Do not keep merged branches around; `git branch --merged dev` and `git branch -r --merged origin/dev` should stay short. Branches that were never merged must not be deleted without asking the maintainer.
 
 ### Stacked PRs
 
@@ -34,14 +56,17 @@ If a change depends on another open PR, branch from the dependency and target `d
 
 ## Releases
 
-Releases are cut from `main` and built by CI:
+Releases are cut from `main` and built by CI automatically:
 
-1. Bump the version across the workspace (`package.json`, the app packages, `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` and `apps/server/src/config.ts`), and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
+1. Bump the version everywhere it is written down — `package.json`, `packages/shared`, `apps/server`, `apps/web`, `apps/desktop`, `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `catcup-desktop` entry in `Cargo.lock`), and `apps/server/src/config.ts` — and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
 2. Merge the release preparation into `dev`, then open a `dev` → `main` pull request and merge it with a merge commit.
-3. Push a `v<version>` tag pointing at `main`.
-4. `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and creates or updates the GitHub release, with the changelog section as the body and the installer as an asset.
+3. That push to `main` is the release. `.github/workflows/release.yml` reads the version from `package.json`, creates the `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest`, and creates the GitHub release with the changelog section as the body and the installer as an asset.
 
-To rebuild an existing release, run the Release workflow manually with that tag. A tag without a matching `CHANGELOG.md` section fails the build on purpose.
+Nothing is published when the version in `package.json` already has a tag, so later merges into `main` stay quiet. A version without a matching `CHANGELOG.md` section fails the build on purpose.
+
+To rebuild or republish an existing release, run the Release workflow manually with that tag. Pushing a `v*` tag by hand still works and releases that tag directly.
+
+`main` requires its CI check to pass before a merge, so a broken release cannot start from a red branch.
 
 ## Commits
 
@@ -75,7 +100,7 @@ pnpm test
 pnpm build
 ```
 
-For a package-scoped change, the equivalent workspace commands are also acceptable while the stack is incomplete:
+For a package-scoped change, the equivalent workspace commands are also acceptable:
 
 ```bash
 pnpm --filter @catcup/server typecheck
@@ -83,7 +108,7 @@ pnpm --filter @catcup/server test
 pnpm --filter @catcup/server build
 ```
 
-There is no CI workflow yet; local gates are the current contract. If you add CI, run all four gates on every PR into `dev`.
+CI runs the same four gates on every PR into `dev` or `main` and on every push to either branch (`.github/workflows/ci.yml`). The job name is the required status check on both protected branches, so a PR cannot merge while it is red.
 
 ## Code style
 

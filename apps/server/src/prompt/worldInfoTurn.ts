@@ -15,6 +15,14 @@ import { ensureTimedWorldInfo } from '../worldinfo/timedEffects.js';
 import type { ScanResult, WorldInfoPrompt } from '../worldinfo/types.js';
 import { type MacroContext, substituteMacros } from './macros.js';
 
+/** Group member names for `{{group}}`, `{{groupNotMuted}}` and friends. */
+export interface GroupMacroMembers {
+    /** Every member name, muted members included. */
+    members: readonly string[];
+    /** Members that may reply. */
+    enabled: readonly string[];
+}
+
 export interface WorldInfoTurnInput {
     character: CharacterDetail;
     messages: readonly ChatMessage[];
@@ -35,6 +43,15 @@ export interface WorldInfoTurnInput {
     regexScripts?: readonly RegexScript[];
     /** Macro expansion for those scripts. */
     substitute?: (text: string, escapeValues: boolean) => string;
+    /** Member names for group macros while the scan expands chat text. */
+    group?: GroupMacroMembers;
+    /** Latest summary for `{{summary}}` in entries and the author's note. */
+    summary?: string;
+    /**
+     * Text scanned alongside the chat but outside its depth clock, such as the
+     * summary when the Memory settings include it in world info scanning.
+     */
+    extraScanText?: string;
 }
 
 export interface WorldInfoTurnResult {
@@ -59,7 +76,12 @@ export function isAuthorNoteDue(messages: readonly ChatMessage[], interval: numb
     return tillInsertion === 0;
 }
 
-export function createMacroContext(character: CharacterDetail, persona: PersonaSettings): MacroContext {
+export function createMacroContext(
+    character: CharacterDetail,
+    persona: PersonaSettings,
+    group?: GroupMacroMembers,
+    summary?: string,
+): MacroContext {
     const card = character.card;
     return {
         char: card.name || character.name,
@@ -67,6 +89,8 @@ export function createMacroContext(character: CharacterDetail, persona: PersonaS
         description: card.description,
         personality: card.personality,
         scenario: card.scenario,
+        ...(group ? { group: group.members, groupNotMuted: group.enabled } : {}),
+        ...(summary ? { summary } : {}),
     };
 }
 
@@ -107,7 +131,7 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
     const books = dedupeBooks([...input.config.globalBooks, characterWorld]);
 
     const entries = await loadWorldInfoEntries(books);
-    const macroContext = createMacroContext(input.character, input.persona);
+    const macroContext = createMacroContext(input.character, input.persona, input.group, input.summary);
     const substitute = (text: string) => substituteMacros(text, macroContext);
 
     // The scanner sees the same text the prompt will: greetings keep their raw
@@ -146,6 +170,7 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
         activeCharacter: { id: input.character.id },
         timed: { state },
         substitute,
+        ...(input.extraScanText?.trim() ? { injections: [input.extraScanText] } : {}),
         ...(input.countTokens ? { countTokens: input.countTokens } : {}),
         // `WORLD_INFO` scripts run on each entry as it enters the prompt, with
         // the entry's own depth when it is injected at depth.

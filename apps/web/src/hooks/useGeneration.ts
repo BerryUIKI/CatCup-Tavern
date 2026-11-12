@@ -1,10 +1,13 @@
-import type { GenerateAction } from '@catcup/shared';
+import type { ChatMessage, GenerateAction, GenerationSpeaker } from '@catcup/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 import { streamGeneration } from '../lib/sse';
 import { queryKeys } from './data';
+
+/** Who the generation belongs to: one character chat, or one group chat. */
+export type GenerationTarget = { kind: 'character'; characterId: string } | { kind: 'group'; groupId: string };
 
 interface GenerationState {
     streaming: boolean;
@@ -13,7 +16,13 @@ interface GenerationState {
     optimisticUser: string | null;
     assistantText: string;
     reasoningText: string;
+    /** The member the server chose to speak, for group chats. */
+    speaker: GenerationSpeaker | null;
     error: string | null;
+    /** The message the server persisted for the last completed stream. */
+    lastReply: ChatMessage | null;
+    /** Increments once per `done` event, so views can react exactly once. */
+    replySequence: number;
 }
 
 const INITIAL_STATE: GenerationState = {
@@ -23,28 +32,42 @@ const INITIAL_STATE: GenerationState = {
     optimisticUser: null,
     assistantText: '',
     reasoningText: '',
+    speaker: null,
     error: null,
+    lastReply: null,
+    replySequence: 0,
 };
 
-export function useGeneration(characterId: string | null, chatId: string | null, onDone?: () => void) {
+export function useGeneration(target: GenerationTarget | null, chatId: string | null, onDone?: () => void) {
     const queryClient = useQueryClient();
     const [state, setState] = useState<GenerationState>(INITIAL_STATE);
     const stateRef = useRef(state);
     const abortRef = useRef<AbortController | null>(null);
+
+    const targetKind = target?.kind ?? null;
+    const targetId = target ? (target.kind === 'character' ? target.characterId : target.groupId) : null;
 
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
 
     const invalidateChat = useCallback(async () => {
-        if (!characterId || !chatId) {
+        if (!targetKind || !targetId || !chatId) {
+            return;
+        }
+        if (targetKind === 'character') {
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: queryKeys.chat(targetId, chatId) }),
+                queryClient.invalidateQueries({ queryKey: queryKeys.chats(targetId) }),
+            ]);
             return;
         }
         await Promise.all([
-            queryClient.invalidateQueries({ queryKey: queryKeys.chat(characterId, chatId) }),
-            queryClient.invalidateQueries({ queryKey: queryKeys.chats(characterId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.groupChat(targetId, chatId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.groupChats(targetId) }),
+            queryClient.invalidateQueries({ queryKey: queryKeys.groups }),
         ]);
-    }, [characterId, chatId, queryClient]);
+    }, [targetKind, targetId, chatId, queryClient]);
 
     const finish = useCallback(async () => {
         await invalidateChat();
@@ -56,6 +79,7 @@ export function useGeneration(characterId: string | null, chatId: string | null,
             optimisticUser: null,
             assistantText: '',
             reasoningText: '',
+            speaker: null,
         }));
         onDone?.();
     }, [invalidateChat, onDone]);
@@ -71,6 +95,7 @@ export function useGeneration(characterId: string | null, chatId: string | null,
                 optimisticUser: null,
                 assistantText: '',
                 reasoningText: '',
+                speaker: null,
                 error: message,
             }));
         },
@@ -78,35 +103,56 @@ export function useGeneration(characterId: string | null, chatId: string | null,
     );
 
     const start = useCallback(
-        async (action: GenerateAction, message?: string) => {
-            if (!characterId || !chatId || abortRef.current) {
+        async (action: GenerateAction, message?: string, speaker?: string) => {
+            if (!targetKind || !targetId || !chatId || abortRef.current) {
                 return;
             }
 
-            setState({
+            setState((current) => ({
+                ...current,
                 streaming: true,
                 action,
                 generationId: null,
                 optimisticUser: action === 'send' ? (message ?? null) : null,
                 assistantText: '',
                 reasoningText: '',
+                speaker: null,
                 error: null,
-            });
+            }));
 
             const controller = new AbortController();
             abortRef.current = controller;
             let hadError = false;
 
+            const path =
+                targetKind === 'character'
+                    ? '/api/generate'
+                    : `/api/groups/${encodeURIComponent(targetId)}/chats/${encodeURIComponent(chatId)}/generate`;
+            const body =
+                targetKind === 'character'
+                    ? {
+                          characterId: targetId,
+                          chatId,
+                          action,
+                          ...(message !== undefined ? { message } : {}),
+                      }
+                    : {
+                          action,
+                          ...(message !== undefined ? { message } : {}),
+                          ...(speaker ? { speaker } : {}),
+                      };
+
             try {
                 await streamGeneration(
+                    path,
+                    body,
                     {
-                        characterId,
-                        chatId,
-                        action,
-                        ...(message !== undefined ? { message } : {}),
-                    },
-                    {
-                        onStart: (generationId) => setState((current) => ({ ...current, generationId })),
+                        onStart: (generationId, selectedSpeaker) =>
+                            setState((current) => ({
+                                ...current,
+                                generationId,
+                                speaker: selectedSpeaker ?? null,
+                            })),
                         onToken: (text) =>
                             setState((current) => ({
                                 ...current,
@@ -117,7 +163,12 @@ export function useGeneration(characterId: string | null, chatId: string | null,
                                 ...current,
                                 reasoningText: current.reasoningText + text,
                             })),
-                        onDone: () => {
+                        onDone: (persisted) => {
+                            setState((current) => ({
+                                ...current,
+                                lastReply: persisted,
+                                replySequence: current.replySequence + 1,
+                            }));
                             void finish();
                         },
                         onError: (errorMessage) => {
@@ -149,7 +200,7 @@ export function useGeneration(characterId: string | null, chatId: string | null,
                 }
             }
         },
-        [characterId, chatId, finish, finishWithError],
+        [targetKind, targetId, chatId, finish, finishWithError],
     );
 
     const stop = useCallback(async () => {
@@ -175,13 +226,14 @@ export function useGeneration(characterId: string | null, chatId: string | null,
         setState((current) => ({ ...current, error: null }));
     }, []);
 
-    // biome-ignore lint/correctness/useExhaustiveDependencies: switching character or chat must reset generation state
+    // Switching character, group or chat must reset generation state.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: the target identity is captured by kind and id
     useEffect(() => {
         setState(INITIAL_STATE);
         return () => {
             abortRef.current?.abort();
         };
-    }, [characterId, chatId]);
+    }, [targetKind, targetId, chatId]);
 
     return {
         ...state,
