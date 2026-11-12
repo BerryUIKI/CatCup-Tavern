@@ -280,24 +280,26 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         }, 1800);
     };
 
-    const clearTest = () => {
+    const clearResultForKey = (key: string) => {
         setTestResults((current) => {
-            if (!(resultKey in current)) {
+            if (!(key in current)) {
                 return current;
             }
             const next = { ...current };
-            delete next[resultKey];
+            delete next[key];
             return next;
         });
         setModels((current) => {
-            if (!(resultKey in current)) {
+            if (!(key in current)) {
                 return current;
             }
             const next = { ...current };
-            delete next[resultKey];
+            delete next[key];
             return next;
         });
     };
+
+    const clearTest = () => clearResultForKey(resultKey);
 
     const patchForm = (patch: Partial<ProviderForm>, options?: { invalidateTest?: boolean }) => {
         setForm((current) => (current ? { ...current, ...patch } : current));
@@ -350,6 +352,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         setRemoveKey(false);
         setShowKey(false);
         setError(null);
+        clearResultForKey('draft');
     };
 
     const chooseKind = (kind: ProviderKind) => {
@@ -362,6 +365,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
             headers: [],
         });
         setError(null);
+        clearResultForKey('draft');
     };
 
     const cancelCreate = () => {
@@ -952,7 +956,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 form.baseUrl !== DEFAULT_BASE_URLS[form.kind] ? (
                                                     <button
                                                         type="button"
-                                                        className="text-[11px] text-amber/80 transition hover:text-amber"
+                                                        className="inline-flex min-h-8 items-center text-[11px] text-amber/80 transition hover:text-amber"
                                                         onClick={() =>
                                                             patchForm(
                                                                 { baseUrl: DEFAULT_BASE_URLS[form.kind] },
@@ -1068,7 +1072,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             {storedKey && !willRemoveKey ? (
                                                 <button
                                                     type="button"
-                                                    className="text-[11px] text-muted transition hover:text-wine"
+                                                    className="inline-flex min-h-8 items-center text-[11px] text-muted transition hover:text-wine"
                                                     onClick={() => {
                                                         setRemoveKey(true);
                                                         setApiKey('');
@@ -1084,7 +1088,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                     </p>
                                                     <button
                                                         type="button"
-                                                        className="text-[11px] text-muted transition hover:text-parchment"
+                                                        className="inline-flex min-h-8 items-center text-[11px] text-muted transition hover:text-parchment"
                                                         onClick={() => setRemoveKey(false)}
                                                     >
                                                         Undo
@@ -1312,7 +1316,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                     </span>
                                     <button
                                         type="button"
-                                        className="icon-btn size-6 shrink-0"
+                                        className="icon-btn size-8 shrink-0"
                                         onClick={() =>
                                             setTestResults((current) => {
                                                 const next = { ...current };
@@ -1337,7 +1341,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             <span className="text-amber">Unsaved changes</span>
                                             <button
                                                 type="button"
-                                                className="text-muted transition hover:text-parchment"
+                                                className="inline-flex min-h-8 items-center text-muted transition hover:text-parchment"
                                                 onClick={discard}
                                             >
                                                 Discard
