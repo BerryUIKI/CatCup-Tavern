@@ -74,7 +74,7 @@ apps/server/
     quickreplies/        quick reply parsing target, command execution
     routes/              auth / characters / chats / generate / groups / images / memory / quick replies / tts / providers / settings
     security/            scrypt password, HMAC session
-    storage/             ST-compatible file storage, character assets, atomic writes, file locks
+    storage/             ST-compatible file storage, character assets, library metadata, atomic writes, file locks
     sse.ts               client SSE writer
     tts/                 OpenAI-compatible speech adapter
 apps/web/
@@ -149,6 +149,8 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | GET/DELETE   | `/api/characters/:id`                         | detail / delete                            |
 | GET          | `/api/characters/:id/avatar`                  | avatar bytes                               |
 | GET          | `/api/characters/:id/export`                  | PNG / JSON / CharX download                |
+| PATCH        | `/api/characters/:id/favorite`                | set the library favorite flag              |
+| POST         | `/api/characters/bulk`                        | bulk favorite, tag or delete               |
 | GET/POST     | `/api/characters/:id/chats`                   | chat list / create                         |
 | GET          | `/api/chats/:characterId/:chatId`             | full chat                                  |
 | PATCH/DELETE | `/api/chats/.../messages/:index`              | edit / delete (PATCH also selects a swipe) |

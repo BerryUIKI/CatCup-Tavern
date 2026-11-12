@@ -1,28 +1,41 @@
 import { readFile } from 'node:fs/promises';
 
-import { type CharacterDetail, characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
+import {
+    type CharacterBulkResponse,
+    type CharacterDetail,
+    type CharacterSummary,
+    characterBulkRequestSchema,
+    characterFavoriteRequestSchema,
+    characterIdSchema,
+    characterPatchSchema,
+    type ImportCharactersResponse,
+} from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
 import { buildCharx, parseCharx } from '../cards/charx.js';
 import { parseJsonCard } from '../cards/parse.js';
 import { buildCardPayload, writePngCard } from '../cards/write.js';
-import { badRequest, notFound } from '../http/errors.js';
+import { badRequest, internal, notFound } from '../http/errors.js';
 import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';
 import {
     deleteCharacter,
     getCharacterFile,
     importCharacter,
     listCharacters,
+    normalizeCharacterId,
+    setCharacterFavorite,
     setCharacterWorld,
+    toSummary,
     updateCharacter,
+    updateCharacterTags,
 } from '../storage/characters.js';
 import { createWorld, readWorld } from '../storage/worlds.js';
 import { convertCharacterBook } from '../worldinfo/characterBook.js';
 import { requireCharacter } from './helpers.js';
 
 const idParamsSchema = z.object({
-    id: z.string().min(1).max(200),
+    id: characterIdSchema,
 });
 
 const exportQuerySchema = z.object({
@@ -69,6 +82,68 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             throw notFound('Character not found');
         }
         return { character };
+    });
+
+    /**
+     * Set or clear SillyTavern's favorite flag on a card.
+     *
+     * The flag lives at `data.extensions.fav`. CatCup keeps it on its own
+     * exports; SillyTavern clears favorites when it exports or imports a card.
+     */
+    app.patch('/api/characters/:id/favorite', async (request) => {
+        const { id } = idParamsSchema.parse(request.params);
+        const body = characterFavoriteRequestSchema.parse(request.body ?? {});
+        const result = await setCharacterFavorite(id, body.favorite);
+        if (result.status === 'missing') {
+            throw notFound('Character not found');
+        }
+        if (result.status === 'unreadable') {
+            throw internal('The card could not be read back after writing', 'CHARACTER_READ_FAILED');
+        }
+        return { character: result.character };
+    });
+
+    /**
+     * Apply one library action to several characters.
+     *
+     * Each id is handled independently so one missing or unreadable card does
+     * not stop the rest; the caller gets the updated summaries, the deleted ids
+     * and the failures.
+     */
+    app.post('/api/characters/bulk', async (request) => {
+        const body = characterBulkRequestSchema.parse(request.body ?? {});
+        const ids = [...new Set(body.ids.map(normalizeCharacterId))];
+        const characters: CharacterSummary[] = [];
+        const deleted: string[] = [];
+        const errors: CharacterBulkResponse['errors'] = [];
+
+        for (const id of ids) {
+            try {
+                if (body.action === 'delete') {
+                    if (!(await deleteCharacter(id))) {
+                        throw new Error('Character not found');
+                    }
+                    deleted.push(id);
+                    continue;
+                }
+
+                const result =
+                    body.action === 'favorite' || body.action === 'unfavorite'
+                        ? await setCharacterFavorite(id, body.action === 'favorite')
+                        : await updateCharacterTags(id, body.tags ?? [], body.action === 'add-tags' ? 'add' : 'remove');
+                if (result.status === 'missing') {
+                    throw new Error('Character not found');
+                }
+                if (result.status === 'unreadable') {
+                    throw new Error('The card could not be read back after writing');
+                }
+                characters.push(toSummary(result.character));
+            } catch (error) {
+                errors.push({ id, message: error instanceof Error ? error.message : 'Bulk action failed' });
+            }
+        }
+
+        return { characters, deleted, errors } satisfies CharacterBulkResponse;
     });
 
     /**

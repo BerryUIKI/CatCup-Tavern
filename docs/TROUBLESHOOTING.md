@@ -167,6 +167,28 @@ Images live in `data/user/images/<character name>/` (or the group id). Renaming 
 
 Copy `data/user/images/` together with `data/chats/` and `data/characters/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
 
+## Character library
+
+**A favorite does not appear in another app**
+
+CatCup stores the flag at `data.extensions.fav` and keeps it in its own exports. SillyTavern clears favorites when it exports or imports a card, and its library tags are a separate settings-level registry, so a favorite or a CatCup tag will not show up in ST's tag manager until the card tags are imported there.
+
+**A tag is missing or a bulk tag action did nothing**
+
+Library tags are the card's `data.tags`. Tag add/remove matches case- and whitespace-insensitively; adding `fantasy` to a card that already has `Fantasy` is a no-op, and a no-op does not rewrite the card. Tags containing commas cannot be added because the character editor's tag field splits on commas; rename or remove such a tag in the editor or with the API if one arrives from an import.
+
+**“Newest created” order looks wrong**
+
+The sort uses `data.creation_date`, then a root `create_date`, then the file's birth time. A card without a date is stamped on its first CatCup write, so cards imported before this feature may all share the import time until they are edited. “Recently changed” follows the card file's modification time, which a favorite or tag toggle also updates.
+
+**A bulk action changed some cards only**
+
+Bulk actions report per-card errors and leave the other cards updated. A missing or unreadable card is listed by id; refresh the library and retry the failed ones.
+
+**Deleting characters left chats behind**
+
+Bulk and single delete remove the card file and `data/character-assets/<id>/` but keep chat files on disk, as single delete always did. The chats are no longer reachable from the library; back up or remove the folders under `data/chats/` by hand.
+
 ## Chat and messages
 
 **The user message appears but the reply fails**

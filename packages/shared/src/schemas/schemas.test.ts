@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { characterCardDataSchema } from './character.js';
+import { characterBulkRequestSchema, characterCardDataSchema, characterFavoriteRequestSchema } from './character.js';
 import { groupSchema } from './group.js';
 import { DEFAULT_IMAGE_GENERATION_SETTINGS } from './images.js';
 import { providerDraftTestSchema } from './provider.js';
@@ -74,5 +74,64 @@ describe('shared schemas', () => {
     it('preserves unknown group fields', () => {
         const group = groupSchema.parse({ id: '1', name: 'The Cup', custom_flag: 'kept' });
         expect(group).toMatchObject({ custom_flag: 'kept' });
+    });
+});
+
+describe('character library schemas', () => {
+    it('requires tags for tag bulk actions', () => {
+        expect(characterBulkRequestSchema.safeParse({ action: 'add-tags', ids: ['Aria'] }).success).toBe(false);
+        expect(characterBulkRequestSchema.safeParse({ action: 'remove-tags', ids: ['Aria'], tags: [] }).success).toBe(
+            false,
+        );
+        expect(
+            characterBulkRequestSchema.safeParse({ action: 'add-tags', ids: ['Aria'], tags: ['fantasy'] }).success,
+        ).toBe(true);
+    });
+
+    it('rejects empty and oversized id lists', () => {
+        expect(characterBulkRequestSchema.safeParse({ action: 'favorite', ids: [] }).success).toBe(false);
+        expect(
+            characterBulkRequestSchema.safeParse({
+                action: 'favorite',
+                ids: Array.from({ length: 501 }, (_, index) => `id-${index}`),
+            }).success,
+        ).toBe(false);
+    });
+
+    it('keeps the favorite request boolean-only', () => {
+        expect(characterFavoriteRequestSchema.parse({ favorite: true })).toEqual({ favorite: true });
+        expect(characterFavoriteRequestSchema.safeParse({ favorite: 'true' }).success).toBe(false);
+        expect(characterFavoriteRequestSchema.safeParse({ favorite: true, extra: true }).success).toBe(false);
+    });
+
+    it('rejects unsafe ids, unknown keys and tags on non-tag actions', () => {
+        expect(characterBulkRequestSchema.safeParse({ action: 'favorite', ids: ['../Aria'] }).success).toBe(false);
+        expect(characterBulkRequestSchema.safeParse({ action: 'favorite', ids: ['Aria'], extra: true }).success).toBe(
+            false,
+        );
+        expect(
+            characterBulkRequestSchema.safeParse({ action: 'favorite', ids: ['Aria'], tags: ['fantasy'] }).success,
+        ).toBe(false);
+        expect(characterBulkRequestSchema.safeParse({ action: 'add-tags', ids: ['Aria'], tags: ['a,b'] }).success).toBe(
+            false,
+        );
+        expect(
+            characterBulkRequestSchema.safeParse({ action: 'add-tags', ids: ['Aria'], tags: ['x'.repeat(201)] })
+                .success,
+        ).toBe(false);
+        expect(
+            characterBulkRequestSchema.safeParse({ action: 'add-tags', ids: ['Aria'], tags: ['x'.repeat(200)] })
+                .success,
+        ).toBe(true);
+    });
+
+    it('trims ids and tags', () => {
+        const parsed = characterBulkRequestSchema.parse({
+            action: 'add-tags',
+            ids: ['  Aria  '],
+            tags: ['  fantasy  '],
+        });
+        expect(parsed.ids).toEqual(['Aria']);
+        expect(parsed.tags).toEqual(['fantasy']);
     });
 });

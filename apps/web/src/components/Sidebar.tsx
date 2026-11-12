@@ -1,10 +1,11 @@
 import type { CharacterSummary, GroupView, ProviderPublic } from '@catcup/shared';
-import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Sparkles, Upload, Users, X } from 'lucide-react';
+import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, Users, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
 import type { LibraryTab } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
+import { CharacterLibrary } from './CharacterLibrary';
 import { Logo } from './Logo';
 import { Spinner } from './Spinner';
 
@@ -14,6 +15,11 @@ interface SidebarProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
+    onToggleFavorite: (character: CharacterSummary) => void;
+    onBulkFavorite: (ids: string[], favorite: boolean) => void;
+    onBulkTag: (ids: string[], mode: 'add' | 'remove', tag: string) => void;
+    onBulkDelete: (ids: string[]) => void;
+    libraryBusy: boolean;
     groups: GroupView[];
     groupsLoading: boolean;
     selectedGroupId: string | null;
@@ -47,6 +53,11 @@ export function Sidebar({
     selectedCharacterId,
     onSelect,
     onEditCharacter,
+    onToggleFavorite,
+    onBulkFavorite,
+    onBulkTag,
+    onBulkDelete,
+    libraryBusy,
     groups,
     groupsLoading,
     selectedGroupId,
@@ -76,14 +87,6 @@ export function Sidebar({
 
     const normalizedQuery = query.trim().toLowerCase();
     const switchableProviders = providers.filter((provider) => provider.enabled);
-    const filteredCharacters = normalizedQuery
-        ? characters.filter(
-              (character) =>
-                  character.name.toLowerCase().includes(normalizedQuery) ||
-                  character.creator.toLowerCase().includes(normalizedQuery) ||
-                  character.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery)),
-          )
-        : characters;
     const filteredGroups = normalizedQuery
         ? groups.filter(
               (group) =>
@@ -205,87 +208,22 @@ export function Sidebar({
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
                 {libraryTab === 'characters' ? (
-                    loading ? (
-                        <div className="flex justify-center py-10">
-                            <Spinner size={18} className="text-muted" />
-                        </div>
-                    ) : filteredCharacters.length === 0 ? (
-                        <div className="px-4 py-10 text-center text-sm leading-relaxed text-muted">
-                            {characters.length === 0 ? (
-                                <>
-                                    <p>No characters yet. Import a PNG or JSON card to open the first door.</p>
-                                    <button
-                                        type="button"
-                                        className="btn-ghost mx-auto mt-3"
-                                        onClick={onAddSample}
-                                        disabled={addingSample}
-                                    >
-                                        {addingSample ? <Spinner size={15} /> : <Sparkles size={15} />}
-                                        Add the sample character
-                                    </button>
-                                </>
-                            ) : (
-                                'No characters match this search.'
-                            )}
-                        </div>
-                    ) : (
-                        <div className="space-y-1">
-                            {filteredCharacters.map((character) => {
-                                const active = character.id === selectedCharacterId;
-                                return (
-                                    <div
-                                        key={character.id}
-                                        className={cn(
-                                            'flex items-center rounded-xl transition',
-                                            active ? 'bg-surface-2 ring-1 ring-amber/25' : 'hover:bg-surface/70',
-                                        )}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() => onSelect(character.id)}
-                                            className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2.5 py-2 text-left"
-                                        >
-                                            <CharacterAvatar
-                                                name={character.name}
-                                                src={character.avatarUrl}
-                                                size={38}
-                                            />
-                                            <span className="min-w-0 flex-1">
-                                                <span className="flex items-center gap-1.5">
-                                                    <span className="truncate text-sm font-medium text-parchment">
-                                                        {character.name}
-                                                    </span>
-                                                    {character.hasCharacterBook ? (
-                                                        <BookOpen
-                                                            size={12}
-                                                            className="shrink-0 text-sage/80"
-                                                            aria-label="Has a character book"
-                                                        />
-                                                    ) : null}
-                                                </span>
-                                                <span className="block truncate text-[11px] text-muted">
-                                                    {character.tags.length > 0
-                                                        ? character.tags.slice(0, 2).join(' · ')
-                                                        : character.creator || 'No tags'}
-                                                </span>
-                                            </span>
-                                            {active ? (
-                                                <span className="size-1.5 shrink-0 rounded-full bg-amber" />
-                                            ) : null}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => onEditCharacter(character.id)}
-                                            aria-label={`Edit ${character.name}`}
-                                            className="icon-btn mr-1.5 size-7 shrink-0 text-muted hover:text-parchment"
-                                        >
-                                            <Pencil size={13} />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )
+                    <CharacterLibrary
+                        characters={characters}
+                        loading={loading}
+                        query={query}
+                        onClearQuery={() => setQuery('')}
+                        selectedCharacterId={selectedCharacterId}
+                        onSelect={onSelect}
+                        onEdit={onEditCharacter}
+                        onToggleFavorite={onToggleFavorite}
+                        onBulkFavorite={onBulkFavorite}
+                        onBulkTag={onBulkTag}
+                        onBulkDelete={onBulkDelete}
+                        onAddSample={onAddSample}
+                        addingSample={addingSample}
+                        busy={libraryBusy}
+                    />
                 ) : groupsLoading ? (
                     <div className="flex justify-center py-10">
                         <Spinner size={18} className="text-muted" />

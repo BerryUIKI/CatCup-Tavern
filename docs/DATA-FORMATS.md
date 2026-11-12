@@ -109,14 +109,22 @@ The server normalizes every card into the V3 data shape. Unknown fields are pres
 | `alternate_greetings`                          | string[]   | Used by `greetingIndex > 0`                                                           |
 | `group_only_greetings`                         | string[]   | Parsed; group chats are planned                                                       |
 | `character_book`                               | object?    | Embedded lorebook; **Import lore** copies it into the world info library and links it |
-| `tags`                                         | string[]   | Sidebar search/display                                                                |
+| `tags`                                         | string[]   | Library tag chips, search and bulk tag actions; the editor edits a comma list         |
 | `creator`                                      | string     | Sidebar display                                                                       |
 | `character_version`                            | string     | Metadata                                                                              |
-| `extensions`                                   | record     | Free-form; preserved                                                                  |
+| `extensions`                                   | record     | Free-form; preserved. `fav` holds the library favorite flag                           |
 | `assets`                                       | unknown[]? | V3 assets; preserved, with CharX files under `data/character-assets/`                 |
-| `source`, `creation_date`, `modification_date` | optional   | Preserved                                                                             |
+| `source`, `creation_date`, `modification_date` | optional   | Preserved; `creation_date` is stamped on the first write when absent                  |
 
 Character book entries use V2 character-book fields such as `keys`, `secondary_keys`, `content`, `enabled`, `insertion_order`, `case_sensitive`, `selective`, `constant`, `position` and `extensions`. See `packages/shared/src/schemas/character.ts`.
+
+### Library metadata
+
+Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON and CharX exports.
+
+Tags are `data.tags`, a string array. Bulk add/remove compares case- and whitespace-insensitively, keeps the spelling already on each card and never rewrites unrelated tags; a redundant action does not write the file. New tags cannot contain commas because the character editor splits the field on commas. CatCup does not reproduce SillyTavern's settings-level tag registry (`tags`/`tag_map` in `settings.json`, with colors, folders and manual order).
+
+The library's creation sort reads `data.creation_date` (Unix seconds), then a root `create_date` (ISO string), then the file birth time. A card without either date gets `data.creation_date` the first time CatCup writes it, so later atomic file writes do not reset the sort.
 
 ### Import limits
 

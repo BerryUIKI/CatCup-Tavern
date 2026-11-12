@@ -27,33 +27,34 @@ Error responses use:
 
 Common codes:
 
-| Code                  | HTTP      | Meaning                                                |
-| --------------------- | --------- | ------------------------------------------------------ |
-| `VALIDATION`          | 400       | Zod validation failed                                  |
-| `BAD_REQUEST`         | 400       | Invalid input or state                                 |
-| `UNAUTHORIZED`        | 401       | Missing or expired session                             |
-| `INVALID_PASSWORD`    | 401       | Wrong login password                                   |
-| `NEEDS_SETUP`         | 401 / 409 | No password has been configured yet                    |
-| `FORBIDDEN`           | 403       | Origin mismatch or remote first-run setup              |
-| `NOT_FOUND`           | 404       | Character, chat, message, provider or avatar not found |
-| `CONFLICT`            | 409       | A quick reply set name is already taken                |
-| `ALREADY_INITIALIZED` | 409       | Setup attempted after a password exists                |
-| `TTS_DISABLED`        | 400       | Text to speech is switched off                         |
-| `TTS_KEY_MISSING`     | 400       | The OpenAI TTS endpoint has no key                     |
-| `TTS_CONFIG`          | 400       | TTS base URL or model is missing                       |
-| `TTS_SYSTEM_BACKEND`  | 400       | The browser TTS backend cannot be called on the server |
-| `TTS_FAILED`          | 502       | The speech provider request failed                     |
-| `IMAGE_DISABLED`      | 400       | Image generation is switched off                       |
-| `IMAGE_KEY_MISSING`   | 400       | The OpenAI image endpoint has no key                   |
-| `IMAGE_CONFIG`        | 400       | Image base URL, model or ComfyUI workflow is invalid   |
-| `IMAGE_PROMPT_EMPTY`  | 400       | There are no messages to draft a prompt from           |
-| `IMAGE_PATH`          | 400       | Invalid gallery folder or file name                    |
-| `IMAGE_SCOPE`         | 400       | Neither a character nor a group was provided           |
-| `IMAGE_FAILED`        | 502       | The image provider request failed                      |
-| `IMAGE_PROMPT_FAILED` | 502       | The chat model could not draft an image prompt         |
-| `PAYLOAD_TOO_LARGE`   | 413       | Upload or request body too large                       |
-| `PROVIDER_ERROR`      | 502       | Upstream provider request failed                       |
-| —                     | 500       | Unhandled server error                                 |
+| Code                    | HTTP      | Meaning                                                    |
+| ----------------------- | --------- | ---------------------------------------------------------- |
+| `VALIDATION`            | 400       | Zod validation failed                                      |
+| `BAD_REQUEST`           | 400       | Invalid input or state                                     |
+| `UNAUTHORIZED`          | 401       | Missing or expired session                                 |
+| `INVALID_PASSWORD`      | 401       | Wrong login password                                       |
+| `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                        |
+| `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                  |
+| `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found     |
+| `CONFLICT`              | 409       | A quick reply set name is already taken                    |
+| `ALREADY_INITIALIZED`   | 409       | Setup attempted after a password exists                    |
+| `TTS_DISABLED`          | 400       | Text to speech is switched off                             |
+| `TTS_KEY_MISSING`       | 400       | The OpenAI TTS endpoint has no key                         |
+| `TTS_CONFIG`            | 400       | TTS base URL or model is missing                           |
+| `TTS_SYSTEM_BACKEND`    | 400       | The browser TTS backend cannot be called on the server     |
+| `TTS_FAILED`            | 502       | The speech provider request failed                         |
+| `IMAGE_DISABLED`        | 400       | Image generation is switched off                           |
+| `IMAGE_KEY_MISSING`     | 400       | The OpenAI image endpoint has no key                       |
+| `IMAGE_CONFIG`          | 400       | Image base URL, model or ComfyUI workflow is invalid       |
+| `IMAGE_PROMPT_EMPTY`    | 400       | There are no messages to draft a prompt from               |
+| `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                        |
+| `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided               |
+| `IMAGE_FAILED`          | 502       | The image provider request failed                          |
+| `IMAGE_PROMPT_FAILED`   | 502       | The chat model could not draft an image prompt             |
+| `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back |
+| `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                           |
+| `PROVIDER_ERROR`        | 502       | Upstream provider request failed                           |
+| —                       | 500       | Unhandled server error                                     |
 
 ## Auth
 
@@ -107,8 +108,10 @@ Clears the cookie. Response: `{ "ok": true }`.
             "name": "Seraphina",
             "creator": "example",
             "tags": ["fantasy"],
+            "fav": false,
             "spec": "v3",
             "hasCharacterBook": true,
+            "createdAt": 1794000000000,
             "updatedAt": 1794220000000,
             "avatarUrl": "/api/characters/Seraphina/avatar?v=1794220000000"
         }
@@ -116,7 +119,7 @@ Clears the cookie. Response: `{ "ok": true }`.
 }
 ```
 
-`spec` is `v2`, `v3` or `legacy`. The list is sorted by display name.
+`spec` is `v2`, `v3` or `legacy`. `fav` is SillyTavern's `data.extensions.fav` flag. `createdAt` comes from the card's `creation_date` (seconds), a root `create_date`, or the file's birth time, in that order. The server returns the list sorted by display name; the library applies its own sort and filters locally.
 
 ### `GET /api/characters/:id`
 
@@ -166,8 +169,42 @@ Merge edits into the stored card.
 - Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions`, the character book, V3 assets — is preserved.
 - The file keeps its name: the id is what chats, avatars and world info reference. Only the card's own `name` changes.
 - A PNG card is re-encoded with both `chara` and `ccv3` chunks rewritten, so a V3 reader and a V2-only reader see the same character.
+- A card with no creation date gets `data.creation_date` (Unix seconds) on its first write, so the library's creation sort survives later atomic file writes.
 
 Response: `{ "character": CharacterDetail }`.
+
+### `PATCH /api/characters/:id/favorite`
+
+```json
+{ "favorite": true }
+```
+
+Sets SillyTavern's `data.extensions.fav` flag. The body is strict: `favorite` must be a boolean and unknown keys are rejected with `400 VALIDATION`. Response: `{ "character": CharacterDetail }`; `404` when the card does not exist, and `500 CHARACTER_READ_FAILED` when the write succeeded but the card could not be parsed back. Setting the flag to its current value does not write the file. CatCup keeps the flag in its own PNG, JSON and CharX exports; SillyTavern clears favorites when it exports or imports a card.
+
+### `POST /api/characters/bulk`
+
+Applies one library action to up to 500 characters.
+
+```json
+{ "action": "add-tags", "ids": ["Seraphina", "Mira"], "tags": ["fantasy", "cozy"] }
+```
+
+- `action` is `favorite`, `unfavorite`, `add-tags`, `remove-tags` or `delete`.
+- `ids` is 1–500 character ids; `.png`/`.json` suffixes and duplicates are normalized away. Ids with slashes or `..` are rejected with `400 VALIDATION`.
+- `tags` is required for the tag actions (1–50 tags of 1–200 characters) and rejected otherwise. Tags cannot contain commas; matching is case- and whitespace-insensitive, and existing tag spelling is preserved.
+- `favorite` and tag actions support partial success and return updated summaries. `delete` removes the card file and `data/character-assets/<id>/`, keeps chat files on disk, and reports deleted ids.
+
+Response:
+
+```json
+{
+    "characters": [CharacterSummary],
+    "deleted": ["Mira"],
+    "errors": [{ "id": "Nobody", "message": "Character not found" }]
+}
+```
+
+A redundant tag action that would not change a card does not write it.
 
 ### `GET /api/characters/:id/export`
 

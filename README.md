@@ -32,6 +32,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
 - **Characters.** Edit any text field and write the card back to PNG or JSON, or export a CharX package with the card and its assets.
+- **Library.** Tags and favorites on every card, multi-tag and favorites-only filters, five sort orders, and bulk favorite, tag and delete actions.
 - **Personas.** Several, one default, and a per-chat choice.
 - **Desktop.** A Windows installer that needs no administrator and starts the server on a free port.
 

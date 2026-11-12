@@ -1,6 +1,8 @@
 import type {
     AttachImageRequest,
     AuthStatus,
+    CharacterBulkRequest,
+    CharacterBulkResponse,
     CharacterDetail,
     CharacterExportFormat,
     CharacterPatch,
@@ -274,6 +276,21 @@ export const api = {
             });
             return data.character;
         },
+        setFavorite: async (id: string, favorite: boolean) => {
+            const data = await request<{ character: CharacterDetail }>(
+                `/characters/${encodeURIComponent(id)}/favorite`,
+                {
+                    method: 'PATCH',
+                    body: JSON.stringify({ favorite }),
+                },
+            );
+            return data.character;
+        },
+        bulk: (body: CharacterBulkRequest) =>
+            request<CharacterBulkResponse>('/characters/bulk', {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }),
         exportUrl: (id: string, format: CharacterExportFormat) =>
             `/api/characters/${encodeURIComponent(id)}/export?format=${format}`,
         import: (files: File[]) => {
