@@ -86,10 +86,10 @@ Released after the MVP, before M2:
 - A chat's opening greeting can be switched from the chat header or by swiping the first message.
 - GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
 
-### Release automation (2026-11-11, updated 2026-11-12)
+### Release automation (2026-11-11, updated 2026-11-13)
 
 - `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
-- Since 2026-11-12 a release is a merge into `main` whose `package.json` version has no tag yet: the workflow creates the `v<version>` tag on the merged commit and publishes in the same run, so tagging by hand is no longer part of the flow. A merge whose version is already tagged is skipped.
+- Since 2026-11-13 a release is a merge into `main` whose `package.json` version has no tag yet: the workflow creates the `v<version>` tag on the merged commit and publishes in the same run, so tagging by hand is no longer part of the flow. A merge whose version is already tagged is skipped.
 - The workflow can be dispatched manually with an existing tag to rebuild or republish an installer; the `v0.2.1` release was the first to get its asset this way.
 
 ## At a glance

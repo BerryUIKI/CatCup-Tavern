@@ -1,6 +1,6 @@
 # Desktop shell
 
-> Status: packaging implemented; a merge into `main` that carries an untagged version builds and publishes the installer, 2026-11-11. See [MILESTONES.md](MILESTONES.md) for the release step.
+> Status: packaging implemented 2026-11-11; since 2026-11-13 a merge into `main` that carries an untagged version builds and publishes the installer. See [MILESTONES.md](MILESTONES.md) for the release step.
 
 The desktop build is a Tauri 2 window around the same Fastify server and React SPA the web build uses. It is not a second implementation: the shell starts the bundled server as a child process and points a webview at it.
 
@@ -38,11 +38,11 @@ Four things had to change to make the packaged layout behave like the developmen
 
 The shell starts the server with:
 
-| Variable          | Value            | Why                                                    |
-| ----------------- | ---------------- | ------------------------------------------------------ |
-| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only unless LAN is enabled |
-| `CATCUP_PORT`     | `0`              | The OS picks a free port                               |
-| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory        |
+| Variable          | Value            | Why                                                  |
+| ----------------- | ---------------- | ---------------------------------------------------- |
+| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only; it has no LAN mode |
+| `CATCUP_PORT`     | `0`              | The OS picks a free port                             |
+| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory      |
 
 Once listening, the server writes exactly one line to stdout:
 
@@ -89,7 +89,7 @@ pnpm --filter @catcup/desktop build                        # prepares, then taur
 
 The installer lands in `apps/desktop/src-tauri/target/release/bundle/nsis/`.
 
-GitHub Actions runs the same three steps on `windows-latest` for every `v*` tag and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
+GitHub Actions runs the same three steps on `windows-latest` when a merge into `main` carries an untagged version, or when a `v*` tag is pushed, and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
 
 Two environment variables help when iterating: `CATCUP_SERVER_ENTRY` points the shell at a different server entry file, and `CATCUP_NODE` selects a different Node binary. Both are ignored when the bundled copies exist.
 
