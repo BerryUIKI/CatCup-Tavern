@@ -29,7 +29,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 - **Text to speech.** Browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, autoplay, and a play button on every reply.
 - **Image generation.** Automatic1111/Forge, a ComfyUI API workflow or an OpenAI-compatible `/images/generations` endpoint, a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat as SillyTavern media messages.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
-- **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
+- **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note (server-side, configured through the API); model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
 - **Characters.** Edit any text field and write the card back to PNG or JSON, or export a CharX package with the card and its assets.
 - **Library.** Tags and favorites on every card, multi-tag and favorites-only filters, five sort orders, and bulk favorite, tag and delete actions.
@@ -38,11 +38,11 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 ### What is next
 
-STscript and the full Quick Replies engine, SillyTavern extensions and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+STscript, the full Quick Replies engine and SillyTavern extensions are the next milestone. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
 
 ### Screenshots
 
-Captured from the 0.2.0 build.
+Captured from the 0.2.0 build; the interface has changed little since, but [docs/DESIGN.md](docs/DESIGN.md) documents the current one.
 
 ![Chatting with the bundled sample character](docs/images/chat.jpg)
 
@@ -113,7 +113,7 @@ data/
 └── auth.json            # Password hash + session secret
 ```
 
-You can copy SillyTavern's `characters/`, `chats/` and `worlds/` folders into this directory to migrate existing content. `data/` and `.ref/` are gitignored. Details: [Data formats](docs/DATA-FORMATS.md).
+You can copy SillyTavern's `characters/`, `chats/`, `worlds/`, `presets/` and `groups/` folders into this directory to migrate existing content, and Quick Reply set files into `quickreplies/`. `data/` and `.ref/` are gitignored. Details: [Data formats](docs/DATA-FORMATS.md).
 
 ## Documentation
 

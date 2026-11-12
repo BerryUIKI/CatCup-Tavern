@@ -24,7 +24,8 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 3. **State is always visible.** Active provider, missing key, unsaved edits, streaming, selection.
    Never rely on a colour alone; pair it with a label or an icon.
 4. **Keyboard and touch have parity.** No action exists only on hover. Every control can be reached
-   with Tab, has a visible focus ring, and is at least 32 px tall (40 px for primary actions).
+   with Tab and has a visible focus ring. The 32 px minimum (40 px for primary actions) is not
+   met everywhere yet; stage E widens the small icon rows.
 5. **Restrained motion.** Motion explains a change (a dialog opening, a result arriving). It never
    decorates. `prefers-reduced-motion` turns it off.
 
@@ -80,12 +81,11 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 ### Breakpoints
 
-| Width        | Behaviour                                                                       |
-| ------------ | ------------------------------------------------------------------------------- |
-| ≥ 1280 px    | Full library rail, three-pane Providers, all settings sections visible          |
-| 1024–1279 px | Same, slightly narrower detail column                                           |
-| 768–1023 px  | Settings nav rail + provider select; library drawer available                   |
-| < 768 px     | Settings section select, provider select, single-column forms; full-width modal |
+| Width       | Behaviour                                                                       |
+| ----------- | ------------------------------------------------------------------------------- |
+| ≥ 1024 px   | Full library rail, settings nav rail and the three-pane Providers panel         |
+| 768–1023 px | The provider list becomes a select above the form; both rails stay docked       |
+| < 768 px    | Settings section select, provider select, single-column forms; full-width modal |
 
 ## Colour
 
@@ -164,16 +164,17 @@ Rules:
 - Prefer a visible label; placeholders are examples, not labels.
 - Errors appear in a `role="alert"` strip that stays visible above the footer, and inline where a
   single field is at fault. Never rely on a toast for a validation failure.
-- Password-like values (API keys) get a show/hide button and are never prefilled.
+- Password-like values (API keys) are never prefilled; only the provider key gets a show/hide button.
 - Use a real `<form>`; Enter submits, and destructive buttons are `type="button"`.
 
 ### Settings section
 
 - Fixed header: 36 px icon tile, title, one-sentence description, `line-soft` bottom border.
-- Body scrolls; the header and footer do not.
-- A sticky footer carries the save action, the test action and the dirty state.
-- A three-way leave guard protects unsaved provider edits: **Save and continue**, **Discard
-  changes**, **Keep editing** (focused by default).
+- The section header does not scroll; the body does. Only the Providers panel pins its footer —
+  other panels scroll their action row with the form.
+- The Providers footer carries the save action, the test action and the dirty state.
+- A three-way leave guard protects unsaved provider and Generation edits: **Save and continue**,
+  **Discard changes**, **Keep editing** (focused by default).
 
 ### Dialogs
 
@@ -192,7 +193,8 @@ Rules:
 - Loading: a spinner sized to the control, plus a stable disabled state. Avoid layout jumps.
 - Empty states name the next action ("Add provider", "Import a character card") and keep the tone
   plain.
-- Toasts confirm completed background actions; they never carry the only copy of an error.
+- Toasts confirm completed background actions; they never carry the only copy of an error — except
+  that the TTS, image and memory panels toast their validation failures until stage D fixes them.
 
 ## Interaction rules
 
@@ -217,7 +219,8 @@ Rules:
   tabindex; the panel uses `role="tabpanel"`.
 - Dialogs use `role="dialog"`/`role="alertdialog"` with `aria-modal` and a labelled title.
 - Status strips use `role="status"`; failures use `role="alert"`.
-- Touch targets are at least 32 px; primary actions at least 40 px.
+- Touch targets should be at least 32 px and primary actions at least 40 px; the small message
+  and list icon rows are still below that, and stage E audits them.
 - Motion respects `prefers-reduced-motion`; the stylesheet disables the fade-up and streaming caret
   animations.
 - Test at 900, 768 and 390 px, with a keyboard only, and with reduced motion enabled.

@@ -138,7 +138,7 @@ function DesktopPassword() {
             <h4 className="text-sm font-medium text-parchment">Access password</h4>
             <p className="mt-1 text-xs leading-relaxed text-muted">
                 This desktop app opens without a password, because only you can reach it on this machine. Setting one
-                brings back the sign-in screen; remove it again to open directly.
+                brings back the sign-in screen; removing it later restores open mode.
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <input

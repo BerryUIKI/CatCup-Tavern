@@ -121,7 +121,7 @@ jobs:
                       found { print }
                   ' CHANGELOG.md > "$RUNNER_TEMP/section.md"
                   {
-                      printf 'Early-access release. Moves your SillyTavern data in and handles single-character roleplay end to end. '
+                      printf 'Early-access release. Moves your SillyTavern data in and handles single-character and group roleplay end to end. '
                       printf 'The Windows installer is unsigned, and [what works and what does not](https://github.com/%s/blob/main/docs/LIMITATIONS.md) says exactly where the line is.\n\n' "$GITHUB_REPOSITORY"
                       cat "$RUNNER_TEMP/section.md"
                   } > "$RUNNER_TEMP/release-notes.md"

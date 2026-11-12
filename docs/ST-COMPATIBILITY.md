@@ -2,7 +2,7 @@
 
 CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplementation of SillyTavern. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
-> Status snapshot: **M1 complete**; **M2 in progress** — group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags and bulk actions are usable end to end. See [MILESTONES.md](MILESTONES.md).
+> Status snapshot: **M1 and M2 complete**, released as `0.3.0` on 2026-11-13; M4 is in progress with the desktop shell and packaging shipped; M3 and M5 are planned. See [MILESTONES.md](MILESTONES.md).
 
 ## Compatibility layers
 
@@ -36,7 +36,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects                                                               |
 | World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt                                                                     |
 | Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off                                                                     |
-| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat                                                                     |
+| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them globally for every chat                                                      |
 | World Info entry editor            | ✅ Yes             | Every scan-relevant field; character filters are preserved, not editable                                                        |
 | Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates                                                                 |
 | ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                                                                               |
@@ -86,7 +86,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | OpenRouter                                       | ✅ Yes             |
 | Anthropic Messages API                           | ✅ Yes             |
 | Ollama native API                                | ✅ Yes             |
-| Google Gemini / Vertex                           | ❌ Planned, later  |
+| Google Gemini / Vertex                           | ❌ Not implemented |
 | KoboldAI / Ooba text completion                  | ❌ Not implemented |
 | NovelAI, AI Horde and other ST-specific backends | ❌ Not implemented |
 
@@ -98,7 +98,7 @@ See [PROVIDERS.md](PROVIDERS.md) for adapter details.
 
 ### Cards
 
-Copy `.png`, `.json` or `.charx` cards into `data/characters/`, or use the UI import button. Both V2 and V3 cards work, and a CharX package imports from the UI with its assets preserved.
+Copy `.png` or `.json` cards into `data/characters/`, or use the UI import button, which also accepts `.charx`. Both V2 and V3 cards work, and a CharX package imports from the UI with its assets preserved.
 
 ### Chats
 
@@ -124,7 +124,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **World Info missing `position`:** entries without a `position` field — or with an explicit `null` — default to `0` (before character). SillyTavern only defaults the missing case and drops a `null` position from the prompt entirely.
 - **World Info omitted defaults:** the editor writes the fields it exposes. SillyTavern's editor backfills every template field into the in-memory entry on render and persists them on the next save, so a file edited there gains keys a CatCup edit leaves absent. Both shapes read the same, because an absent field falls back to the same default.
 - **World info hash for uid-less entries:** CatCup assigns a uid from the record key before hashing, so such an entry's hash differs from the one SillyTavern would compute. SillyTavern always writes a uid, so this only affects hand-written files.
-- **Tokenizer for unrecognised models:** SillyTavern resolves every unknown model id to `gpt-3.5-turbo` and counts it with `cl100k_base`. CatCup falls back to its own byte-based estimate instead, because a local Llama or DeepSeek model does not use an OpenAI vocabulary and a wrong exact count is more misleading than a labelled estimate. The inspector names whichever counter is in use.
+- **Tokenizer for unrecognised models:** SillyTavern resolves every unknown model id to `gpt-3.5-turbo` and counts it with `cl100k_base`. CatCup falls back to its own labelled estimate instead, because a local Llama or DeepSeek model does not use an OpenAI vocabulary and a wrong exact count is more misleading than a labelled estimate. The inspector names whichever counter is in use.
 - **Tokenizer overhead:** CatCup adds the same four tokens per message that SillyTavern uses for OpenAI chat completion. SillyTavern varies that number by call site — world info entries are measured through a path that adds six — so its world info budget can differ from CatCup's by a few tokens per entry.
 - **Regex script scopes:** SillyTavern stores scripts globally, on a character (`data.extensions.regex_scripts`) and inside a preset, and runs them in that order behind per-scope allowlists. CatCup has one global list in `data/regex.json`; character and preset scopes, and the allowlists that gate them, are not implemented. An imported global set works unchanged.
 - **Regex extension switch:** SillyTavern can disable the regex extension wholesale through `extension_settings.disabledExtensions`. CatCup has no extension registry, so the per-script `disabled` flag is the only switch.
@@ -179,9 +179,9 @@ Future compatibility tests should copy small fixtures into a test directory rath
 | M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer |
 | 0.2.0 MVP | Regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell  |
 | 0.2.1     | Macros in stored messages, card lorebook import, greeting switching                           |
-| M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX               |
+| M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX, library tags |
 | M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix   |
-| M4        | Desktop signing, auto-updater, file associations, macOS/Linux packaging; no new ST semantics  |
+| M4        | Desktop signing, auto-updater, file associations, tray icon, window state, macOS/Linux        |
 | M5        | Compatibility polish, i18n, release hardening                                                 |
 
 ## Contributing compatibility fixes

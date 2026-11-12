@@ -52,7 +52,7 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **Context budget** — The maximum number of tokens sent to the model for a request, split between the prompt and the reply budget.
 
-**Token** — A model's unit of text. CatCup counts with the model's exact tokenizer for OpenAI, OpenAI-compatible and Anthropic models and falls back to a labelled estimate for the rest.
+**Token** — A model's unit of text. CatCup counts with the model's exact tokenizer for recognised OpenAI and OpenAI-compatible models and with Claude's vocabulary for Anthropic, and falls back to a labelled estimate for the rest.
 
 **Reasoning** — Provider-returned "thinking" content separate from the visible reply. CatCup streams it and stores it in `extra.reasoning`.
 

@@ -19,7 +19,7 @@ CATCUP_LOG_LEVEL=debug pnpm dev
 
 - Run `pnpm build` first; the server serves `apps/web/dist` only when it exists.
 - Open http://127.0.0.1:8000.
-- Check the server log for the static root path.
+- Check that `apps/web/dist/index.html` exists; the server does not log the static root it resolved.
 
 **Port already in use**
 
@@ -41,7 +41,7 @@ First-run setup is accepted only from loopback. Open the app on the machine runn
 
 **Setup returns 409**
 
-`data/auth.json` already exists. Use login instead. If the password is lost, see “Reset the password” below.
+`data/auth.json` already exists. Use login instead. If the password is lost, see “Password reset” below.
 
 **Login says “Incorrect password”**
 
@@ -94,7 +94,7 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 
 **Generation starts and immediately errors**
 
-- Check the server log for the provider status and response body.
+- The provider's status and response body arrive in the error message the client sees; a failed generation is an SSE `error` event, which the server log does not record.
 - Verify the active provider and model in Settings.
 - Some providers reject the configured `max_tokens` or sampling values; lower them.
 - If a reverse proxy is used, disable buffering for SSE and increase read timeouts.
@@ -114,7 +114,7 @@ Settings → TTS must be enabled and saved. The button appears on replies and na
 - The base URL should end at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8880/v1`.
 - `api.openai.com` requires a saved key; a local server usually does not.
 - Check the model, voice and audio format against what the endpoint supports. A `TTS_FAILED` error includes the provider's response detail.
-- The server log has the same message; the browser only sees the error.
+- The browser shows the provider's detail in the error; the server log records only unhandled errors, so it stays quiet here.
 
 **Autoplay does not start**
 
@@ -139,7 +139,7 @@ Settings → Images must be enabled and saved. The buttons appear in the chat he
 - The base URL is the API root, usually ending in `/v1`.
 - `api.openai.com` requires a saved key; a local server usually does not.
 - The model is required. DALL·E and gpt-image models accept only their own sizes, so CatCup maps the configured width and height to the nearest supported size.
-- A `502 IMAGE_FAILED` includes the provider's response detail. The server log has the same message.
+- A `502 IMAGE_FAILED` includes the provider's response detail in the response body; the server log records only unhandled errors.
 - If the provider returns an image URL, the server downloads it; a URL that is not reachable from the server fails even when the browser could open it.
 
 **ComfyUI fails**
@@ -165,7 +165,7 @@ Images live in `data/user/images/<character name>/` (or the group id). Renaming 
 
 **Moving to another machine loses the images**
 
-Copy `data/user/images/` together with `data/chats/` and `data/characters/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
+Copy `data/user/images/` together with `data/chats/` and `data/characters/` — and, for group chats, `data/groups/` and `data/group chats/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
 
 ## Character library
 
@@ -224,7 +224,7 @@ Regenerate stores the previous assistant text in `extra.swipes` and selects the 
 
 **Context trimming cuts off the start of a long chat**
 
-The M0 prompt builder uses an approximate token budget (`contextSize - maxTokens`) and keeps the newest messages. This is expected until the model-aware tokenizer lands in M1. Reduce the message length or raise context size if the provider supports it.
+The prompt builder trims history to the token budget (`contextSize - maxTokens`, less a small reserve) and keeps the newest messages, so a long chat always loses its earliest ones first. Counting uses the model-aware tokenizer where the model is recognised and a labelled estimate otherwise; the context inspector names the counter in use. Raise the context size or lower max tokens if the provider allows it.
 
 ## Data and reset
 
