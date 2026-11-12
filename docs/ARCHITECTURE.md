@@ -64,7 +64,7 @@ apps/server/
     app.ts               Fastify assembly
     index.ts             entrypoint
     config.ts            env + default paths
-    cards/               PNG tEXt / JSON v2-v3 parsing
+    cards/               PNG tEXt / JSON v2-v3 parsing, CharX packages
     generation/          shared SSE generation stream and stop registry
     group/               member resolution, speaker selection, reply cleanup
     images/              image adapters (A1111, ComfyUI, OpenAI-compatible), prompt drafting, connection test
@@ -74,7 +74,7 @@ apps/server/
     quickreplies/        quick reply parsing target, command execution
     routes/              auth / characters / chats / generate / groups / images / memory / quick replies / tts / providers / settings
     security/            scrypt password, HMAC session
-    storage/             ST-compatible file storage, atomic writes, file locks
+    storage/             ST-compatible file storage, character assets, atomic writes, file locks
     sse.ts               client SSE writer
     tts/                 OpenAI-compatible speech adapter
 apps/web/
@@ -96,6 +96,7 @@ data/
 ├── characters/
 │   ├── Seraphina.png          # PNG tEXt: chara (v2) + ccv3 (v3)
 │   └── Custom.json            # v2/v3 wrapper or legacy flat card
+├── character-assets/          # assets extracted from CharX packages, per character
 ├── chats/
 │   └── Seraphina/
 │       └── Seraphina - 2026-11-09_18-00-00.jsonl
@@ -147,6 +148,7 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | GET/POST     | `/api/characters`                             | list / import (multipart)                  |
 | GET/DELETE   | `/api/characters/:id`                         | detail / delete                            |
 | GET          | `/api/characters/:id/avatar`                  | avatar bytes                               |
+| GET          | `/api/characters/:id/export`                  | PNG / JSON / CharX download                |
 | GET/POST     | `/api/characters/:id/chats`                   | chat list / create                         |
 | GET          | `/api/chats/:characterId/:chatId`             | full chat                                  |
 | PATCH/DELETE | `/api/chats/.../messages/:index`              | edit / delete (PATCH also selects a swipe) |

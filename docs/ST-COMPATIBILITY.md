@@ -15,33 +15,33 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 
 ## Data compatibility matrix
 
-| Feature                            | Status             | Notes                                                                                                            |
-| ---------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                                                                      |
-| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                                                                           |
-| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                                                                         |
-| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                                                                |
-| Character card write/export        | ✅ Yes             | PNG with both `chara` and `ccv3`, and JSON; unknown fields kept                                                  |
-| CharX (`.charx`) import/export     | ❌ Planned         | M2                                                                                                               |
-| Character book (embedded lorebook) | 🟡 On demand       | **Import lore** copies it into the world info library and sets `extensions.world`, as ST's Import Card Lore does |
-| Character editing                  | ✅ Yes             | Every card field except the book and the avatar image                                                            |
-| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                                                             |
-| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported                                                       |
-| Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                                                                          |
-| Group chats                        | ✅ Yes             | ST `groups/` and `group chats/` files, member avatars, seeded greetings and per-speaker message identity         |
-| Quick Reply sets (v2)              | ✅ Read/write      | `data/quickreplies/<name>.json`; imported, exported, renamed and edited; unknown fields and ST flags preserved   |
-| World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                                                               |
-| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split                                                        |
-| World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects                                                |
-| World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt                                                      |
-| Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off                                                      |
-| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat                                                      |
-| World Info entry editor            | ✅ Yes             | Every scan-relevant field; character filters are preserved, not editable                                         |
-| Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates                                                  |
-| ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                                                                |
-| Themes                             | ❌ Not implemented | Dark tavern theme only                                                                                           |
-| Personas                           | ✅ Yes             | A list with a default and a per-chat pin; name and description only                                              |
-| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                                                              |
+| Feature                            | Status             | Notes                                                                                                                     |
+| ---------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Character Card V2 PNG (`chara`)    | ✅ Read            | `ccv3` wins when both exist                                                                                               |
+| Character Card V3 PNG (`ccv3`)     | ✅ Read            | Assets are preserved but not processed                                                                                    |
+| Character JSON V2/V3 wrapper       | ✅ Read            | Unknown fields preserved                                                                                                  |
+| Legacy flat character JSON         | ✅ Read            | Normalized into the V3 data shape                                                                                         |
+| Character card write/export        | ✅ Yes             | PNG with both `chara` and `ccv3`, and JSON; unknown fields kept                                                           |
+| CharX (`.charx`) import/export     | 🟡 Subset          | Card plus `assets/**` round-trip; a PNG icon becomes the character image; no `module.risum`, `charxJpeg` or asset display |
+| Character book (embedded lorebook) | 🟡 On demand       | **Import lore** copies it into the world info library and sets `extensions.world`, as ST's Import Card Lore does          |
+| Character editing                  | ✅ Yes             | Every card field except the book and the avatar image                                                                     |
+| Chat JSONL (ST header + messages)  | ✅ Read/write      | Header `user_name` / `character_name` use `"unused"`                                                                      |
+| Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported                                                                |
+| Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                                                                                   |
+| Group chats                        | ✅ Yes             | ST `groups/` and `group chats/` files, member avatars, seeded greetings and per-speaker message identity                  |
+| Quick Reply sets (v2)              | ✅ Read/write      | `data/quickreplies/<name>.json`; imported, exported, renamed and edited; unknown fields and ST flags preserved            |
+| World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                                                                        |
+| World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split                                                                 |
+| World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects                                                         |
+| World Info injection               | ✅ Yes             | Before/after, at-depth and example buckets reach the prompt                                                               |
+| Timed effects (`timedWorldInfo`)   | ✅ Implemented     | Sticky, cooldown, delay and the sticky-to-cooldown hand-off                                                               |
+| World Info library                 | ✅ Yes             | List, import, export and delete books; enable them per chat                                                               |
+| World Info entry editor            | ✅ Yes             | Every scan-relevant field; character filters are preserved, not editable                                                  |
+| Context inspector                  | ✅ Yes             | Assembled prompt, world info trace and per-slot token estimates                                                           |
+| ST OpenAI preset schema            | ✅ Schema          | Field names and defaults match ST                                                                                         |
+| Themes                             | ❌ Not implemented | Dark tavern theme only                                                                                                    |
+| Personas                           | ✅ Yes             | A list with a default and a per-chat pin; name and description only                                                       |
+| Multi-user directories             | ❌ Not supported   | Single-user `data/`                                                                                                       |
 
 ## Semantic compatibility
 
@@ -97,7 +97,7 @@ See [PROVIDERS.md](PROVIDERS.md) for adapter details.
 
 ### Cards
 
-Copy `.png` or `.json` cards into `data/characters/`, or use the UI import button. Both V2 and V3 cards work. `.charx` is not supported yet.
+Copy `.png`, `.json` or `.charx` cards into `data/characters/`, or use the UI import button. Both V2 and V3 cards work, and a CharX package imports from the UI with its assets preserved.
 
 ### Chats
 
@@ -157,6 +157,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Image messages:** CatCup appends a message with ST's `extra.media` array, `media_index`, `media_display: "gallery"` and `inline_image: false`, and the default text `[<name> sends a picture that contains: <prompt>].` It writes one media entry per message. ST messages with several entries are rendered with arrows, but CatCup has no image-swipe generation, `media_display: "list"` support or the in-chat image edit controls.
 - **Image prompting:** CatCup has one prompt instruction template for drafting from chat and one prefix/negative pair; ST has per-generation-mode prompts, per-character prompt prefixes stored in `extensions.sd_character_prompt`, style presets and custom workflow placeholders. CatCup reads none of those card fields yet; the instruction is sent with the recent chat as ordinary chat messages rather than through ST's quiet-prompt pipeline.
 - **Image gallery operations:** CatCup lists each folder as a flat newest-first grid with download, insert and delete. ST's gallery adds upload, folders, thumbnails, dominant-colour metadata, video/audio media and a character-panel gallery button; those are not implemented.
+- **CharX:** CatCup reads and writes RisuAI's ZIP package, not a SillyTavern format. `card.json` is V3 and its `assets` entries use `embeded://` paths (the corrected `embedded://` spelling is also accepted). A PNG icon is written into the PNG card so it shows as the avatar; other icon formats leave the card as JSON without a picture. Every `assets/**` file is kept under `data/character-assets/<character>/` and exported again, but CatCup does not display expressions, backgrounds, audio or other non-icon assets. `module.risum` bundles (Risu scripts and lore) are skipped, as are `.charx` embedded-JPEG files (`charxJpeg`); Risu-specific `data.extensions.risuai` fields are preserved but never executed.
 
 ## Testing compatibility
 

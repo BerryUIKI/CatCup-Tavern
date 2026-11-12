@@ -193,7 +193,10 @@ Regenerate stores the previous assistant text in `extra.swipes` and selects the 
 
 - PNG cards need a `chara` or `ccv3` `tEXt` chunk.
 - JSON cards must be a V2/V3 wrapper or a legacy flat object.
-- `.charx` is not supported yet.
+- CharX packages need a `card.json` at the archive root; without one the file is reported in `errors` and nothing is imported.
+- A PNG icon becomes the character image; a JPEG/WebP icon leaves the card as JSON without an avatar.
+- `.charx` archives are capped at 200 entries, 25 MB per entry and 60 MB extracted. `module.risum` bundles are skipped because CatCup cannot run Risu modules.
+- Extracted assets live in `data/character-assets/<character id>/`. They are kept for export but not displayed in the app.
 - Files over 20 MB or more than 50 files per request are rejected.
 - The card is saved under the sanitized display name; collisions get a numeric suffix.
 

@@ -31,7 +31,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
-- **Characters.** Edit any text field and write the card back to PNG or JSON, keeping fields the editor does not show.
+- **Characters.** Edit any text field and write the card back to PNG or JSON, or export a CharX package with the card and its assets.
 - **Personas.** Several, one default, and a per-chat choice.
 - **Desktop.** A Windows installer that needs no administrator and starts the server on a free port.
 

@@ -81,8 +81,9 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 - Character IDs and chat IDs are validated and resolved with `resolveInside()` to block path traversal.
 - Display names are sanitized for filesystem use.
-- Uploads: 20 MB per file, 50 files per request; `.png` and `.json` only.
-- JSON/JSONL parsing does not execute code. `.charx` is not supported yet; do not assume archive contents are safe when support is added.
+- Uploads: 20 MB per file, 50 files per request; `.png`, `.json` and `.charx` only.
+- JSON/JSONL parsing does not execute code. `module.risum` files inside a CharX package are skipped, never parsed or executed. Do not assume archive contents are safe if module support is added.
+- A CharX ZIP is read with caps (200 entries, 25 MB per entry, 60 MB extracted, 10 MB `card.json`); entry names are validated and only `assets/**` is extracted. Extracted files are written under `data/character-assets/<character id>/` through a staging folder, and are not served by any HTTP route. Exporting a character re-reads that folder with the same count and size caps.
 - The SillyTavern import reads a directory the user names on the server host. It requires an absolute path, only reads the known subfolders (`characters/`, `chats/`, `worlds/`, preset folders), caps file size and count, and never writes outside `data/`. It is accessible to any authenticated session, which on a LAN deployment means a household member could ask the server to read a path they can name — the files are copied into the shared library. Keep LAN access to people you would give the library to anyway.
 - Chat and settings writes are atomic and serialized per file.
 - The static SPA is public; the API is protected. Do not serve the API without authentication.
