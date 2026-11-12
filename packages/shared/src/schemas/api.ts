@@ -1,6 +1,7 @@
 import type { CharacterDetail, CharacterSummary } from './character.js';
 import type { ChatMessage } from './chat.js';
 import type { ModelInfo } from './provider.js';
+import type { QuickReplySet } from './quickreplies.js';
 import type { WorldInfoEntry } from './worldinfo.js';
 
 export interface AuthStatus {
@@ -21,7 +22,7 @@ export interface ApiErrorBody {
     code?: string;
 }
 
-export type GenerateAction = 'send' | 'regenerate' | 'continue';
+export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger';
 
 export interface GenerateRequest {
     characterId: string;
@@ -73,6 +74,47 @@ export interface SummarizeResponse {
     reason?: string;
     /** How many chat messages this request covered. */
     messages?: number;
+}
+
+/** A quick reply set as the API addresses it: the file id plus the stored body. */
+export type QuickReplySetView = QuickReplySet & { id: string };
+
+/** What clicking a quick reply asks the client to do after the server's appends. */
+export type QuickReplyAction =
+    | {
+          type: 'input';
+          /** Macro-expanded text for the message box. */
+          text: string;
+          /** Whether the client should send it immediately. */
+          submit: boolean;
+          /** Merge with whatever is already typed instead of replacing it. */
+          inject: boolean;
+          /** With `inject`, put the text before the existing input. */
+          placeBefore: boolean;
+      }
+    | {
+          type: 'toast';
+          message: string;
+          title?: string;
+          severity: 'info' | 'success' | 'warning' | 'error';
+      }
+    | {
+          type: 'generate';
+          mode: 'trigger' | 'continue' | 'regenerate';
+          /** Group member chosen by `/trigger <name>`; the server validates it. */
+          speaker?: string;
+      };
+
+export interface QuickReplyExecuteRequest {
+    setId: string;
+    qrId: number;
+}
+
+export interface QuickReplyExecuteResponse {
+    /** Directives in execution order. Chat appends are already persisted. */
+    actions: QuickReplyAction[];
+    /** Messages the reply appended to the chat. */
+    appended: ChatMessage[];
 }
 
 export interface UsageInfo {

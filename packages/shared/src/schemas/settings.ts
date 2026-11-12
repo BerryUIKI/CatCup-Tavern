@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 import { DEFAULT_MEMORY_PROMPT, DEFAULT_MEMORY_TEMPLATE } from '../memory.js';
 import { type ProviderPublic, providerConfigSchema } from './provider.js';
+import {
+    DEFAULT_QUICK_REPLY_SETTINGS,
+    quickReplySettingsPatchSchema,
+    quickReplySettingsSchema,
+} from './quickreplies.js';
 
 export const generationSettingsSchema = z.object({
     temperature: z.number().min(0).max(2).default(1),
@@ -204,6 +209,7 @@ export const appSettingsSchema = z.object({
     worldInfo: worldInfoConfigSchema.default(DEFAULT_WORLD_INFO_CONFIG),
     authorNote: authorNoteSchema.default(DEFAULT_AUTHOR_NOTE),
     memory: memorySettingsSchema.default(DEFAULT_MEMORY_SETTINGS),
+    quickReplies: quickReplySettingsSchema.default(DEFAULT_QUICK_REPLY_SETTINGS),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
@@ -221,5 +227,6 @@ export const settingsPatchSchema = z.object({
     worldInfo: worldInfoConfigSchema.partial().optional(),
     authorNote: authorNoteSchema.partial().optional(),
     memory: memorySettingsPatchSchema.optional(),
+    quickReplies: quickReplySettingsPatchSchema.optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
