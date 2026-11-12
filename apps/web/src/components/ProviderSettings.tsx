@@ -818,25 +818,38 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                         <label className="label-text" htmlFor={`${idPrefix}-provider-select`}>
                             Provider
                         </label>
-                        <select
-                            id={`${idPrefix}-provider-select`}
-                            className="input-shell"
-                            value={mode === 'new' ? '' : (selectedId ?? '')}
-                            onChange={(event) => {
-                                if (event.target.value) {
-                                    requestSelect(event.target.value);
-                                }
-                            }}
-                        >
-                            {mode === 'new' ? <option value="">New provider…</option> : null}
-                            {settings.providers.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.name}
-                                    {provider.id === settings.activeProviderId ? ' (active)' : ''}
-                                    {!provider.enabled ? ' (disabled)' : ''}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="flex items-center gap-2">
+                            <select
+                                id={`${idPrefix}-provider-select`}
+                                className="input-shell min-w-0 flex-1"
+                                value={mode === 'new' ? '' : (selectedId ?? '')}
+                                onChange={(event) => {
+                                    if (event.target.value) {
+                                        requestSelect(event.target.value);
+                                    }
+                                }}
+                            >
+                                {mode === 'new' ? <option value="">New provider…</option> : null}
+                                {settings.providers.map((provider) => (
+                                    <option key={provider.id} value={provider.id}>
+                                        {provider.name}
+                                        {provider.id === settings.activeProviderId ? ' (active)' : ''}
+                                        {!provider.enabled ? ' (disabled)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                type="button"
+                                className="btn-ghost shrink-0"
+                                onClick={requestCreate}
+                                disabled={mode === 'new'}
+                                aria-label="Add provider"
+                                title={mode === 'new' ? 'Finish or cancel the new provider first' : 'Add provider'}
+                            >
+                                <Plus size={15} />
+                                Add
+                            </button>
+                        </div>
                     </div>
 
                     {mode === 'new' && !form ? (
