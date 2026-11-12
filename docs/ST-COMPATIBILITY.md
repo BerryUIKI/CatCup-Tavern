@@ -2,7 +2,7 @@
 
 CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplementation of SillyTavern. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
-> Status snapshot: **M1 complete** (2026-11-10); **M2 in progress** with group chats, summary memory, a Quick Replies subset and text to speech. See [MILESTONES.md](MILESTONES.md).
+> Status snapshot: **M1 complete**; **M2 in progress** — group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags and bulk actions are usable end to end. See [MILESTONES.md](MILESTONES.md).
 
 ## Compatibility layers
 

@@ -86,9 +86,10 @@ Released after the MVP, before M2:
 - A chat's opening greeting can be switched from the chat header or by swiping the first message.
 - GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
 
-### Release automation (2026-11-11)
+### Release automation (2026-11-11, updated 2026-11-13)
 
-- `.github/workflows/release.yml` builds the Windows installer on `windows-latest` when a `v*` tag is pushed and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
+- `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and publishes it to the matching GitHub release, using that version's `CHANGELOG.md` section as the body.
+- Since 2026-11-13 a release is a merge into `main` whose `package.json` version has no tag yet: the workflow creates the `v<version>` tag on the merged commit and publishes in the same run, so tagging by hand is no longer part of the flow. A merge whose version is already tagged is skipped.
 - The workflow can be dispatched manually with an existing tag to rebuild or republish an installer; the `v0.2.1` release was the first to get its asset this way.
 
 ## At a glance
@@ -162,7 +163,7 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - [x] The four required provider families are implemented.
 - [x] The project builds and tests cleanly from a fresh checkout.
 
-## M1 — Core SillyTavern experience (In progress)
+## M1 — Core SillyTavern experience (Complete)
 
 **Goal:** make single-character roleplay genuinely useful day to day. This is the milestone that turns the scaffold into a proper SillyTavern-compatible tavern.
 
@@ -319,8 +320,8 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] TTS has at least one working local or remote adapter with clear configuration docs.
 - [x] Image generation has at least one working adapter with clear configuration docs.
 - [x] The character library supports favorites, tag filters, sorting and bulk actions.
-- [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] Character edits export to a valid PNG/JSON card that ST can open.
+- [x] Regex rules round-trip with ST and apply in prompt/render paths as configured.
+- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern.
 
 ### Suggested PR slices
 
