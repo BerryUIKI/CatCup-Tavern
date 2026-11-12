@@ -15,6 +15,17 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - ComfyUI image generation: paste an API-format workflow in Settings → Images and its `%prompt%`, `%negative_prompt%`, `%seed%`, `%width%`, `%height%`, `%steps%`, `%scale%`, `%sampler%`, `%scheduler%` and `%model%` placeholders are filled before the graph is posted to `/prompt`. The adapter polls `/history/<id>`, downloads the first image from `/view`, reports node tracebacks and validation details in errors, and posts `/interrupt` when the browser disconnects or the job times out. Interface-format workflows are rejected with a hint to use **Save (API Format)**; the default is SillyTavern's starter graph with `CatCup` as the filename prefix.
 - CharX import and export. A `.charx` package (RisuAI's ZIP format) is imported from the character library: the card becomes a PNG card when it has a PNG icon, or a JSON card otherwise, and every `assets/**` file is kept under `data/character-assets/<character>/`. The character editor exports a V3 `card.json` with the PNG image as its icon and the stored assets, so a package round-trips; Risu `module.risum` bundles and `.charx` embedded-JPEG files are not imported. ZIP entries are checked for path traversal and capped at 200 files, 25 MB per file and 60 MB in total.
 - GitHub Actions builds the Windows installer when a `v*` tag is pushed and attaches it to the matching GitHub release, using that version's `CHANGELOG.md` section as the release body. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
+- Settings and provider management were redesigned around the new `docs/DESIGN.md` system. Settings now uses a grouped left navigation (Model, Prompt, Chat, Media, About) at every width, with a section select on narrow screens, so all eleven sections stay reachable. Providers is a master–detail panel: adding one starts from a type template, the list shows Active, Disabled and missing-key state, **Fetch models** and **Test connection** both run against the unsaved form, **Advanced** exposes custom request headers, and the provider actions are separated from the save bar. Unsaved provider edits are protected by a three-way guard (Save and continue, Discard changes, Keep editing) when switching provider, switching section or closing the dialog. Clearing a stored API key is staged and applied on save. New endpoint: `POST /api/providers/test`.
+- The modal shell now traps focus, focuses the dialog on open, restores focus to the trigger on close, and supports reduced motion. Buttons and inputs have visible `focus-visible` rings, and essential hints use solid `muted` text instead of low-contrast opacity.
+
+### Changed
+
+- An active provider is always enabled. Disabling or deleting the active provider moves `activeProviderId` to the first other enabled provider, or to `null` when none is enabled; enabling a provider while none is active makes it active. The UI cannot disable the active provider.
+- **Test connection** no longer saves the provider first; it tests the current form through the new draft endpoint. The old **Load** button became **Fetch models**, which also tests the connection. Saving is a separate, explicit action.
+
+### Fixed
+
+- A failed settings load shows an error with a retry action instead of an endless spinner, and switching providers no longer silently discards edits.
 
 ## 0.2.1 — 2026-11-11
 
