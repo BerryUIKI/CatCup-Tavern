@@ -81,6 +81,7 @@ async function* streamChat(
 async function listModels(config: ProviderConfig, _apiKey: string | undefined): Promise<ModelInfo[]> {
     const response = await fetch(joinUrl(requireBaseUrl(config), 'api/tags'), {
         headers: headersFor(config),
+        signal: AbortSignal.timeout(15_000),
     });
     await ensureOk(response, config.name || 'Ollama');
 

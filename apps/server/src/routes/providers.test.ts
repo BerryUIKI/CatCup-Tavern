@@ -149,6 +149,75 @@ describe('POST /api/providers/test', () => {
         expect(requests.at(-1)?.authorization).toBe('Bearer stored-key');
     });
 
+    it('tests without a key when apiKey is explicitly empty', async () => {
+        const created = await call('POST', '/api/providers', {
+            ...customProvider(`${stubBase}/v1`, 'Empty key provider'),
+            apiKey: 'stored-key',
+        });
+        const { provider } = created.json() as { provider: { id: string } };
+
+        const response = await call('POST', '/api/providers/test', {
+            provider: customProvider(`${stubBase}/v1`, 'Empty key provider'),
+            savedProviderId: provider.id,
+            apiKey: '',
+        });
+
+        expect(response.statusCode).toBe(200);
+        expect((response.json() as { result: { ok: boolean } }).result.ok).toBe(true);
+        expect(requests.at(-1)?.authorization).toBeUndefined();
+    });
+
+    it('refuses to reuse a stored key for a different endpoint', async () => {
+        const created = await call('POST', '/api/providers', {
+            ...customProvider(`${stubBase}/v1`, 'Reuse guard'),
+            apiKey: 'stored-key',
+        });
+        const { provider } = created.json() as { provider: { id: string } };
+
+        const response = await call('POST', '/api/providers/test', {
+            provider: customProvider(`${stubBase}/bad`, 'Reuse guard'),
+            savedProviderId: provider.id,
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect((response.json() as { code?: string }).code).toBe('PROVIDER_KEY_REUSE');
+    });
+
+    it('refuses to reuse a stored key for a different provider kind', async () => {
+        const created = await call('POST', '/api/providers', {
+            ...customProvider(`${stubBase}/v1`, 'Kind guard'),
+            apiKey: 'stored-key',
+        });
+        const { provider } = created.json() as { provider: { id: string } };
+
+        const response = await call('POST', '/api/providers/test', {
+            provider: { ...customProvider(`${stubBase}/v1`, 'Kind guard'), kind: 'openai' },
+            savedProviderId: provider.id,
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect((response.json() as { code?: string }).code).toBe('PROVIDER_KEY_REUSE');
+    });
+
+    it('rejects a non-http base URL', async () => {
+        const response = await call('POST', '/api/providers/test', {
+            provider: customProvider('file:///etc/passwd'),
+            apiKey: 'anything',
+        });
+
+        expect(response.statusCode).toBe(400);
+        expect((response.json() as { code?: string }).code).toBe('INVALID_BASE_URL');
+    });
+
+    it('requires an authenticated session', async () => {
+        const response = await app.inject({
+            method: 'POST',
+            url: '/api/providers/test',
+            payload: { provider: customProvider(`${stubBase}/v1`), apiKey: 'anything' },
+        });
+        expect(response.statusCode).toBe(401);
+    });
+
     it('returns a failed result instead of throwing when the provider errors', async () => {
         const response = await call('POST', '/api/providers/test', {
             provider: customProvider(`${stubBase}/bad`),
@@ -167,6 +236,13 @@ describe('POST /api/providers/test', () => {
             savedProviderId: 'does-not-exist',
         });
         expect(missing.statusCode).toBe(404);
+
+        const missingWithKey = await call('POST', '/api/providers/test', {
+            provider: customProvider(`${stubBase}/v1`),
+            savedProviderId: 'does-not-exist',
+            apiKey: 'supplied',
+        });
+        expect(missingWithKey.statusCode).toBe(404);
 
         const invalid = await call('POST', '/api/providers/test', {
             provider: { kind: 'not-a-provider' },
@@ -199,6 +275,7 @@ describe('active provider invariants', () => {
         if (!target) {
             throw new Error('Expected a default provider');
         }
+        expect(settings.activeProviderId).toBe(target.id);
 
         const response = await call('PATCH', `/api/providers/${target.id}`, {
             kind: target.kind,
@@ -240,5 +317,38 @@ describe('active provider invariants', () => {
         ).settings;
         expect(after.activeProviderId).not.toBe(provider.id);
         expect(after.providers.find((item) => item.id === after.activeProviderId)?.enabled).toBe(true);
+    });
+
+    it('rejects activating a disabled provider through the settings patch', async () => {
+        const created = await call('POST', '/api/providers', customProvider(`${stubBase}/v1`, 'Disabled candidate'));
+        const { provider } = created.json() as { provider: { id: string } };
+
+        const disabled = await call('PATCH', `/api/providers/${provider.id}`, {
+            ...customProvider(`${stubBase}/v1`, 'Disabled candidate'),
+            enabled: false,
+        });
+        expect(disabled.statusCode).toBe(200);
+
+        const before = (
+            (await call('GET', '/api/settings')).json() as {
+                settings: { activeProviderId: string | null };
+            }
+        ).settings;
+
+        const response = await call('PATCH', '/api/settings', { activeProviderId: provider.id });
+        expect(response.statusCode).toBe(400);
+        expect((response.json() as { code?: string }).code).toBe('PROVIDER_DISABLED');
+
+        const after = (
+            (await call('GET', '/api/settings')).json() as {
+                settings: { activeProviderId: string | null };
+            }
+        ).settings;
+        expect(after.activeProviderId).toBe(before.activeProviderId);
+    });
+
+    it('returns 404 when activating a provider that does not exist', async () => {
+        const response = await call('PATCH', '/api/settings', { activeProviderId: 'missing-provider' });
+        expect(response.statusCode).toBe(404);
     });
 });

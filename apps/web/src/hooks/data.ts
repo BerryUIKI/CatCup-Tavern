@@ -8,6 +8,7 @@ import type {
     GroupPatch,
     GroupView,
     ImportCharactersResponse,
+    ProviderDraftTestInput,
     ProviderInput,
     QuickReplySet,
     RegexScriptPatch,
@@ -958,15 +959,9 @@ export function useDeleteProvider() {
     });
 }
 
-export function useTestProvider() {
+export function useTestProviderDraft() {
     return useMutation({
-        mutationFn: (variables: { id: string; apiKey?: string }) => api.providers.test(variables.id, variables.apiKey),
-    });
-}
-
-export function useProviderModels() {
-    return useMutation({
-        mutationFn: (id: string) => api.providers.models(id),
+        mutationFn: (body: ProviderDraftTestInput) => api.providers.testDraft(body),
     });
 }
 

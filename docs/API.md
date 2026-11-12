@@ -728,7 +728,7 @@ Partial update. All fields are optional:
 }
 ```
 
-`activeProviderId` must reference an existing provider. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
+`activeProviderId` must reference an existing, enabled provider. A missing id returns `404`; a disabled provider returns `400` with code `PROVIDER_DISABLED`. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
 
 `ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`. `imageApiKey` is the same for image generation, stored under `image` and reported as `imageHasKey`.
 
@@ -799,8 +799,10 @@ Tests an unsaved provider form without creating or changing a provider. This is 
 ```
 
 - `provider` uses the same fields as `POST /api/providers`, minus `apiKey`. An empty `baseUrl` falls back to the kind's default.
-- When `apiKey` is omitted and `savedProviderId` names an existing provider, the server tests with that provider's stored key; the key itself never reaches the browser. A supplied `apiKey` always wins, and an empty string tests without a key.
-- An unknown `savedProviderId` returns `404`. An invalid body returns `400`.
+- `savedProviderId` is always validated when present; an unknown id returns `404`, even when `apiKey` is supplied.
+- When `apiKey` is omitted and `savedProviderId` names an existing provider, the server reuses that provider's stored key only when the draft has the same `kind` and base URL (a trailing slash is ignored). Testing a different endpoint or kind returns `400` with code `PROVIDER_KEY_REUSE`; supply the key explicitly to test it. A supplied `apiKey` always wins, and an empty string tests without a key. The stored key never reaches the browser.
+- The base URL must be `http` or `https`; other schemes return `400` with code `INVALID_BASE_URL`. The draft test is rate-limited to 30 requests per minute.
+- An invalid body returns `400`.
 - A failed connection returns HTTP `200` with `result.ok: false`; only request problems are 4xx.
 
 ```json

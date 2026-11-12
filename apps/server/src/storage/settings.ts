@@ -292,11 +292,14 @@ export async function getActiveProvider(): Promise<ProviderConfig | null> {
 async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
     return mutateSettings((settings) => {
         if (patch.activeProviderId !== undefined) {
-            if (
-                patch.activeProviderId !== null &&
-                !settings.providers.some((provider) => provider.id === patch.activeProviderId)
-            ) {
-                throw new Error('Provider not found');
+            if (patch.activeProviderId !== null) {
+                const provider = settings.providers.find((item) => item.id === patch.activeProviderId);
+                if (!provider) {
+                    throw new Error('Provider not found');
+                }
+                if (!provider.enabled) {
+                    throw new Error('Provider is disabled');
+                }
             }
             settings.activeProviderId = patch.activeProviderId;
         }

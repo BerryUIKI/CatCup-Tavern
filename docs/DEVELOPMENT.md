@@ -106,9 +106,11 @@ pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
 Current coverage:
 
 - shared: schema defaults, macros, memory lookup, the quick reply script parser, speech text preparation;
-- server: character card normalization, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, and the TTS adapter/routes against a local speech stub.
+- server: character card normalization, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, and the TTS adapter/routes against a local speech stub.
 
-UI testing is manual at this stage: password setup, card import, chat creation, streaming, swipes, settings. Add a unit test for any new parsing/ordering logic. Add a fixture-based test for ST compatibility changes.
+Server route tests each build a Fastify app. `apps/server/vitest.config.ts` caps the worker pool at four and raises the hook timeout, because the default one-worker-per-file pool can starve a 6-core machine and trip `beforeAll` timeouts.
+
+UI testing is manual at this stage: password setup, card import, chat creation, streaming, swipes, settings navigation, provider management and the unsaved-changes guard. Add a unit test for any new parsing/ordering logic. Add a fixture-based test for ST compatibility changes.
 
 ## Adding a feature
 
