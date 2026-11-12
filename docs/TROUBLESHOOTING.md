@@ -62,7 +62,7 @@ Stop the server, back up `data/`, delete `data/auth.json`, start the server and 
 
 ## Providers
 
-**“Save & test” fails but chat might still work**
+**“Test connection” fails but chat might still work**
 
 The test calls the provider's model-list endpoint. Some OpenAI-compatible servers do not implement `/models`. Type the model ID manually and try a generation; the test failure is advisory.
 
@@ -70,7 +70,7 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 
 - Check the API key and that it is saved (the UI shows a “has key” state).
 - Check the base URL ends at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8080/v1`.
-- Some gateways need extra headers; add them in the provider's `headers` field via the API, or use a custom provider configuration.
+- Some gateways need extra headers; add them under **Advanced → custom headers** in the provider form.
 
 **OpenRouter errors**
 

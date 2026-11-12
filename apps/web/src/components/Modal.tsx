@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../lib/cn';
-import { trapTab } from '../lib/focus';
+import { isTopFocusLayer, pushFocusLayer, trapTab } from '../lib/focus';
 
 interface ModalProps {
     open: boolean;
@@ -38,8 +38,12 @@ export function Modal({ open, onClose, title, children, widthClassName, bodyClas
 
         const panel = panelRef.current;
         panel?.focus({ preventScroll: true });
+        const releaseLayer = panel ? pushFocusLayer(panel) : () => {};
 
         const onKeyDown = (event: KeyboardEvent) => {
+            if (panel && !isTopFocusLayer(panel)) {
+                return;
+            }
             if (event.key === 'Escape') {
                 onCloseRef.current();
                 return;
@@ -52,6 +56,7 @@ export function Modal({ open, onClose, title, children, widthClassName, bodyClas
         document.addEventListener('keydown', onKeyDown);
         return () => {
             document.removeEventListener('keydown', onKeyDown);
+            releaseLayer();
             document.body.style.overflow = previousOverflow;
             const previous = restoreFocusRef.current;
             if (previous?.isConnected) {

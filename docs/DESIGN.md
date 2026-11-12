@@ -199,7 +199,7 @@ Rules:
 - **Explicit save for configuration.** Network and provider forms use a Save button and a dirty
   indicator. Switching provider, switching settings section, or closing the dialog while dirty opens
   the three-way guard.
-- **Test before save.** Connection tests run against the unsaved form. Saving is a separate action.
+- **Test before save.** Provider connection tests run against the unsaved form; saving is a separate action. The TTS and image panels still save before testing and move to this rule in a later stage.
 - **Destructive actions confirm.** Deleting a provider, chat, character, group, book or message
   requires a confirmation that names the object and its consequence.
 - **Keyboard shortcuts.** Enter submits a form; `Ctrl/Cmd+S` saves the provider form; arrow keys move

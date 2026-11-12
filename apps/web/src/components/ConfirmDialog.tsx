@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../lib/cn';
-import { trapTab } from '../lib/focus';
+import { isTopFocusLayer, pushFocusLayer, trapTab } from '../lib/focus';
 
 interface ConfirmDialogProps {
     open: boolean;
@@ -69,8 +69,13 @@ export function ConfirmDialog({
                   ? alternateRef.current
                   : cancelRef.current;
         target?.focus({ preventScroll: true });
+        const releaseLayer = panelRef.current ? pushFocusLayer(panelRef.current) : () => {};
 
         const onKeyDown = (event: KeyboardEvent) => {
+            const panel = panelRef.current;
+            if (panel && !isTopFocusLayer(panel)) {
+                return;
+            }
             if (event.key === 'Escape') {
                 event.preventDefault();
                 event.stopPropagation();
@@ -80,8 +85,8 @@ export function ConfirmDialog({
                 return;
             }
 
-            if (event.key === 'Tab' && panelRef.current) {
-                trapTab(event, panelRef.current);
+            if (event.key === 'Tab' && panel) {
+                trapTab(event, panel);
                 event.stopPropagation();
             }
         };
@@ -89,6 +94,7 @@ export function ConfirmDialog({
         document.addEventListener('keydown', onKeyDown, true);
         return () => {
             document.removeEventListener('keydown', onKeyDown, true);
+            releaseLayer();
             const previous = restoreFocusRef.current;
             if (previous?.isConnected) {
                 previous.focus({ preventScroll: true });

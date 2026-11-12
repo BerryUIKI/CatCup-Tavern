@@ -1,3 +1,4 @@
+// biome-ignore-all lint/a11y/noNoninteractiveTabindex: a tabpanel must be focusable when it contains no controls (e.g. About)
 import type { GenerationSettings } from '@catcup/shared';
 import {
     BookOpen,
@@ -17,7 +18,7 @@ import {
     Volume2,
     Zap,
 } from 'lucide-react';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useRef, useState } from 'react';
 
 import {
     useDeletePreset,
@@ -153,6 +154,16 @@ const GROUPS: SettingsGroup[] = ['Model', 'Prompt', 'Chat', 'Media', 'About'];
 
 type PendingLeave = { type: 'section'; id: SettingsSectionId } | { type: 'close' } | null;
 
+function generationEqual(left: GenerationSettings, right: GenerationSettings): boolean {
+    return (
+        left.temperature === right.temperature &&
+        left.topP === right.topP &&
+        left.maxTokens === right.maxTokens &&
+        left.contextSize === right.contextSize &&
+        left.stream === right.stream
+    );
+}
+
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
     const settingsQuery = useSettings();
     const settings = settingsQuery.data;
@@ -175,9 +186,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const [leaveBusy, setLeaveBusy] = useState(false);
     const initializedRef = useRef(false);
     const providerRef = useRef<ProviderSettingsHandle | null>(null);
+    const presetFileRef = useRef<HTMLInputElement>(null);
+    const worldFileRef = useRef<HTMLInputElement>(null);
 
     const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0];
     const ActiveSectionIcon = activeSection?.icon ?? Server;
+    const generationDirty =
+        section === 'generation' && generationForm !== null && settings
+            ? !generationEqual(generationForm, settings.generation)
+            : false;
 
     useEffect(() => {
         if (!open) {
@@ -195,12 +212,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     }, [open, settings]);
 
     const providerIsDirty = () => section === 'providers' && (providerRef.current?.isDirty() ?? false);
+    const hasUnsavedChanges = () => providerIsDirty() || generationDirty;
 
     const requestSection = (next: SettingsSectionId) => {
         if (next === section) {
             return;
         }
-        if (providerIsDirty()) {
+        if (hasUnsavedChanges()) {
             setPendingLeave({ type: 'section', id: next });
             return;
         }
@@ -209,7 +227,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     };
 
     const requestClose = () => {
-        if (providerIsDirty()) {
+        if (hasUnsavedChanges()) {
             setPendingLeave({ type: 'close' });
             return;
         }
@@ -223,7 +241,12 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             return;
         }
         if (discard) {
-            providerRef.current?.discard();
+            if (section === 'providers') {
+                providerRef.current?.discard();
+            }
+            if (section === 'generation' && settings) {
+                setGenerationForm({ ...settings.generation });
+            }
         }
         if (pending.type === 'close') {
             onClose();
@@ -233,14 +256,23 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         setEditingBookId(null);
     };
 
-    const saveAndLeave = async () => {
-        const provider = providerRef.current;
-        if (!provider) {
-            finishLeave(false);
-            return;
+    const saveGeneration = async (): Promise<boolean> => {
+        if (!generationForm) {
+            return false;
         }
+        try {
+            await updateSettings.mutateAsync({ generation: generationForm });
+            pushToast('Generation settings saved.', 'success');
+            return true;
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not save generation settings.', 'error');
+            return false;
+        }
+    };
+
+    const saveAndLeave = async () => {
         setLeaveBusy(true);
-        const saved = await provider.save();
+        const saved = section === 'generation' ? await saveGeneration() : (providerRef.current?.save() ?? true);
         setLeaveBusy(false);
         if (saved) {
             finishLeave(false);
@@ -255,7 +287,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             return;
         }
         event.preventDefault();
-        const index = SECTIONS.findIndex((item) => item.id === section);
+        const focusedIndex = SECTIONS.findIndex((item) => `settings-tab-${item.id}` === document.activeElement?.id);
+        const index = focusedIndex >= 0 ? focusedIndex : SECTIONS.findIndex((item) => item.id === section);
         let nextIndex = index;
         if (event.key === 'ArrowDown') {
             nextIndex = (index + 1) % SECTIONS.length;
@@ -269,18 +302,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         const next = SECTIONS[nextIndex];
         if (next) {
             document.getElementById(`settings-tab-${next.id}`)?.focus();
-        }
-    };
-
-    const handleSaveGeneration = async () => {
-        if (!generationForm) {
-            return;
-        }
-        try {
-            await updateSettings.mutateAsync({ generation: generationForm });
-            pushToast('Generation settings saved.', 'success');
-        } catch (error) {
-            pushToast(error instanceof Error ? error.message : 'Could not save generation settings.', 'error');
         }
     };
 
@@ -406,15 +427,36 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 </div>
             ) : null}
 
-            <button
-                type="button"
-                className="btn-primary"
-                onClick={() => void handleSaveGeneration()}
-                disabled={updateSettings.isPending}
-            >
-                {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
-                Save generation settings
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+                {generationDirty ? (
+                    <>
+                        <span className="inline-flex items-center gap-1.5 text-xs text-amber">
+                            <span className="size-1.5 rounded-full bg-amber" aria-hidden="true" />
+                            Unsaved changes
+                        </span>
+                        <button
+                            type="button"
+                            className="inline-flex min-h-8 items-center text-xs text-muted transition hover:text-parchment"
+                            onClick={() => {
+                                if (settings) {
+                                    setGenerationForm({ ...settings.generation });
+                                }
+                            }}
+                        >
+                            Discard
+                        </button>
+                    </>
+                ) : null}
+                <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => void saveGeneration()}
+                    disabled={!generationDirty || updateSettings.isPending}
+                >
+                    {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
+                    Save generation settings
+                </button>
+            </div>
         </div>
     );
 
@@ -451,23 +493,29 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-                <label className={cn('btn-ghost cursor-pointer', importPreset.isPending && 'opacity-60')}>
+                <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => presetFileRef.current?.click()}
+                    disabled={importPreset.isPending}
+                >
                     {importPreset.isPending ? <Spinner size={15} /> : <Upload size={15} />}
                     Import JSON
-                    <input
-                        type="file"
-                        accept=".json,application/json"
-                        className="sr-only"
-                        disabled={importPreset.isPending}
-                        onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = '';
-                            if (file) {
-                                void handleImportPreset(file);
-                            }
-                        }}
-                    />
-                </label>
+                </button>
+                <input
+                    ref={presetFileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    disabled={importPreset.isPending}
+                    onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (file) {
+                            void handleImportPreset(file);
+                        }
+                    }}
+                />
 
                 {settings?.activePresetId ? (
                     <>
@@ -504,23 +552,29 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </p>
 
             <div className="flex flex-wrap items-center gap-2">
-                <label className={cn('btn-ghost cursor-pointer', importWorld.isPending && 'opacity-60')}>
+                <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => worldFileRef.current?.click()}
+                    disabled={importWorld.isPending}
+                >
                     {importWorld.isPending ? <Spinner size={15} /> : <Upload size={15} />}
                     Import JSON
-                    <input
-                        type="file"
-                        accept=".json,application/json"
-                        className="sr-only"
-                        disabled={importWorld.isPending}
-                        onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = '';
-                            if (file) {
-                                void handleImportWorld(file);
-                            }
-                        }}
-                    />
-                </label>
+                </button>
+                <input
+                    ref={worldFileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    disabled={importWorld.isPending}
+                    onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        event.target.value = '';
+                        if (file) {
+                            void handleImportWorld(file);
+                        }
+                    }}
+                />
                 {worldsQuery.isLoading ? <Spinner size={15} className="text-muted" /> : null}
             </div>
 
@@ -580,7 +634,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     );
 
     const renderPanel = () => {
-        if (settingsQuery.isError) {
+        if (settingsQuery.isError && !settings) {
             return (
                 <div className="flex h-full items-center justify-center p-8">
                     <div className="max-w-md text-center">
@@ -641,7 +695,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <AboutTab />
             );
 
-        return <div className="h-full overflow-y-auto">{panel}</div>;
+        return panel;
     };
 
     return (
@@ -700,7 +754,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                                     type="button"
                                                     role="tab"
                                                     aria-selected={active}
-                                                    aria-controls={`settings-panel-${item.id}`}
+                                                    aria-controls="settings-panel"
                                                     tabIndex={active ? 0 : -1}
                                                     onClick={() => requestSection(item.id)}
                                                     className={cn(
@@ -742,11 +796,35 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 <p className="mt-1 text-xs leading-relaxed text-muted">{activeSection?.description}</p>
                             </div>
                         </div>
+                        {settingsQuery.isError && settings ? (
+                            <div
+                                className="flex shrink-0 flex-wrap items-center gap-2 border-b border-wine/40 bg-wine/10 px-4 py-2 text-xs text-parchment-dim"
+                                role="alert"
+                            >
+                                <span className="min-w-0 flex-1">
+                                    Settings could not be refreshed. Your unsaved edits are still here.
+                                </span>
+                                <button
+                                    type="button"
+                                    className="btn-ghost px-2 py-1 text-xs"
+                                    onClick={() => void settingsQuery.refetch()}
+                                    disabled={settingsQuery.isFetching}
+                                >
+                                    {settingsQuery.isFetching ? <Spinner size={12} /> : null}
+                                    Retry
+                                </button>
+                            </div>
+                        ) : null}
                         <div
-                            id={`settings-panel-${section}`}
+                            key={section}
+                            id="settings-panel"
                             role="tabpanel"
                             aria-labelledby={`settings-heading-${section}`}
-                            className="min-h-0 flex-1 overflow-hidden"
+                            tabIndex={0}
+                            className={cn(
+                                'min-h-0 flex-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber/40',
+                                section === 'providers' ? 'overflow-hidden' : 'overflow-y-auto',
+                            )}
                         >
                             {renderPanel()}
                         </div>
@@ -757,7 +835,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             <ConfirmDialog
                 open={pendingLeave !== null}
                 title="Save changes before leaving?"
-                description="Your provider changes have not been saved. Save them before continuing, or discard the edits."
+                description="Your settings changes have not been saved. Save them before continuing, or discard the edits."
                 confirmLabel="Save and continue"
                 alternateLabel="Discard changes"
                 cancelLabel="Keep editing"
@@ -788,22 +866,30 @@ function SliderField({
     value: number;
     onChange: (value: number) => void;
 }) {
+    const id = useId();
+    const hintId = `${id}-hint`;
     return (
         <div>
             <div className="flex items-center justify-between gap-3">
-                <span className="label-text mb-0">{label}</span>
+                <label className="label-text mb-0" htmlFor={id}>
+                    {label}
+                </label>
                 <span className="text-xs tabular-nums text-parchment-dim">{value}</span>
             </div>
             <input
+                id={id}
                 type="range"
                 min={min}
                 max={max}
                 step={step}
                 value={value}
+                aria-describedby={hintId}
                 onChange={(event) => onChange(Number(event.target.value))}
                 className="mt-2 w-full accent-amber"
             />
-            <p className="mt-1 text-[11px] leading-relaxed text-muted">{hint}</p>
+            <p id={hintId} className="mt-1 text-[11px] leading-relaxed text-muted">
+                {hint}
+            </p>
         </div>
     );
 }
@@ -825,6 +911,7 @@ function NumberField({
     value: number;
     onChange: (value: number) => void;
 }) {
+    const hintId = `${id}-hint`;
     return (
         <div>
             <label className="label-text" htmlFor={id}>
@@ -836,10 +923,13 @@ function NumberField({
                 min={min}
                 max={max}
                 value={value}
+                aria-describedby={hintId}
                 onChange={(event) => onChange(Number(event.target.value))}
                 className="input-shell"
             />
-            <p className="mt-1 text-[11px] leading-relaxed text-muted">{hint}</p>
+            <p id={hintId} className="mt-1 text-[11px] leading-relaxed text-muted">
+                {hint}
+            </p>
         </div>
     );
 }

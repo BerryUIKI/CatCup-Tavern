@@ -7,6 +7,26 @@ const FOCUSABLE_SELECTOR = [
     '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+const focusLayers: HTMLElement[] = [];
+
+/**
+ * Register a dialog-like layer. Only the topmost layer handles Escape and Tab,
+ * so a portal opened above a Modal does not fight the Modal's trap.
+ */
+export function pushFocusLayer(element: HTMLElement): () => void {
+    focusLayers.push(element);
+    return () => {
+        const index = focusLayers.lastIndexOf(element);
+        if (index >= 0) {
+            focusLayers.splice(index, 1);
+        }
+    };
+}
+
+export function isTopFocusLayer(element: HTMLElement): boolean {
+    return focusLayers[focusLayers.length - 1] === element;
+}
+
 /** Elements inside a dialog that can take keyboard focus, in document order. */
 export function focusableElements(container: HTMLElement): HTMLElement[] {
     return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
