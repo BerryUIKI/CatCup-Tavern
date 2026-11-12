@@ -34,14 +34,17 @@ If a change depends on another open PR, branch from the dependency and target `d
 
 ## Releases
 
-Releases are cut from `main` and built by CI:
+Releases are cut from `main` and built by CI automatically:
 
 1. Bump the version across the workspace (`package.json`, the app packages, `tauri.conf.json`, `Cargo.toml`/`Cargo.lock` and `apps/server/src/config.ts`), and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
 2. Merge the release preparation into `dev`, then open a `dev` → `main` pull request and merge it with a merge commit.
-3. Push a `v<version>` tag pointing at `main`.
-4. `.github/workflows/release.yml` builds the Windows installer on `windows-latest` and creates or updates the GitHub release, with the changelog section as the body and the installer as an asset.
+3. That push to `main` is the release. `.github/workflows/release.yml` reads the version from `package.json`, creates the `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest`, and creates the GitHub release with the changelog section as the body and the installer as an asset.
 
-To rebuild an existing release, run the Release workflow manually with that tag. A tag without a matching `CHANGELOG.md` section fails the build on purpose.
+Nothing is published when the version in `package.json` already has a tag, so later merges into `main` stay quiet. A version without a matching `CHANGELOG.md` section fails the build on purpose.
+
+To rebuild or republish an existing release, run the Release workflow manually with that tag. Pushing a `v*` tag by hand still works and releases that tag directly.
+
+`main` requires its CI check to pass before a merge, so a broken release cannot start from a red branch.
 
 ## Commits
 
