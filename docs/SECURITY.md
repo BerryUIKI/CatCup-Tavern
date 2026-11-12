@@ -43,7 +43,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 ### CSRF and origin checks
 
-- Mutating API requests (`POST`, `PATCH`, `DELETE`) are rejected when an `Origin` header is present and its host does not match the request `Host`.
+- Mutating API requests (anything other than `GET`, `HEAD` or `OPTIONS`) are rejected when an `Origin` header is present and its host does not match the request `Host`.
 - Requests without an `Origin` header (curl, server-to-server) are allowed.
 - There is no dedicated CSRF token. `SameSite=Lax` plus the origin check is the current mitigation. This is acceptable for a single-user LAN app but is on the hardening list.
 
@@ -51,6 +51,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 - Login: 10 attempts per minute.
 - Setup: 5 attempts per minute.
+- Provider draft tests (`POST /api/providers/test`): 30 per minute.
 - Other endpoints are not rate-limited yet.
 
 ## API keys

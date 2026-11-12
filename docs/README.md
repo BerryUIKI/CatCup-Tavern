@@ -43,7 +43,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers              |
 | [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility   |
 | [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes             |
-| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible character cards, chat JSONL, world info, presets and internal files |
+| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible cards, chats, groups, world info, presets, regex and internal files |
 | [PROVIDERS.md](PROVIDERS.md)               | Provider kinds, endpoint mapping, streaming normalization and adapter guide       |
 | [LIMITATIONS.md](LIMITATIONS.md)           | User-facing: what this release does and does not do                               |
 | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) | Feature-by-feature compatibility matrix and known deviations                      |
@@ -55,7 +55,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                |
 | [REUSE.md](REUSE.md)                       | Licensing and code reuse assessment                                               |
 | [../CHANGELOG.md](../CHANGELOG.md)         | Release history and unreleased changes                                            |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, quality gates and contribution rules                                     |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, releases, branch protection and quality gates                            |
 
 ## Documentation conventions
 
