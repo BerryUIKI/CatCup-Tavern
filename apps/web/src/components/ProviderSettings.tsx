@@ -1405,7 +1405,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
 
             <ConfirmDialog
                 open={deleteOpen}
-                title={`Delete ${form?.name.trim() || 'this provider'}?`}
+                title={`Delete ${selectedProvider?.name || form?.name.trim() || 'this provider'}?`}
                 description="Its configuration and saved API key are removed. Chats that use it will fail until another provider is active."
                 confirmLabel="Delete provider"
                 cancelLabel="Keep provider"
