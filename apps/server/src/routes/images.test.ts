@@ -3,6 +3,7 @@ import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import { DEFAULT_COMFY_WORKFLOW } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -28,6 +29,7 @@ interface StubRequest {
 }
 
 const requests: StubRequest[] = [];
+const comfyHistoryCalls = new Map<string, number>();
 
 function card(name: string): string {
     return JSON.stringify({
@@ -100,6 +102,143 @@ beforeAll(async () => {
                 } else {
                     response.end(JSON.stringify({ data: [{ b64_json: png.toString('base64') }] }));
                 }
+                return;
+            }
+
+            if (url === '/system_stats') {
+                response.writeHead(200, { 'content-type': 'application/json' });
+                response.end(JSON.stringify({ system: { comfyui_version: 'stub' } }));
+                return;
+            }
+
+            if (url === '/prompt') {
+                if (bodyText.includes('stub-validation')) {
+                    response.writeHead(400, { 'content-type': 'application/json' });
+                    response.end(
+                        JSON.stringify({
+                            error: {
+                                type: 'prompt_outputs_failed_validation',
+                                message: 'Prompt outputs failed validation',
+                                details: '',
+                                extra_info: {},
+                            },
+                            node_errors: {
+                                '4': {
+                                    class_type: 'CheckpointLoaderSimple',
+                                    errors: [
+                                        {
+                                            type: 'value_not_in_list',
+                                            message: 'Value not in list',
+                                            details:
+                                                "ckpt_name: 'sdXL.safetensors' not in ['dream.safetensors', 'base.ckpt']",
+                                        },
+                                    ],
+                                },
+                            },
+                        }),
+                    );
+                    return;
+                }
+                let promptId = 'stub-comfy';
+                for (const candidate of [
+                    'stub-comfy-fail',
+                    'stub-history-fail',
+                    'stub-bad-history',
+                    'stub-view-fail',
+                    'stub-bad-image',
+                ]) {
+                    if (bodyText.includes(candidate)) {
+                        promptId = candidate;
+                        break;
+                    }
+                }
+                response.writeHead(200, { 'content-type': 'application/json' });
+                response.end(JSON.stringify({ prompt_id: promptId }));
+                return;
+            }
+
+            if (url.startsWith('/history/')) {
+                const promptId = url.slice('/history/'.length);
+                if (promptId === 'stub-history-fail') {
+                    response.writeHead(500, { 'content-type': 'application/json' });
+                    response.end(JSON.stringify({ error: 'history exploded' }));
+                    return;
+                }
+                if (promptId === 'stub-bad-history') {
+                    response.writeHead(200, { 'content-type': 'application/json' });
+                    response.end('not json');
+                    return;
+                }
+                response.writeHead(200, { 'content-type': 'application/json' });
+                if (promptId === 'stub-comfy-fail') {
+                    response.end(
+                        JSON.stringify({
+                            [promptId]: {
+                                status: {
+                                    status_str: 'error',
+                                    completed: true,
+                                    messages: [
+                                        [
+                                            'execution_error',
+                                            {
+                                                node_type: 'KSampler',
+                                                node_id: '3',
+                                                exception_type: 'RuntimeError',
+                                                exception_message: 'CUDA out of memory',
+                                            },
+                                        ],
+                                    ],
+                                },
+                                outputs: {},
+                            },
+                        }),
+                    );
+                    return;
+                }
+                const calls = (comfyHistoryCalls.get(promptId) ?? 0) + 1;
+                comfyHistoryCalls.set(promptId, calls);
+                if (calls < 2) {
+                    response.end('{}');
+                    return;
+                }
+                const filename =
+                    promptId === 'stub-view-fail'
+                        ? 'missing.png'
+                        : promptId === 'stub-bad-image'
+                          ? 'not-an-image.txt'
+                          : 'comfy.png';
+                response.end(
+                    JSON.stringify({
+                        [promptId]: {
+                            status: { status_str: 'success', completed: true },
+                            outputs: {
+                                '9': { images: [{ filename, subfolder: '', type: 'output' }] },
+                            },
+                        },
+                    }),
+                );
+                return;
+            }
+
+            if (url.startsWith('/view')) {
+                if (url.includes('filename=missing.png')) {
+                    response.writeHead(500, { 'content-type': 'application/json' });
+                    response.end(JSON.stringify({ error: 'missing image' }));
+                    return;
+                }
+                if (url.includes('filename=not-an-image.txt')) {
+                    response.writeHead(200, { 'content-type': 'text/plain' });
+                    response.end('this is not an image');
+                    return;
+                }
+                response.writeHead(200, { 'content-type': 'image/png' });
+                response.end(png);
+                return;
+            }
+
+            if (url === '/interrupt') {
+                response.writeHead(200);
+                response.end();
                 return;
             }
 
@@ -302,7 +441,204 @@ describe('image generation routes', () => {
         expect(fetched.equals(png)).toBe(true);
     });
 
+    it('tests and generates through a ComfyUI workflow', async () => {
+        await configureImage({ backend: 'comfyui', baseUrl: stubBase, model: 'sd/dream.safetensors' });
+        const tested = await call('POST', '/api/images/test');
+        expect(tested.statusCode).toBe(200);
+        expect(requests.some((item) => item.path === '/system_stats')).toBe(true);
+
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            width: 768,
+            height: 512,
+            steps: 28,
+            cfgScale: 6.5,
+            sampler: 'euler',
+            scheduler: 'karras',
+            seed: 1234,
+            promptPrefix: 'best quality,',
+            negativePrompt: 'lowres, blurry',
+        });
+        requests.length = 0;
+        comfyHistoryCalls.clear();
+
+        const response = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'a knight in a tavern',
+        });
+        expect(response.statusCode).toBe(200);
+        const image = response.json().image as {
+            file: string;
+            backend: string;
+            model: string;
+            seed: number;
+            prompt: string;
+        };
+        expect(image.backend).toBe('comfyui');
+        expect(image.model).toBe('sd/dream.safetensors');
+        expect(image.seed).toBe(1234);
+        expect(image.prompt).toBe('best quality, a knight in a tavern');
+
+        const queued = requests.find((item) => item.path === '/prompt');
+        expect(queued).toBeDefined();
+        const graph = queued?.body.prompt as Record<string, { inputs: Record<string, unknown> }>;
+        expect(graph['3']?.inputs).toMatchObject({
+            cfg: 6.5,
+            sampler_name: 'euler',
+            scheduler: 'karras',
+            seed: 1234,
+            steps: 28,
+        });
+        expect(graph['4']?.inputs.ckpt_name).toBe('sd/dream.safetensors');
+        expect(graph['5']?.inputs).toMatchObject({ width: 768, height: 512, batch_size: 1 });
+        expect(graph['6']?.inputs.text).toBe('best quality, a knight in a tavern');
+        expect(graph['7']?.inputs.text).toBe('lowres, blurry');
+        // Numeric placeholders must be JSON numbers, not quoted strings.
+        expect(typeof graph['3']?.inputs.seed).toBe('number');
+        expect(typeof graph['3']?.inputs.steps).toBe('number');
+
+        expect(requests.filter((item) => item.path.startsWith('/history/')).length).toBeGreaterThanOrEqual(2);
+        expect(requests.some((item) => item.path.startsWith('/view'))).toBe(true);
+
+        const saved = await readFile(path.join(root, 'user', 'images', 'Aria', image.file));
+        expect(saved.equals(png)).toBe(true);
+        const sidecar = JSON.parse(
+            await readFile(path.join(root, 'user', 'images', 'Aria', `${image.file}.json`), 'utf8'),
+        ) as Record<string, unknown>;
+        expect(sidecar).toMatchObject({ backend: 'comfyui', model: 'sd/dream.safetensors', seed: 1234 });
+    });
+
+    it('reports a ComfyUI node traceback', async () => {
+        await configureImage({ backend: 'comfyui', baseUrl: stubBase, model: 'ckpt.safetensors' });
+        const response = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-comfy-fail',
+        });
+        expect(response.statusCode).toBe(502);
+        expect(response.json().code).toBe('IMAGE_FAILED');
+        expect(response.json().error).toContain('KSampler [3] RuntimeError: CUDA out of memory');
+    });
+
+    it('reports a ComfyUI validation error with the node and value', async () => {
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            model: 'ckpt.safetensors',
+            comfyWorkflow: DEFAULT_COMFY_WORKFLOW,
+        });
+        const response = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-validation',
+        });
+        expect(response.statusCode).toBe(502);
+        expect(response.json().code).toBe('IMAGE_FAILED');
+        expect(response.json().error).toContain('Prompt outputs failed validation');
+        expect(response.json().error).toContain('CheckpointLoaderSimple [4]');
+        expect(response.json().error).toContain("ckpt_name: 'sdXL.safetensors' not in");
+    });
+
+    it('maps ComfyUI history and image download failures to 502', async () => {
+        await configureImage({ backend: 'comfyui', baseUrl: stubBase, model: 'ckpt.safetensors' });
+
+        const history = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-history-fail',
+        });
+        expect(history.statusCode).toBe(502);
+        expect(history.json().code).toBe('IMAGE_FAILED');
+        expect(history.json().error).toContain('history exploded');
+
+        const malformed = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-bad-history',
+        });
+        expect(malformed.statusCode).toBe(502);
+        expect(malformed.json().error).toContain('not JSON');
+
+        const view = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-view-fail',
+        });
+        expect(view.statusCode).toBe(502);
+        expect(view.json().error).toContain('missing image');
+
+        const badImage = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'stub-bad-image',
+        });
+        expect(badImage.statusCode).toBe(502);
+        expect(badImage.json().error).toContain('not a PNG, JPEG or WebP');
+    });
+
+    it('requires a checkpoint when the ComfyUI workflow uses %model%', async () => {
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            model: '',
+            comfyWorkflow: DEFAULT_COMFY_WORKFLOW,
+        });
+        const missing = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'a knight',
+        });
+        expect(missing.statusCode).toBe(400);
+        expect(missing.json().code).toBe('IMAGE_CONFIG');
+        expect(missing.json().error).toContain('%model%');
+
+        await configureImage({ backend: 'comfyui', baseUrl: stubBase, model: 'ckpt.safetensors' });
+    });
+
+    it('rejects a ComfyUI interface workflow with a useful error', async () => {
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            model: 'ckpt.safetensors',
+            comfyWorkflow: JSON.stringify({ nodes: [], links: [] }),
+        });
+        const response = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'a knight',
+        });
+        expect(response.statusCode).toBe(400);
+        expect(response.json().code).toBe('IMAGE_CONFIG');
+        expect(response.json().error).toContain('Save (API Format)');
+
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            model: 'ckpt.safetensors',
+            comfyWorkflow: '{ not json',
+        });
+        const invalid = await call('POST', '/api/images/generate', {
+            characterId: 'Aria',
+            chatId,
+            prompt: 'a knight',
+        });
+        expect(invalid.statusCode).toBe(400);
+        expect(invalid.json().code).toBe('IMAGE_CONFIG');
+        expect(invalid.json().error).toContain('not valid JSON');
+
+        // Leave a working configuration for the tests that follow.
+        await configureImage({
+            backend: 'comfyui',
+            baseUrl: stubBase,
+            model: 'ckpt.safetensors',
+            comfyWorkflow: DEFAULT_COMFY_WORKFLOW,
+        });
+    });
+
     it('drafts a prompt from the chat with the active provider', async () => {
+        await configureImage({ backend: 'automatic1111', baseUrl: stubBase });
         requests.length = 0;
         const response = await call('POST', '/api/images/draft', { characterId: 'Aria', chatId });
         expect(response.statusCode).toBe(200);
@@ -317,6 +653,7 @@ describe('image generation routes', () => {
     });
 
     it('attaches a generated image to the chat as a SillyTavern media message', async () => {
+        await configureImage({ backend: 'automatic1111', baseUrl: stubBase });
         const generated = await call('POST', '/api/images/generate', {
             characterId: 'Aria',
             chatId,

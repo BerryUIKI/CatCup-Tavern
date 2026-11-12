@@ -12,6 +12,8 @@ export interface ImageRequest {
     steps: number;
     cfgScale: number;
     sampler: string;
+    /** ComfyUI KSampler scheduler; the other adapters ignore it. */
+    scheduler: string;
     /** `-1` asks the backend for a random seed. */
     seed: number;
 }
