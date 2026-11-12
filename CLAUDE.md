@@ -10,7 +10,7 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
 
-Current status: **0.2.1 released (2026-11-11)** — M1 and the 0.2.x MVP are complete; M2 is in progress with group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags and bulk actions usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (phase A: Settings and Providers landed 2026-11-12); follow `docs/DESIGN.md` for interface work.
+Current status: **0.3.0 released (2026-11-13)** — M1 and the 0.2.x MVP are complete; M2 has landed with group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags and bulk actions usable end to end. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (phase A: Settings and Providers landed 2026-11-12); follow `docs/DESIGN.md` for interface work.
 
 ## Commands
 
