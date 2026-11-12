@@ -1,0 +1,18 @@
+# Keep the working copy identical on every machine and in CI.
+#
+# Windows checkouts with `core.autocrlf=true` otherwise produce CRLF files
+# while Linux CI checks out LF, so `pnpm lint` (Biome) fails locally on files
+# CI accepts. `text=auto` normalises storage to LF; `eol=lf` checks text out
+# as LF everywhere, whatever the local `core.autocrlf` setting is.
+* text=auto eol=lf
+
+# Assets are not text and must never be converted.
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.woff binary
+*.woff2 binary
