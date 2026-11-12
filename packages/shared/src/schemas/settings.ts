@@ -7,6 +7,7 @@ import {
     quickReplySettingsPatchSchema,
     quickReplySettingsSchema,
 } from './quickreplies.js';
+import { DEFAULT_TTS_SETTINGS, ttsSettingsPatchSchema, ttsSettingsSchema } from './tts.js';
 
 export const generationSettingsSchema = z.object({
     temperature: z.number().min(0).max(2).default(1),
@@ -210,11 +211,14 @@ export const appSettingsSchema = z.object({
     authorNote: authorNoteSchema.default(DEFAULT_AUTHOR_NOTE),
     memory: memorySettingsSchema.default(DEFAULT_MEMORY_SETTINGS),
     quickReplies: quickReplySettingsSchema.default(DEFAULT_QUICK_REPLY_SETTINGS),
+    tts: ttsSettingsSchema.default(DEFAULT_TTS_SETTINGS),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
 export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
     providers: ProviderPublic[];
+    /** Whether a TTS API key is stored; the key itself never leaves the server. */
+    ttsHasKey: boolean;
 }
 
 export const settingsPatchSchema = z.object({
@@ -228,5 +232,8 @@ export const settingsPatchSchema = z.object({
     authorNote: authorNoteSchema.partial().optional(),
     memory: memorySettingsPatchSchema.optional(),
     quickReplies: quickReplySettingsPatchSchema.optional(),
+    tts: ttsSettingsPatchSchema.optional(),
+    /** Write-only: stored in data/secrets.json, never returned. Empty clears. */
+    ttsApiKey: z.string().max(2000).optional(),
 });
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
