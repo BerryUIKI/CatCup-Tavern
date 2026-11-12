@@ -10,6 +10,7 @@ import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
 import { generateImage as generateAutomatic1111Image } from '../images/automatic1111.js';
+import { generateImage as generateComfyImage } from '../images/comfyui.js';
 import { generateImage as generateOpenAiImage, requiresImageKey } from '../images/openaiCompatible.js';
 import { draftImagePrompt } from '../images/prompt.js';
 import { testImageBackend } from '../images/test.js';
@@ -209,6 +210,7 @@ export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
             steps: imageSettings.steps,
             cfgScale: imageSettings.cfgScale,
             sampler: imageSettings.sampler,
+            scheduler: imageSettings.scheduler,
             seed: imageSettings.seed,
         };
 
@@ -217,7 +219,9 @@ export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
             const result =
                 imageSettings.backend === 'automatic1111'
                     ? await generateAutomatic1111Image(imageSettings, apiKey, imageRequest, controller.signal)
-                    : await generateOpenAiImage(imageSettings, apiKey, imageRequest, controller.signal);
+                    : imageSettings.backend === 'comfyui'
+                      ? await generateComfyImage(imageSettings, apiKey, imageRequest, controller.signal)
+                      : await generateOpenAiImage(imageSettings, apiKey, imageRequest, controller.signal);
 
             const image = await saveImage(folder, result.data, result.format, {
                 prompt,

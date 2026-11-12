@@ -96,7 +96,7 @@ Read before changing behaviour:
 
 - **M0** (complete): scaffold, auth, card import, chat persistence, four provider families, streaming and dark tavern UI.
 - **M1** (complete): world info scanning/editor, Prompt Manager, ST preset import/export, message editing/branching, alternate greetings, model-aware tokenizer.
-- **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory (landed 2026-11-11), Quick Replies subset (landed 2026-11-12), TTS (landed 2026-11-12), image generation (Automatic1111 + OpenAI-compatible landed 2026-11-12; ComfyUI next), CharX, library polish. Regex scripts and card editing/export shipped in 0.2.0.
+- **M2** (in progress): group chats (storage, UI and generation landed; append modes, auto mode and multi-reply turns remain), summary memory (landed 2026-11-11), Quick Replies subset (landed 2026-11-12), TTS (landed 2026-11-12), image generation (Automatic1111, ComfyUI and OpenAI-compatible landed 2026-11-12), CharX, library polish. Regex scripts and card editing/export shipped in 0.2.0.
 - **M3** (planned): full STscript, Quick Replies, getContext/event bus, extension sandbox.
 - **M4** (planned): desktop signing, auto-updater, file associations and macOS/Linux builds. The Windows shell and packaging shipped in 0.2.0.
 - **M5** (planned): mobile, i18n, accessibility, CI, performance and v1.0 release.

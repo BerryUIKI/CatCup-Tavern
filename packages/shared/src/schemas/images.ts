@@ -8,8 +8,80 @@ import { z } from 'zod';
  * settings import can map them without guesswork.
  */
 
-export const IMAGE_BACKENDS = ['automatic1111', 'openai-compatible'] as const;
+export const IMAGE_BACKENDS = ['automatic1111', 'comfyui', 'openai-compatible'] as const;
 export type ImageBackend = (typeof IMAGE_BACKENDS)[number];
+
+/**
+ * SillyTavern's default KSampler scheduler. A1111 and OpenAI-compatible
+ * endpoints ignore it; only the ComfyUI workflow's `%scheduler%` uses it.
+ */
+export const DEFAULT_IMAGE_SCHEDULER = 'normal';
+
+/**
+ * SillyTavern's starter ComfyUI graph in API format, with CatCup as the
+ * filename prefix. Every value is a placeholder or a literal the KSampler
+ * accepts, so the workflow runs on a stock installation with one checkpoint
+ * named in Settings.
+ */
+export const DEFAULT_COMFY_WORKFLOW = `{
+    "3": {
+        "class_type": "KSampler",
+        "inputs": {
+            "cfg": "%scale%",
+            "denoise": 1,
+            "latent_image": ["5", 0],
+            "model": ["4", 0],
+            "negative": ["7", 0],
+            "positive": ["6", 0],
+            "sampler_name": "%sampler%",
+            "scheduler": "%scheduler%",
+            "seed": "%seed%",
+            "steps": "%steps%"
+        }
+    },
+    "4": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+            "ckpt_name": "%model%"
+        }
+    },
+    "5": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+            "batch_size": 1,
+            "height": "%height%",
+            "width": "%width%"
+        }
+    },
+    "6": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+            "clip": ["4", 1],
+            "text": "%prompt%"
+        }
+    },
+    "7": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+            "clip": ["4", 1],
+            "text": "%negative_prompt%"
+        }
+    },
+    "8": {
+        "class_type": "VAEDecode",
+        "inputs": {
+            "samples": ["3", 0],
+            "vae": ["4", 2]
+        }
+    },
+    "9": {
+        "class_type": "SaveImage",
+        "inputs": {
+            "filename_prefix": "CatCup",
+            "images": ["8", 0]
+        }
+    }
+}`;
 
 export const DEFAULT_IMAGE_PROMPT_PREFIX = 'best quality, absurdres, aesthetic,';
 
@@ -26,15 +98,23 @@ export const DEFAULT_IMAGE_PROMPT_TEMPLATE = `Ignore previous instructions. Repl
 export const imageGenerationSettingsSchema = z.object({
     enabled: z.boolean().default(false),
     backend: z.enum(IMAGE_BACKENDS).default('automatic1111'),
-    /** A1111/Forge root, e.g. `http://127.0.0.1:7860`; `/v1` for OpenAI-compatible. */
+    /**
+     * A1111/ComfyUI root, e.g. `http://127.0.0.1:7860` or
+     * `http://127.0.0.1:8188`; `/v1` for OpenAI-compatible.
+     */
     baseUrl: z.string().trim().max(2000).default('http://127.0.0.1:7860'),
-    /** Required by OpenAI-style endpoints; A1111 selects its model server-side. */
+    /**
+     * Required by OpenAI-style endpoints. For ComfyUI it is the checkpoint
+     * file name substituted for `%model%`; A1111 selects its model server-side.
+     */
     model: z.string().trim().max(200).default(''),
     width: z.number().int().min(64).max(2048).default(512),
     height: z.number().int().min(64).max(2048).default(512),
     steps: z.number().int().min(1).max(150).default(20),
     cfgScale: z.number().min(1).max(30).default(7),
     sampler: z.string().trim().max(120).default('DDIM'),
+    /** ComfyUI KSampler scheduler; A1111 and OpenAI-compatible ignore it. */
+    scheduler: z.string().trim().max(120).default(DEFAULT_IMAGE_SCHEDULER),
     /** `-1` lets the backend pick a random seed. */
     seed: z
         .number()
@@ -42,6 +122,11 @@ export const imageGenerationSettingsSchema = z.object({
         .min(-1)
         .max(2 ** 32 - 1)
         .default(-1),
+    /**
+     * ComfyUI API-format workflow JSON. `%name%` placeholders are replaced
+     * before the graph is posted to `/prompt`.
+     */
+    comfyWorkflow: z.string().max(200_000).default(DEFAULT_COMFY_WORKFLOW),
     promptPrefix: z.string().max(2000).default(DEFAULT_IMAGE_PROMPT_PREFIX),
     negativePrompt: z.string().max(4000).default(DEFAULT_IMAGE_NEGATIVE_PROMPT),
     /** Instruction for "Draft from chat"; sent to the active text provider. */
@@ -60,7 +145,9 @@ export const DEFAULT_IMAGE_GENERATION_SETTINGS: ImageGenerationSettings = {
     steps: 20,
     cfgScale: 7,
     sampler: 'DDIM',
+    scheduler: DEFAULT_IMAGE_SCHEDULER,
     seed: -1,
+    comfyWorkflow: DEFAULT_COMFY_WORKFLOW,
     promptPrefix: DEFAULT_IMAGE_PROMPT_PREFIX,
     negativePrompt: DEFAULT_IMAGE_NEGATIVE_PROMPT,
     promptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
@@ -84,12 +171,14 @@ export const imageGenerationPatchSchema = z.object({
     steps: z.number().int().min(1).max(150).optional(),
     cfgScale: z.number().min(1).max(30).optional(),
     sampler: z.string().trim().max(120).optional(),
+    scheduler: z.string().trim().max(120).optional(),
     seed: z
         .number()
         .int()
         .min(-1)
         .max(2 ** 32 - 1)
         .optional(),
+    comfyWorkflow: z.string().max(200_000).optional(),
     promptPrefix: z.string().max(2000).optional(),
     negativePrompt: z.string().max(4000).optional(),
     promptTemplate: z.string().max(10000).optional(),
@@ -99,7 +188,7 @@ export type ImageGenerationPatch = z.infer<typeof imageGenerationPatchSchema>;
 
 /** A generated image as the API and the chat media attachment describe it. */
 export interface GeneratedImage {
-    /** Gallery folder: the character id or the group id. */
+    /** Gallery folder: the sanitized character name or the group id. */
     folder: string;
     file: string;
     /** SillyTavern-style client path, `user/images/<folder>/<file>`. */

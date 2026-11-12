@@ -67,7 +67,7 @@ apps/server/
     cards/               PNG tEXt / JSON v2-v3 parsing
     generation/          shared SSE generation stream and stop registry
     group/               member resolution, speaker selection, reply cleanup
-    images/              image adapters, prompt drafting, connection test
+    images/              image adapters (A1111, ComfyUI, OpenAI-compatible), prompt drafting, connection test
     memory/              rolling summaries: schedule, request building, injection
     providers/           provider adapters (normalized streaming chunks)
     prompt/              prompt assembly, macros, token budget

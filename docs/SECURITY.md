@@ -8,7 +8,7 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 - the access password;
 - the session cookie;
-- provider API keys in `data/secrets.json`, plus the text-to-speech key under the fixed `tts` entry;
+- provider API keys in `data/secrets.json`, plus the text-to-speech key under the fixed `tts` entry and the image generation key under `image`;
 - characters, chats and world info in `data/`;
 - the machine and network the server runs on.
 
@@ -73,6 +73,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - The image generation key is stored in `data/secrets.json` under the fixed `image` entry; responses expose only `imageHasKey`.
 - A generation request sends the final prompt (and the configured prefix and negative prompt) to the image backend. **Draft from chat** separately sends the recent chat messages to the active chat provider, so the same trust boundary as normal generation applies.
 - A URL returned by an OpenAI-compatible image endpoint is downloaded by the server. Only `http`/`https` URLs are followed, the response is capped at 25 MB, and the bytes must be a PNG, JPEG or WebP by magic number.
+- ComfyUI receives the workflow graph from `imageGeneration.comfyWorkflow`, with the prompt and sampling values substituted. CatCup does not execute the workflow; custom nodes run on the ComfyUI host with that host's permissions, so point CatCup only at an instance you trust. The adapter also posts `/interrupt` to that base URL when the browser disconnects or the job times out, and only for the job it queued.
 - Generated images are served through the authenticated `/api/images/:folder/:file` route with `X-Content-Type-Options: nosniff`. Folder and file names are validated and resolved inside `data/user/images/`, so a crafted name cannot read settings or another file.
 - Image content comes from the configured provider and is not scanned or filtered. Treat it like any other unreviewed download.
 

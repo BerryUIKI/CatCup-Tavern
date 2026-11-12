@@ -142,6 +142,19 @@ Settings → Images must be enabled and saved. The buttons appear in the chat he
 - A `502 IMAGE_FAILED` includes the provider's response detail. The server log has the same message.
 - If the provider returns an image URL, the server downloads it; a URL that is not reachable from the server fails even when the browser could open it.
 
+**ComfyUI fails**
+
+- Use the ComfyUI root as the base URL, e.g. `http://127.0.0.1:8188`, without `/prompt`.
+- Check it answers: `curl http://127.0.0.1:8188/system_stats`.
+- The workflow must be the **API format** export from ComfyUI (**Save (API Format)**), not the regular save. A graph with `nodes` and `links` arrays is rejected with `400 IMAGE_CONFIG`.
+- The default workflow uses `%model%`, so enter the checkpoint file name exactly as ComfyUI lists it, including the extension. Leave Model empty only when the workflow names its own checkpoint.
+- Sampler and scheduler names must be ones the installed ComfyUI offers; check its KSampler dropdown. A wrong name is rejected when the graph is submitted, and the error names the node and the rejected value.
+- “ComfyUI finished without an image” means the workflow has no `SaveImage` output node.
+- A generation gets five minutes. If the browser disconnects or the job times out, CatCup posts `/interrupt` for the job it queued; a job that has already finished is left alone.
+- A missing custom node or a bad input is reported when ComfyUI validates the graph, with the node and the reason. A node that is present but fails while running adds its traceback to the `502 IMAGE_FAILED` message, e.g. `KSampler [3] RuntimeError: …`.
+- If a reverse proxy protects ComfyUI with HTTP Basic auth, enter `user:password` in the key field.
+- The workflow is sent as-is apart from placeholder substitution. Only point CatCup at a ComfyUI instance you trust, since its custom nodes run with that instance's permissions.
+
 **“Draft from chat” fails**
 
 Drafting uses the active chat provider, not the image backend. Check that a provider is configured and that the chat has at least one message. `IMAGE_PROMPT_FAILED` is a chat-provider error; `IMAGE_PROMPT_EMPTY` means there was nothing to summarize.

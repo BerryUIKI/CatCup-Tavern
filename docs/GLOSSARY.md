@@ -56,7 +56,9 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **TTS (text to speech)** — Speaking a reply aloud. CatCup uses either the browser's speech synthesis or an OpenAI-compatible `/audio/speech` endpoint, with per-character voices, a narrator voice and autoplay. Audio is generated on demand and not stored.
 
-**Image generation** — Producing an illustration from a text prompt. CatCup calls Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, stores the result under `data/user/images/`, and can insert it into a chat as a SillyTavern media message.
+**Image generation** — Producing an illustration from a text prompt. CatCup calls Automatic1111/Forge, a ComfyUI workflow or an OpenAI-compatible `/images/generations` endpoint, stores the result under `data/user/images/`, and can insert it into a chat as a SillyTavern media message.
+
+**ComfyUI workflow** — A JSON graph of ComfyUI nodes in API format, stored in `imageGeneration.comfyWorkflow`. CatCup replaces `%prompt%`, `%negative_prompt%`, `%seed%`, `%width%`, `%height%`, `%steps%`, `%scale%`, `%sampler%`, `%scheduler%` and `%model%`, then posts it to `/prompt` and waits for the result.
 
 **Gallery** — The per-character or per-group set of generated images under `data/user/images/<folder>/`, listed in a dialog with download, insert and delete actions.
 

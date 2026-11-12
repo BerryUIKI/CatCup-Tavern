@@ -6,20 +6,25 @@ import { imageFailed, readProviderError, validateImageBaseUrl } from './http.js'
 const TEST_TIMEOUT_MS = 15_000;
 
 /**
- * Check that the image endpoint answers. A1111 exposes `/sdapi/v1/options`;
- * OpenAI-compatible servers usually answer `/models`, though a server can
- * generate images without implementing that route.
+ * Check that the image endpoint answers. A1111 exposes `/sdapi/v1/options`,
+ * ComfyUI exposes `/system_stats`, and OpenAI-compatible servers usually answer
+ * `/models`, though a server can generate images without implementing that route.
  */
 export async function testImageBackend(settings: ImageGenerationSettings, apiKey: string | undefined): Promise<void> {
     validateImageBaseUrl(settings.baseUrl);
 
-    const endpoint = settings.backend === 'automatic1111' ? 'sdapi/v1/options' : 'models';
+    const endpoint =
+        settings.backend === 'automatic1111'
+            ? 'sdapi/v1/options'
+            : settings.backend === 'comfyui'
+              ? 'system_stats'
+              : 'models';
     const headers: Record<string, string> = {};
     if (apiKey) {
         headers.authorization =
-            settings.backend === 'automatic1111'
-                ? `Basic ${Buffer.from(apiKey).toString('base64')}`
-                : `Bearer ${apiKey}`;
+            settings.backend === 'openai-compatible'
+                ? `Bearer ${apiKey}`
+                : `Basic ${Buffer.from(apiKey).toString('base64')}`;
     }
 
     let response: Response;

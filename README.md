@@ -27,7 +27,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 - **Summary memory.** A rolling summary stored in the chat file the way SillyTavern's Memory extension stores it, with automatic updates, an editable Memory panel, configurable injection position and template, and a Memory tab in the context inspector.
 - **Quick Replies (subset).** SillyTavern version 2 quick reply sets, imported or built in Settings → Quick Replies, shown as a bar above the message box. Plain-text buttons fill the composer; `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute, chained with `|`. Group chats can pick who a `/trigger` asks.
 - **Text to speech.** Browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, autoplay, and a play button on every reply.
-- **Image generation.** Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat as SillyTavern media messages.
+- **Image generation.** Automatic1111/Forge, a ComfyUI API workflow or an OpenAI-compatible `/images/generations` endpoint, a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat as SillyTavern media messages.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
@@ -37,7 +37,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 ### What is next
 
-STscript and the full Quick Replies engine, SillyTavern extensions, ComfyUI image workflows and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+STscript and the full Quick Replies engine, SillyTavern extensions and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
 
 ### Screenshots
 
