@@ -2,6 +2,7 @@ import type {
     AttachImageRequest,
     AuthStatus,
     CharacterDetail,
+    CharacterExportFormat,
     CharacterPatch,
     CharacterSummary,
     ChatDetail,
@@ -273,7 +274,7 @@ export const api = {
             });
             return data.character;
         },
-        exportUrl: (id: string, format: 'png' | 'json') =>
+        exportUrl: (id: string, format: CharacterExportFormat) =>
             `/api/characters/${encodeURIComponent(id)}/export?format=${format}`,
         import: (files: File[]) => {
             const form = new FormData();

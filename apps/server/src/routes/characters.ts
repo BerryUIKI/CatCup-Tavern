@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises';
 
-import { characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
+import { type CharacterDetail, characterPatchSchema, type ImportCharactersResponse } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
+import { buildCharx, parseCharx } from '../cards/charx.js';
 import { parseJsonCard } from '../cards/parse.js';
-import { buildCardPayload } from '../cards/write.js';
+import { buildCardPayload, writePngCard } from '../cards/write.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';
 import {
     deleteCharacter,
     getCharacterFile,
@@ -24,7 +26,7 @@ const idParamsSchema = z.object({
 });
 
 const exportQuerySchema = z.object({
-    format: z.enum(['png', 'json']).default('png'),
+    format: z.enum(['png', 'json', 'charx']).default('png'),
 });
 
 /** The card that ships with the app, relative to the assets folder. */
@@ -109,6 +111,22 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
 
         const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
 
+        if (format === 'charx') {
+            const assets = await readCharacterAssets(found.detail.id);
+            const avatar = found.detail.format === 'png' ? await readFile(found.filePath) : null;
+            const archive = buildCharx({
+                rawCard: found.detail.rawCard,
+                name: found.detail.name,
+                id: found.detail.id,
+                avatar,
+                assets,
+            });
+            return reply
+                .header('Content-Type', 'application/zip')
+                .header('Content-Disposition', `attachment; filename="${safeName}.charx"`)
+                .send(archive);
+        }
+
         if (format === 'png') {
             if (found.detail.format !== 'png') {
                 throw badRequest('This card has no image; export it as JSON instead.');
@@ -161,13 +179,29 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             const fileName = part.filename ?? 'card';
             const buffer = await part.toBuffer();
 
-            if (!/\.(png|json)$/i.test(fileName)) {
-                errors.push({ fileName, message: 'Only .png and .json character cards are supported' });
+            if (!/\.(png|json|charx)$/i.test(fileName)) {
+                errors.push({ fileName, message: 'Only .png, .json and .charx character cards are supported' });
                 continue;
             }
 
             try {
-                const detail = await importCharacter(fileName, buffer);
+                let detail: CharacterDetail;
+                if (/\.charx$/i.test(fileName)) {
+                    const parsed = parseCharx(buffer);
+                    const payload = buildCardPayload(parsed.card.raw, {});
+                    if (parsed.icon) {
+                        const png = writePngCard(new Uint8Array(parsed.icon), payload);
+                        detail = await importCharacter('character.png', Buffer.from(png));
+                    } else {
+                        const json = `${JSON.stringify(payload, null, 2)}\n`;
+                        detail = await importCharacter('character.json', Buffer.from(json, 'utf8'));
+                    }
+                    await storeCharacterAssets(detail.id, parsed.assets).catch((error) => {
+                        request.log.warn({ err: error, characterId: detail.id }, 'CharX assets were not stored');
+                    });
+                } else {
+                    detail = await importCharacter(fileName, buffer);
+                }
                 const { card: _card, rawCard: _rawCard, ...summary } = detail;
                 imported.push(summary);
             } catch (error) {

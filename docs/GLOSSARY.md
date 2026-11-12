@@ -8,6 +8,10 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **V2 / V3 card** — Character Card specification versions. V2 stores data under `data` with `chara` in PNG; V3 adds assets and other fields under `ccv3`. CatCup reads both and normalizes to the V3 data shape.
 
+**CharX** — RisuAI's character archive: a ZIP with a V3 `card.json`, `assets/**` files and optionally a Risu `module.risum`. CatCup imports the card and assets and can export them back; Risu modules are skipped.
+
+**Character asset** — A file inside a CharX package (icon, expression, background, audio). CatCup uses a PNG icon as the character image and keeps every asset under `data/character-assets/` for export, but does not display non-icon assets yet.
+
 **`chara` / `ccv3`** — PNG `tEXt` chunk keys holding base64-encoded card JSON. `ccv3` takes precedence.
 
 **Character book** — A lorebook embedded inside a character card. CatCup can copy it into the world info library and link it to the card with **Import lore**.

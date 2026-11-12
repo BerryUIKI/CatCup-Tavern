@@ -175,7 +175,7 @@ export function Sidebar({
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".png,.json"
+                        accept=".png,.json,.charx"
                         multiple
                         className="hidden"
                         onChange={(event) => handleFiles(event.target.files)}

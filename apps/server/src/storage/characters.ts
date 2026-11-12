@@ -7,6 +7,7 @@ import writeFileAtomic from 'write-file-atomic';
 
 import { parseCardBuffer } from '../cards/parse.js';
 import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/write.js';
+import { deleteCharacterAssets } from './characterAssets.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 
@@ -243,6 +244,9 @@ export async function deleteCharacter(id: string): Promise<boolean> {
     }
     await withFileLock(found.filePath, () => unlink(found.filePath));
     cache.delete(found.detail.fileName);
+    await deleteCharacterAssets(found.detail.id).catch((error) => {
+        console.error(`[characters] Failed to remove assets for ${found.detail.id}:`, error);
+    });
     return true;
 }
 

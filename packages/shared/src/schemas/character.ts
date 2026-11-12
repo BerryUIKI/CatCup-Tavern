@@ -114,7 +114,7 @@ export const characterPatchSchema = z
     .strict();
 
 /** How a card is exported. */
-export type CharacterExportFormat = 'png' | 'json';
+export type CharacterExportFormat = 'png' | 'json' | 'charx';
 
 export type CharacterBookEntry = z.infer<typeof characterBookEntrySchema>;
 export type CharacterBook = z.infer<typeof characterBookSchema>;

@@ -11,6 +11,9 @@ data/
 ├── characters/
 │   ├── Seraphina.png
 │   └── Custom.json
+├── character-assets/          # assets extracted from CharX packages
+│   └── Seraphina/
+│       └── assets/…
 ├── chats/
 │   └── Seraphina/
 │       └── Seraphina - 2026-11-09_18-42-29.jsonl
@@ -41,6 +44,7 @@ The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data
 | --------------- | ------------------------------------ | --------------------------------------------------------------------------------------------- |
 | Character       | File name without `.png` / `.json`   | `Seraphina.png` → `Seraphina`; URL-encode in API paths                                        |
 | Avatar          | `/api/characters/<id>/avatar`        | PNG cards only; cache-busted by `?v=<mtime>`                                                  |
+| Character asset | Archive path under the character id  | `data/character-assets/<id>/assets/…`; copied from a CharX package and used on export         |
 | Chat            | JSONL file name without `.jsonl`     | The chat folder is the sanitized character name, with the character ID accepted as a fallback |
 | Group           | JSON file name without `.json`       | `data/groups/<id>.json`; `members` reference avatar file names, not ids                       |
 | Group chat      | JSONL file name without `.jsonl`     | Flat folder `data/group chats/`, as SillyTavern stores it                                     |
@@ -61,7 +65,7 @@ Character metadata is stored in PNG `tEXt` chunks:
 
 `ccv3` takes precedence over `chara`, matching SillyTavern. A PNG without either chunk is rejected during import.
 
-The avatar is the PNG itself. Card import is read-only today; writing edited metadata back into a PNG is planned for M2.
+The avatar is the PNG itself. Editing a card rewrites the `chara` and `ccv3` chunks in place; see “Writing cards back” below.
 
 ### JSON cards
 
@@ -109,16 +113,27 @@ The server normalizes every card into the V3 data shape. Unknown fields are pres
 | `creator`                                      | string     | Sidebar display                                                                       |
 | `character_version`                            | string     | Metadata                                                                              |
 | `extensions`                                   | record     | Free-form; preserved                                                                  |
-| `assets`                                       | unknown[]? | V3 assets; preserved                                                                  |
+| `assets`                                       | unknown[]? | V3 assets; preserved, with CharX files under `data/character-assets/`                 |
 | `source`, `creation_date`, `modification_date` | optional   | Preserved                                                                             |
 
 Character book entries use V2 character-book fields such as `keys`, `secondary_keys`, `content`, `enabled`, `insertion_order`, `case_sensitive`, `selective`, `constant`, `position` and `extensions`. See `packages/shared/src/schemas/character.ts`.
 
 ### Import limits
 
-- `.png` and `.json` only; `.charx` is not supported yet.
-- 20 MB per file, 50 files per request.
+- `.png`, `.json` and `.charx`; other extensions are reported per file.
+- 20 MB per uploaded file, 50 files per request.
+- A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
 - The saved file name is the sanitized card name. Name collisions get ` (2)`, ` (3)`, and so on.
+
+### CharX packages
+
+A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. CatCup imports it as a normal character:
+
+- A PNG icon asset (`type: "icon"`, `uri: "embeded://assets/…"`) becomes the character image, and the card is stored as a PNG card with `chara` and `ccv3` chunks. Without a PNG icon the card is stored as JSON and has no avatar.
+- Every safe `assets/**` entry is written under `data/character-assets/<character id>/` with its archive-relative path. CatCup does not display these files yet; they are kept so an export can include them.
+- `module.risum` and root files other than `card.json` are skipped. `.charx` embedded-JPEG files (`charxJpeg`) are not recognized.
+
+`GET /api/characters/:id/export?format=charx` writes a V3 `card.json` and the stored assets. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
 
 ### Writing cards back
 
