@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -43,6 +43,19 @@ async function generate(url: string, body: Record<string, unknown>): Promise<str
     });
     expect(response.status).toBe(200);
     return response.text();
+}
+
+/** Simulate the partial reply a stopped stream persists. */
+async function markLastStopped(chatId: string): Promise<void> {
+    const file = path.join(root, 'chats', 'Aria', `${chatId}.jsonl`);
+    const lines = (await readFile(file, 'utf8')).trimEnd().split('\n');
+    const header = lines[0];
+    const messages = lines.slice(1).map((line) => JSON.parse(line) as Record<string, unknown>);
+    const last = messages[messages.length - 1];
+    if (last) {
+        last.extra = { ...(last.extra as Record<string, unknown> | undefined), stopped: true };
+    }
+    await writeFile(file, `${[header, ...messages.map((message) => JSON.stringify(message))].join('\n')}\n`);
 }
 
 beforeAll(async () => {
@@ -148,6 +161,23 @@ describe('generate routes', () => {
         expect(messages).toHaveLength(2);
         expect(messages[1]).toMatchObject({ mes: 'Stub reply.' });
         expect(messages[1].extra).toMatchObject({ swipe_id: 1, swipes: ['Stub reply.Stub reply.', 'Stub reply.'] });
+    });
+
+    it('clears a stopped marker when continue or regenerate completes the reply', async () => {
+        const chatId = await createChat();
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
+
+        await markLastStopped(chatId);
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'continue' });
+        let chat = await call('GET', `/api/chats/Aria/${encodeURIComponent(chatId)}`);
+        let messages = chat.json().chat.messages as Array<Record<string, unknown>>;
+        expect((messages[1]?.extra as Record<string, unknown> | undefined)?.stopped).toBeUndefined();
+
+        await markLastStopped(chatId);
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'regenerate' });
+        chat = await call('GET', `/api/chats/Aria/${encodeURIComponent(chatId)}`);
+        messages = chat.json().chat.messages as Array<Record<string, unknown>>;
+        expect((messages[1]?.extra as Record<string, unknown> | undefined)?.stopped).toBeUndefined();
     });
 
     it('appends a new reply when regenerating after a narrator note', async () => {

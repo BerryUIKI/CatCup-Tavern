@@ -9,6 +9,7 @@ import {
     DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
     DEFAULT_QUICK_REPLY_SETTINGS,
+    DEFAULT_TTS_SETTINGS,
     DEFAULT_UI_SETTINGS,
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
@@ -78,6 +79,7 @@ function createDefaultSettings(): AppSettings {
         authorNote: { ...DEFAULT_AUTHOR_NOTE },
         memory: { ...DEFAULT_MEMORY_SETTINGS },
         quickReplies: { ...DEFAULT_QUICK_REPLY_SETTINGS },
+        tts: { ...DEFAULT_TTS_SETTINGS },
     };
 }
 
@@ -191,6 +193,28 @@ export async function getProviderSecret(providerId: string): Promise<string | un
     return secrets[providerId];
 }
 
+/** The single TTS key lives beside provider keys, under a fixed name. */
+const TTS_SECRET_KEY = 'tts';
+
+export async function getTtsSecret(): Promise<string | undefined> {
+    return (await getSecrets())[TTS_SECRET_KEY];
+}
+
+export async function setTtsSecret(apiKey: string | undefined): Promise<void> {
+    if (apiKey === undefined) {
+        return;
+    }
+    await withFileLock(paths.secrets, async () => {
+        const secrets = await getSecrets();
+        if (apiKey === '') {
+            delete secrets[TTS_SECRET_KEY];
+        } else {
+            secrets[TTS_SECRET_KEY] = apiKey;
+        }
+        await writeJsonFile(paths.secrets, secrets);
+    });
+}
+
 async function setProviderSecret(providerId: string, apiKey: string | undefined): Promise<void> {
     if (apiKey === undefined) {
         return;
@@ -217,7 +241,8 @@ export async function getPublicProviders(): Promise<ProviderPublic[]> {
 
 export async function getSettingsResponse(): Promise<SettingsResponse> {
     const settings = await getSettings();
-    return { ...settings, providers: await getPublicProviders() };
+    const [providers, secrets] = await Promise.all([getPublicProviders(), getSecrets()]);
+    return { ...settings, providers, ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]) };
 }
 
 export async function getProvider(providerId: string): Promise<ProviderConfig | null> {
@@ -234,7 +259,7 @@ export async function getActiveProvider(): Promise<ProviderConfig | null> {
     return settings.providers.find((provider) => provider.enabled) ?? null;
 }
 
-export async function updateSettings(patch: SettingsPatch): Promise<AppSettings> {
+async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
     return mutateSettings((settings) => {
         if (patch.activeProviderId !== undefined) {
             if (
@@ -281,8 +306,25 @@ export async function updateSettings(patch: SettingsPatch): Promise<AppSettings>
         if (patch.quickReplies) {
             settings.quickReplies = { ...settings.quickReplies, ...patch.quickReplies };
         }
+        if (patch.tts) {
+            settings.tts = { ...settings.tts, ...patch.tts };
+        }
         return settings;
     });
+}
+
+/**
+ * Persist settings and, when the patch carries one, the TTS key.
+ *
+ * The key is written to `secrets.json` only after the settings save succeeds,
+ * so a failed patch cannot leave a new key behind.
+ */
+export async function updateSettings(patch: SettingsPatch): Promise<AppSettings> {
+    const settings = await mutateSettingsNow(patch);
+    if (patch.ttsApiKey !== undefined) {
+        await setTtsSecret(patch.ttsApiKey);
+    }
+    return settings;
 }
 
 /**

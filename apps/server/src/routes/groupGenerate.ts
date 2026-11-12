@@ -92,6 +92,7 @@ async function saveGroupSwipe(
     context: PersistContext,
     text: string,
     extra: Record<string, unknown>,
+    stopped: boolean,
 ): Promise<ChatMessage> {
     if (context.regenerateIndex === null) {
         throw new Error('No message to regenerate');
@@ -127,7 +128,7 @@ async function saveGroupSwipe(
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
-        extraDelete: ['memory'],
+        extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
     });
 }
 
@@ -160,7 +161,7 @@ async function persistGroupReply(
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
-        return saveGroupSwipe(context, storedText, extra);
+        return saveGroupSwipe(context, storedText, extra, stopped);
     }
 
     if (context.action === 'continue' && context.continueIndex !== null && context.originalAssistant) {
@@ -173,8 +174,9 @@ async function persistGroupReply(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
-            // The message grew, so a summary anchored to it is out of date.
-            extraDelete: ['memory'],
+            // The message grew, so a summary anchored to it is out of date. A
+            // completed continuation also clears the old partial marker.
+            extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
         });
     }
 
