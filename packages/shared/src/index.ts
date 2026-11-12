@@ -13,5 +13,7 @@ export * from './schemas/provider.js';
 export * from './schemas/quickreplies.js';
 export * from './schemas/regex.js';
 export * from './schemas/settings.js';
+export * from './schemas/tts.js';
 export * from './schemas/worldinfo.js';
+export * from './tts.js';
 export * from './utils.js';

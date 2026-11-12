@@ -8,7 +8,7 @@ CatCup Tavern is a **SillyTavern-compatible AI roleplay client**, not a generic 
 
 1. **Experience first.** Follow SillyTavern's information architecture (character rail, chat stream, settings/parameters) and invest in a darker, quieter tavern atmosphere. Do not redesign for the sake of looking different.
 2. **Data stays portable.** ST cards, chats, world info and presets import/export cleanly; files we write should remain readable by ST.
-3. **Server-authoritative.** Prompt assembly, provider calls, API keys and persistence happen on the Node server. The browser only holds a session cookie.
+3. **Server-authoritative.** Prompt assembly, chat provider calls, API keys and persistence happen on the Node server. The browser only holds a session cookie. The one exception is the browser TTS backend, which speaks through the browser's voices and involves no CatCup key or server call.
 4. **One codebase, three shapes.** Web, LAN and the Tauri desktop shell share the same server + SPA.
 5. **Progressive compatibility.** Data formats and core semantics first; STscript and extension APIs in layers.
 
@@ -71,10 +71,11 @@ apps/server/
     providers/           provider adapters (normalized streaming chunks)
     prompt/              prompt assembly, macros, token budget
     quickreplies/        quick reply parsing target, command execution
-    routes/              auth / characters / chats / generate / groups / memory / quick replies / providers / settings
+    routes/              auth / characters / chats / generate / groups / memory / quick replies / tts / providers / settings
     security/            scrypt password, HMAC session
     storage/             ST-compatible file storage, atomic writes, file locks
     sse.ts               client SSE writer
+    tts/                 OpenAI-compatible speech adapter
 apps/web/
   src/
     components/          auth, sidebar, chat, settings
@@ -104,7 +105,7 @@ data/
 ├── quickreplies/              # ST Quick Replies v2 sets
 ├── regex.json                 # Regex scripts
 ├── settings.json
-├── secrets.json               # API keys, server-only
+├── secrets.json               # API keys and the TTS key, server-only
 └── auth.json                  # password hash + session secret
 ```
 
@@ -155,6 +156,7 @@ REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a
 | CRUD         | `/api/quick-replies`                          | quick reply sets and their files           |
 | POST         | `/api/chats/…/quick-replies/execute`          | run a quick reply, returns client actions  |
 | POST         | `/api/groups/…/quick-replies/execute`         | the same for a group chat                  |
+| POST         | `/api/tts/speak`                              | text to speech; returns audio bytes        |
 | GET/PATCH    | `/api/settings`                               | app settings                               |
 | CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
 | POST         | `/api/providers/:id/test`                     | connectivity test                          |
@@ -223,7 +225,7 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 - Password: `scrypt` (N=16384, r=8, p=1), constant-time comparison.
 - Session: HMAC-SHA256 signed cookie, `HttpOnly` + `SameSite=Lax`, 30-day default.
 - First-run setup accepts loopback requests only.
-- API keys: only `data/secrets.json`; responses expose `hasKey` only; logs redact `authorization`, `cookie` and `x-api-key`.
+- API keys: only `data/secrets.json`; responses expose `hasKey` only (providers) or `ttsHasKey` (text to speech); logs redact `authorization`, `cookie` and `x-api-key`.
 - Paths: every `:id` / `:chatId` passes through `resolveInside()` to block traversal.
 - Login rate limiting; put the LAN server behind HTTPS when exposing it beyond a trusted network.
 - Uploads: 20 MB per file, `.png` / `.json` only.

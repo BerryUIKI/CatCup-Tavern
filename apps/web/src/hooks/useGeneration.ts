@@ -1,4 +1,4 @@
-import type { GenerateAction, GenerationSpeaker } from '@catcup/shared';
+import type { ChatMessage, GenerateAction, GenerationSpeaker } from '@catcup/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -19,6 +19,10 @@ interface GenerationState {
     /** The member the server chose to speak, for group chats. */
     speaker: GenerationSpeaker | null;
     error: string | null;
+    /** The message the server persisted for the last completed stream. */
+    lastReply: ChatMessage | null;
+    /** Increments once per `done` event, so views can react exactly once. */
+    replySequence: number;
 }
 
 const INITIAL_STATE: GenerationState = {
@@ -30,6 +34,8 @@ const INITIAL_STATE: GenerationState = {
     reasoningText: '',
     speaker: null,
     error: null,
+    lastReply: null,
+    replySequence: 0,
 };
 
 export function useGeneration(target: GenerationTarget | null, chatId: string | null, onDone?: () => void) {
@@ -102,7 +108,8 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                 return;
             }
 
-            setState({
+            setState((current) => ({
+                ...current,
                 streaming: true,
                 action,
                 generationId: null,
@@ -111,7 +118,7 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                 reasoningText: '',
                 speaker: null,
                 error: null,
-            });
+            }));
 
             const controller = new AbortController();
             abortRef.current = controller;
@@ -156,7 +163,12 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                                 ...current,
                                 reasoningText: current.reasoningText + text,
                             })),
-                        onDone: () => {
+                        onDone: (persisted) => {
+                            setState((current) => ({
+                                ...current,
+                                lastReply: persisted,
+                                replySequence: current.replySequence + 1,
+                            }));
                             void finish();
                         },
                         onError: (errorMessage) => {

@@ -38,6 +38,11 @@ Common codes:
 | `NOT_FOUND`           | 404       | Character, chat, message, provider or avatar not found |
 | `CONFLICT`            | 409       | A quick reply set name is already taken                |
 | `ALREADY_INITIALIZED` | 409       | Setup attempted after a password exists                |
+| `TTS_DISABLED`        | 400       | Text to speech is switched off                         |
+| `TTS_KEY_MISSING`     | 400       | The OpenAI TTS endpoint has no key                     |
+| `TTS_CONFIG`          | 400       | TTS base URL or model is missing                       |
+| `TTS_SYSTEM_BACKEND`  | 400       | The browser TTS backend cannot be called on the server |
+| `TTS_FAILED`          | 502       | The speech provider request failed                     |
 | `PAYLOAD_TOO_LARGE`   | 413       | Upload or request body too large                       |
 | `PROVIDER_ERROR`      | 502       | Upstream provider request failed                       |
 | —                     | 500       | Unhandled server error                                 |
@@ -639,7 +644,26 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
         "quickReplies": {
             "enabled": true,
             "setList": [{ "set": "Combat", "isVisible": true }]
-        }
+        },
+        "tts": {
+            "enabled": false,
+            "backend": "system",
+            "baseUrl": "https://api.openai.com/v1",
+            "model": "tts-1",
+            "voice": "",
+            "format": "mp3",
+            "speed": 1,
+            "instructions": "",
+            "rate": 1,
+            "pitch": 1,
+            "autoplay": true,
+            "narratorVoice": "",
+            "characterVoices": {},
+            "skipCodeBlocks": true,
+            "stripTags": true,
+            "stripAsterisks": true
+        },
+        "ttsHasKey": false
     }
 }
 ```
@@ -649,6 +673,8 @@ Group chats, backgrounds, themes and SillyTavern's own settings are not imported
 `memory.enabled` turns automatic updates on; a stored summary is injected whenever `memory.position` is not `-1`, even with automatic updates off, and the Memory panel can always create or edit one. `position` is `-1` not injected, `0` after the main prompt, `1` in chat at `depth`, `2` before the main prompt; `role` is `0` system, `1` user, `2` assistant. `prompt` is the summarize instruction (`{{words}}` becomes `promptWords`; normal macros also expand). `promptInterval` and `promptForceWords` are the two update triggers, and `0` disables either. `maxMessages` caps one summary request (`0` uses the context budget), and `responseLength` overrides the summary's token limit (`0` uses the generation setting). `scan` adds the summary to the world info scan.
 
 `quickReplies.enabled` shows the quick reply bar above the message box. `setList` is the bar's order; each `set` is a set's name and `isVisible` hides its buttons without removing it. A chat can add its own links in `chat_metadata.quickReply`, in SillyTavern's shape; those are read but have no editor yet.
+
+`tts.enabled` is the master switch for play buttons and autoplay. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` call). `baseUrl`, `model`, `voice`, `format`, `speed` and `instructions` configure the remote backend; `rate` and `pitch` configure the browser one. `voice` is the default; empty uses the backend default (alloy for OpenAI, the browser voice for system). `characterVoices` maps a character id to a voice, and `narratorVoice` overrides the default for narrator notes. The three `skip`/`strip` flags control text cleaning. `ttsHasKey` reports whether a TTS key is stored; the key itself is never returned.
 
 ### `PATCH /api/settings`
 
@@ -664,11 +690,15 @@ Partial update. All fields are optional:
     "worldInfo": { "globalBooks": ["eldoria"], "recursive": true },
     "authorNote": { "enabled": true, "prompt": "Stay in character.", "interval": 2 },
     "memory": { "enabled": true, "promptInterval": 8, "position": 1, "depth": 2 },
-    "quickReplies": { "enabled": true, "setList": [{ "set": "Combat", "isVisible": true }] }
+    "quickReplies": { "enabled": true, "setList": [{ "set": "Combat", "isVisible": true }] },
+    "tts": { "enabled": true, "backend": "openai-compatible", "voice": "nova" },
+    "ttsApiKey": "sk-…"
 }
 ```
 
 `activeProviderId` must reference an existing provider. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
+
+`ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`.
 
 ## Providers
 
@@ -1055,6 +1085,22 @@ A quick reply message that does not start with `/` is plain text. Otherwise it i
 | `/run <label>`      | `/call`, `/exec`, `/:` | Runs another quick reply by label from an active set, or as `Set.Label` for any set.                                             |
 
 `/trigger`, `/continue`, `/regenerate` and a plain-text reply must be the last step: the subset does not await a generation mid-script. Named arguments are command-scoped: `name` on `/send` and `/sys`, `title` and `severity` on `/echo`, and `await`, `return`, `compact` or `raw` only where the command defines them. Those ST arguments are accepted and ignored; `at` and `args` are rejected with `400`, as is any argument a command does not declare. A set's `disableSend` pastes the whole reply into the message box instead of running it; `injectInput` and `placeBeforeInput` apply when text is inserted.
+
+## Text to speech
+
+The browser backend (`tts.backend = "system"`) speaks through `speechSynthesis` and makes no server request. The OpenAI-compatible backend calls the configured `/audio/speech` endpoint with the stored key; the browser receives audio bytes and never sees the key.
+
+### `POST /api/tts/speak`
+
+```json
+{ "text": "The lantern flickers.", "voice": "nova" }
+```
+
+`voice` is optional; without it the default voice from settings is used. The body is limited to 4000 characters, so the web client splits longer messages into chunks and plays them in order. Response: the provider's audio bytes, with its `Content-Type` and `Cache-Control: no-store`.
+
+Errors: `400 TTS_DISABLED` when text to speech is off, `400 TTS_SYSTEM_BACKEND` when the browser backend is selected, `400 TTS_KEY_MISSING` when `baseUrl` is an `api.openai.com` host and no key is stored, `400 TTS_CONFIG` when the base URL or model is empty, and `502 TTS_FAILED` when the upstream request fails or returns empty or JSON audio.
+
+Audio is generated on demand and is not written to the data directory.
 
 ## Notes and limits
 

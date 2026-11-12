@@ -1,6 +1,6 @@
 # Providers
 
-CatCup Tavern speaks to four provider families through a small adapter interface. All provider calls happen on the server, so API keys never reach the browser.
+CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech endpoints through a separate adapter. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
 
 ## Provider kinds
 
@@ -30,7 +30,7 @@ Providers are stored in `data/settings.json` as public configuration:
 }
 ```
 
-`headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID. The API returns `hasKey` only; it never returns the key.
+`headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
 The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. A new provider starts as a `custom` endpoint — the kind that takes any base URL — and the model field accepts any id: **Load** only fills the suggestion list from the provider's own model endpoint.
 
@@ -169,9 +169,19 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 6. Update this page, [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) and `CHANGELOG.md`.
 7. If the adapter is derived from ST or RisuAI, update `NOTICE` and [REUSE.md](REUSE.md).
 
+## Text to speech
+
+Settings → TTS has two backends:
+
+- **Browser voices (local).** Uses the browser's `speechSynthesis` voices. CatCup makes no server request and needs no key; some browsers' voice lists are network-backed, which is the browser vendor's behaviour. Configure the default voice, rate (0.1–2) and pitch (0–2); per-character voices are chosen from the same list.
+- **OpenAI-compatible endpoint.** Calls `POST <baseUrl>/audio/speech` with the configured model, voice, format and speed, plus `instructions` when the model is `gpt-4o-mini-tts`. The key is stored in `data/secrets.json` under `tts` and is required only for an `api.openai.com` host; a local server that needs no key works without one. Works with OpenAI and with local servers that expose the same endpoint (for example openedai-speech or Kokoro-FastAPI).
+
+The default voice is used for any character without an entry in the character voice map; `narratorVoice` overrides it for narrator notes. Autoplay speaks each newly completed assistant reply. Text is cleaned of code blocks, HTML tags, images, links and markdown emphasis before it is sent. The full field list is in [API.md](API.md#settings); the text-preparation behavior is described in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
+
 ## Current limitations
 
-- Text chat only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API.
+- Text chat and speech output only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
+- Text-to-speech supports only the two backends above; SillyTavern's other TTS provider extensions are not implemented.
 - `max_tokens` is sent to OpenAI-compatible providers; models that require `max_completion_tokens` may need a compatibility flag in a future adapter.
 - Only string reasoning fields are mapped; provider-specific reasoning formats may be ignored.
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
@@ -183,7 +193,7 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 ## Security
 
 - API keys are stored server-side in `data/secrets.json` and are never returned by the API.
-- The client only sees `hasKey`.
+- The client only sees `hasKey` for providers and `ttsHasKey` for text to speech.
 - Provider errors are passed to the UI after being truncated; avoid including keys in custom headers where possible.
 - Do not put keys in `settings.json`, screenshots, logs or issue reports.
 - See [SECURITY.md](SECURITY.md) for the full model.

@@ -57,7 +57,12 @@ interface PersistContext {
     substitute: (text: string, escapeValues: boolean) => string;
 }
 
-async function saveSwipe(context: PersistContext, text: string, extra: Record<string, unknown>): Promise<ChatMessage> {
+async function saveSwipe(
+    context: PersistContext,
+    text: string,
+    extra: Record<string, unknown>,
+    stopped: boolean,
+): Promise<ChatMessage> {
     if (context.regenerateIndex === null) {
         throw new Error('No message to regenerate');
     }
@@ -80,7 +85,8 @@ async function saveSwipe(context: PersistContext, text: string, extra: Record<st
 
     // The reply is being rewritten, so a summary anchored to it no longer
     // describes the stored text. `extraDelete` removes the key from the merged
-    // extra; merely omitting it would keep the stored value.
+    // extra; merely omitting it would keep the stored value. A completed
+    // rewrite also clears the old partial marker.
     return updateMessage(context.character, context.chatId, context.regenerateIndex, {
         mes: text,
         send_date: new Date().toISOString(),
@@ -91,7 +97,7 @@ async function saveSwipe(context: PersistContext, text: string, extra: Record<st
             swipe_id: swipes.length - 1,
             swipe_info: swipeInfo,
         },
-        extraDelete: ['memory'],
+        extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
     });
 }
 
@@ -120,7 +126,7 @@ async function persistMessage(
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
-        return saveSwipe(context, storedText, extra);
+        return saveSwipe(context, storedText, extra, stopped);
     }
 
     if (context.action === 'continue' && context.continueIndex !== null && context.originalAssistant) {
@@ -133,8 +139,9 @@ async function persistMessage(
                 ...extra,
                 ...(mergedReasoning ? { reasoning: mergedReasoning } : {}),
             },
-            // The message grew, so a summary anchored to it is out of date.
-            extraDelete: ['memory'],
+            // The message grew, so a summary anchored to it is out of date. A
+            // completed continuation also clears the old partial marker.
+            extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
         });
     }
 

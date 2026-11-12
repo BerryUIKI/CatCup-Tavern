@@ -93,6 +93,36 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     return (await response.json()) as T;
 }
 
+/** POST a JSON body and read the response as bytes (TTS audio). */
+async function requestBlob(path: string, body: unknown, signal?: AbortSignal): Promise<Blob> {
+    const response = await fetch(`/api${path}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        ...(signal ? { signal } : {}),
+    });
+
+    if (response.status === 401) {
+        window.dispatchEvent(new Event('catcup:unauthorized'));
+    }
+    if (!response.ok) {
+        let payload: unknown = null;
+        try {
+            payload = await response.json();
+        } catch {
+            // Binary or empty error bodies fall back to the status text.
+        }
+        const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
+        throw new ApiError(
+            typeof record.error === 'string' ? record.error : response.statusText || 'Request failed',
+            response.status,
+            typeof record.code === 'string' ? record.code : undefined,
+        );
+    }
+    return response.blob();
+}
+
 export const api = {
     health: () => request<HealthResponse>('/health'),
     worlds: {
@@ -508,5 +538,10 @@ export const api = {
             request<{ ok: boolean }>(`/generate/${encodeURIComponent(generationId)}/stop`, {
                 method: 'POST',
             }),
+    },
+
+    tts: {
+        speak: (text: string, voice?: string, signal?: AbortSignal) =>
+            requestBlob('/tts/speak', voice === undefined ? { text } : { text, voice }, signal),
     },
 };

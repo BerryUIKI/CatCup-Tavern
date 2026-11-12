@@ -1,5 +1,17 @@
 import type { ChatMessage } from '@catcup/shared';
-import { Check, ChevronLeft, ChevronRight, Copy, GitBranch, Pencil, RefreshCw, Trash2, X } from 'lucide-react';
+import {
+    Check,
+    ChevronLeft,
+    ChevronRight,
+    Copy,
+    GitBranch,
+    Pencil,
+    RefreshCw,
+    Square,
+    Trash2,
+    Volume2,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -37,6 +49,12 @@ interface MessageBubbleProps {
     onSwipe?: (delta: number) => void;
     onEdit?: (text: string) => void;
     onBranch?: () => void;
+    /** Stop playback when the inline editor opens. */
+    onEditStart?: () => void;
+    /** Present when TTS is enabled for this message. */
+    onSpeak?: () => void;
+    /** Whether this message is the one currently being spoken. */
+    speaking?: boolean;
 }
 
 export function MessageBubble({
@@ -54,6 +72,9 @@ export function MessageBubble({
     onSwipe,
     onEdit,
     onBranch,
+    onEditStart,
+    onSpeak,
+    speaking,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
     /** SillyTavern narrator messages carry this type but are not user messages. */
@@ -78,6 +99,7 @@ export function MessageBubble({
     }, [editing]);
 
     const startEditing = () => {
+        onEditStart?.();
         setDraft(message.mes);
         setEditing(true);
     };
@@ -207,6 +229,18 @@ export function MessageBubble({
                                     <ChevronRight size={14} />
                                 </button>
                             </div>
+                        ) : null}
+
+                        {onSpeak ? (
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={onSpeak}
+                                title={speaking ? 'Stop voice' : 'Play voice'}
+                                aria-label={speaking ? 'Stop voice' : 'Play voice'}
+                            >
+                                {speaking ? <Square size={13} fill="currentColor" /> : <Volume2 size={14} />}
+                            </button>
                         ) : null}
 
                         <button

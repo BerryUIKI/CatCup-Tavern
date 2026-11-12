@@ -25,6 +25,7 @@ import { registerProviderRoutes } from './routes/providers.js';
 import { registerQuickReplyRoutes } from './routes/quickReplies.js';
 import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerTtsRoutes } from './routes/tts.js';
 import { registerWorldRoutes } from './routes/worlds.js';
 import { ensureDataDirs } from './storage/paths.js';
 
@@ -135,6 +136,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerChatRoutes(app);
     await registerGroupRoutes(app);
     await registerSettingsRoutes(app);
+    await registerTtsRoutes(app);
     await registerProviderRoutes(app);
     await registerPresetRoutes(app);
     await registerWorldRoutes(app);

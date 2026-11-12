@@ -25,6 +25,7 @@ import {
     Trash2,
     Upload,
     UserRound,
+    Volume2,
     Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -55,6 +56,7 @@ import { PromptOrderEditor } from './PromptOrderEditor';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
 import { Spinner } from './Spinner';
+import { TtsSettings } from './TtsSettings';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
 type Tab =
@@ -66,6 +68,7 @@ type Tab =
     | 'memory'
     | 'quickreplies'
     | 'regex'
+    | 'tts'
     | 'about';
 
 interface ProviderForm {
@@ -171,6 +174,7 @@ const TABS: { id: Tab; label: string; icon: typeof Server }[] = [
     { id: 'memory', label: 'Memory', icon: Brain },
     { id: 'quickreplies', label: 'Quick Replies', icon: Zap },
     { id: 'regex', label: 'Regex', icon: Regex },
+    { id: 'tts', label: 'TTS', icon: Volume2 },
     { id: 'about', label: 'About', icon: Info },
 ];
 
@@ -503,13 +507,19 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
     return (
         <Modal open={open} onClose={onClose} title="Settings" widthClassName="max-w-4xl">
-            <div className="flex gap-1 border-b border-line-soft px-4 pt-3">
+            <div
+                className="flex gap-1 border-b border-line-soft px-4 pt-3"
+                role="tablist"
+                aria-label="Settings sections"
+            >
                 {TABS.map((item) => {
                     const Icon = item.icon;
                     return (
                         <button
                             key={item.id}
                             type="button"
+                            role="tab"
+                            aria-selected={tab === item.id}
                             onClick={() => {
                                 setTab(item.id);
                                 setEditingBookId(null);
@@ -1015,6 +1025,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <QuickReplySettings />
             ) : tab === 'regex' ? (
                 <RegexSettings />
+            ) : tab === 'tts' ? (
+                <TtsSettings />
             ) : tab === 'about' ? (
                 <AboutTab />
             ) : (

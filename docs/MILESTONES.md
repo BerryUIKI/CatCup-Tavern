@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory and a Quick Replies subset are usable end to end.
+> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset and text to speech are usable end to end.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -293,6 +293,7 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - **Group chat UI and generation** (2026-11-11): a Groups tab with a group editor, a group chat pane with per-member avatars, and server-side replies. Natural, list, manual and pooled selection; each request generates one reply from the chosen member's card, with a group nudge, `Name:` history prefixes, ST's group new-chat marker, reply trimming and a manual speaker picker. New chats seed one greeting per member, muted included.
 - **Summary memory** (2026-11-11): rolling summaries stored as `extra.memory` on the message they cover, exactly where SillyTavern's Memory extension writes them. Automatic updates follow the message or word interval; a Memory panel can summarize now, edit, restore or delete; the injection template and position (after/before the main prompt, or in chat at a depth with a role) mirror the extension. `{{summary}}` and `{{words}}` expand in prompts, and the context inspector has a Memory tab with the injected text and its token cost. Works in group chats too.
 - **Quick Replies (subset)** (2026-11-12): SillyTavern version 2 quick reply sets live one file per set under `data/quickreplies/`, with import, export, rename and delete. The bar above the message box shows the enabled sets in account order; Settings → Quick Replies edits sets, buttons, colors and bar order. Plain text fills the composer (or pastes literally when the set disables sending), and `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute and chain with `|`. A new `trigger` generation action lets a button ask for a reply without a user message, choosing a group speaker by name or index. Per-chat set links in `chat_metadata.quickReply` are honoured.
+- **Text to speech** (2026-11-12): a provider-agnostic TTS layer with two adapters. Browser speech synthesis works offline with the operating system's voices; the OpenAI-compatible adapter calls `/audio/speech` on OpenAI or a local server that implements the same API, keeping its key in `data/secrets.json`. Settings → TTS configures the backend, voices, speed/rate, per-character and narrator voices, autoplay and text cleaning. Every reply gets a play button, and new replies play automatically when autoplay is on. Audio is generated on demand and never written to the data directory.
 
 ### Scope
 
@@ -312,13 +313,14 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] Group chat with at least three characters can be created, persisted and reloaded.
 - [x] Summary memory survives restarts and is visible in the context inspector.
 - [x] A basic Quick Reply executes and appears in the UI.
+- [x] TTS has at least one working local or remote adapter with clear configuration docs.
+- [ ] Image generation has at least one working adapter with clear configuration docs.
 - [ ] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] TTS and image generation have at least one working adapter each and clear configuration docs.
 - [ ] Character edits export to a valid PNG/JSON card that ST can open.
 
 ### Suggested PR slices
 
-The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS → image generation → CharX → library polish.
+The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS (**done 2026-11-12**) → image generation → CharX → library polish.
 
 ## M3 — Scripting and extension compatibility (Planned)
 
