@@ -50,7 +50,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 
 **Not there at all**
 
-- **Quick Replies and STscript.** A line such as `/send hello` is sent to the model as ordinary text.
+- **STscript and typed slash commands.** A line such as `/send hello` typed into the message box is sent to the model as ordinary text. Only Quick Reply buttons run the supported commands.
 - **SillyTavern extensions.** None load.
 - **Text to speech** and **image generation**.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
@@ -66,6 +66,7 @@ CatCup Tavern 0.2.1 is early-access software. The goal for this release is narro
 - **Groups have no picture of their own.** The library uses the first member's avatar as the group icon.
 - **Summary memory uses the active provider only.** There is no Extras or WebLLM summarizer, no quiet-prompt builder and no automatic interval suggestions; the Memory extension's settings live in Settings → Memory.
 - **Group chats have no context inspector.** A group summary is visible in its Memory panel but not in the inspector, and the inspector covers single-character chats only.
+- **Quick Replies are a subset.** Version 2 sets import, edit and run as buttons, but only `/send`, `/sys` (`/nar`), `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute; auto-execution, context menus, icons and per-character sets are not implemented, and a generation command must be the last step in a button. The account set list shows the same sets in every chat, and a chat's own SillyTavern set links are read but have no editor. Version 1 sets are not migrated; export them from SillyTavern as version 2 first.
 
 - **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.

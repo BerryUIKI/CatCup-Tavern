@@ -2,16 +2,16 @@
 
 CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplementation of SillyTavern. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
-> Status snapshot: **M1 complete** (2026-11-10). M1 is the core compatibility milestone. See [MILESTONES.md](MILESTONES.md).
+> Status snapshot: **M1 complete** (2026-11-10); **M2 in progress** with group chats, summary memory and a Quick Replies subset. See [MILESTONES.md](MILESTONES.md).
 
 ## Compatibility layers
 
-| Layer                | Scope                                                     | Status                                                                           |
-| -------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads, scans and edits; presets import |
-| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: prompt manager, world info and macros work; STscript and regex not yet  |
-| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                   |
-| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                |
+| Layer                | Scope                                                     | Status                                                                                           |
+| -------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **L1 data**          | Character cards, chats, world info, presets               | Partial: cards and chats work; world info loads, scans and edits; presets import                 |
+| **L2 semantics**     | Prompt semantics, macros, STscript, Quick Replies, regex  | Partial: prompt manager, world info, macros, regex and a Quick Replies subset work; STscript not |
+| **L3 extension API** | `SillyTavern.getContext()`, event bus, extension settings | Planned for M3                                                                                   |
+| **L4 UI extensions** | Extensions that manipulate ST's DOM/jQuery                | Planned for M3, highest risk; not promised for v1                                                |
 
 ## Data compatibility matrix
 
@@ -29,6 +29,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Chat swipes                        | ✅ Yes             | Regenerate creates a swipe; selecting a swipe is supported                                                       |
 | Chat branches/checkpoints          | ✅ Yes             | Branch from any message into a new chat                                                                          |
 | Group chats                        | ✅ Yes             | ST `groups/` and `group chats/` files, member avatars, seeded greetings and per-speaker message identity         |
+| Quick Reply sets (v2)              | ✅ Read/write      | `data/quickreplies/<name>.json`; imported, exported, renamed and edited; unknown fields and ST flags preserved   |
 | World Info JSON schema             | ✅ Schema          | Field names, defaults and `null` handling match ST                                                               |
 | World Info loader                  | ✅ Read            | Wrapped `{ entries }` and bare uid maps; decorators split                                                        |
 | World Info scanner                 | ✅ Implemented     | Full ST evaluation, including recursion, groups and timed effects                                                |
@@ -68,7 +69,7 @@ CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplemen
 | Group chat                                                         | 🟡 Partial         | Natural/list/manual/pooled selection with one reply per turn and each speaker's own card; append modes, auto mode and multi-member batches are not implemented                           |
 | Summary memory                                                     | ✅ Yes             | Rolling summary stored as `extra.memory` on the covered message; automatic and manual updates, injection template and positions, `{{summary}}`, edit and restore                         |
 | Regex scripts                                                      | ✅ Yes             | All placements, prompt/display scoping, depth window and import/export                                                                                                                   |
-| Quick Replies                                                      | ❌ Planned         | M2 subset, full in M3                                                                                                                                                                    |
+| Quick Replies                                                      | 🟡 Subset          | Version 2 sets, a button bar, and `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate`, `/run`; no auto-execution, context menus or per-character sets until M3              |
 | STscript / slash commands                                          | ❌ Planned         | M3                                                                                                                                                                                       |
 | Text completion mode (Kobold/Ooba)                                 | ❌ Not implemented | Chat completion only                                                                                                                                                                     |
 | TTS                                                                | ❌ Planned         | M2                                                                                                                                                                                       |
@@ -126,7 +127,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Tokenizer overhead:** CatCup adds the same four tokens per message that SillyTavern uses for OpenAI chat completion. SillyTavern varies that number by call site — world info entries are measured through a path that adds six — so its world info budget can differ from CatCup's by a few tokens per entry.
 - **Regex script scopes:** SillyTavern stores scripts globally, on a character (`data.extensions.regex_scripts`) and inside a preset, and runs them in that order behind per-scope allowlists. CatCup has one global list in `data/regex.json`; character and preset scopes, and the allowlists that gate them, are not implemented. An imported global set works unchanged.
 - **Regex extension switch:** SillyTavern can disable the regex extension wholesale through `extension_settings.disabledExtensions`. CatCup has no extension registry, so the per-script `disabled` flag is the only switch.
-- **Regex and the slash-command placement:** the `SLASH_COMMAND` placement is accepted and stored, but nothing runs it yet because there are no slash commands.
+- **Regex and the slash-command placement:** the `SLASH_COMMAND` placement is accepted and stored, but Quick Reply commands do not run it; the typed STscript path that would is M3.
 - **World Info regex needs `promptOnly`:** world info is assembled with the prompt flag set, so only `promptOnly` scripts run over entry content. This matches SillyTavern's engine, where a plain script with only the world-info placement would never run either, but it surprises people who expect the placement alone to be enough.
 - **Character card rename:** editing a card's `name` changes only the field; the file keeps its original name, because that name is the character id chats, avatars and world info already reference. SillyTavern keeps a stable avatar file name too, so this lands in the same place, but re-importing is how you rename the file.
 - **Character card avatar and book:** the editor covers the text fields. Replacing the avatar image and editing the embedded character book inside the card are not in it yet; **Import lore** copies the book into the World Info library, where it can be edited.
@@ -135,6 +136,16 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **Extension compatibility:** None yet. L4 is explicitly a long-term, bounded goal.
 - **Summary memory:** the summary lives on `extra.memory` exactly as ST writes it, and the position/template/role/depth settings mirror the Memory extension. CatCup summarizes through the active provider with ST's raw transcript builder: the Extras and WebLLM sources, the quiet-prompt builder, `memoryFrozen` and the automatic interval/wording suggestions are not ported. `memory.enabled` is the opt-in for automatic updates, while a stored summary is injected whenever `position` is not `-1`.
 - **Summary invalidation:** editing a message that carries a summary, switching its swipe or greeting, continuing it, or regenerating it clears that summary instead of leaving one that describes different text. SillyTavern drops the memory on the newest message after an edit or swipe; CatCup does it for whichever message holds the summary.
+- **Quick Reply commands:** CatCup implements a fixed subset of SillyTavern's slash commands rather than STscript. `/send`, `/sys` (`/nar`), `/echo`, `/trigger`, `/continue` (`/cont`), `/regenerate` (`/regen`) and `/run` (`/call`, `/exec`, `/:`) work; anything else fails with a message naming the supported commands instead of running. Named arguments are command-scoped: `at` and `args` are rejected, while the ST arguments a supported command declares (`await` on the generation commands, `return`/`compact`/`raw` on `/send` and `/sys`) are accepted and ignored.
+- **Quick Reply chaining:** commands chain with `|`, but a generation command or a plain-text reply must be the last step. SillyTavern can continue a script after `/trigger await=true` or a text insert; CatCup returns the generation or input to the client and stops there.
+- **Quick Reply input injection:** `injectInput` and `placeBeforeInput` apply when a reply inserts text. A slash-command reply ignores the typed draft, while SillyTavern merges the composer text into the input first — which can turn a command into a plain message or append the draft to the command text.
+- **`/run` labels:** a bare label resolves against the active sets (the account list plus a chat's links), or as `Set.Label` for any set. SillyTavern does not fall back to every stored set either.
+- **Quick Reply scopes:** the account set list is the only editor. Per-chat links in `chat_metadata.quickReply` are honoured, but per-character configs from SillyTavern's settings are not imported, and there is no auto-execution (`executeOnStartup`, `executeOnUser`, `executeOnAi`, …) or context-menu (`contextList`) support. Those fields round-trip untouched.
+- **Quick Reply rendering:** buttons show their label or a fallback; SillyTavern icons (`icon`/`showLabel`) are stored and exported but not drawn, and a set's color is rendered as a border with a 16% tint rather than ST's solid fill.
+- **Quick Reply folder name:** sets live in `data/quickreplies/`, lowercase. On Windows and macOS this is the same folder as SillyTavern's `QuickReplies/`; on Linux, copy the files across by hand and mind the case.
+- **Quick Reply version 1:** only SillyTavern's version 2 set format imports. The extension's legacy version 1 slots (and its on-load migration) are not supported; export or migrate the set in SillyTavern first.
+- **Narrator messages:** `/sys` writes `extra.type: "narrator"` with `api: "manual"` and `model: "slash command"`, as SillyTavern does. CatCup renders them with a muted note style and the prompt sends them as system turns; SillyTavern's compact layout flag is accepted but not rendered differently.
+- **`/trigger` in a single chat:** SillyTavern ignores a member argument outside a group; CatCup rejects a speaker in a single-character chat rather than silently dropping it.
 
 ## Testing compatibility
 

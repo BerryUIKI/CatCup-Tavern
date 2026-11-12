@@ -7,7 +7,7 @@ A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
 - **Data** — reads and writes SillyTavern's own files: PNG/JSON character cards (V2/V3), chat JSONL, world info, OpenAI presets and regex scripts
 - **Providers** — OpenAI-compatible APIs, OpenRouter, Anthropic and Ollama
 
-> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character and group roleplay end to end. Quick Replies, STscript and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
+> **Status: 0.2.1, early access.** Moves your SillyTavern data in and handles single-character and group roleplay end to end, with a Quick Replies subset. STscript, the full Quick Replies engine and extensions are not there yet — [what works and what does not](docs/LIMITATIONS.md) says exactly where the line is.
 > See [docs/MILESTONES.md](docs/MILESTONES.md) for what comes next.
 
 ## Why another tavern?
@@ -25,6 +25,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 - **Chat.** Streaming replies with reasoning, swipes, regenerate, continue, inline editing, branching, alternate greetings, rename and delete.
 - **Group chats.** Several characters in one room with their own greetings and avatars, natural, list, manual or pooled reply order, and per-member mute. Replies are stored in SillyTavern's group files.
 - **Summary memory.** A rolling summary stored in the chat file the way SillyTavern's Memory extension stores it, with automatic updates, an editable Memory panel, configurable injection position and template, and a Memory tab in the context inspector.
+- **Quick Replies (subset).** SillyTavern version 2 quick reply sets, imported or built in Settings → Quick Replies, shown as a bar above the message box. Plain-text buttons fill the composer; `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute, chained with `|`. Group chats can pick who a `/trigger` asks.
 - **Lorebooks.** SillyTavern's full scan pipeline — keys and logic, recursion, inclusion groups, timed effects, budget, every injection position — with an entry editor and a context inspector that explains why an entry did or did not fire.
 - **Prompts.** OpenAI presets with prompt order, enable/disable and in-chat injection; author's note; model-aware token counting for OpenAI and Claude.
 - **Regex scripts.** Import, export, a live test box, and all four live placements.
@@ -34,7 +35,7 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca.
 
 ### What is next
 
-Quick Replies and STscript, SillyTavern extensions, TTS, image generation and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
+STscript and the full Quick Replies engine, SillyTavern extensions, TTS, image generation and vector memory are the next milestones. [docs/LIMITATIONS.md](docs/LIMITATIONS.md) lists the current gaps in plain language, and [docs/MILESTONES.md](docs/MILESTONES.md) has the plan.
 
 ### Screenshots
 
