@@ -158,8 +158,7 @@ Do not commit any file under `data/`.
 
 The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither branch accepts a push or a force push, and both only change through a pull request. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
 
-The release workflow, `.github/workflows/release.yml`, is separate. Pushing a `v*` tag builds the Windows installer on `windows-latest` and creates or updates the matching GitHub release, using that version's `CHANGELOG.md` section as the body. A tag without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes.
-
+The release workflow, `.github/workflows/release.yml`, is separate. It runs when a `dev` → `main` merge lands: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. A push whose version already has a tag is skipped, so an ordinary merge into `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
 The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 Run the same gates locally before pushing — CI is a backstop, not a substitute:
