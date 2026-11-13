@@ -59,6 +59,7 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 - **Normal exit.** Closing the last window ends the event loop; on `RunEvent::Exit` the shell kills and reaps the child.
 - **Crash.** The child is placed in a Windows job object with `KILL_ON_JOB_CLOSE`, so killing the shell — Task Manager included — takes the server with it. If the process is already in a job that forbids nesting, the assignment is skipped and the normal exit path still applies.
 - **Second launch.** The single-instance plugin focuses the existing window instead of starting a second server against the same data directory.
+- **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: the window can be hidden rather than closed, and restoring that flag would start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
 
 ## Still open
 
@@ -66,7 +67,7 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
 - **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
-- **Tray icon and window state.** The window is a single webview that closes the app; there is no tray icon, and the window's size and position are not remembered between launches.
+- **Tray icon.** The window is a single webview that closes the app; there is no tray icon.
 - **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
 - **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
 
