@@ -370,7 +370,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - _MVP_ — Port selection and readiness handshake; single-instance behaviour.
 - _MVP_ — Graceful shutdown of the sidecar.
 - Tray icon and window-state restore.
-- Auto-updater and signed release artifacts.
+- Auto-updater. **Signed release artifacts (Authenticode) are deferred by decision on 2026-11-13.** An unsigned installer triggers one SmartScreen warning on the first install of a downloaded copy, which the user clicks through, and the update archive carries CatCup's own signature either way — so self-update works with or without a certificate. A publisher certificate buys a name in that one warning, not the ability to run. Reopen the decision only if the warning turns into a real distribution complaint, or if an Apple certificate is wanted for the macOS build.
 - File associations for `.catcup` character card packages. The scope originally said `.png` / `.json`; both were rejected after checking the NSIS bundler, which writes the extension's default handler unconditionally — claiming `.json` would make CatCup the default program for every JSON file on the account, and `.png` for every image.
 - _MVP_ — Windows installer first; macOS/Linux packaging after.
 - LAN mode remains available from the same server.
