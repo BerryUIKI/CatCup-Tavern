@@ -352,16 +352,16 @@ A group is one metadata file plus one JSONL per conversation, in the same two fo
 }
 ```
 
-| Field                    | Meaning                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------ |
-| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them  |
-| `disabled_members`       | Members that stay in the group but do not reply                                |
-| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                  |
-| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                      |
-| `chat_id`                | The chat the group last opened                                                 |
-| `chats`                  | Every chat id belonging to the group, oldest first                             |
-| `auto_mode_delay`        | Seconds between automatic turns in SillyTavern; CatCup stores it but runs none |
-| `generation_mode_join_*` | Stored for SillyTavern's append modes; CatCup always generates in swap mode    |
+| Field                    | Meaning                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them |
+| `disabled_members`       | Members that stay in the group but do not reply                               |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                 |
+| `generation_mode`        | `0` swap, `1` join excluding muted members, `2` join including them           |
+| `chat_id`                | The chat the group last opened                                                |
+| `chats`                  | Every chat id belonging to the group, oldest first                            |
+| `auto_mode_delay`        | Seconds between automatic turns in auto mode                                  |
+| `generation_mode_join_*` | Prefix and suffix around each member's field in the join modes                |
 
 The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
 
