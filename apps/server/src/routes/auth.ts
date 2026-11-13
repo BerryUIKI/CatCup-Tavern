@@ -139,15 +139,28 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
      * exists in desktop mode. Without a password the desktop opens directly;
      * `POST` with an empty string removes it again and returns to open mode.
      */
+    /**
+     * Change the access password.
+     *
+     * Every shape may change it, but only the desktop may remove one: with no
+     * password the desktop serves an open session on loopback, while a web or
+     * LAN install would be left unauthenticated on a reachable address. The
+     * current password is required whenever one exists, so a stolen session
+     * cookie alone cannot rotate it.
+     *
+     * On success the session cookie is replaced with one signed by the new
+     * secret, which signs every other device out.
+     */
     app.put(
         '/api/auth/password',
         { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
         async (request, reply) => {
-            if (!config.desktop) {
-                throw forbidden('The password can only be changed from the desktop app');
+            const body = passwordSchema.parse(request.body ?? {});
+
+            if (!config.desktop && body.password === '') {
+                throw forbidden('A web or LAN install cannot remove its password');
             }
 
-            const body = passwordSchema.parse(request.body ?? {});
             const auth = await getAuthFile();
             if (auth && !(await checkPassword(body.currentPassword ?? ''))) {
                 throw new HttpError(401, 'Incorrect password', 'INVALID_PASSWORD');
