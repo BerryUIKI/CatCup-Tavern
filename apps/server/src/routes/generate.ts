@@ -5,9 +5,11 @@ import {
     type CharacterDetail,
     type ChatMessage,
     type GenerateAction,
+    type GroupDepthPrompt,
     getLatestSummary,
     REGEX_PLACEMENT,
     type RegexScript,
+    readCardDepthPrompt,
     resolvePersona,
     sanitizeRegexMacro,
 } from '@catcup/shared';
@@ -154,6 +156,28 @@ async function persistMessage(
     });
 }
 
+/** The prefill an impersonation request sends, and the prefix a draft inherits. */
+function impersonationPrefill(name: string): string {
+    return `${name}:`;
+}
+
+/**
+ * Remove the prefill from the start of a draft.
+ *
+ * Anthropic continues the assistant turn it was given, so the raw text starts
+ * with the prefix. The composer should show only what the model added; a
+ * prefix that never arrived (any other provider) is stripped too, so the rule
+ * does not depend on which adapter answered.
+ */
+export function strippedDraft(text: string, prefill: string): string {
+    const trimmedStart = text.replace(/^\s+/, '');
+    const prefix = prefill.trimEnd();
+    if (prefix && trimmedStart.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return trimmedStart.slice(prefix.length).replace(/^\s+/, '');
+    }
+    return trimmedStart;
+}
+
 export async function registerGenerateRoutes(app: FastifyInstance): Promise<void> {
     app.post('/api/generate', async (request, reply) => {
         const body = generateSchema.parse(request.body ?? {});
@@ -251,6 +275,22 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
         const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
 
+        // The card's own in-chat aside, SillyTavern's
+        // `data.extensions.depth_prompt`. It is injected at the depth the card
+        // asks for, with the card as `{{char}}`.
+        const ownDepthPrompt = readCardDepthPrompt(character.card.extensions);
+        const cardDepthPrompts: GroupDepthPrompt[] = ownDepthPrompt
+            ? [
+                  {
+                      fileName: character.fileName,
+                      charName: character.name,
+                      text: substituteMacros(ownDepthPrompt.prompt, macroContext),
+                      depth: ownDepthPrompt.depth,
+                      role: ownDepthPrompt.role,
+                  },
+              ]
+            : [];
+
         // The scanner needs the whole non-system conversation as its timed
         // effect clock, so it runs before the prompt is trimmed to context.
         const worldInfoTurn = await scanWorldInfoForTurn({
@@ -290,6 +330,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            cardDepthPrompts,
             ...(latestSummary ? { summaryText: latestSummary.value } : {}),
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
@@ -321,6 +362,8 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         // the client has one thing to read, but nothing is written and nothing
         // should summarise it.
         const draftOnly = body.action === 'impersonate';
+        const personaName = persona.name;
+        const prefill = impersonationPrefill(personaName);
 
         await runGenerationStream({
             reply,
@@ -331,13 +374,19 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             topP: preset.generation.topP,
             maxTokens: preset.generation.maxTokens,
             generationId,
+            // Impersonation primes an Anthropic assistant turn with the
+            // persona's name, which is what SillyTavern sends as
+            // `assistant_impersonation`. Anthropic requires the answer to
+            // continue from that turn, so the name is removed again before the
+            // draft reaches the composer.
+            ...(draftOnly ? { assistantPrefill: prefill } : {}),
             persist: (text, reasoning, stopped) =>
                 draftOnly
                     ? Promise.resolve({
-                          name: persona.name,
+                          name: personaName,
                           is_user: true,
                           send_date: new Date().toISOString(),
-                          mes: text,
+                          mes: strippedDraft(text, prefill),
                           extra: {},
                       } satisfies ChatMessage)
                     : persistMessage(context, text, reasoning, stopped),

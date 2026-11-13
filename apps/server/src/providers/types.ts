@@ -21,6 +21,13 @@ export interface ProviderRequest {
     topP: number;
     maxTokens: number;
     signal: AbortSignal;
+    /**
+     * Text the answer must continue from, sent as a trailing assistant turn
+     * and omitted from the reply the client receives. Only adapters with a
+     * prefilling API (Anthropic) use it; elsewhere the instruction is already
+     * the last message.
+     */
+    assistantPrefill?: string;
 }
 
 export type StreamChunk =

@@ -6,6 +6,8 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { strippedDraft } from './generate.js';
+
 let root: string;
 let app: FastifyInstance;
 let stub: Server;
@@ -248,5 +250,24 @@ describe('generate routes', () => {
             original_avatar: 'Bram.json',
             mes: 'Stub reply.',
         });
+    });
+});
+
+describe('strippedDraft', () => {
+    it('removes the persona prefix the prefill added', () => {
+        expect(strippedDraft('Alex: I step inside.', 'Alex:')).toBe('I step inside.');
+    });
+
+    it('removes the prefix with surrounding whitespace', () => {
+        expect(strippedDraft('  Alex:   I step inside.', 'Alex:  ')).toBe('I step inside.');
+        expect(strippedDraft('alex: I step inside.', 'Alex:')).toBe('I step inside.');
+    });
+
+    it('leaves a draft alone when the prefix never arrived', () => {
+        expect(strippedDraft('I step inside.', 'Alex:')).toBe('I step inside.');
+    });
+
+    it('only strips the prefix from the start', () => {
+        expect(strippedDraft('I step inside.\nAlex: really?', 'Alex:')).toBe('I step inside.\nAlex: really?');
     });
 });
