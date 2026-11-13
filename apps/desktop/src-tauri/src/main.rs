@@ -36,10 +36,14 @@ fn plain_path(path: &std::path::Path) -> PathBuf {
 
 /// The bundled Node runtime sits next to the executable; in development the
 /// one on `PATH` is used instead.
+///
+/// The packaged copy is named `catcup-node`, not `node`. A deb or rpm install
+/// puts external binaries in `/usr/bin`, where a binary called `node` would
+/// collide with — and replace — the distribution's nodejs package.
 fn node_binary() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(directory) = exe.parent() {
-            let bundled = directory.join(if cfg!(windows) { "node.exe" } else { "node" });
+            let bundled = directory.join(if cfg!(windows) { "catcup-node.exe" } else { "catcup-node" });
             if bundled.exists() {
                 return plain_path(&bundled);
             }
