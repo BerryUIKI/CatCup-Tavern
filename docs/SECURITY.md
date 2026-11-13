@@ -48,7 +48,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - Lifetime: 30 days.
 - Attributes: `HttpOnly`, `SameSite=Lax`, `Path=/`.
 - `Secure` is set only when the Node process sees the request as HTTPS. There is no `trustProxy` configuration yet, so a TLS-terminating reverse proxy will not set the flag on the browser cookie.
-- No server-side session store. A stolen cookie remains valid until it expires or the session secret changes. Deleting `auth.json` and restarting invalidates all sessions (and requires setting a new password).
+- No server-side session store. A stolen cookie remains valid until it expires or the session secret changes. Changing the password rotates that secret, which signs every device out and re-issues a cookie to the one that made the change; deleting `auth.json` and restarting invalidates all sessions too, and requires setting a new password.
 
 ### CSRF and origin checks
 
@@ -60,6 +60,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 - Login: 10 attempts per minute.
 - Setup: 5 attempts per minute.
+- Password change (`PUT /api/auth/password`): 10 attempts per minute. It sits behind the session gate, so an unauthenticated caller never reaches the current-password check.
 - Provider draft tests (`POST /api/providers/test`): 30 per minute.
 - Other endpoints are not rate-limited yet.
 

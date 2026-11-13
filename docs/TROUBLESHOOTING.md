@@ -58,7 +58,9 @@ First-run setup is accepted only from loopback. Open the app on the machine runn
 
 **Password reset**
 
-Stop the server, back up `data/`, delete `data/auth.json`, start the server and set a new password. This logs out every device. Do not delete `data/settings.json` unless you also want to reset providers.
+If you know the current password, change it in Settings → About: every other device is signed out and this one stays in. That is the only route that does not touch files.
+
+If the password is lost, stop the server, back up `data/`, delete `data/auth.json`, start the server and set a new password. This logs out every device. Do not delete `data/settings.json` unless you also want to reset providers.
 
 ## Providers
 
