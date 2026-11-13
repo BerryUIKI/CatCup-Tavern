@@ -371,7 +371,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - _MVP_ — Graceful shutdown of the sidecar.
 - Tray icon and window-state restore.
 - Auto-updater and signed release artifacts.
-- File associations for `.png` / `.json` character cards.
+- File associations for `.catcup` character card packages. The scope originally said `.png` / `.json`; both were rejected after checking the NSIS bundler, which writes the extension's default handler unconditionally — claiming `.json` would make CatCup the default program for every JSON file on the account, and `.png` for every image.
 - _MVP_ — Windows installer first; macOS/Linux packaging after.
 - LAN mode remains available from the same server.
 
@@ -380,7 +380,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - [x] A clean Windows machine can install and run the app without a separate Node installation.
 - [ ] The desktop app and the browser/LAN mode share the same data directory and behaviour.
 - [x] The sidecar stops when the app exits and does not leave orphan processes.
-- [ ] Updates and file associations work.
+- [ ] Updates and file associations work — `.catcup` associations ship in the installer, and self-update lives behind the tray's **Check for Updates…**. Neither is ticked: the association has only been exercised from a development build, and an update only reaches installed apps once a release is built with `TAURI_SIGNING_PRIVATE_KEY` in the repository secrets.
 - [ ] Data can be migrated from the web build.
 
 ## M5 — Polish and release (Planned)

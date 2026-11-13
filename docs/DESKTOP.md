@@ -80,17 +80,48 @@ A second launch never starts a second server. The single-instance plugin forward
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
-- **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
+- **Code signing.** The installer has no Authenticode certificate, so Windows warns on first run. The update archive itself is signed with CatCup's own key, which the app verifies before installing it.
 - **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
 - **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
 
 ## Tray icon
 
-The icon is built in `install_tray` from the window icon declared in `tauri.conf.json`. Tauri keeps it alive in its resource table, so the shell does not have to store the handle. The menu is a `Menu` with **Open CatCup Tavern** and **Quit**, separated by a separator; **Quit** calls `app.exit(0)`, which skips the close handler and still runs the exit path that kills the sidecar.
+The icon is built in `install_tray` from the window icon declared in `tauri.conf.json`. Tauri keeps it alive in its resource table, so the shell does not have to store the handle. The menu is a `Menu` with **Open CatCup Tavern**, **Check for Updates…** and **Quit**, separated from **Quit** by a separator; **Quit** calls `app.exit(0)`, which skips the close handler and still runs the exit path that kills the sidecar.
 
 The icon needs the `tray-icon` feature on the `tauri` crate. Left-click handling is enabled by turning `show_menu_on_left_click` off, which is the opposite of the Windows default; with the default, Windows fires the click event _and_ pops the menu over the window it just opened.
 
 The tray is not optional, and `install_tray` failing aborts startup. With close-to-tray, a build that hid its only window and had no icon to bring it back would be unrecoverable — and a release build has no console to fall back on (`windows_subsystem = "windows"`).
+
+## Updates
+
+The shell carries `tauri-plugin-updater`. **Check for Updates…** in the tray menu asks the configured endpoint for a newer release; if there is one, the archive is downloaded, the server is stopped, and the installer replaces the app and starts it again. The check runs on a background thread so the menu stays usable, and its result — installed, up to date, or failed — appears in a native message box, because a release build has no console.
+
+| Piece              | Where                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| Update endpoint    | `plugins.updater.endpoints` in `tauri.conf.json` — `…/releases/latest/download/latest.json`     |
+| Signing public key | `plugins.updater.pubkey`, generated with `tauri signer generate`                                |
+| Installer UI       | `plugins.updater.windows.installMode` — `passive`, so progress shows but no questions are asked |
+
+Both the endpoint and the key are mandatory: the plugin panics at startup rather than silently disabling updates when either is missing or malformed, so a broken config fails immediately instead of shipping an app that can never update.
+
+The server is stopped before the installer runs, because the Node runtime, the server bundle and the SPA all live inside the install directory and cannot be replaced while the server holds them open. That is why `download` and `install` are called separately instead of `download_and_install`, which gives no point to intervene between the two.
+
+### Releasing an update
+
+`createUpdaterArtifacts` is deliberately **not** in `tauri.conf.json` — the release workflow enables it for the build:
+
+```bash
+pnpm --filter @catcup/desktop exec tauri build --config '{"bundle":{"createUpdaterArtifacts":true}}'
+```
+
+Keeping it out of the checked-in config means a local `tauri build` still works without the signing key. The key lives in repository secrets:
+
+- `TAURI_SIGNING_PRIVATE_KEY` — the contents of the key file from `tauri signer generate`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — only when the key was generated with a password
+
+Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the run uploads the installer, the `.nsis.zip` archive, its `.sig`, and a `latest.json` manifest naming the archive by URL and carrying the signature. `releases/latest/download/latest.json` then resolves that manifest for every installed app.
+
+Losing the private key means every installed app has to be updated by hand once: the public key pinned in `tauri.conf.json` no longer matches anything the workflow can sign.
 
 ## Layout
 
