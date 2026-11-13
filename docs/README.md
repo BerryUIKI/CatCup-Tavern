@@ -18,6 +18,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | If you want to…                                   | Read                                       |
 | ------------------------------------------------- | ------------------------------------------ |
 | Understand where the project is going             | [MILESTONES.md](MILESTONES.md)             |
+| Read a proposal for a large feature               | [RFC/](RFC/README.md)                      |
 | Understand how the system is put together         | [ARCHITECTURE.md](ARCHITECTURE.md)         |
 | Build or change the interface                     | [DESIGN.md](DESIGN.md)                     |
 | Set up a development environment                  | [DEVELOPMENT.md](DEVELOPMENT.md)           |
@@ -55,6 +56,7 @@ flowchart LR
 | Document                                   | Purpose                                                                           |
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | [MILESTONES.md](MILESTONES.md)             | Scope, sequencing, acceptance criteria and current status                         |
+| [RFC/](RFC/README.md)                      | Proposals for large features, with the open questions still awaiting an answer    |
 | [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers              |
 | [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility   |
 | [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes             |
