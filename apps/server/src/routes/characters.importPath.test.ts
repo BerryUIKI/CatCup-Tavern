@@ -119,6 +119,16 @@ describe('POST /api/characters/import-path', () => {
         expect(response.json().imported[0].name).toBe('Packed Path');
     });
 
+    it('imports a CatCup package', async () => {
+        const file = path.join(cards, 'packed.catcup');
+        await writeFile(file, charxPackage('Packed CatCup'));
+
+        const response = await importPath(file);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.json().imported[0].name).toBe('Packed CatCup');
+    });
+
     it('rejects an extension that is not a card', async () => {
         const file = path.join(cards, 'notes.txt');
         await writeFile(file, 'not a card');
@@ -126,7 +136,7 @@ describe('POST /api/characters/import-path', () => {
         const response = await importPath(file);
 
         expect(response.statusCode).toBe(400);
-        expect(response.json().error).toContain('Only .png, .json and .charx');
+        expect(response.json().error).toContain('Only .png, .json, .charx and .catcup');
     });
 
     it('reports a file it cannot read', async () => {

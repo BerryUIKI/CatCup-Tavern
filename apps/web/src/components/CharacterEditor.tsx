@@ -231,6 +231,10 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                                 PNG
                             </span>
                         )}
+                        <a className="btn-ghost" href={api.characters.exportUrl(character.id, 'catcup')} download>
+                            <Package size={15} />
+                            CatCup
+                        </a>
                         <a className="btn-ghost" href={api.characters.exportUrl(character.id, 'charx')} download>
                             <Package size={15} />
                             CharX
