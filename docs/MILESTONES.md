@@ -381,7 +381,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - [ ] The desktop app and the browser/LAN mode share the same data directory and behaviour.
 - [x] The sidecar stops when the app exits and does not leave orphan processes.
 - [ ] Updates and file associations work.
-- [ ] Data can be migrated from the web build.
+- [x] Data can be migrated from the web build — `CATCUP_DATA_DIR` points the desktop app at an existing folder, so a web `data/` directory opens as it is. Verified by listing a web folder's characters from the desktop server; there is no in-app migration screen. See [DESKTOP.md](DESKTOP.md#data-directory).
 
 ## M5 — Polish and release (Planned)
 

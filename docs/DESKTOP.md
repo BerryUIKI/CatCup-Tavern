@@ -38,11 +38,11 @@ Four things had to change to make the packaged layout behave like the developmen
 
 The shell starts the server with:
 
-| Variable          | Value            | Why                                                  |
-| ----------------- | ---------------- | ---------------------------------------------------- |
-| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only; it has no LAN mode |
-| `CATCUP_PORT`     | `0`              | The OS picks a free port                             |
-| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory      |
+| Variable          | Value                             | Why                                                  |
+| ----------------- | --------------------------------- | ---------------------------------------------------- |
+| `CATCUP_HOST`     | `127.0.0.1`                       | The desktop app is loopback-only; it has no LAN mode |
+| `CATCUP_PORT`     | `0`                               | The OS picks a free port                             |
+| `CATCUP_DATA_DIR` | the app data dir, or the override | Keeps desktop data out of the install directory      |
 
 Once listening, the server writes exactly one line to stdout:
 
@@ -53,6 +53,23 @@ CATCUP_READY <port>
 The shell reads stdout until that line, with a 30 second timeout, then opens `http://127.0.0.1:<port>`. Everything else the server prints is forwarded to the shell's console.
 
 `CATCUP_PORT=0` is deliberate. Probing for a free port and then binding to it leaves a window where another process takes it; asking the OS to pick removes the race.
+
+## Data directory
+
+The desktop app keeps its data in the OS app-data directory — `%APPDATA%\dev.catcup.tavern` on Windows — which is separate from the web build's `data/`. That is deliberate: an installer that wrote into its own install folder would lose data on upgrade, and a shared folder would let two servers write the same chat files.
+
+Setting `CATCUP_DATA_DIR` before launch overrides that. The shell passes it straight to the server, so pointing it at the web build's `data/` folder opens the desktop app on the same characters, chats, world info and presets, without copying anything:
+
+```bash
+CATCUP_DATA_DIR="F:/dev/CatCup-Tavern/data" catcup-tavern.exe
+```
+
+Two things to know before doing that:
+
+- **Only one shape at a time.** The per-file locks in storage are in-process mutexes, not OS file locks, and nothing locks the folder itself. Two servers pointed at the same folder would overwrite each other, so stop the web server first.
+- **The password travels with the folder.** If `auth.json` exists, the desktop app asks for that password like any other install; only a folder with no `auth.json` opens straight into the app.
+
+Pointing at a copy is the safer way to try a migration: copy `data/`, point the app at the copy, and keep the original untouched until the desktop build has been used for a while.
 
 ## Lifecycle
 
