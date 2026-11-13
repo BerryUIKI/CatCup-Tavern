@@ -14,20 +14,7 @@ import {
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import {
-    Brain,
-    ImagePlus,
-    Images,
-    Menu,
-    MessageSquarePlus,
-    Pencil,
-    Play,
-    Plus,
-    Settings2,
-    Trash2,
-    Users,
-    X,
-} from 'lucide-react';
+import { Brain, ImagePlus, Images, Menu, MessageSquarePlus, Pencil, Play, Plus, Trash2, Users, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -47,6 +34,7 @@ import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
+import { ConfirmDialog } from './ConfirmDialog';
 import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
 import { ImageGenerationDialog } from './ImageGenerationDialog';
@@ -56,6 +44,7 @@ import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
+import { ToolsMenu, type ToolsMenuItem } from './ToolsMenu';
 
 interface GroupChatViewProps {
     group: GroupView;
@@ -68,7 +57,8 @@ interface GroupChatViewProps {
     onSelectChat: (id: string) => void;
     onNewChat: () => void;
     onOpenSidebar: () => void;
-    onOpenSettings: () => void;
+    /** Opens Settings; `providers` deep-links to the panel the header's pill names. */
+    onOpenSettings: (section?: 'providers') => void;
     onEditGroup: () => void;
 }
 
@@ -138,6 +128,9 @@ export function GroupChatView({
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<{ kind: 'message'; index: number } | { kind: 'chat' } | null>(
+        null,
+    );
     const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
@@ -181,7 +174,8 @@ export function GroupChatView({
 
     const generation = useGeneration({ kind: 'group', groupId: group.id }, selectedChatId, () => scrollToBottom(true));
     const tts = useTts();
-    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const settingsData = useSettings().data;
+    const imageEnabled = settingsData?.imageGeneration.enabled ?? false;
     const imageTarget: ImageChatTarget | null = selectedChatId
         ? { kind: 'group', id: group.id, chatId: selectedChatId, name: group.name }
         : null;
@@ -423,12 +417,13 @@ export function GroupChatView({
     };
 
     const handleDelete = (index: number) => {
-        if (!window.confirm('Delete this message? This cannot be undone.')) {
-            return;
-        }
         tts.stop();
         deleteMessageMutation.mutate(index, {
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => setPendingDelete(null),
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
@@ -496,19 +491,77 @@ export function GroupChatView({
         if (!selectedChatId) {
             return;
         }
-        if (!window.confirm('Delete this group chat? This cannot be undone.')) {
-            return;
-        }
         deleteChatMutation.mutate(selectedChatId, {
-            onSuccess: () => pushToast('Chat deleted.', 'success'),
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => {
+                setPendingDelete(null);
+                pushToast('Chat deleted.', 'success');
+            },
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
+    const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
+    const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    const disabledReason = !selectedChatId ? 'Start a chat first.' : undefined;
+
+    const tools: ToolsMenuItem[] = [
+        {
+            id: 'rename',
+            label: 'Rename chat',
+            icon: Pencil,
+            onSelect: handleOpenRename,
+            disabled: !selectedChatId,
+            ...(disabledReason ? { hint: disabledReason } : {}),
+        },
+        {
+            id: 'memory',
+            label: 'Memory',
+            icon: Brain,
+            onSelect: () => setMemoryOpen(true),
+            disabled: !selectedChatId || messages.length === 0,
+            hint: !selectedChatId ? disabledReason : 'This chat has no messages to summarize yet.',
+        },
+        {
+            id: 'generate-image',
+            label: 'Generate image',
+            icon: ImagePlus,
+            onSelect: () => setImageDialog({}),
+            disabled: !selectedChatId || !imageEnabled,
+            hint: 'Enable image generation in Settings → Images.',
+        },
+        {
+            id: 'gallery',
+            label: 'Image gallery',
+            icon: Images,
+            onSelect: () => setGalleryOpen(true),
+            disabled: !imageEnabled,
+            hint: 'Enable image generation in Settings → Images.',
+        },
+        {
+            id: 'edit-group',
+            label: 'Edit group',
+            icon: Users,
+            onSelect: onEditGroup,
+        },
+        {
+            id: 'delete-chat',
+            label: 'Delete chat',
+            icon: Trash2,
+            onSelect: () => setPendingDelete({ kind: 'chat' }),
+            disabled: !selectedChatId || deleteChatMutation.isPending,
+            ...(disabledReason ? { hint: disabledReason } : {}),
+            danger: true,
+            separate: true,
+        },
+    ];
+
     const header = (
-        <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
+        <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
             <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>
@@ -530,7 +583,7 @@ export function GroupChatView({
                 </p>
             </div>
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto">
+            <div className="flex min-w-0 items-center justify-end gap-1.5">
                 <select
                     value={selectedChatId ?? ''}
                     onChange={(event) => handleSelectChat(event.target.value)}
@@ -576,74 +629,37 @@ export function GroupChatView({
                 >
                     {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
                 </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={handleOpenRename}
-                    disabled={!selectedChatId}
-                    title="Rename chat"
-                    aria-label="Rename chat"
-                >
-                    <Pencil size={16} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn hover:text-wine"
-                    onClick={handleDeleteChat}
-                    disabled={!selectedChatId || deleteChatMutation.isPending}
-                    title="Delete chat"
-                    aria-label="Delete chat"
-                >
-                    {deleteChatMutation.isPending ? <Spinner size={16} /> : <Trash2 size={16} />}
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setImageDialog({})}
-                    disabled={!selectedChatId || !imageEnabled}
-                    title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
-                    aria-label="Generate image"
-                >
-                    <ImagePlus size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setGalleryOpen(true)}
-                    disabled={!imageEnabled}
-                    title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
-                    aria-label="Image gallery"
-                >
-                    <Images size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setMemoryOpen(true)}
-                    disabled={!selectedChatId || messages.length === 0}
-                    title="Memory"
-                    aria-label="Memory"
-                >
-                    <Brain size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={onEditGroup}
-                    title="Edit group"
-                    aria-label="Edit group"
-                >
-                    <Users size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={onOpenSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                >
-                    <Settings2 size={18} />
-                </button>
+
+                {provider ? (
+                    <button
+                        type="button"
+                        className="hidden max-w-[170px] items-center gap-1.5 rounded-lg border border-line/70 px-2.5 py-1.5 text-xs transition hover:border-amber/40 hover:text-parchment lg:flex"
+                        onClick={() => onOpenSettings('providers')}
+                        title={
+                            providerReady
+                                ? `${provider.name} is ready`
+                                : `${provider.name} may need an API key. Open Settings → Providers.`
+                        }
+                    >
+                        <span
+                            className={
+                                providerReady
+                                    ? 'size-1.5 shrink-0 rounded-full bg-sage'
+                                    : 'size-1.5 shrink-0 rounded-full bg-amber/80'
+                            }
+                            aria-hidden="true"
+                        />
+                        <span className="truncate text-parchment-dim">
+                            {provider.name}
+                            {provider.model ? ` · ${provider.model}` : ''}
+                        </span>
+                        <span className="sr-only">
+                            {providerReady ? 'Active provider is ready' : 'Active provider may need a key'}
+                        </span>
+                    </button>
+                ) : null}
+
+                <ToolsMenu items={tools} />
             </div>
         </header>
     );
@@ -718,7 +734,7 @@ export function GroupChatView({
                                         }
                                         disabled={actionsDisabled}
                                         onRegenerate={enabledMembers.length > 0 ? handleRegenerate : undefined}
-                                        onDelete={() => handleDelete(index)}
+                                        onDelete={() => setPendingDelete({ kind: 'message', index })}
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
@@ -872,6 +888,27 @@ export function GroupChatView({
             ) : null}
 
             <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                tone="danger"
+                title={pendingDelete?.kind === 'chat' ? 'Delete this group chat?' : 'Delete this message?'}
+                description={
+                    pendingDelete?.kind === 'chat'
+                        ? 'The group chat file is removed from disk. The group and its other chats are kept.'
+                        : 'The message is removed from the group chat file. Messages after it move up one place.'
+                }
+                confirmLabel={pendingDelete?.kind === 'chat' ? 'Delete chat' : 'Delete message'}
+                onCancel={() => setPendingDelete(null)}
+                onConfirm={() => {
+                    if (pendingDelete?.kind === 'chat') {
+                        handleDeleteChat();
+                    } else if (pendingDelete?.kind === 'message') {
+                        handleDelete(pendingDelete.index);
+                    }
+                }}
+                busy={deleteMessageMutation.isPending || deleteChatMutation.isPending}
+            />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">
