@@ -140,6 +140,18 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
     }
 }
 
+/// Window state remembered between launches.
+///
+/// Visibility is deliberately left out: a window that was hidden when the app
+/// closed — from the tray, or by the user — must not come back invisible, with
+/// nothing on screen to click. Decorations are left out too, because the shell
+/// never changes them.
+fn remembered_window_state() -> tauri_plugin_window_state::StateFlags {
+    use tauri_plugin_window_state::StateFlags;
+
+    StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN
+}
+
 fn main() {
     tauri::Builder::default()
         // A second launch focuses the window that already exists instead of
@@ -150,6 +162,16 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        // Restores and persists size, position and maximised state for the
+        // window built below. The plugin hooks window creation, so it also
+        // covers a window that is created at runtime rather than in
+        // `tauri.conf.json`; the state lives in `.window-state.json` under the
+        // app config directory.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(remembered_window_state())
+                .build(),
+        )
         .setup(|app| {
             let (child, port) = start_server(app).map_err(Box::<dyn std::error::Error>::from)?;
             println!("[shell] server ready on port {port}");
