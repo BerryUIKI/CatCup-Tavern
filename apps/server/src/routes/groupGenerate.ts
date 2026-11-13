@@ -2,13 +2,19 @@ import { randomUUID } from 'node:crypto';
 
 import {
     applyRegexScripts,
+    buildGroupDepthPrompts,
+    buildJoinedCardFields,
     type CharacterDetail,
     type ChatMessage,
     type GenerationSpeaker,
     type Group,
+    type GroupDepthPrompt,
     getLatestSummary,
+    type JoinedMemberCard,
+    joinsGroupCards,
     REGEX_PLACEMENT,
     type RegexScript,
+    readCardDepthPrompt,
     resolvePersona,
     sanitizeRegexMacro,
 } from '@catcup/shared';
@@ -419,6 +425,73 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             timedWorldInfo: chat.header.chat_metadata.timedWorldInfo,
         });
 
+        // SillyTavern's card-level overrides for group replies. In swap mode
+        // each speaker keeps their own card and only their own `depth_prompt`
+        // applies; the two append modes merge every member's card fields, so
+        // their asides come along too. A chat may pin a scenario or example
+        // set for the whole group on `chat_metadata`.
+        const memberCards: JoinedMemberCard[] = resolvedMembers.map((member) => ({
+            fileName: member.speaker.fileName,
+            name: member.character.card.name || member.character.name,
+            description: member.character.card.description,
+            personality: member.character.card.personality,
+            scenario: member.character.card.scenario,
+            mesExample: member.character.card.mes_example ?? '',
+        }));
+        const cardSubstitute = (text: string, charName: string) =>
+            substituteMacros(text, { ...macroContext, char: charName });
+        const joinedCard = buildJoinedCardFields({
+            members: memberCards,
+            disabledMembers: found.group.disabled_members,
+            generationMode: found.group.generation_mode,
+            speaker: speaker.fileName,
+            joinPrefix: found.group.generation_mode_join_prefix,
+            joinSuffix: found.group.generation_mode_join_suffix,
+            substitute: cardSubstitute,
+            ...(typeof chat.header.chat_metadata.scenario === 'string'
+                ? { scenarioOverride: chat.header.chat_metadata.scenario }
+                : {}),
+            ...(typeof chat.header.chat_metadata.mes_example === 'string'
+                ? { mesExampleOverride: chat.header.chat_metadata.mes_example }
+                : {}),
+        });
+
+        let cardDepthPrompts: GroupDepthPrompt[];
+        if (joinsGroupCards(found.group.generation_mode)) {
+            cardDepthPrompts = buildGroupDepthPrompts({
+                members: memberCards,
+                depthPrompts: new Map(
+                    resolvedMembers
+                        .map((member) => [
+                            member.speaker.fileName,
+                            readCardDepthPrompt(member.character.card.extensions),
+                        ])
+                        .filter(
+                            (entry): entry is [string, NonNullable<ReturnType<typeof readCardDepthPrompt>>] =>
+                                entry[1] !== null,
+                        ),
+                ),
+                disabledMembers: found.group.disabled_members,
+                generationMode: found.group.generation_mode,
+                speaker: speaker.fileName,
+                substitute: cardSubstitute,
+            });
+        } else {
+            // Swap mode: the single-character rule, using the speaker's card.
+            const own = readCardDepthPrompt(speaker.card.extensions);
+            cardDepthPrompts = own
+                ? [
+                      {
+                          fileName: speaker.fileName,
+                          charName: speaker.name,
+                          text: cardSubstitute(own.prompt, speaker.name),
+                          depth: own.depth,
+                          role: own.role,
+                      },
+                  ]
+                : [];
+        }
+
         const assembled = buildPrompt({
             character: speaker,
             messages,
@@ -440,6 +513,8 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             group: groupMacros,
             ...(latestSummary ? { summaryText: latestSummary.value } : {}),
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
+            ...(joinedCard ? { joinedCard } : {}),
+            cardDepthPrompts,
         });
         const prompt = assembled.messages;
 
