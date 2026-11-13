@@ -41,7 +41,7 @@ Tauri 2 window (loads http://127.0.0.1:<port>)
           └── data dir = OS app-data directory
 ```
 
-The desktop shell owns only process management, port selection, the data directory, window state and the tray icon. No business logic is duplicated. File associations and the updater are still to come; see [DESKTOP.md](DESKTOP.md).
+The desktop shell owns only process management, port selection, the data directory, window state, the tray icon and handing a file the user opened to the server. No business logic is duplicated. The updater is still to come; see [DESKTOP.md](DESKTOP.md).
 
 ## 3. Stack decisions
 
