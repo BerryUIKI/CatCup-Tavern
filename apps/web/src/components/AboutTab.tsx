@@ -43,8 +43,8 @@ export function AboutTab() {
     return (
         <div className="space-y-5 p-5">
             <div>
-                <h3 className="font-display text-lg text-parchment">CatCup Tavern</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted">
+                <img src="/brand-banner.svg" alt="CatCup Tavern" className="h-auto w-full max-w-sm" />
+                <p className="mt-3 text-sm leading-relaxed text-muted">
                     A local-first roleplay client that reads and writes SillyTavern’s files. This is early-access
                     software: it does what is listed on the left well, and it does not pretend to do the rest.
                 </p>

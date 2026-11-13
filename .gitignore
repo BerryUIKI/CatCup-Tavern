@@ -38,3 +38,6 @@ Thumbs.db
 # desktop build inputs
 apps/desktop/src-tauri/bundle/
 apps/desktop/src-tauri/binaries/
+
+# Local design backups
+design/*.zip

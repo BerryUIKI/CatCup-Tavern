@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="design/logo/readme-banner-d.svg" />
+  <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern — a hand-drawn cat lounging in a teacup" width="820" />
+</picture>
+
 # CatCup Tavern
 
 A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:

@@ -2,6 +2,12 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release.
 
+## Unreleased
+
+### Added
+
+- App icon and brand: a hand-drawn cat lounging in a teacup — cream `#fdf4e2` artwork on a coffee `#3a241c` disc over a cream rounded tile. The app icon, Tauri icon set, favicon (SVG + ICO) and Apple touch icon all derive from the single SVG master in `design/logo/`; the sidebar, login and empty-state logo now show the mark. The README gained a matching banner in dark and light variants (`design/logo/readme-banner-{d,w}.svg`) wired with `prefers-color-scheme`.
+
 ## 0.3.0 — 2026-11-13
 
 ### Added
