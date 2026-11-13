@@ -64,7 +64,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **SillyTavern extensions.** None load.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
 - **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
-- **Impersonation** — there is no "reply as me" action.
+- **Impersonation has no assistant prefill.** The button writes the message as you into the composer, and the instruction is appended as a trailing system message. Anthropic endpoints hoist every system message into one block at the top, so Claude-family models may drift further from your voice than OpenAI-compatible ones; SillyTavern primes an assistant turn for those and CatCup does not.
 - **Removing the password is desktop-only.** A web or LAN install can change its password in Settings → About, but not remove it: with no password there would be nothing between the network and your data. Only the desktop app can drop back to open mode.
 
 **Partial, and worth knowing before you rely on it**
