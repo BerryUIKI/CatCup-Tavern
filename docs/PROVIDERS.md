@@ -12,7 +12,7 @@ CatCup Tavern speaks to four chat provider families through a small adapter inte
 | `ollama`     | `http://127.0.0.1:11434`       | Native Ollama NDJSON                      | No           |
 | `custom`     | user supplied                  | Any OpenAI-compatible `/chat/completions` | Depends      |
 
-The active provider is selected in Settings → Providers. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
+A provider serves **one or more models**. One is marked its default; a character may name another, and a chat falls back along an explicit rule rather than failing when its model is unavailable.
 
 ## Configuration
 
@@ -24,11 +24,14 @@ Providers are stored in `data/settings.json` as public configuration:
     "kind": "custom",
     "name": "Local model",
     "baseUrl": "http://127.0.0.1:8080/v1",
-    "model": "example-model",
+    "models": ["deepseek-v4.1-flash", "glm-5.3"],
+    "defaultModel": "deepseek-v4.1-flash",
     "enabled": true,
     "headers": {}
 }
 ```
+
+`models` is the provider's model list, seeded by **Fetch models** and editable by hand; `defaultModel` is the one a chat uses when the character names none. A file written before this change, carrying the single `model` string, is read as a one-entry list with that entry as the default and rewritten in the new shape on the next save.
 
 `headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
@@ -37,6 +40,20 @@ The Settings UI can add, edit, duplicate and delete providers, and the library f
 The model list also loads on its own: once the form holds a base URL that parses and either a stored key or a typed one, the panel asks the endpoint for its model list after 600 ms without further typing. A failed background fetch stays silent — an endpoint that is not running yet must not paint an error nobody asked for — and **Fetch models** remains the explicit retry that reports failures. The background fetch never replaces the connection test; the test is still a separate action.
 
 An active provider is always enabled. Disabling or deleting it moves the active mark to the first other enabled provider; when no provider is enabled, none is active until one is enabled.
+
+## Which model a request uses
+
+The character and the provider settle the model together, in this order:
+
+1. **The character's own model**, stored at `data.extensions.catcup_model` on the card. It travels with the card, so a chat opened on another machine keeps using it. CatCup writes the key; SillyTavern preserves it as an unknown extension field, so a card round-trips through both.
+2. **The provider's default model**, `defaultModel`.
+3. **The first model in the provider's list**, for a provider whose default was cleared.
+
+A character's model that the active provider does not serve is **not** an error: the chat uses the provider's default and the chat header says so, naming both the requested and the used model. That keeps one character usable across providers — a card pinned to `glm-5.3` opens on a provider that only serves `deepseek-v4.1-flash`, with the substitution visible rather than silent.
+
+The choice is per character, not per chat, so every chat with that character uses the same model. A group chat generates one member at a time, so each reply uses the speaking member's own model choice. Summary memory, prompt drafting and impersonation use the provider default, because they are not a character speaking.
+
+The model is read when a request is built, so switching a character's model affects the next reply, not one already streaming.
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
@@ -205,9 +222,9 @@ Generated images are stored in `data/user/images/<character or group>/` with a m
 - Only string reasoning fields are mapped; provider-specific reasoning formats may be ignored.
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
 - No request timeout configuration; generation is stopped by the user or by client disconnect.
-- Model lists are advisory; the model field is free text.
-- There is one active provider for every chat; per-chat or per-character model overrides and provider fallback are not available.
-- There is no automatic fallback between providers.
+- Model lists are advisory; a model id that the endpoint does not list is still accepted.
+- A model choice is per character and per provider list. There is no separate ranking or chain across providers, and no automatic fallback to a different provider when the active one is down.
+- Token counting uses the model a request resolved to, so a character pinned to a model the provider does not serve is counted with the provider default it falls back to.
 
 ## Security
 

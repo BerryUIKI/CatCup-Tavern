@@ -144,6 +144,8 @@ Character book entries use V2 character-book fields such as `keys`, `secondary_k
 
 Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON, CharX and CatCup exports.
 
+A character's model choice is `data.extensions.catcup_model`, a model id string. It is CatCup's own extension — SillyTavern preserves it as an unknown field, so a card round-trips through both clients — and it is what the character editor's **Model** select writes. An empty or missing value means the provider default.
+
 Tags are `data.tags`, a string array. Bulk add/remove compares case- and whitespace-insensitively, keeps the spelling already on each card and never rewrites unrelated tags; a redundant action does not write the file. New tags cannot contain commas because the character editor splits the field on commas. CatCup does not reproduce SillyTavern's settings-level tag registry (`tags`/`tag_map` in `settings.json`, with colors, folders and manual order).
 
 The library's creation sort reads `data.creation_date` (Unix seconds), then a root `create_date` (ISO string), then the file birth time. A card without either date gets `data.creation_date` the first time CatCup writes it, so later atomic file writes do not reset the sort.

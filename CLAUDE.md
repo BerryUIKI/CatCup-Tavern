@@ -112,7 +112,7 @@ Read before changing behaviour:
 - License: AGPL-3.0-only. SillyTavern is AGPL-3.0; RisuAI is GPL-3.0 (compatible under AGPLv3 §13).
 - Frontend: React + Tailwind 4. Theme tokens live in the `@theme` block of `apps/web/src/styles.css`.
 - Interface work follows `docs/DESIGN.md`: one primary action per surface, explicit save with a leave guard for configuration forms, visible focus, focus-trapped dialogs and no hover-only actions.
-- Chat streaming uses SSE: `start` / `token` / `reasoning` / `done` / `error`. The server owns persistence; the client only renders optimistically.
+- Chat streaming uses SSE: `start` / `token` / `reasoning` / `done` / `error`. The server owns persistence; the client only renders optimistically. The `start` event carries the model the request resolved to.
 - Do not transplant ST's jQuery/DOM code into React. Port algorithms and data semantics only.
 - Never commit `data/`, `.ref/`, `.env`, build output or secrets.
 
