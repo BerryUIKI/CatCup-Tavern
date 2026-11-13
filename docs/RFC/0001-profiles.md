@@ -1,7 +1,7 @@
 # RFC 0001 — Switchable profiles (scoped data with a shared layer)
 
 - **Issue:** [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78)
-- **Status:** Proposed — revised after review
+- **Status:** Accepted 2026-11-14 — the decisions on the review questions are in §13, and §14 lists the acceptance criteria
 - **Supersedes:** the first draft, which shared characters, chats, world info and presets across every profile. That draft was wrong for the reason §2 explains.
 
 ## 1. The problem
@@ -137,21 +137,25 @@ The active profile is a process-wide value, because the server is single-user. T
 
 ## 8. Endpoints
 
-| Method | Path                   | Purpose                                                                              |
-| ------ | ---------------------- | ------------------------------------------------------------------------------------ |
-| GET    | `/api/profiles`        | List profiles with id, name, description and a count of what each owns               |
-| POST   | `/api/profiles`        | Create one, optionally copying an existing profile's _configuration_ (never content) |
-| PATCH  | `/api/profiles/:id`    | Rename or describe                                                                   |
-| PUT    | `/api/profiles/active` | Switch; `409 PROFILE_BUSY` while a generation runs                                   |
-| DELETE | `/api/profiles/:id`    | Delete a profile and its scope, refusing the last one and the active one             |
+| Method | Path                        | Purpose                                                                                     |
+| ------ | --------------------------- | ------------------------------------------------------------------------------------------- |
+| GET    | `/api/profiles`             | List profiles and archived profiles with id, name, description, what each owns and its size |
+| POST   | `/api/profiles`             | Create one, optionally copying an existing profile's _configuration_ (never content)        |
+| PATCH  | `/api/profiles/:id`         | Rename or describe                                                                          |
+| PUT    | `/api/profiles/active`      | Switch; `409 PROFILE_BUSY` while a generation runs                                          |
+| POST   | `/api/profiles/:id/archive` | Move a profile's scope to `archive/<id>/` and drop it from the index; never the active one  |
+| POST   | `/api/profiles/:id/restore` | Move an archived profile back and re-add the index entry                                    |
+| DELETE | `/api/profiles/:id`         | Permanently delete an **archived** profile's folder; refuses a live, active or last one     |
 
-Deleting a profile deletes its `profiles/<id>/` folder in full. The confirmation lists what goes with it — how many characters, chats, books and presets — so nobody deletes a campaign by accident. Shared items are never touched.
+Archiving is the default removal — see §13.3. It moves `profiles/<id>/` to `archive/<id>/`, which is a rename within one volume, and the switcher no longer lists it. Permanent deletion only applies to an archived profile and says the folder name and that it cannot be undone.
+
+The archive confirmation counts what goes with the profile — how many characters, chats, books and presets — so nobody archives the wrong campaign. Shared items are never touched by either action.
 
 ## 9. Interface
 
 **Footer.** The library footer becomes a two-line control: the **profile** on top (name + a chevron, opening a menu of profiles and _Manage profiles…_), and the **active provider** beneath it, as it is today. The provider is switched more often; the profile is the bigger switch, so it sits above and reads as the label for everything below it.
 
-**Settings → Profiles** (group _Model_, beside Providers). Each row shows the profile name, what it owns, and its size on disk. Actions: Rename, Duplicate configuration, Make active, Delete. Creating a profile asks _Start empty_ or _Copy configuration from “<current>”_ — never content, because copying a cast is what the shared layer and card import are for.
+**Settings → Profiles** (group _Model_, beside Providers). Each row shows the profile name, what it owns, and its size on disk. Actions: Rename, Duplicate configuration, Make active, **Archive**. An archived profile is listed under a collapsed _Archived_ group with **Restore** and **Delete permanently**. Creating a profile asks _Start empty_ or _Copy configuration from “<current>”_ — never content, because copying a cast is what the shared layer and card import are for.
 
 **Shared items** carry a quiet badge in the library and the world info list, and their row menu offers _Copy into this profile_. The badge is a word plus an icon, not a colour alone (`DESIGN.md`).
 
@@ -166,15 +170,15 @@ Deleting a profile deletes its `profiles/<id>/` folder in full. The confirmation
 
 ## 11. Risks
 
-| Risk                                                                            | Impact                       | Mitigation                                                                                       |
-| ------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| Migration moves thousands of files                                              | A failed install             | Dry run, rename-only move, backup file, per-step log, move-back on error                         |
-| A switch during a reply writes into the wrong profile                           | Corrupt chat                 | `409 PROFILE_BUSY` until generations drain; the switch holds the file lock                       |
-| Two profiles both have a "Mira"                                                 | Wrong card                   | Expected and fine — scopes keep them apart. Only the shared layer can shadow, and it is labelled |
-| Shared item edited from one profile                                             | Surprise elsewhere           | Shared items are why _copy into this profile_ exists; the edit dialog says an item is shared     |
-| A person forgets which profile they are in                                      | Writing into the wrong world | The footer names it, the switch toasts it, and the title bar carries it                          |
-| Deleting the active profile                                                     | Impossible by rule           | `DELETE` refuses the active and the last profile                                                 |
-| Provider list is global, active provider per profile — confusing which is which | Support questions            | The footer shows both, and Settings → Providers marks the profile's active one                   |
+| Risk                                                                            | Impact                       | Mitigation                                                                                                               |
+| ------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Migration moves thousands of files                                              | A failed install             | Dry run, rename-only move, backup file, per-step log, move-back on error                                                 |
+| A switch during a reply writes into the wrong profile                           | Corrupt chat                 | `409 PROFILE_BUSY` until generations drain; the switch holds the file lock                                               |
+| Two profiles both have a "Mira"                                                 | Wrong card                   | Expected and fine — scopes keep them apart. Only the shared layer can shadow, and it is labelled                         |
+| Shared item edited from one profile                                             | Surprise elsewhere           | Shared items are why _copy into this profile_ exists; the edit dialog says an item is shared                             |
+| A person forgets which profile they are in                                      | Writing into the wrong world | The footer names it, the switch toasts it, and the title bar carries it                                                  |
+| Removing the active profile by accident                                         | Lost campaign                | Archiving is the default and refuses the active and the last profile; permanent deletion only applies to an archived one |
+| Provider list is global, active provider per profile — confusing which is which | Support questions            | The footer shows both, and Settings → Providers marks the profile's active one                                           |
 
 ## 12. Effort
 
@@ -187,9 +191,74 @@ Deleting a profile deletes its `profiles/<id>/` folder in full. The confirmation
 | Shared layer: move/copy actions, shadow labelling, create checkbox       | 1–2 days   |
 | Migration and backwards-compat tests, docs, changelog                    | 1 day      |
 
-## 13. Open questions for review
+## 13. Decisions
 
-1. **Is the shared layer in scope for the first slice, or the second?** The proposal builds full isolation first and adds the shared scope next, because isolation is what fixes the two-campaign problem and the shared layer is a convenience. Building both at once is roughly 1–2 days longer.
-2. **Should the shared scope be visible from the library's default view, or behind a filter?** The proposal shows shared items inline with a badge. The alternative hides them until _Show shared_ is ticked, which keeps a campaign library clean but hides a preset someone just made reusable.
-3. **Does deleting a profile ever deserve an archive instead of a delete?** A campaign is a lot of writing. The proposal deletes with a confirmation that counts what goes; an archive (moved under `data/archive/`) is cheap to add and undoable.
-4. **Should a profile be able to pin a _model_ as well as a provider?** #76 added a per-character model. A profile-level model would let "Novel" default to the long-context model and "Mystery" to the cheap one. The proposal says yes, because it is one field next to `activeProviderId`.
+The review accepted the scoped model and asked for a recommendation on the four questions left open. These are the decisions; the reasoning is kept so a later change can argue against it rather than rediscover it.
+
+### 13.1 The shared layer ships in the second slice
+
+**Decision: second slice.** The first slice is full isolation plus the global provider list.
+
+Isolation is what fixes the problem that prompted the revision — two campaigns that collide. The shared layer is a convenience for the smaller set of things that really are common, and building it at the same time roughly doubles the surface that has to be right before anything ships.
+
+The first slice is designed so the second can land without reshaping it:
+
+- Every storage function takes a scope, not a hard-coded path, from day one — even though only one scope exists at first.
+- Item ids are already unique within a scope, so a shared scope is just a second one.
+- Nothing in `settings.json` names a shared item, so adding the folder changes no stored format.
+
+If the shared layer is never built, nothing about the first slice is wasted.
+
+### 13.2 Shared items are shown inline, behind a badge, with a filter
+
+**Decision: visible by default, labelled, and filterable.**
+
+Hiding shared items until a _Show shared_ box is ticked has one bad failure: a person marks a preset reusable in one profile, switches, and sees nothing — the feature looks broken rather than quiet. Visible-but-labelled is self-explanatory: the badge says _Shared_, and the eye learns what it means once.
+
+The library already has a filters row (favorites, tags, sort). A **Scope** filter joins it — _This profile_ / _Shared_ / _All_, defaulting to _All_ — so hiding them is still one click, and the choice is remembered per profile like the other library filters.
+
+A shared item in a different profile's directory is not shown at all. A profile only ever sees its own items plus the shared scope, never another profile's — that is the isolation guarantee, and no filter may break it.
+
+### 13.3 Deleting a profile archives it
+
+**Decision: archive by default; deleting is a second, explicit action.**
+
+A campaign is weeks of writing. A mis-click that permanently removes it is the kind of failure a person does not forgive, and the confirmation dialog that lists "3 characters, 14 chats, 2 books" is read at a glance and then dismissed.
+
+- **Archive** (the default action) moves `profiles/<id>/` to `archive/<id>/` and drops the entry from the profile index. Nothing is lost, nothing is loaded, and the folder no longer appears in the switcher.
+- **Restore** moves it back and re-adds the index entry.
+- **Delete permanently** exists on an archived profile, with a confirmation that names the folder and says it cannot be undone. It only ever applies to an archived profile, never to a live one, so the destructive path is always two deliberate steps.
+
+Archiving is cheap: within one volume the move is a rename, exactly like the migration.
+
+The trade-off accepted here: an archived profile still occupies disk, so a person who prunes many will want a size column — the Settings → Profiles list shows size for active and archived profiles alike, and the About section shows the total.
+
+### 13.4 A profile pins a model as well as a provider
+
+**Decision: yes.**
+
+It is one field beside `activeProviderId`, and it is the whole point of having more than one profile on a machine that serves twenty-one models: "Novel" on the long-context model, "Mystery" on the cheap one.
+
+The order stays the one #76 established, with the profile slot inserted where it belongs:
+
+1. The **character's** model, when the active provider serves it.
+2. The **profile's** preferred model, when the active provider serves it.
+3. The provider's **default** model.
+4. The first model the provider lists.
+
+A profile model the active provider does not serve is skipped, not an error — the same rule a character's choice already follows. The chat header's fallback marker covers this case identically, naming what was requested and what was used.
+
+This keeps every existing guarantee: a character can always override, a fallback is always visible, and nothing about #76's per-character choice changes.
+
+## 14. What "accepted" means
+
+The scope in §1–13 is ready to be cut into PRs. The milestones document gains the feature with these acceptance criteria:
+
+- [ ] A second profile can hold a character with the same name as one in the first, and both open correctly.
+- [ ] A regex rule, preset, quick reply set and persona created in one profile is absent from the other.
+- [ ] Switching profiles while a reply is streaming is refused and the reply completes in the profile it started in.
+- [ ] A v1 data folder migrates with `CATCUP_MIGRATE_DRY_RUN=1` reporting the same plan the real run performs, and a failed run leaves the tree unchanged.
+- [ ] A profile can be archived and restored without losing a chat.
+- [ ] A profile's preferred model is used when the character names none, and skipped with the visible fallback marker when the active provider does not serve it.
+
+The shared layer's criteria are written when its slice starts; §13.1 names what the first slice must keep open for it.

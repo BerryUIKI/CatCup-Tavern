@@ -4,7 +4,7 @@ Proposals for features that are large enough to need agreement before code. An R
 
 | RFC                               | Feature                                      | Issue                                                       | Status   |
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------------- | -------- |
-| [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer    | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Proposed |
+| [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer    | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Accepted |
 | [0002](0002-book-distillation.md) | Distil world info and characters from a book | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77) | Proposed |
 
 ## How an RFC moves
@@ -12,6 +12,8 @@ Proposals for features that are large enough to need agreement before code. An R
 1. **Proposed** — written, open questions listed at the end, review wanted.
 2. **Accepted** — the open questions are answered in the document, then the work is cut into PRs and the scope moves into [MILESTONES.md](../MILESTONES.md).
 3. **Rejected** — with a sentence saying why, in the document itself; the file stays so the reasoning is not lost.
+
+An accepted RFC keeps its review questions as decided sections rather than deleting them, so a later change argues against the recorded reasoning instead of rediscovering it.
 
 An accepted RFC is not a spec to copy blindly: the milestones document remains the source of truth for scope and acceptance criteria, and the docs under `docs/` remain the source of truth for what shipped.
 
