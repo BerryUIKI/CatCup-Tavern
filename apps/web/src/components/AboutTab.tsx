@@ -155,36 +155,43 @@ function PasswordPanel() {
                     ? 'This desktop app opens without a password, because only you can reach it on this machine. Setting one brings back the sign-in screen.'
                     : 'Changing the password signs out every other browser and device. This one stays signed in.'}
             </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {openSession ? null : (
+                    <label className="block sm:col-span-2">
+                        <span className="label-text">Current password</span>
+                        <input
+                            type="password"
+                            className="input-shell"
+                            autoComplete="current-password"
+                            value={current}
+                            onChange={(event) => setCurrent(event.target.value)}
+                        />
+                    </label>
+                )}
+                <label className="block">
+                    <span className="label-text">New password</span>
                     <input
                         type="password"
-                        className="input sm:col-span-2"
-                        placeholder="Current password"
-                        autoComplete="current-password"
-                        value={current}
-                        onChange={(event) => setCurrent(event.target.value)}
+                        className="input-shell"
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
                     />
-                )}
-                <input
-                    type="password"
-                    className="input"
-                    placeholder="New password (8+ characters)"
-                    autoComplete="new-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                />
-                <input
-                    type="password"
-                    className="input"
-                    placeholder="Repeat the password"
-                    autoComplete="new-password"
-                    value={confirm}
-                    onChange={(event) => setConfirm(event.target.value)}
-                />
+                </label>
+                <label className="block">
+                    <span className="label-text">Repeat the new password</span>
+                    <input
+                        type="password"
+                        className="input-shell"
+                        autoComplete="new-password"
+                        value={confirm}
+                        onChange={(event) => setConfirm(event.target.value)}
+                    />
+                </label>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="submit" className="btn-secondary" disabled={!canSubmit}>
+                <button type="submit" className="btn-ghost" disabled={!canSubmit}>
                     {passwordMutation.isPending ? <Spinner size={14} /> : null}
                     {openSession ? 'Set password' : 'Change password'}
                 </button>
@@ -192,7 +199,7 @@ function PasswordPanel() {
             {message ? (
                 <p
                     className={message.kind === 'ok' ? 'mt-2 text-xs text-sage' : 'mt-2 text-xs text-wine'}
-                    role="status"
+                    role={message.kind === 'ok' ? 'status' : 'alert'}
                 >
                     {message.text}
                 </p>
