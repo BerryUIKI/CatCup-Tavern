@@ -15,6 +15,7 @@ import {
     REGEX_PLACEMENT,
     type RegexScript,
     readCardDepthPrompt,
+    resolveModel,
     resolvePersona,
     sanitizeRegexMacro,
 } from '@catcup/shared';
@@ -67,6 +68,7 @@ function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
         fileName: character.fileName,
         name: character.name,
         avatarUrl: character.avatarUrl,
+        ...(character.model ? { model: character.model } : {}),
     };
 }
 
@@ -331,11 +333,14 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         if (!provider) {
             throw badRequest('No provider is available. Configure one in Settings first.');
         }
-        if (!provider.model.trim()) {
+        // Each reply may use the speaking member's own model; one the active
+        // provider does not serve falls back to the provider default.
+        const resolved = resolveModel(provider, speaker.model);
+        if (!resolved.model) {
             throw badRequest('The active provider has no model selected');
         }
         const apiKey = await getProviderSecret(provider.id);
-        const tokenCounter = createTokenCounter(provider.kind, provider.model);
+        const tokenCounter = createTokenCounter(provider.kind, resolved.model);
 
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
@@ -533,7 +538,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             continueIndex,
             originalAssistant,
             providerKind: provider.kind,
-            providerModel: provider.model,
+            providerModel: resolved.model,
             startedAt: new Date().toISOString(),
             regexScripts,
             substitute,
@@ -546,6 +551,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         await runGenerationStream({
             reply,
             provider,
+            model: resolved.model,
             apiKey,
             prompt,
             temperature: preset.generation.temperature,

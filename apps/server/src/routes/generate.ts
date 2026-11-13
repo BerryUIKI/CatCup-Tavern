@@ -10,6 +10,7 @@ import {
     REGEX_PLACEMENT,
     type RegexScript,
     readCardDepthPrompt,
+    resolveModel,
     resolvePersona,
     sanitizeRegexMacro,
 } from '@catcup/shared';
@@ -192,11 +193,15 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         if (!provider) {
             throw badRequest('No provider is available. Configure one in Settings first.');
         }
-        if (!provider.model.trim()) {
+        // The character may name its own model; one the active provider does
+        // not serve falls back to the provider default, which the response
+        // reports so the header can say what happened.
+        const resolved = resolveModel(provider, character.model);
+        if (!resolved.model) {
             throw badRequest('The active provider has no model selected');
         }
         const apiKey = await getProviderSecret(provider.id);
-        const tokenCounter = createTokenCounter(provider.kind, provider.model);
+        const tokenCounter = createTokenCounter(provider.kind, resolved.model);
 
         // Scripts and the macro context are resolved once per request; the
         // source transforms below and the prompt transform later share them.
@@ -350,7 +355,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             continueIndex,
             originalAssistant,
             providerKind: provider.kind,
-            providerModel: provider.model,
+            providerModel: resolved.model,
             startedAt,
             regexScripts,
             substitute,
@@ -368,6 +373,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         await runGenerationStream({
             reply,
             provider,
+            model: resolved.model,
             apiKey,
             prompt,
             temperature: preset.generation.temperature,

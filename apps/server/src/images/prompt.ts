@@ -77,7 +77,9 @@ export async function draftImagePrompt(input: DraftImagePromptInput): Promise<st
     let text = '';
     try {
         for await (const chunk of adapter.streamChat(input.provider, input.apiKey, {
-            model: input.provider.model,
+            // A prompt draft is not a character speaking, so it uses the
+            // provider default rather than a character's model choice.
+            model: input.provider.defaultModel,
             messages: historyMessages(input),
             temperature: 1,
             topP: 1,
