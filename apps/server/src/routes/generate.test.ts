@@ -13,6 +13,8 @@ let app: FastifyInstance;
 let stub: Server;
 let cookie: string;
 let baseUrl: string;
+/** The stub provider's base, so a test can add a second endpoint on it. */
+let stubUrl: string;
 
 function card(name: string): string {
     return JSON.stringify({
@@ -30,8 +32,8 @@ async function call(
     return app.inject({ method, url, payload, headers: { cookie } });
 }
 
-async function createChat(): Promise<string> {
-    const created = await call('POST', '/api/characters/Aria/chats', {});
+async function createChat(characterId = 'Aria'): Promise<string> {
+    const created = await call('POST', `/api/characters/${characterId}/chats`, {});
     expect(created.statusCode).toBe(200);
     return created.json().chat.chatId as string;
 }
@@ -67,25 +69,38 @@ beforeAll(async () => {
     await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
 
     stub = createServer((request, response) => {
-        request.resume();
-        if (request.method === 'POST' && request.url?.endsWith('/chat/completions')) {
-            response.writeHead(200, {
-                'content-type': 'text/event-stream',
-                'cache-control': 'no-cache',
-                connection: 'keep-alive',
-            });
-            response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: 'Stub reply.' } }] })}\n\n`);
-            response.write('data: [DONE]\n\n');
+        // Collect the body as it arrives. Waiting for the stream to end before
+        // answering would deadlock: the client is waiting for this response.
+        let payload = '';
+        request.on('data', (chunk) => {
+            payload += chunk;
+        });
+        request.on('end', () => {
+            if (request.method === 'POST' && request.url?.endsWith('/chat/completions')) {
+                // Answer only for the served model, so a test can prove which
+                // model a fallback actually used.
+                const served = payload.includes('served-model') || payload.includes('stub-model');
+
+                response.writeHead(200, {
+                    'content-type': 'text/event-stream',
+                    'cache-control': 'no-cache',
+                    connection: 'keep-alive',
+                });
+                if (served) {
+                    response.write(`data: ${JSON.stringify({ choices: [{ delta: { content: 'Stub reply.' } }] })}\n\n`);
+                }
+                response.write('data: [DONE]\n\n');
+                response.end();
+                return;
+            }
+            if (request.method === 'GET' && request.url?.endsWith('/models')) {
+                response.writeHead(200, { 'content-type': 'application/json' });
+                response.end(JSON.stringify({ data: [{ id: 'stub-model' }] }));
+                return;
+            }
+            response.writeHead(404);
             response.end();
-            return;
-        }
-        if (request.method === 'GET' && request.url?.endsWith('/models')) {
-            response.writeHead(200, { 'content-type': 'application/json' });
-            response.end(JSON.stringify({ data: [{ id: 'stub-model' }] }));
-            return;
-        }
-        response.writeHead(404);
-        response.end();
+        });
     });
     await new Promise<void>((resolve) => {
         stub.listen(0, '127.0.0.1', resolve);
@@ -112,7 +127,8 @@ beforeAll(async () => {
         kind: 'openai',
         name: 'Stub',
         baseUrl: `http://127.0.0.1:${port}/v1`,
-        model: 'stub-model',
+        models: ['stub-model'],
+        defaultModel: 'stub-model',
         enabled: true,
         headers: {},
         apiKey: 'stub-key',
@@ -122,6 +138,7 @@ beforeAll(async () => {
     const active = await call('PATCH', '/api/settings', { activeProviderId: providerId });
     expect(active.statusCode).toBe(200);
 
+    stubUrl = `http://127.0.0.1:${port}/v1`;
     baseUrl = await app.listen({ host: '127.0.0.1', port: 0 });
 }, 60_000);
 
@@ -269,5 +286,64 @@ describe('strippedDraft', () => {
 
     it('only strips the prefix from the start', () => {
         expect(strippedDraft('I step inside.\nAlex: really?', 'Alex:')).toBe('I step inside.\nAlex: really?');
+    });
+});
+
+describe('character model choice', () => {
+    it('uses the character model the provider serves, and reports it at start', async () => {
+        await call('POST', '/api/providers', {
+            kind: 'openai',
+            name: 'Multi',
+            baseUrl: stubUrl,
+            models: ['stub-model'],
+            defaultModel: 'stub-model',
+            enabled: true,
+            headers: {},
+            apiKey: 'k',
+        });
+        const chatId = await createChat();
+        const body = await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
+        expect(body).toContain('"model":"stub-model"');
+    });
+
+    it('falls back to the provider default when the character model is not served', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'openai',
+            name: 'Fallback',
+            baseUrl: stubUrl,
+            models: ['served-model'],
+            defaultModel: 'served-model',
+            enabled: true,
+            headers: {},
+            apiKey: 'k',
+        });
+        await call('PATCH', '/api/settings', {
+            activeProviderId: (created.json() as { provider: { id: string } }).provider.id,
+        });
+        await call('PATCH', '/api/characters/Bram', { model: 'unserved-model' });
+
+        const chatId = await createChat('Bram');
+        const body = await generate('/api/generate', { characterId: 'Bram', chatId, action: 'trigger' });
+        // The character asks for a model this provider does not list, so the
+        // provider default answers — which is the only model the stub speaks on.
+        expect(body).toContain('"model":"served-model"');
+        expect(body).toContain('Stub reply.');
+        expect(body).not.toContain('unserved-model');
+    });
+
+    it('stores a model choice in the card extension and clears it with an empty string', async () => {
+        const set = await call('PATCH', '/api/characters/Aria', { model: 'glm-5.3' });
+        expect(set.statusCode).toBe(200);
+        expect((set.json() as { character: { model: string } }).character.model).toBe('glm-5.3');
+
+        const card = await call('GET', '/api/characters/Aria');
+        const detail = card.json() as { character: { card: { extensions: Record<string, unknown> } } };
+        expect(detail.character.card.extensions.catcup_model).toBe('glm-5.3');
+
+        const cleared = await call('PATCH', '/api/characters/Aria', { model: '' });
+        expect((cleared.json() as { character: { model: string } }).character.model).toBe('');
+        const after = await call('GET', '/api/characters/Aria');
+        const clearedDetail = after.json() as { character: { card: { extensions: Record<string, unknown> } } };
+        expect('catcup_model' in clearedDetail.character.card.extensions).toBe(false);
     });
 });

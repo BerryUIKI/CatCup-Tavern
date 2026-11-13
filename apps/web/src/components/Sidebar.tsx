@@ -324,7 +324,7 @@ export function Sidebar({
                             {switchableProviders.map((provider) => (
                                 <option key={provider.id} value={provider.id}>
                                     {provider.name}
-                                    {provider.model ? ` — ${provider.model}` : ''}
+                                    {provider.defaultModel ? ` — ${provider.defaultModel}` : ''}
                                 </option>
                             ))}
                         </select>

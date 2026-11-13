@@ -18,6 +18,8 @@ interface GenerationState {
     reasoningText: string;
     /** The member the server chose to speak, for group chats. */
     speaker: GenerationSpeaker | null;
+    /** The model the server resolved for this request, after any fallback. */
+    model: string | null;
     error: string | null;
     /** The message the server persisted for the last completed stream. */
     lastReply: ChatMessage | null;
@@ -33,6 +35,7 @@ const INITIAL_STATE: GenerationState = {
     assistantText: '',
     reasoningText: '',
     speaker: null,
+    model: null,
     error: null,
     lastReply: null,
     replySequence: 0,
@@ -147,11 +150,12 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                     path,
                     body,
                     {
-                        onStart: (generationId, selectedSpeaker) =>
+                        onStart: (generationId, selectedSpeaker, resolvedModel) =>
                             setState((current) => ({
                                 ...current,
                                 generationId,
                                 speaker: selectedSpeaker ?? null,
+                                model: resolvedModel ?? null,
                             })),
                         onToken: (text) =>
                             setState((current) => ({

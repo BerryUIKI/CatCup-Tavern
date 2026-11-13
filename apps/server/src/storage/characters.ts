@@ -7,6 +7,7 @@ import { isRecord } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
 
 import { readFavorite } from '../cards/favorite.js';
+import { readCharacterModel } from '../cards/model.js';
 import { type ParsedCard, parseCardBuffer } from '../cards/parse.js';
 import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/write.js';
 import { deleteCharacterAssets } from './characterAssets.js';
@@ -92,6 +93,7 @@ async function loadCharacterFile(filePath: string, fileName: string): Promise<Ch
             creator: parsed.card.creator,
             tags: parsed.card.tags,
             fav: readFavorite(parsed),
+            model: readCharacterModel(parsed),
             spec: parsed.spec,
             hasCharacterBook: Boolean(parsed.card.character_book?.entries.length),
             createdAt: readCreatedAt(parsed, stats),
@@ -117,6 +119,7 @@ export function toSummary(detail: CharacterDetail): CharacterSummary {
         creator: detail.creator,
         tags: detail.tags,
         fav: detail.fav,
+        model: detail.model,
         spec: detail.spec,
         hasCharacterBook: detail.hasCharacterBook,
         createdAt: detail.createdAt,

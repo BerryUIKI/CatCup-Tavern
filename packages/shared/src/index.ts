@@ -2,6 +2,7 @@ export * from './groupCards.js';
 export * from './keywords.js';
 export * from './macros.js';
 export * from './memory.js';
+export * from './modelResolution.js';
 export * from './persona.js';
 export * from './quickReplies.js';
 export * from './regex.js';

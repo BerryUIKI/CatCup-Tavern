@@ -218,7 +218,8 @@ Merge edits into the stored card.
 ```
 
 - Editable: `name`, `description`, `personality`, `scenario`, `first_mes`, `mes_example`, `creator_notes`, `system_prompt`, `post_history_instructions`, `alternate_greetings`, `tags`, `creator`, `character_version`, `nickname`, `group_only_greetings`.
-- Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions`, the character book, V3 assets — is preserved.
+- `model` sets the card's model choice, written to `data.extensions.catcup_model`; an empty string clears it. It is validated only as a string — the character has no way to know which models the provider currently serves, so a model the provider does not list is accepted and resolves through the fallback order described in [PROVIDERS.md](PROVIDERS.md#which-model-a-request-uses).
+- Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions` beyond `catcup_model`, the character book, V3 assets — is preserved.
 - The file keeps its name: the id is what chats, avatars and world info reference. Only the card's own `name` changes.
 - A PNG card is re-encoded with both `chara` and `ccv3` chunks rewritten, so a V3 reader and a V2-only reader see the same character.
 - A card with no creation date gets `data.creation_date` (Unix seconds) on its first write, so the library's creation sort survives later atomic file writes.
@@ -853,7 +854,8 @@ Partial update. All fields are optional:
             "kind": "openai",
             "name": "OpenAI",
             "baseUrl": "https://api.openai.com/v1",
-            "model": "gpt-5",
+            "models": ["gpt-5"],
+            "defaultModel": "gpt-5",
             "enabled": true,
             "headers": {},
             "hasKey": false
@@ -862,6 +864,8 @@ Partial update. All fields are optional:
 }
 ```
 
+`models` is the provider's model list and `defaultModel` the one a chat uses when the character names none. A provider written by an older CatCup, carrying a single `model` string, is read as a one-entry list with that entry as the default.
+
 ### `POST /api/providers`
 
 ```json
@@ -869,14 +873,15 @@ Partial update. All fields are optional:
     "kind": "custom",
     "name": "Local OpenAI-compatible",
     "baseUrl": "http://127.0.0.1:8080/v1",
-    "model": "example-model",
+    "models": ["example-model"],
+    "defaultModel": "example-model",
     "enabled": true,
     "headers": {},
     "apiKey": "optional"
 }
 ```
 
-`kind` is one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. If `baseUrl` is empty, the kind's default is used. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
+`kind` is one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. If `baseUrl` is empty, the kind's default is used. `defaultModel` must be one of `models` when `models` is non-empty; a provider with no `defaultModel` resolves to the first entry in `models`. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
 
 ### `PATCH /api/providers/:id`
 

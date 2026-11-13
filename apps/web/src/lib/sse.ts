@@ -10,7 +10,7 @@ import type {
 import { ApiError } from './api';
 
 export interface GenerationHandlers {
-    onStart?: (generationId: string, speaker?: GenerationSpeaker) => void;
+    onStart?: (generationId: string, speaker?: GenerationSpeaker, model?: string) => void;
     onToken?: (text: string) => void;
     onReasoning?: (text: string) => void;
     onDone?: (message: ChatMessage, usage?: UsageInfo) => void;
@@ -37,7 +37,7 @@ function dispatchBlock(block: string, handlers: GenerationHandlers): void {
 
     switch (event.type) {
         case 'start':
-            handlers.onStart?.(event.generationId, event.speaker);
+            handlers.onStart?.(event.generationId, event.speaker, event.model);
             break;
         case 'token':
             handlers.onToken?.(event.text);

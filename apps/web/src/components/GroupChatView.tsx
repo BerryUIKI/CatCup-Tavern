@@ -11,10 +11,24 @@ import {
     type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
+    resolveModel,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
-import { Brain, ImagePlus, Images, Menu, MessageSquarePlus, Pencil, Play, Plus, Trash2, Users, X } from 'lucide-react';
+import {
+    Brain,
+    ImagePlus,
+    Images,
+    Menu,
+    MessageSquarePlus,
+    Pencil,
+    Play,
+    Plus,
+    Trash2,
+    TriangleAlert,
+    Users,
+    X,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -568,6 +582,16 @@ export function GroupChatView({
 
     const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
     const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    // The model this chat will use: the character's own choice when the
+    // provider serves it, otherwise the provider default. The streaming start
+    // event reports the same value once a request is under way.
+    const characterModel = generation.speaker?.model ?? '';
+    const resolvedModel = provider ? resolveModel(provider, characterModel) : null;
+    const shownModel = generation.model ?? resolvedModel?.model ?? '';
+    const modelFallback =
+        resolvedModel?.source === 'fallback' && resolvedModel.requested
+            ? `${resolvedModel.requested} is not on this provider; using ${resolvedModel.model}.`
+            : null;
     const disabledReason = !selectedChatId ? 'Start a chat first.' : undefined;
 
     const tools: ToolsMenuItem[] = [
@@ -712,10 +736,16 @@ export function GroupChatView({
                         />
                         <span className="truncate text-parchment-dim">
                             {provider.name}
-                            {provider.model ? ` · ${provider.model}` : ''}
+                            {shownModel ? ` · ${shownModel}` : ''}
                         </span>
+                        {modelFallback ? (
+                            <span className="shrink-0 text-amber" title={modelFallback}>
+                                <TriangleAlert size={12} aria-hidden="true" />
+                            </span>
+                        ) : null}
                         <span className="sr-only">
                             {providerReady ? 'Active provider is ready' : 'Active provider may need a key'}
+                            {modelFallback ? ` ${modelFallback}` : ''}
                         </span>
                     </button>
                 ) : null}

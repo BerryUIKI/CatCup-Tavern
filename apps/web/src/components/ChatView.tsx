@@ -11,6 +11,7 @@ import {
     type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
+    resolveModel,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
@@ -26,6 +27,7 @@ import {
     Plus,
     Sparkles,
     Trash2,
+    TriangleAlert,
     X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -494,6 +496,18 @@ export function ChatView({
 
     const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
     const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    // The model this chat will use: the character's own choice when the
+    // provider serves it, otherwise the provider default. The streaming start
+    // event reports the same value once a request is under way.
+    const characterModel = characterDetail?.model ?? character?.model ?? '';
+    const resolvedModel = provider ? resolveModel(provider, characterModel) : null;
+    const shownModel = generation.model ?? resolvedModel?.model ?? '';
+    // A character pinned to a model this provider does not serve still speaks;
+    // saying so is the difference between a substitution and a silent change.
+    const modelFallback =
+        resolvedModel?.source === 'fallback' && resolvedModel.requested
+            ? `${resolvedModel.requested} is not on this provider; using ${resolvedModel.model}.`
+            : null;
     const disabledReason = !selectedChatId ? 'Start a chat first.' : undefined;
 
     const tools: ToolsMenuItem[] = character
@@ -650,10 +664,16 @@ export function ChatView({
                             />
                             <span className="truncate text-parchment-dim">
                                 {provider.name}
-                                {provider.model ? ` · ${provider.model}` : ''}
+                                {shownModel ? ` · ${shownModel}` : ''}
                             </span>
+                            {modelFallback ? (
+                                <span className="shrink-0 text-amber" title={modelFallback}>
+                                    <TriangleAlert size={12} aria-hidden="true" />
+                                </span>
+                            ) : null}
                             <span className="sr-only">
                                 {providerReady ? 'Active provider is ready' : 'Active provider may need a key'}
+                                {modelFallback ? ` ${modelFallback}` : ''}
                             </span>
                         </button>
                     ) : null}

@@ -2,7 +2,13 @@ import type { CharacterPatch } from '@catcup/shared';
 import { BookOpen, Download, Package, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { useCharacter, useDeleteCharacter, useImportCharacterBook, useUpdateCharacter } from '../hooks/data';
+import {
+    useCharacter,
+    useDeleteCharacter,
+    useImportCharacterBook,
+    useSettings,
+    useUpdateCharacter,
+} from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -23,23 +29,28 @@ interface Draft {
     alternate_greetings: string[];
     system_prompt: string;
     post_history_instructions: string;
+    /** The model this character asks for; empty means the provider default. */
+    model: string;
 }
 
-function toDraft(card: {
-    name: string;
-    creator: string;
-    character_version: string;
-    tags: string[];
-    creator_notes: string;
-    description: string;
-    personality: string;
-    scenario: string;
-    first_mes: string;
-    mes_example: string;
-    alternate_greetings: string[];
-    system_prompt: string;
-    post_history_instructions: string;
-}): Draft {
+function toDraft(
+    card: {
+        name: string;
+        creator: string;
+        character_version: string;
+        tags: string[];
+        creator_notes: string;
+        description: string;
+        personality: string;
+        scenario: string;
+        first_mes: string;
+        mes_example: string;
+        alternate_greetings: string[];
+        system_prompt: string;
+        post_history_instructions: string;
+    },
+    model: string,
+): Draft {
     return {
         name: card.name,
         creator: card.creator,
@@ -54,6 +65,7 @@ function toDraft(card: {
         alternate_greetings: [...card.alternate_greetings],
         system_prompt: card.system_prompt,
         post_history_instructions: card.post_history_instructions,
+        model,
     };
 }
 
@@ -116,7 +128,13 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
     const deleteCharacterMutation = useDeleteCharacter();
     const importBook = useImportCharacterBook(characterId);
     const pushToast = useAppStore((state) => state.pushToast);
+    const settings = useSettings().data;
     const [draft, setDraft] = useState<Draft | null>(null);
+
+    // The model list comes from the active provider; a character can also keep
+    // a model that provider no longer lists, so it stays selectable and marked.
+    const activeProvider = settings?.providers.find((provider) => provider.id === settings.activeProviderId) ?? null;
+    const providerModels = activeProvider?.models ?? [];
 
     const character = characterQuery.data ?? null;
     const linkedWorld =
@@ -124,7 +142,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
 
     useEffect(() => {
         if (character) {
-            setDraft(toDraft(character.card));
+            setDraft(toDraft(character.card, character.model));
         } else {
             setDraft(null);
         }
@@ -152,6 +170,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
             alternate_greetings: draft.alternate_greetings.filter((greeting) => greeting.trim().length > 0),
             system_prompt: draft.system_prompt,
             post_history_instructions: draft.post_history_instructions,
+            model: draft.model,
         };
 
         try {
@@ -282,6 +301,35 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                         value={draft.tags}
                         onChange={(value) => update('tags', value)}
                     />
+
+                    <div>
+                        <label className="label-text" htmlFor="character-model">
+                            Model
+                        </label>
+                        <select
+                            id="character-model"
+                            className="input-shell"
+                            value={draft.model}
+                            onChange={(event) => update('model', event.target.value)}
+                        >
+                            <option value="">
+                                Default{activeProvider?.defaultModel ? ` (${activeProvider.defaultModel})` : ''}
+                            </option>
+                            {providerModels.map((model) => (
+                                <option key={model} value={model}>
+                                    {model}
+                                </option>
+                            ))}
+                            {draft.model && !providerModels.includes(draft.model) ? (
+                                <option value={draft.model}>{draft.model} — not on this provider</option>
+                            ) : null}
+                        </select>
+                        <p className="field-hint">
+                            {activeProvider
+                                ? `From ${activeProvider.name}. A model this provider does not serve falls back to its default, and the chat header says so.`
+                                : 'No active provider yet; the model choice applies once one is set.'}
+                        </p>
+                    </div>
 
                     <Field
                         label="Description"

@@ -292,7 +292,8 @@ beforeAll(async () => {
         kind: 'custom',
         name: 'Stub chat',
         baseUrl: `${stubBase}/v1`,
-        model: 'stub-model',
+        models: ['stub-model'],
+        defaultModel: 'stub-model',
         enabled: true,
     });
     expect(provider.statusCode).toBe(200);

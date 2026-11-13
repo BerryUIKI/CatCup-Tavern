@@ -20,6 +20,7 @@ import {
     Plus,
     RefreshCw,
     Save,
+    Star,
     Trash2,
     X,
 } from 'lucide-react';
@@ -55,7 +56,10 @@ interface ProviderForm {
     name: string;
     kind: ProviderKind;
     baseUrl: string;
-    model: string;
+    /** Every model this provider serves, in display order. */
+    models: string[];
+    /** The model a chat uses when the character names none. */
+    defaultModel: string;
     enabled: boolean;
     headers: HeaderRow[];
 }
@@ -101,7 +105,8 @@ function providerToForm(provider: ProviderPublic): ProviderForm {
         name: provider.name,
         kind: provider.kind,
         baseUrl: provider.baseUrl,
-        model: provider.model,
+        models: [...provider.models],
+        defaultModel: provider.defaultModel,
         enabled: provider.enabled,
         headers: Object.entries(provider.headers).map(([name, value]) => ({
             id: crypto.randomUUID(),
@@ -136,7 +141,8 @@ function formToInput(form: ProviderForm): ProviderInput {
         kind: form.kind,
         name: form.name.trim(),
         baseUrl: form.baseUrl.trim(),
-        model: form.model.trim(),
+        models: form.models,
+        defaultModel: form.defaultModel,
         enabled: form.enabled,
         headers: formHeaders(form),
     };
@@ -147,7 +153,9 @@ function formsEqual(left: ProviderForm, right: ProviderForm): boolean {
         left.name.trim() === right.name.trim() &&
         left.kind === right.kind &&
         left.baseUrl.trim() === right.baseUrl.trim() &&
-        left.model.trim() === right.model.trim() &&
+        left.defaultModel === right.defaultModel &&
+        left.models.length === right.models.length &&
+        left.models.every((model, index) => model === right.models[index]) &&
         left.enabled === right.enabled &&
         headersEqual(formHeaders(left), formHeaders(right))
     );
@@ -230,6 +238,8 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         initialProvider ? providerToForm(initialProvider) : null,
     );
     const [apiKey, setApiKey] = useState('');
+    /** The id being typed into the "add a model" field. */
+    const [newModel, setNewModel] = useState('');
     const [removeKey, setRemoveKey] = useState(false);
     const [showKey, setShowKey] = useState(false);
     const [testResults, setTestResults] = useState<Record<string, ProviderTestResult>>({});
@@ -379,7 +389,8 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
             name: uniqueName(defaultName(kind), settings.providers),
             kind,
             baseUrl: DEFAULT_BASE_URLS[kind],
-            model: '',
+            models: [],
+            defaultModel: '',
             enabled: true,
             headers: [],
         });
@@ -874,7 +885,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                     </span>
                                                     <span className="block truncate text-[11px] text-muted">
                                                         {PROVIDER_KIND_LABELS[provider.kind]}
-                                                        {provider.model ? ` · ${provider.model}` : ''}
+                                                        {provider.defaultModel ? ` · ${provider.defaultModel}` : ''}
                                                     </span>
                                                 </span>
                                                 <span className="flex shrink-0 items-center gap-1">
@@ -984,7 +995,8 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                     </h4>
                                     <p className="truncate text-[11px] text-muted">
                                         {PROVIDER_KIND_LABELS[form.kind]}
-                                        {form.model.trim() ? ` · ${form.model.trim()}` : ''}
+                                        {form.defaultModel ? ` · ${form.defaultModel}` : ''}
+                                        {form.models.length > 1 ? ` (+${form.models.length - 1})` : ''}
                                         {!form.enabled ? ' · Disabled' : ''}
                                         {isActive ? ' · Active' : ''}
                                     </p>
@@ -1101,20 +1113,13 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                         </div>
 
                                         <div className="mt-4">
-                                            <label className="label-text" htmlFor={`${idPrefix}-provider-model`}>
-                                                Model
-                                            </label>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    id={`${idPrefix}-provider-model`}
-                                                    className="input-shell"
-                                                    list={currentModels.length > 0 ? modelListId : undefined}
-                                                    value={form.model}
-                                                    maxLength={200}
-                                                    spellCheck={false}
-                                                    placeholder="e.g. gpt-5"
-                                                    onChange={(event) => patchForm({ model: event.target.value })}
-                                                />
+                                            <div className="flex items-center justify-between gap-2">
+                                                <label
+                                                    className="label-text mb-0"
+                                                    htmlFor={`${idPrefix}-provider-new-model`}
+                                                >
+                                                    Models
+                                                </label>
                                                 <button
                                                     type="button"
                                                     className="btn-ghost shrink-0"
@@ -1126,6 +1131,102 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                     Fetch models
                                                 </button>
                                             </div>
+
+                                            {form.models.length === 0 ? (
+                                                <p className="field-hint">
+                                                    No models yet. Fetch them from the endpoint, or add one below.
+                                                </p>
+                                            ) : (
+                                                <ul className="mt-2 space-y-1.5">
+                                                    {form.models.map((model) => {
+                                                        const isDefault = model === form.defaultModel;
+                                                        return (
+                                                            <li
+                                                                key={model}
+                                                                className="flex items-center gap-2 rounded-lg border border-line-soft bg-ink-soft/60 px-2.5 py-1.5"
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    className={cn(
+                                                                        'inline-flex min-h-7 items-center gap-1 rounded-full border px-2 text-[10px] transition',
+                                                                        isDefault
+                                                                            ? 'border-amber/40 bg-amber/10 text-amber'
+                                                                            : 'border-line/70 text-muted hover:border-amber/40 hover:text-parchment-dim',
+                                                                    )}
+                                                                    onClick={() => patchForm({ defaultModel: model })}
+                                                                    aria-pressed={isDefault}
+                                                                    title={
+                                                                        isDefault
+                                                                            ? 'The default model for chats with no character choice'
+                                                                            : 'Make this the default model'
+                                                                    }
+                                                                >
+                                                                    {isDefault ? <Star size={10} /> : null}
+                                                                    {isDefault ? 'Default' : 'Set default'}
+                                                                </button>
+                                                                <span className="min-w-0 flex-1 truncate font-mono text-xs text-parchment-dim">
+                                                                    {model}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    className="icon-btn size-7 hover:text-wine"
+                                                                    onClick={() =>
+                                                                        patchForm({
+                                                                            models: form.models.filter(
+                                                                                (entry) => entry !== model,
+                                                                            ),
+                                                                            defaultModel:
+                                                                                form.defaultModel === model
+                                                                                    ? ''
+                                                                                    : form.defaultModel,
+                                                                        })
+                                                                    }
+                                                                    aria-label={`Remove ${model}`}
+                                                                >
+                                                                    <X size={13} />
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            )}
+
+                                            <form
+                                                className="mt-2 flex gap-2"
+                                                onSubmit={(event) => {
+                                                    event.preventDefault();
+                                                    const value = newModel.trim();
+                                                    if (!value) {
+                                                        return;
+                                                    }
+                                                    patchForm({
+                                                        models: form.models.includes(value)
+                                                            ? form.models
+                                                            : [...form.models, value],
+                                                        defaultModel: form.defaultModel || value,
+                                                    });
+                                                    setNewModel('');
+                                                }}
+                                            >
+                                                <input
+                                                    id={`${idPrefix}-provider-new-model`}
+                                                    className="input-shell"
+                                                    list={currentModels.length > 0 ? modelListId : undefined}
+                                                    value={newModel}
+                                                    maxLength={200}
+                                                    spellCheck={false}
+                                                    placeholder="Add a model id, e.g. gpt-5"
+                                                    onChange={(event) => setNewModel(event.target.value)}
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    className="btn-ghost shrink-0"
+                                                    disabled={!newModel.trim()}
+                                                >
+                                                    <Plus size={15} />
+                                                    Add
+                                                </button>
+                                            </form>
                                             <datalist id={modelListId}>
                                                 {currentModels.map((model) => (
                                                     <option key={model.id} value={model.id}>
@@ -1134,9 +1235,10 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 ))}
                                             </datalist>
                                             <p className="field-hint">
-                                                Any model id is accepted; the list is only a suggestion.
+                                                A character may ask for any listed model; one it asks for that is not
+                                                listed falls back to the default.
                                                 {currentModels.length > 0
-                                                    ? ` ${currentModels.length} model(s) loaded.`
+                                                    ? ` ${currentModels.length} suggestion(s) loaded.`
                                                     : ''}
                                             </p>
                                         </div>
