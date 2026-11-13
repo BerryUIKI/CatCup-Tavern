@@ -54,6 +54,8 @@ export interface AssembleInput {
     newChatPrompt?: string;
     newExampleChatPrompt?: string;
     continueNudgePrompt?: string;
+    /** Instruction that makes the model answer as `{{user}}`. */
+    impersonationPrompt?: string;
     /** Token counter; defaults to the shared estimator. */
     countTokens?: (text: string) => number;
     /** Scripts with `promptOnly`, applied to the history while assembling. */
@@ -537,6 +539,22 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
                 identifier: 'continueNudge',
                 role: 'system',
                 content: substitute(input.continueNudgePrompt ?? DEFAULT_MESSAGES.continueNudge),
+            },
+        ]);
+    }
+
+    // Phase 9: impersonation instruction.
+    //
+    // SillyTavern adds this as a control prompt, after the history. Anchoring
+    // it at the end is what makes it read as an instruction to write the next
+    // turn rather than another line of lore — except for Anthropic, whose
+    // adapter hoists every system message to the top-level `system` block.
+    if (generationType === 'impersonate') {
+        completion.add('impersonate', null, [
+            {
+                identifier: 'impersonate',
+                role: 'system',
+                content: substitute(input.impersonationPrompt ?? DEFAULT_MESSAGES.impersonation),
             },
         ]);
     }

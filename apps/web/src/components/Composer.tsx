@@ -1,4 +1,4 @@
-import { Send, Square } from 'lucide-react';
+import { Send, Square, UserRoundPen } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -13,6 +13,10 @@ interface ComposerProps {
     focusRequest?: number;
     onSend: (text: string) => void;
     onStop: () => void;
+    /** Ask the model to write the next message as the user, into this box. */
+    onImpersonate?: () => void;
+    /** True while that draft is streaming. */
+    impersonating?: boolean;
 }
 
 export function Composer({
@@ -24,6 +28,8 @@ export function Composer({
     focusRequest,
     onSend,
     onStop,
+    onImpersonate,
+    impersonating = false,
 }: ComposerProps) {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -69,6 +75,19 @@ export function Composer({
                         className="max-h-56 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-parchment outline-none placeholder:text-muted/70 disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Message"
                     />
+
+                    {onImpersonate ? (
+                        <button
+                            type="button"
+                            onClick={onImpersonate}
+                            disabled={disabled || streaming}
+                            className="icon-btn h-10 w-10 shrink-0"
+                            title={impersonating ? 'Writing as you…' : 'Write the next message as me'}
+                            aria-label="Write the next message as me"
+                        >
+                            <UserRoundPen size={16} />
+                        </button>
+                    ) : null}
 
                     {streaming ? (
                         <button

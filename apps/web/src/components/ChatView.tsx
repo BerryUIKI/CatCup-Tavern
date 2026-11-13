@@ -43,6 +43,7 @@ import {
 } from '../hooks/data';
 import { useGeneration } from '../hooks/useGeneration';
 import type { ImageChatTarget } from '../hooks/useImages';
+import { useImpersonation } from '../hooks/useImpersonation';
 import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
@@ -224,6 +225,15 @@ export function ChatView({
         () => scrollToBottom(true),
     );
     const tts = useTts();
+    const impersonation = useImpersonation({
+        characterId: character?.id ?? null,
+        chatId: selectedChatId,
+        onDraft: setDraft,
+    });
+    // One strip for both kinds of generation failure, so a failed impersonation
+    // is not silent.
+    const composerError = impersonation.error ?? generation.error;
+    const dismissComposerError = impersonation.error ? impersonation.clearError : generation.clearError;
     const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
     const imageTarget: ImageChatTarget | null =
         character && selectedChatId
@@ -782,14 +792,14 @@ export function ChatView({
                 </div>
             </div>
 
-            {generation.error ? (
-                <div className="border-t border-wine/30 bg-wine/10 px-3 py-2 md:px-6">
+            {composerError ? (
+                <div role="alert" className="border-t border-wine/30 bg-wine/10 px-3 py-2 md:px-6">
                     <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 text-sm text-parchment">
-                        <span className="min-w-0 flex-1 leading-relaxed">{generation.error}</span>
+                        <span className="min-w-0 flex-1 leading-relaxed">{composerError}</span>
                         <button
                             type="button"
                             className="icon-btn size-7 shrink-0"
-                            onClick={generation.clearError}
+                            onClick={dismissComposerError}
                             aria-label="Dismiss error"
                         >
                             <X size={14} />
@@ -810,13 +820,21 @@ export function ChatView({
 
             <Composer
                 placeholder={character ? `Message ${character.name}…` : 'Choose a character to begin'}
-                disabled={!selectedChatId || !character}
-                streaming={generation.streaming}
+                disabled={!selectedChatId || !character || impersonation.streaming}
+                streaming={generation.streaming || impersonation.streaming}
                 value={draft}
                 onChange={setDraft}
                 focusRequest={focusRequest}
                 onSend={handleSend}
-                onStop={() => void generation.stop()}
+                onStop={() => {
+                    if (impersonation.streaming) {
+                        impersonation.stop();
+                    } else {
+                        void generation.stop();
+                    }
+                }}
+                onImpersonate={() => void impersonation.start()}
+                impersonating={impersonation.streaming}
             />
 
             <ContextInspector
