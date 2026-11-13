@@ -34,7 +34,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'openai',
             name: 'OpenAI',
             baseUrl: DEFAULT_BASE_URLS.openai,
-            model: 'gpt-5',
+            models: ['gpt-5'],
+            defaultModel: 'gpt-5',
             enabled: true,
             headers: {},
         },
@@ -43,7 +44,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'anthropic',
             name: 'Anthropic',
             baseUrl: DEFAULT_BASE_URLS.anthropic,
-            model: 'claude-sonnet-5-5',
+            models: ['claude-sonnet-5-5'],
+            defaultModel: 'claude-sonnet-5-5',
             enabled: true,
             headers: {},
         },
@@ -52,7 +54,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'openrouter',
             name: 'OpenRouter',
             baseUrl: DEFAULT_BASE_URLS.openrouter,
-            model: '',
+            models: [],
+            defaultModel: '',
             enabled: true,
             headers: {},
         },
@@ -61,7 +64,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'ollama',
             name: 'Ollama',
             baseUrl: DEFAULT_BASE_URLS.ollama,
-            model: 'llama3.2',
+            models: ['llama3.2'],
+            defaultModel: 'llama3.2',
             enabled: true,
             headers: {},
         },
@@ -136,6 +140,22 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
     } else if (settings.activePersonaId && !settings.personas.some((item) => item.id === settings.activePersonaId)) {
         settings.activePersonaId = settings.personas[0]?.id ?? null;
         changed = true;
+    }
+
+    // Files written before the model list carry one `model` string. Read it as
+    // a one-entry list with that entry as the default, so an existing provider
+    // keeps the model it was using.
+    if (Array.isArray(raw.providers)) {
+        for (const [index, rawProvider] of raw.providers.entries()) {
+            const provider = settings.providers[index];
+            if (!provider || !isRecord(rawProvider) || !('model' in rawProvider) || 'models' in rawProvider) {
+                continue;
+            }
+            const legacyModel = typeof rawProvider.model === 'string' ? rawProvider.model.trim() : '';
+            provider.models = legacyModel ? [legacyModel] : [];
+            provider.defaultModel = legacyModel;
+            changed = true;
+        }
     }
 
     return { settings, changed, corrupt: false };
@@ -401,7 +421,8 @@ export async function createProvider(input: ProviderInput): Promise<ProviderPubl
             kind: input.kind,
             name: input.name,
             baseUrl: input.baseUrl || DEFAULT_BASE_URLS[input.kind] || '',
-            model: input.model,
+            models: [...input.models],
+            defaultModel: input.defaultModel,
             enabled: input.enabled,
             headers: input.headers,
         };
@@ -426,7 +447,8 @@ export async function updateProvider(providerId: string, input: ProviderInput): 
         provider.kind = input.kind;
         provider.name = input.name;
         provider.baseUrl = input.baseUrl || DEFAULT_BASE_URLS[input.kind] || '';
-        provider.model = input.model;
+        provider.models = [...input.models];
+        provider.defaultModel = input.defaultModel;
         provider.enabled = input.enabled;
         provider.headers = input.headers;
 

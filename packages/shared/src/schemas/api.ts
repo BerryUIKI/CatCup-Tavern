@@ -55,6 +55,8 @@ export interface GenerationSpeaker {
     fileName: string;
     name: string;
     avatarUrl: string;
+    /** The member's own model choice, when the card names one. */
+    model?: string;
 }
 
 export interface GroupGenerateRequest {
@@ -68,7 +70,13 @@ export interface GroupGenerateRequest {
 }
 
 export type GenerationEvent =
-    | { type: 'start'; generationId: string; speaker?: GenerationSpeaker }
+    | {
+          type: 'start';
+          generationId: string;
+          /** The model this request resolved to, after any fallback. */
+          model?: string;
+          speaker?: GenerationSpeaker;
+      }
     | { type: 'token'; text: string }
     | { type: 'reasoning'; text: string }
     | {

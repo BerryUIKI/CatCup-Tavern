@@ -29,7 +29,8 @@ function customProvider(baseUrl: string, name = 'Stub provider') {
         kind: 'custom',
         name,
         baseUrl,
-        model: 'stub-model',
+        models: ['stub-model'],
+        defaultModel: 'stub-model',
         enabled: true,
         headers: {},
     };
@@ -350,5 +351,75 @@ describe('active provider invariants', () => {
     it('returns 404 when activating a provider that does not exist', async () => {
         const response = await call('PATCH', '/api/settings', { activeProviderId: 'missing-provider' });
         expect(response.statusCode).toBe(404);
+    });
+});
+
+describe('provider model lists', () => {
+    it('keeps a list and resolves a default that is not in it', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'custom',
+            name: 'Listed',
+            baseUrl: stubBase,
+            models: ['alpha', 'beta'],
+            defaultModel: 'gamma',
+            enabled: true,
+            headers: {},
+        });
+        expect(created.statusCode).toBe(200);
+        const provider = (created.json() as { provider: { models: string[]; defaultModel: string } }).provider;
+        expect(provider.models).toEqual(['alpha', 'beta']);
+        // A default the list does not contain falls back to its first model.
+        expect(provider.defaultModel).toBe('alpha');
+    });
+
+    it('de-duplicates a list and fills a missing default', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'custom',
+            name: 'Dupes',
+            baseUrl: stubBase,
+            models: ['alpha', 'alpha', 'beta'],
+            enabled: true,
+            headers: {},
+        });
+        const provider = (created.json() as { provider: { models: string[]; defaultModel: string } }).provider;
+        expect(provider.models).toEqual(['alpha', 'beta']);
+        expect(provider.defaultModel).toBe('alpha');
+    });
+
+    it('reads a provider written with the old single model string', async () => {
+        // The settings file is loaded once per process; write a legacy shape
+        // and ask the settings endpoint, which normalizes and rewrites it.
+        const { writeFile, readFile } = await import('node:fs/promises');
+        const settingsPath = path.join(root, 'settings.json');
+        const current = JSON.parse(await readFile(settingsPath, 'utf8')) as {
+            providers: Array<Record<string, unknown>>;
+        };
+        const legacy = {
+            id: 'legacy-provider',
+            kind: 'custom',
+            name: 'Legacy',
+            baseUrl: stubBase,
+            model: 'old-model',
+            enabled: true,
+            headers: {},
+        };
+        current.providers.push(legacy);
+        await writeFile(settingsPath, JSON.stringify(current));
+
+        // A fresh process would normalize on load; here the cache holds the
+        // pre-write state, so reload through the storage module directly.
+        const settingsStorage = await import('../storage/settings.js');
+        settingsStorage.clearSettingsCache();
+        const settings = await settingsStorage.getSettings();
+        const provider = settings.providers.find((entry) => entry.id === 'legacy-provider');
+        expect(provider?.models).toEqual(['old-model']);
+        expect(provider?.defaultModel).toBe('old-model');
+
+        const rewritten = JSON.parse(await readFile(settingsPath, 'utf8')) as {
+            providers: Array<Record<string, unknown>>;
+        };
+        const stored = rewritten.providers.find((entry) => entry.id === 'legacy-provider');
+        expect(stored?.models).toEqual(['old-model']);
+        expect('model' in (stored ?? {})).toBe(false);
     });
 });
