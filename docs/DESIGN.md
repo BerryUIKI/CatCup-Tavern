@@ -56,6 +56,10 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
   Tools menu (`ToolsMenu.tsx`), which the character and group chat headers share.
 - The provider status pill appears at 1024 px and wider; below that the library footer carries the
   same state, so nothing is lost when the header makes room.
+- The library footer is two rows: the **profile** on top — a switch that replaces the cast, the
+  lorebooks and the way prompts are built — and the active provider beneath it, the lighter and more
+  frequent choice. A profile is never a colour-only signal: its name is on the row, and a switch
+  toasts the name it moved to.
 - The Tools menu is the only place a secondary chat action appears. It is a `role="menu"` with
   arrow-key navigation, Escape to close, focus returned to the trigger, and destructive rows
   separated at the bottom in wine behind a confirmation. A disabled row says why in a hint line

@@ -11,11 +11,14 @@ import type {
     GroupPatch,
     GroupView,
     ImportCharactersResponse,
+    ProfileCreate,
+    ProfileRename,
     ProviderDraftTestInput,
     ProviderInput,
     QuickReplySet,
     RegexScriptPatch,
     SettingsPatch,
+    SettingsResponse,
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
@@ -33,6 +36,7 @@ export const queryKeys = {
     groupChats: (groupId: string | null) => ['groupChats', groupId] as const,
     groupChat: (groupId: string | null, chatId: string | null) => ['groupChat', groupId, chatId] as const,
     settings: ['settings'] as const,
+    profiles: ['profiles'] as const,
     presets: ['presets'] as const,
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
@@ -857,6 +861,71 @@ export function useImportRegexScripts() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
+    });
+}
+
+/** The profile list and the one the server is serving. */
+export function useProfiles() {
+    return useQuery({
+        queryKey: queryKeys.profiles,
+        queryFn: api.profiles.list,
+    });
+}
+
+/** Invalidate everything a profile switch changes: every scoped store. */
+function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, settings: SettingsResponse) {
+    queryClient.setQueryData(queryKeys.settings, settings);
+    void queryClient.invalidateQueries();
+}
+
+export function useActivateProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.activate(id),
+        onSuccess: ({ settings }) => invalidateAll(queryClient, settings),
+    });
+}
+
+export function useCreateProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: ProfileCreate) => api.profiles.create(input),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useRenameProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, patch }: { id: string; patch: ProfileRename }) => api.profiles.rename(id, patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.profiles });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useArchiveProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.archive(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useRestoreProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.restore(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useDeleteProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.remove(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
     });
 }
 

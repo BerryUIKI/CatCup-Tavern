@@ -6,6 +6,7 @@ import {
     Download,
     ImagePlus,
     Info,
+    Layers,
     ListOrdered,
     Pencil,
     Regex,
@@ -39,6 +40,7 @@ import { ImageSettings } from './ImageSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
+import { ProfileSettings } from './ProfileSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
@@ -60,6 +62,13 @@ interface SettingsSection {
 }
 
 const SECTIONS: SettingsSection[] = [
+    {
+        id: 'profiles',
+        label: 'Profiles',
+        icon: Layers,
+        group: 'Model',
+        description: 'Each profile is its own cast, lorebooks, presets and settings; the provider list is shared.',
+    },
     {
         id: 'providers',
         label: 'Providers',
@@ -668,7 +677,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         }
 
         const panel =
-            section === 'generation' ? (
+            section === 'profiles' ? (
+                <ProfileSettings />
+            ) : section === 'generation' ? (
                 renderGenerationPanel()
             ) : section === 'prompts' ? (
                 renderPromptsPanel()
