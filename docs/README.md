@@ -78,5 +78,6 @@ flowchart LR
 - **Docs are part of done.** A user-facing change updates the relevant page and `CHANGELOG.md` in the same PR.
 - **No secrets.** Never put API keys, session cookies or real `data/` contents in documentation, examples or tests.
 - **Relative links.** Use relative Markdown links so the docs work on GitHub and in a local checkout.
+- **Theme-aware images.** Brand images and illustrations ship as dark and light variants and switch with `<picture>` + `prefers-color-scheme`; screenshots of the dark app stay single images.
 - **Scope changes update MILESTONES.md.** If a feature moves between milestones, change this file first.
 - **Accuracy over aspiration.** Mark planned work as planned; do not describe unimplemented features as available.
