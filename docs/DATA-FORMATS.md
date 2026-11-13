@@ -8,33 +8,40 @@ CatCup Tavern stores everything as files under `data/`. The goal is to stay clos
 
 ```text
 data/
-├── characters/
-│   ├── Seraphina.png
-│   └── Custom.json
-├── character-assets/          # assets extracted from CharX packages
-│   └── Seraphina/
-│       └── assets/…
-├── chats/
-│   └── Seraphina/
-│       └── Seraphina - 2026-11-09_18-42-29.jsonl
-├── groups/
-│   └── 1762839291123.json      # ST group metadata
-├── group chats/
-│   └── 2026-11-11@08h14m52s123ms.jsonl
-├── worlds/                    # World Info JSON
-├── presets/                   # ST OpenAI presets
-├── quickreplies/              # ST Quick Replies v2 sets, one JSON per set
-├── user/
-│   └── images/                # generated gallery images, ST's userImages root
-│       ├── Seraphina/
-│       │   ├── image-1762900000000-a1b2c3d4.png
-│       │   └── image-1762900000000-a1b2c3d4.png.json
-│       └── 1762839291123/     # a group's gallery, named by group id
-├── regex.json                 # Regex scripts (one ordered list)
-├── settings.json
-├── secrets.json               # server-only; never returned by the API
-└── auth.json                  # server-only
+├── settings.json              # the profile index: which profiles exist, which is active
+├── providers.json             # provider configurations and their models, shared by every profile
+├── secrets.json               # server-only; never returned by the API, shared by every profile
+├── auth.json                  # server-only, shared by every profile
+├── migration.log              # one line per step of a data-folder migration
+├── shared/                    # empty until an item is marked reusable (a later slice)
+├── archive/                   # archived profiles, each a full profile folder
+└── profiles/
+    └── default/               # a profile is a data scope
+        ├── characters/
+        │   ├── Seraphina.png
+        │   └── Custom.json
+        ├── character-assets/  # assets extracted from CharX packages
+        │   └── Seraphina/
+        │       └── assets/…
+        ├── chats/
+        │   └── Seraphina/
+        │       └── Seraphina - 2026-11-09_18-42-29.jsonl
+        ├── groups/
+        │   └── 1762839291123.json      # ST group metadata
+        ├── group chats/
+        │   └── 2026-11-11@08h14m52s123ms.jsonl
+        ├── worlds/            # World Info JSON
+        ├── presets/           # ST OpenAI presets
+        ├── quickreplies/      # ST Quick Replies v2 sets, one JSON per set
+        ├── user/
+        │   └── images/        # generated gallery images, ST's userImages root
+        ├── regex.json         # Regex scripts (one ordered list)
+        └── settings.json      # this profile's configuration
 ```
+
+A **profile is a data scope**. Characters, chats, groups, world info, presets, quick reply sets, regex, personas, images and configuration all belong to one profile, so two campaigns can each hold a character called `Mira` without colliding. Only the provider list, its models, the API keys and auth are shared, because re-entering one endpoint and its key per campaign buys nothing.
+
+A `data/` folder written before profiles existed — one tree and one `settings.json` — is migrated on first start into `profiles/default/`, with the old file kept as `settings.json.v1-backup`. `CATCUP_MIGRATE_DRY_RUN=1` prints the plan without moving anything. See [RFC 0001](RFC/0001-profiles.md) for the reasoning.
 
 ```mermaid
 erDiagram
@@ -610,23 +617,29 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
 
 ## Internal files (not SillyTavern formats)
 
-### `settings.json`
+### `settings.json` (two files)
+
+`data/settings.json` is the **profile index**:
+
+```json
+{
+    "version": 2,
+    "activeProfileId": "default",
+    "profiles": [{ "id": "default", "name": "Default", "description": "", "archived": false }]
+}
+```
+
+Each profile's own configuration is `data/profiles/<id>/settings.json`, and it never contains a `providers` array — the provider list is shared:
 
 ```json
 {
     "version": 1,
     "activeProviderId": "provider-uuid",
-    "providers": [
-        {
-            "id": "provider-uuid",
-            "kind": "openai",
-            "name": "OpenAI",
-            "baseUrl": "https://api.openai.com/v1",
-            "model": "gpt-5",
-            "enabled": true,
-            "headers": {}
-        }
-    ],
+    "profilePreferredModel": "",
+    "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
+    "personas": [{ "id": "default", "name": "You", "description": "" }],
+    "activePersonaId": "default",
+    "quickReplies": { "enabled": false, "setList": [] },
     "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
@@ -671,11 +684,15 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
 }
 ```
 
-No API keys are stored here.
+No API keys are stored here. `profilePreferredModel` is the model this profile prefers when the active provider serves it; the resolution order is in [PROVIDERS.md](PROVIDERS.md#which-model-a-request-uses).
+
+### `providers.json`
+
+The provider configurations every profile shares, in the shape `GET /api/providers` returns minus the key. A provider written before #76 with a single `model` string is read as a one-entry list and rewritten on the next save.
 
 `tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
 
-`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/user/images/` and are safe to back up or delete.
+`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/profiles/<id>/user/images/` and are safe to back up or delete.
 
 ### `secrets.json`
 

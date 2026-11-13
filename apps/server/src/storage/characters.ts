@@ -19,7 +19,18 @@ interface CacheEntry {
     detail: CharacterDetail;
 }
 
+/**
+ * Parsed cards, keyed by scope **and** file name.
+ *
+ * The scope is part of the key because two profiles may hold a card with the
+ * same file name; keying on the name alone would serve the previous profile's
+ * Mira after a switch.
+ */
 const cache = new Map<string, CacheEntry>();
+
+function cacheKey(fileName: string): string {
+    return `${paths.root}|${fileName}`;
+}
 
 function extensionOf(fileName: string): '.png' | '.json' | null {
     const lower = fileName.toLowerCase();
@@ -72,7 +83,7 @@ function readCreatedAt(parsed: ParsedCard, stats: Stats): number {
 
 async function loadCharacterFile(filePath: string, fileName: string): Promise<CharacterDetail | null> {
     const stats = await stat(filePath);
-    const cached = cache.get(fileName);
+    const cached = cache.get(cacheKey(fileName));
     if (cached && cached.mtimeMs === stats.mtimeMs) {
         return cached.detail;
     }
@@ -102,7 +113,7 @@ async function loadCharacterFile(filePath: string, fileName: string): Promise<Ch
             card: parsed.card,
             rawCard: parsed.raw,
         };
-        cache.set(fileName, { mtimeMs: stats.mtimeMs, detail });
+        cache.set(cacheKey(fileName), { mtimeMs: stats.mtimeMs, detail });
         return detail;
     } catch (error) {
         console.error(`[characters] Failed to parse ${fileName}:`, error);
@@ -217,7 +228,7 @@ export async function importCharacter(originalName: string, buffer: Buffer): Pro
 
     const target = resolveInside(paths.characters, fileName);
     await withFileLock(target, () => writeFileAtomic(target, buffer, { mode: 0o644 }));
-    cache.delete(fileName);
+    cache.delete(cacheKey(fileName));
 
     const detail = await loadCharacterFile(target, fileName);
     if (!detail) {
@@ -263,7 +274,7 @@ async function writeCardFile(
         await writeFileAtomic(found.filePath, `${JSON.stringify(outgoing, null, 2)}\n`, 'utf8');
     }
 
-    cache.delete(found.detail.fileName);
+    cache.delete(cacheKey(found.detail.fileName));
     return loadCharacterFile(found.filePath, found.detail.fileName);
 }
 
@@ -418,7 +429,7 @@ export async function deleteCharacter(id: string): Promise<boolean> {
         return false;
     }
     await withFileLock(found.filePath, () => unlink(found.filePath));
-    cache.delete(found.detail.fileName);
+    cache.delete(cacheKey(found.detail.fileName));
     await deleteCharacterAssets(found.detail.id).catch((error) => {
         console.error(`[characters] Failed to remove assets for ${found.detail.id}:`, error);
     });

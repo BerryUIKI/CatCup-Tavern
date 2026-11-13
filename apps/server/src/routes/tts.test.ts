@@ -1,11 +1,9 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 import { requiresTtsKey } from '../tts/openaiCompatible.js';
 
 let root: string;
@@ -49,9 +47,9 @@ async function speak(payload: Record<string, unknown>) {
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-tts-routes-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
+    root = await createProfileDataDir('catcup-tts-routes-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
 
     stub = createServer((request, response) => {
         const chunks: Buffer[] = [];

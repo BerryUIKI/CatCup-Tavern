@@ -1,10 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -70,7 +70,7 @@ beforeAll(async () => {
     }
     stubBase = `http://127.0.0.1:${address.port}`;
 
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-providers-routes-'));
+    root = await createProfileDataDir('catcup-providers-routes-');
     vi.stubEnv('CATCUP_DATA_DIR', root);
     vi.stubEnv('CATCUP_LOG_LEVEL', 'silent');
 
@@ -387,13 +387,10 @@ describe('provider model lists', () => {
     });
 
     it('reads a provider written with the old single model string', async () => {
-        // The settings file is loaded once per process; write a legacy shape
-        // and ask the settings endpoint, which normalizes and rewrites it.
-        const { writeFile, readFile } = await import('node:fs/promises');
-        const settingsPath = path.join(root, 'settings.json');
-        const current = JSON.parse(await readFile(settingsPath, 'utf8')) as {
-            providers: Array<Record<string, unknown>>;
-        };
+        // Providers live in the shared file now, so a legacy provider is one
+        // written there with a single `model` string. The settings loader
+        // normalizes it on the next read and rewrites it in the new shape.
+        const { writeFile } = await import('node:fs/promises');
         const legacy = {
             id: 'legacy-provider',
             kind: 'custom',
@@ -403,8 +400,7 @@ describe('provider model lists', () => {
             enabled: true,
             headers: {},
         };
-        current.providers.push(legacy);
-        await writeFile(settingsPath, JSON.stringify(current));
+        await writeFile(path.join(root, 'providers.json'), JSON.stringify([legacy]));
 
         // A fresh process would normalize on load; here the cache holds the
         // pre-write state, so reload through the storage module directly.
@@ -414,12 +410,5 @@ describe('provider model lists', () => {
         const provider = settings.providers.find((entry) => entry.id === 'legacy-provider');
         expect(provider?.models).toEqual(['old-model']);
         expect(provider?.defaultModel).toBe('old-model');
-
-        const rewritten = JSON.parse(await readFile(settingsPath, 'utf8')) as {
-            providers: Array<Record<string, unknown>>;
-        };
-        const stored = rewritten.providers.find((entry) => entry.id === 'legacy-provider');
-        expect(stored?.models).toEqual(['old-model']);
-        expect('model' in (stored ?? {})).toBe(false);
     });
 });

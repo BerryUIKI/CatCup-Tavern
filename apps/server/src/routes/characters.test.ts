@@ -1,9 +1,8 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { readFile, rm, stat, writeFile } from 'node:fs/promises';
 import type { FastifyInstance } from 'fastify';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -53,7 +52,7 @@ async function upload(fileName: string, buffer: Buffer) {
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-charx-routes-'));
+    root = await createProfileDataDir('catcup-charx-routes-');
     vi.stubEnv('CATCUP_DATA_DIR', root);
     vi.stubEnv('CATCUP_LOG_LEVEL', 'silent');
     vi.resetModules();
@@ -102,10 +101,10 @@ describe('CharX routes', () => {
         expect(avatar.headers['content-type']).toBe('image/png');
         expect(avatar.rawPayload.subarray(0, 8).toString('hex')).toBe('89504e470d0a1a0a');
 
-        const icon = await stat(path.join(root, 'character-assets', 'Nova', 'assets', 'icon', 'image', 'icon.png'));
+        const icon = await stat(fixturePath(root, 'character-assets', 'Nova', 'assets', 'icon', 'image', 'icon.png'));
         expect(icon.isFile()).toBe(true);
         const background = await stat(
-            path.join(root, 'character-assets', 'Nova', 'assets', 'background', 'image', 'inn.webp'),
+            fixturePath(root, 'character-assets', 'Nova', 'assets', 'background', 'image', 'inn.webp'),
         );
         expect(background.isFile()).toBe(true);
     });
@@ -135,7 +134,7 @@ describe('CharX routes', () => {
         expect(body.errors).toEqual([]);
         expect(body.imported[0]).toMatchObject({ id: 'Nova (2)', fileName: 'Nova (2).png' });
         const copied = await stat(
-            path.join(root, 'character-assets', 'Nova (2)', 'assets', 'background', 'image', 'inn.webp'),
+            fixturePath(root, 'character-assets', 'Nova (2)', 'assets', 'background', 'image', 'inn.webp'),
         );
         expect(copied.isFile()).toBe(true);
     });
@@ -169,7 +168,7 @@ describe('CharX routes', () => {
         expect(avatar.statusCode).toBe(404);
 
         const background = await stat(
-            path.join(root, 'character-assets', 'Plain', 'assets', 'background', 'image', 'inn.webp'),
+            fixturePath(root, 'character-assets', 'Plain', 'assets', 'background', 'image', 'inn.webp'),
         );
         expect(background.isFile()).toBe(true);
     });
@@ -187,12 +186,14 @@ describe('CharX routes', () => {
     it('removes extracted assets when the character is deleted', async () => {
         const imported = await upload('delete.charx', charx('Delete Me'));
         expect(imported.statusCode).toBe(200);
-        const assetPath = path.join(root, 'character-assets', 'Delete Me', 'assets', 'icon', 'image', 'icon.png');
+        const assetPath = fixturePath(root, 'character-assets', 'Delete Me', 'assets', 'icon', 'image', 'icon.png');
         expect((await stat(assetPath)).isFile()).toBe(true);
 
         const deleted = await call('DELETE', '/api/characters/Delete%20Me');
         expect(deleted.statusCode).toBe(200);
-        await expect(stat(path.join(root, 'character-assets', 'Delete Me'))).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(stat(fixturePath(root, 'character-assets', 'Delete Me'))).rejects.toMatchObject({
+            code: 'ENOENT',
+        });
     });
 });
 
@@ -264,7 +265,7 @@ describe('character library routes', () => {
 
     it('promotes a legacy card when writing a favorite', async () => {
         await writeFile(
-            path.join(root, 'characters', 'Legacy.json'),
+            fixturePath(root, 'characters', 'Legacy.json'),
             JSON.stringify({ name: 'Legacy', first_mes: 'An old card.', fav: true }),
             'utf8',
         );
@@ -280,7 +281,7 @@ describe('character library routes', () => {
         expect(set.json().character.spec).toBe('v2');
         expect(set.json().character.fav).toBe(true);
 
-        const raw = JSON.parse(await readFile(path.join(root, 'characters', 'Legacy.json'), 'utf8')) as {
+        const raw = JSON.parse(await readFile(fixturePath(root, 'characters', 'Legacy.json'), 'utf8')) as {
             spec: string;
             data: { extensions: { fav: boolean } };
         };
@@ -334,7 +335,7 @@ describe('character library routes', () => {
 
     it('preserves existing tag spelling and skips redundant writes', async () => {
         await writeFile(
-            path.join(root, 'characters', 'TagKeeper.json'),
+            fixturePath(root, 'characters', 'TagKeeper.json'),
             JSON.stringify({
                 spec: 'chara_card_v2',
                 spec_version: '2.0',
@@ -393,7 +394,7 @@ describe('character library routes', () => {
 
     it('bulk deletes characters and their assets', async () => {
         const imported = await importCharx('BulkAsset');
-        const assetPath = path.join(root, 'character-assets', 'BulkAsset', 'assets', 'icon', 'image', 'icon.png');
+        const assetPath = fixturePath(root, 'character-assets', 'BulkAsset', 'assets', 'icon', 'image', 'icon.png');
         expect((await stat(assetPath)).isFile()).toBe(true);
 
         const deleted = await call('POST', '/api/characters/bulk', {
@@ -403,7 +404,9 @@ describe('character library routes', () => {
         expect(deleted.statusCode).toBe(200);
         expect(deleted.json().deleted).toEqual(['BulkAsset']);
         expect((deleted.json().errors as Array<{ id: string }>)[0]?.id).toBe('Nobody');
-        await expect(stat(path.join(root, 'character-assets', 'BulkAsset'))).rejects.toMatchObject({ code: 'ENOENT' });
+        await expect(stat(fixturePath(root, 'character-assets', 'BulkAsset'))).rejects.toMatchObject({
+            code: 'ENOENT',
+        });
 
         const listed = await call('GET', '/api/characters');
         expect(

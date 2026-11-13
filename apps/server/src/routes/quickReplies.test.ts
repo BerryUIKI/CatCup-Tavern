@@ -1,9 +1,8 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -55,10 +54,10 @@ async function chatMessages(chatId: string): Promise<Array<Record<string, unknow
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-quick-replies-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
-    await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
+    root = await createProfileDataDir('catcup-quick-replies-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
+    await writeFile(fixturePath(root, 'characters', 'Bram.json'), card('Bram'));
 
     vi.stubEnv('CATCUP_DATA_DIR', root);
     vi.stubEnv('CATCUP_LOG_LEVEL', 'silent');

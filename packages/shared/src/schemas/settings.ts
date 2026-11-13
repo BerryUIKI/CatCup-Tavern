@@ -203,6 +203,12 @@ export type MemorySettingsPatch = z.infer<typeof memorySettingsPatchSchema>;
 export const appSettingsSchema = z.object({
     version: z.literal(1).default(1),
     activeProviderId: z.string().nullable().default(null),
+    /**
+     * A model this profile prefers, when the active provider serves it. Sits
+     * between the character's own choice and the provider default; empty means
+     * no preference.
+     */
+    profilePreferredModel: z.string().max(200).default(''),
     providers: z.array(providerConfigSchema).default([]),
     /** Active ST OpenAI preset id under `data/presets`, or `null`. */
     activePresetId: z.string().nullable().default(null),
@@ -231,6 +237,7 @@ export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
 
 export const settingsPatchSchema = z.object({
     activeProviderId: z.string().nullable().optional(),
+    profilePreferredModel: z.string().max(200).optional(),
     activePresetId: z.string().nullable().optional(),
     generation: generationSettingsSchema.partial().optional(),
     personas: z.array(personaEntrySchema).optional(),
