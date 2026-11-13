@@ -12,6 +12,15 @@
             "csp": null
         }
     },
+    "plugins": {
+        "updater": {
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYzQUQ4M0NGNDNFOEI5N0EKUldSNnVlaER6NE90OCtCM0t0M2NqdFBYQ24vb1AyQ2pTdWU1RDZoTlozMVNLZ25KVlE5UkIrOEUK",
+            "endpoints": ["https://github.com/BerryUIKI/CatCup-Tavern/releases/latest/download/latest.json"],
+            "windows": {
+                "installMode": "passive"
+            }
+        }
+    },
     "bundle": {
         "active": true,
         "targets": ["nsis"],
