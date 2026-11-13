@@ -8,12 +8,14 @@
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 struct Sidecar {
@@ -193,12 +195,132 @@ fn install_tray(app: &tauri::App) -> tauri::Result<()> {
     Ok(())
 }
 
+/// The extensions the shell hands to the server, matching its import route.
+const CARD_EXTENSIONS: [&str; 4] = ["png", "json", "charx", "catcup"];
+
+/// Card files the app was asked to open, and whether the page can take them.
+///
+/// Paths arrive before the window can use them: on a first launch they are this
+/// process's arguments, and on a second launch the single-instance plugin
+/// forwards them while the page may still be loading. They wait here until the
+/// webview reports that the page has finished loading.
+struct OpenFiles {
+    pending: Mutex<Vec<PathBuf>>,
+    page_ready: AtomicBool,
+}
+
+/// Read one argument as a card path.
+///
+/// A Windows association hands the file over as `"<exe>" "<path>"`, so the
+/// argument is a plain path, usually with a drive letter. It must not go
+/// through `Url::parse`: `C:\cards\mira.catcup` parses as a URL whose scheme is
+/// `c`, and the following `to_file_path` then fails — which silently drops
+/// every file a user opened.
+fn card_path(raw: &str) -> Option<PathBuf> {
+    let path = if raw.starts_with("file:") {
+        // macOS and Linux deliver file URLs; the branch is here so porting the
+        // shell does not quietly lose them.
+        tauri::Url::parse(raw).ok()?.to_file_path().ok()?
+    } else {
+        PathBuf::from(raw)
+    };
+
+    if !path.is_file() {
+        return None;
+    }
+
+    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+    CARD_EXTENSIONS.contains(&extension.as_str()).then_some(path)
+}
+
+/// The card paths among a set of arguments.
+///
+/// The executable path that every launch carries is filtered out by the
+/// extension check, so callers do not have to skip the first argument.
+fn card_paths(args: &[String]) -> Vec<PathBuf> {
+    args.iter().filter_map(|argument| card_path(argument)).collect()
+}
+
+/// Ask the page to import these cards, then reload it so the library shows them.
+///
+/// The page is a remote origin served by the sidecar, so Tauri IPC is not
+/// available to it; `eval` runs in the page instead, and the request rides on
+/// the session cookie the webview already holds.
+fn deliver_open_files<R: Runtime>(window: &tauri::WebviewWindow<R>, paths: &[PathBuf]) {
+    let Ok(encoded) = serde_json::to_string(
+        &paths
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<_>>(),
+    ) else {
+        println!("[shell] could not encode the card paths");
+        return;
+    };
+
+    let script = format!(
+        "(async () => {{
+            for (const path of {encoded}) {{
+                try {{
+                    const response = await fetch('/api/characters/import-path', {{
+                        method: 'POST',
+                        headers: {{ 'content-type': 'application/json' }},
+                        body: JSON.stringify({{ path }}),
+                    }});
+                    if (!response.ok) console.error('CatCup import failed', path, await response.text());
+                }} catch (error) {{
+                    console.error('CatCup import failed', path, error);
+                }}
+            }}
+            location.reload();
+        }})()"
+    );
+
+    if let Err(error) = window.eval(script) {
+        println!("[shell] could not hand the card to the window: {error}");
+    }
+}
+
+/// Hand over anything waiting, if the page is ready for it.
+fn flush_open_files<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<OpenFiles>() else {
+        return;
+    };
+    if !state.page_ready.load(Ordering::SeqCst) {
+        return;
+    }
+
+    let paths = {
+        let mut pending = state.pending.lock().unwrap();
+        std::mem::take(&mut *pending)
+    };
+    if paths.is_empty() {
+        return;
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        deliver_open_files(&window, &paths);
+    }
+}
+
 fn main() {
+    // Arguments for this launch. A card the user double-clicked is one of them.
+    let startup_args: Vec<String> = std::env::args().skip(1).collect();
+
     tauri::Builder::default()
+        // Registered before any plugin so a second launch that forwards a card
+        // while the first is still starting still finds somewhere to put it.
+        .manage(OpenFiles {
+            pending: Mutex::new(card_paths(&startup_args)),
+            page_ready: AtomicBool::new(false),
+        })
         // A second launch focuses the window that already exists instead of
         // starting a second server on the same data directory.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             show_main_window(app);
+            if let Some(state) = app.try_state::<OpenFiles>() {
+                state.pending.lock().unwrap().extend(card_paths(&args));
+            }
+            flush_open_files(app);
         }))
         // Restores and persists size, position and maximised state for the
         // window built below. The plugin hooks window creation, so it also
@@ -237,6 +359,21 @@ fn main() {
                 .title("CatCup Tavern")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(900.0, 620.0)
+                // A card opened before the page loaded waits until it can be
+                // imported, and a reload after importing clears the flag again.
+                .on_page_load(|window, payload| match payload.event() {
+                    PageLoadEvent::Started => {
+                        if let Some(state) = window.try_state::<OpenFiles>() {
+                            state.page_ready.store(false, Ordering::SeqCst);
+                        }
+                    }
+                    PageLoadEvent::Finished => {
+                        if let Some(state) = window.try_state::<OpenFiles>() {
+                            state.page_ready.store(true, Ordering::SeqCst);
+                        }
+                        flush_open_files(window.app_handle());
+                    }
+                })
                 .build()?;
 
             install_tray(app)?;
@@ -255,6 +392,58 @@ fn main() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A real file with the given extension, in the system temp directory.
+    ///
+    /// `temp_dir()` is an absolute path with a drive letter on Windows, which
+    /// is exactly the shape that the URL parser used to swallow.
+    fn card_file(extension: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!("catcup-card-path-{}.{extension}", std::process::id()));
+        std::fs::write(&path, b"card").expect("could not write the test card");
+        path
+    }
+
+    #[test]
+    fn accepts_a_plain_path_with_a_drive_letter() {
+        let path = card_file("catcup");
+        assert_eq!(card_path(&path.to_string_lossy()), Some(path.clone()));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn accepts_a_file_url() {
+        let path = card_file("png");
+        let url = tauri::Url::from_file_path(&path).expect("not an absolute path");
+        assert_eq!(card_path(url.as_str()), Some(path.clone()));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn ignores_a_file_that_is_not_a_card() {
+        let path = card_file("txt");
+        assert_eq!(card_path(&path.to_string_lossy()), None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn ignores_a_path_that_does_not_exist() {
+        let mut path = std::env::temp_dir();
+        path.push("catcup-card-that-is-not-there.catcup");
+        assert_eq!(card_path(&path.to_string_lossy()), None);
+    }
+
+    #[test]
+    fn ignores_arguments_that_are_not_files() {
+        // A second launch forwards the whole command line, executable first.
+        let args = vec!["C:\\Program Files\\CatCup\\catcup-desktop.exe".to_string(), "--flag".to_string()];
+        assert!(card_paths(&args).is_empty());
+    }
 }
 
 #[cfg(windows)]
