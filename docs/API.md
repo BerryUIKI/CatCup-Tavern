@@ -94,7 +94,7 @@ Clears the cookie. Response: `{ "ok": true }`.
 
 ### `PUT /api/auth/password`
 
-Desktop mode only; web and LAN answer `403 FORBIDDEN`. Sets or replaces the password, or removes it to return the app to open mode. Changing or removing an existing password requires `currentPassword`.
+Sets or replaces the password. Every shape may change it; only the desktop may **remove** one. A web or LAN install answers `403 FORBIDDEN` for `{ "password": "" }`, because removing it would leave a server reachable from the network with no password at all. Changing or removing an existing password requires `currentPassword`.
 
 ```json
 { "password": "at-least-8-characters", "currentPassword": "only-when-one-exists" }
@@ -104,7 +104,7 @@ Desktop mode only; web and LAN answer `403 FORBIDDEN`. Sets or replaces the pass
 { "password": "" }
 ```
 
-Response: `{ "ok": true, "openSession": false }` (or `true` after removal). Rate limit: 10 attempts per minute per client.
+Response: `{ "ok": true, "openSession": false }` (or `true` after removal). The session cookie is replaced with one signed by the new secret, so every other device is signed out and the caller stays signed in. Rate limit: 10 attempts per minute per client.
 
 ## Health
 

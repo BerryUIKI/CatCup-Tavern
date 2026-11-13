@@ -65,7 +65,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
 - **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
 - **Impersonation** — there is no "reply as me" action.
-- **A change-password screen for the web and LAN builds.** Only the desktop app can set or remove its password, from About → Access password. Elsewhere the reset is deleting `data/auth.json`, which signs every device out.
+- **Removing the password is desktop-only.** A web or LAN install can change its password in Settings → About, but not remove it: with no password there would be nothing between the network and your data. Only the desktop app can drop back to open mode.
 
 **Partial, and worth knowing before you rely on it**
 

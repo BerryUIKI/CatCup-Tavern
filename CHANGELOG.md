@@ -6,6 +6,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- A web or LAN install can change its access password from Settings → About, which previously meant deleting `data/auth.json` and signing every device out. The current password is required, the new one must be at least 8 characters, and every other device is signed out on success. Removing the password stays desktop-only — with none, a LAN server would be reachable with no authentication at all.
 - The release notes the workflow writes now describe group roleplay alongside single-character roleplay, matching what 0.3.0 actually ships.
 - The desktop app opens without an access password. The shell passes `CATCUP_DESKTOP=1`, a fresh install goes straight to the library instead of a setup screen, and About → Access password can set one (the sign-in screen returns) or remove it later. Web and LAN installs keep the password model unchanged. The server refuses to start in this mode when bound to a non-loopback host, so the open API cannot reach the LAN. New endpoint: `PUT /api/auth/password`; `/api/auth/status` gains `openSession`.
 

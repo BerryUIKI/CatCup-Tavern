@@ -38,7 +38,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - In that mode, an install **with no password** serves the API without a session. The boundary is the OS user session plus the loopback bind, which is the same reasoning a local desktop app uses for its own database.
 - It is not a general bypass: web and LAN mode ignore `CATCUP_DESKTOP`, and a desktop install that has a password still requires one.
 - The server **refuses to start** if `CATCUP_DESKTOP` is set, no password exists, and `CATCUP_HOST` is not loopback. There is no way to reach an unauthenticated API from the LAN through this path.
-- `PUT /api/auth/password` exists only in desktop mode: it sets a password, or removes one with `{ "password": "" }` plus the current password. Removing it returns the app to open mode.
+- `PUT /api/auth/password` lets every shape change its password, but only the desktop may remove one. Removing it on a web or LAN install would leave the server reachable and unauthenticated, so that answers `403`. The current password is required whenever one exists, and a successful change replaces the session cookie so every other device is signed out.
 - The session cookie is unaffected; a stored password keeps working and the login screen comes back with it.
 
 ### Sessions
