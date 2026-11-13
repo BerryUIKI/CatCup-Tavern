@@ -673,11 +673,16 @@ function buildExampleBlocks(
     }
 
     // SillyTavern expands macros in `mes_example` before parsing the blocks,
-    // so the speaker prefixes are the real names.
+    // so the speaker prefixes are the real names. In a group, every member's
+    // name is a speaker, and each turn keeps its prefix so the examples read
+    // as three people rather than one.
     const cardBlocks = parseExampleBlocks(
         substitute(card.mes_example ?? ''),
         card.name || input.character.name,
         input.persona.name,
+        input.group
+            ? { otherNames: input.group.members.filter((name) => name !== input.persona.name), appendNames: true }
+            : {},
     );
     blocks.push(...cardBlocks.map((block) => block.map(exampleToMessage)));
 

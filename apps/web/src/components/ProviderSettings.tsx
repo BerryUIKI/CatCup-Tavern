@@ -527,7 +527,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         return () => document.removeEventListener('keydown', onKeyDown);
     }, []);
 
-    const runTest = async (withModels: boolean) => {
+    const runTest = async (withModels: boolean, options: { silent?: boolean } = {}) => {
         if (!form) {
             return;
         }
@@ -552,12 +552,22 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
             if (testRequestRef.current !== requestId) {
                 return;
             }
+            // A background fetch only takes the model list from a success. An
+            // endpoint that is not up yet must not paint a failure the user did
+            // not ask for; the Fetch models button keeps reporting, because
+            // there they did ask.
+            if (options.silent) {
+                if (result.ok) {
+                    setModels((current) => ({ ...current, [resultKey]: result.models ?? [] }));
+                }
+                return;
+            }
             setTestResults((current) => ({ ...current, [resultKey]: result }));
             if (withModels && result.ok) {
                 setModels((current) => ({ ...current, [resultKey]: result.models ?? [] }));
             }
         } catch (caught) {
-            if (testRequestRef.current !== requestId) {
+            if (testRequestRef.current !== requestId || options.silent) {
                 return;
             }
             setTestResults((current) => ({
@@ -566,6 +576,39 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
             }));
         }
     };
+
+    // Fetching the model list once the form can address an endpoint is what a
+    // person would do next, so it happens by itself. The button stays for a
+    // retry and for the cases this deliberately skips.
+    const runTestRef = useRef(runTest);
+    runTestRef.current = runTest;
+    const credentialsKey = `${form?.kind ?? ''}|${(form?.baseUrl ?? '').trim()}|${typedKey ? 'typed' : 'saved'}`;
+    const autoFetchKeyRef = useRef<string | null>(null);
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the field values, not on the callback identity
+    useEffect(() => {
+        if (!form) {
+            return;
+        }
+        const url = form.baseUrl.trim();
+        if (!url || !/^https?:\/\/\S+$/i.test(url)) {
+            return;
+        }
+        // A stored key can be reused here; without one and without a typed key
+        // the request would only fail, so wait for the key.
+        if (!typedKey && !storedKey) {
+            return;
+        }
+        if (autoFetchKeyRef.current === credentialsKey) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            autoFetchKeyRef.current = credentialsKey;
+            void runTestRef.current(true, { silent: true });
+        }, 600);
+        return () => window.clearTimeout(timer);
+    }, [credentialsKey, form, mode, typedKey, storedKey]);
 
     const requestSelect = (id: string) => {
         if (mode === 'existing' && id === selectedId) {

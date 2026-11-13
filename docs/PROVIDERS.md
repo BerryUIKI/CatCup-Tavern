@@ -34,6 +34,8 @@ Providers are stored in `data/settings.json` as public configuration:
 
 The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. Adding a provider starts from a type template (OpenAI, Anthropic, OpenRouter, Ollama or Custom), which fills the default base URL; the name stays editable. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
 
+The model list also loads on its own: once the form holds a base URL that parses and either a stored key or a typed one, the panel asks the endpoint for its model list after 600 ms without further typing. A failed background fetch stays silent — an endpoint that is not running yet must not paint an error nobody asked for — and **Fetch models** remains the explicit retry that reports failures. The background fetch never replaces the connection test; the test is still a separate action.
+
 An active provider is always enabled. Disabling or deleting it moves the active mark to the first other enabled provider; when no provider is enabled, none is active until one is enabled.
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
