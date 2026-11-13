@@ -6,6 +6,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- The desktop app has a tray icon, and closing its window now hides it there instead of quitting. The server keeps running while the window is hidden, so a reply that is still streaming finishes; **Quit** on the tray menu is what exits, and only one copy of the app runs at a time — a second launch reopens the hidden window. Left-clicking the icon opens the window.
 - The desktop app remembers its window size, position, maximised and full-screen state between launches, and ignores a saved position that no longer lands on a connected monitor. Visibility is not restored, so the window never starts hidden.
 - The release notes the workflow writes now describe group roleplay alongside single-character roleplay, matching what 0.3.0 actually ships.
 - The desktop app opens without an access password. The shell passes `CATCUP_DESKTOP=1`, a fresh install goes straight to the library instead of a setup screen, and About → Access password can set one (the sign-in screen returns) or remove it later. Web and LAN installs keep the password model unchanged. The server refuses to start in this mode when bound to a non-loopback host, so the open API cannot reach the LAN. New endpoint: `PUT /api/auth/password`; `/api/auth/status` gains `openSession`.
