@@ -6,6 +6,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- The provider form loads the model list by itself. Paste a base URL and an API key and the endpoint is asked for its models after a short pause, filling the suggestions behind the **Model** field; **Fetch models** stays as the explicit retry. A background fetch never paints an error into the form, so an endpoint that is not running yet stays quiet until you press the button.
+
 - Group chats follow SillyTavern's **generation handling mode**. Swap keeps each reply on the speaking member's own card; the two join modes merge every member's description, personality, scenario and example messages into one prompt, excluding muted members or including them, with the group's join prefix and suffix — `<FIELDNAME>` becomes the field name and `{{char}}` the member's name. The group editor picks the mode and edits the prefix and suffix, and a group configured in SillyTavern keeps its setting.
 - A card's `extensions.depth_prompt` is injected in chat at the depth and role the card asks for. A single-character chat uses that character's own aside; a group in a join mode uses every unmuted member's, as SillyTavern does.
 - Group **auto mode**: a checkbox above the message box asks for the next member's reply `auto_mode_delay` seconds after each one finishes, so a group can keep talking on its own. Typing hands the turn back, an interrupted reply stops it, and it is off by default.
@@ -31,6 +33,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Fixed
 
+- In a group using one of SillyTavern's join card modes, the merged example messages keep every member's speaker lines. A `Name:` line for another member now opens its own turn and each turn keeps its speaker prefix, matching ST's `parseExampleIntoIndividual`; before this, the other members' examples were read as narration attached to the persona's turn.
 - The **Tavern** wordmark in the README and About banners no longer hangs below the lockup's baseline: the T descender and the round letter bottoms crossed it, so the word moved up 33 units and the banner now has a single flat bottom edge. The light, dark and in-app copies carry the same correction.
 - The packaged desktop app can save settings again. The single-file server bundle defined `require` for its CommonJS dependencies but not `__filename`, so `write-file-atomic` threw `ReferenceError: __filename is not defined` on the first write and `GET /api/settings` answered `500`. The bundle banner now derives `__filename` and `__dirname` from `import.meta.url` alongside the `require` shim.
 - A documentation accuracy pass: the handbook's status claims now match the code (M2 complete in 0.3.0, M4 in progress), the API error table lists `SUMMARY_FAILED`, `PROVIDER_DISABLED`, `PROVIDER_KEY_REUSE` and `INVALID_BASE_URL`, two SSE endpoints rather than one are documented, the design breakpoints match the implementation, and the troubleshooting page no longer points at server logs that stay quiet on handled errors.
