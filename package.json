@@ -17,7 +17,8 @@
         "test": "pnpm -r --if-present test",
         "lint": "biome check .",
         "lint:fix": "biome check --write .",
-        "format": "biome format --write ."
+        "format": "biome format --write .",
+        "icons": "node scripts/export-icons.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.6.6",
