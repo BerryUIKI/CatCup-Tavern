@@ -56,3 +56,39 @@ describe('resolveModel', () => {
         expect(resolveModel(provider(), '  pro  ')?.source).toBe('character');
     });
 });
+
+describe('resolveModel with a profile preference', () => {
+    it('uses the profile model when the character names none', () => {
+        expect(resolveModel(provider(), null, 'pro')).toEqual({ model: 'pro', source: 'profile' });
+        expect(resolveModel(provider(), '', 'pro')).toEqual({ model: 'pro', source: 'profile' });
+    });
+
+    it("keeps the character's own choice ahead of the profile", () => {
+        expect(resolveModel(provider(), 'flash', 'pro')).toEqual({
+            model: 'flash',
+            source: 'character',
+            requested: 'flash',
+        });
+    });
+
+    it('skips a profile model the provider does not serve', () => {
+        expect(resolveModel(provider(), null, 'glm-5.3')).toEqual({ model: 'flash', source: 'default' });
+    });
+
+    it('reports a substitution when the character asks for an unserved model and the profile has one', () => {
+        expect(resolveModel(provider(), 'nope', 'pro')).toEqual({
+            model: 'pro',
+            source: 'fallback',
+            requested: 'nope',
+        });
+    });
+
+    it('falls back to the provider default when neither slot applies', () => {
+        expect(resolveModel(provider(), null, '')).toEqual({ model: 'flash', source: 'default' });
+        expect(resolveModel(provider(), 'nope', 'also-nope')).toEqual({
+            model: 'flash',
+            source: 'fallback',
+            requested: 'nope',
+        });
+    });
+});

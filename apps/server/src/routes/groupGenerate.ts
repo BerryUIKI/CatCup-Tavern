@@ -335,7 +335,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         }
         // Each reply may use the speaking member's own model; one the active
         // provider does not serve falls back to the provider default.
-        const resolved = resolveModel(provider, speaker.model);
+        const resolved = resolveModel(provider, speaker.model, settings.profilePreferredModel);
         if (!resolved.model) {
             throw badRequest('The active provider has no model selected');
         }
