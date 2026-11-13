@@ -39,7 +39,7 @@ export interface ApiErrorBody {
     code?: string;
 }
 
-export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger';
+export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger' | 'impersonate';
 
 export interface GenerateRequest {
     characterId: string;

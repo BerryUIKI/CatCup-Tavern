@@ -34,7 +34,7 @@ import { requireCharacter } from './helpers.js';
 const generateSchema = z.object({
     characterId: z.string().min(1).max(200),
     chatId: z.string().min(1).max(300),
-    action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
+    action: z.enum(['send', 'regenerate', 'continue', 'trigger', 'impersonate']),
     message: z.string().max(200000).optional(),
 });
 
@@ -283,6 +283,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             newChatPrompt: preset.newChatPrompt,
             newExampleChatPrompt: preset.newExampleChatPrompt,
             continueNudgePrompt: preset.continueNudgePrompt,
+            impersonationPrompt: preset.impersonationPrompt,
             squashSystemMessages: preset.squashSystemMessages,
             worldInfo: worldInfoTurn.prompt,
             generationType,
@@ -314,6 +315,13 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             substitute,
         };
 
+        // Impersonation produces a draft for the composer, not a message: the
+        // text goes back over SSE and only the user's own Send stores it. The
+        // reply is returned in the same shape a saved message would have, so
+        // the client has one thing to read, but nothing is written and nothing
+        // should summarise it.
+        const draftOnly = body.action === 'impersonate';
+
         await runGenerationStream({
             reply,
             provider,
@@ -323,8 +331,21 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             topP: preset.generation.topP,
             maxTokens: preset.generation.maxTokens,
             generationId,
-            persist: (text, reasoning, stopped) => persistMessage(context, text, reasoning, stopped),
+            persist: (text, reasoning, stopped) =>
+                draftOnly
+                    ? Promise.resolve({
+                          name: persona.name,
+                          is_user: true,
+                          send_date: new Date().toISOString(),
+                          mes: text,
+                          extra: {},
+                      } satisfies ChatMessage)
+                    : persistMessage(context, text, reasoning, stopped),
         });
+
+        if (draftOnly) {
+            return;
+        }
 
         // Fire-and-forget: a due summary never delays the reply. The memory
         // service reads the chat again, so only a persisted reply counts.

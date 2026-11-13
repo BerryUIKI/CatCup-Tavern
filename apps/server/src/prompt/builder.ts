@@ -26,6 +26,8 @@ export interface BuildPromptInput {
     newChatPrompt?: string;
     newExampleChatPrompt?: string;
     continueNudgePrompt?: string;
+    /** Instruction that makes the model answer as `{{user}}`. */
+    impersonationPrompt?: string;
     /** Token counter override, used by tests. */
     countTokens?: (text: string) => number;
     /** Scripts with `promptOnly`, applied to the history. */
@@ -67,6 +69,7 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         newChatPrompt: input.newChatPrompt,
         newExampleChatPrompt: input.newExampleChatPrompt,
         continueNudgePrompt: input.continueNudgePrompt,
+        impersonationPrompt: input.impersonationPrompt,
         countTokens: input.countTokens,
         regexScripts: input.regexScripts,
         substitute: input.substitute,

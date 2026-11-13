@@ -9,6 +9,7 @@ export interface ResolvedPreset {
     newChatPrompt: string;
     newExampleChatPrompt: string;
     continueNudgePrompt: string;
+    impersonationPrompt: string;
     squashSystemMessages: boolean;
     /** Generation settings after the preset's sampling fields are applied. */
     generation: GenerationSettings;
@@ -38,6 +39,7 @@ export function resolvePreset(raw: unknown, base: GenerationSettings): ResolvedP
         newChatPrompt: preset.new_chat_prompt ?? DEFAULT_MESSAGES.newChat,
         newExampleChatPrompt: preset.new_example_chat_prompt ?? DEFAULT_MESSAGES.newExampleChat,
         continueNudgePrompt: preset.continue_nudge_prompt ?? DEFAULT_MESSAGES.continueNudge,
+        impersonationPrompt: preset.impersonation_prompt ?? DEFAULT_MESSAGES.impersonation,
         squashSystemMessages: preset.squash_system_messages ?? false,
         generation: {
             ...base,

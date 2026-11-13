@@ -592,7 +592,7 @@ Removes the latest group-chat summary, falling back to an older one when present
 
 ### `POST /api/generate`
 
-Starts a generation and returns an SSE stream. The server persists the assistant message before emitting `done`.
+Starts a generation and returns an SSE stream. Except for `impersonate`, the server persists the assistant message before emitting `done`.
 
 ```json
 {
@@ -603,12 +603,15 @@ Starts a generation and returns an SSE stream. The server persists the assistant
 }
 ```
 
-| Action       | Behaviour                                                                                                                                                                                                 |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `send`       | Appends the user message, then generates an assistant reply. `message` is required.                                                                                                                       |
-| `regenerate` | Removes the last assistant message from the prompt and generates a new variant. If a previous assistant message exists, the new text is stored as a swipe; otherwise a new assistant message is appended. |
-| `continue`   | Requires the last message to be an assistant message. Generated text is appended to that message.                                                                                                         |
-| `trigger`    | Generates a new assistant reply without a user message. This is the action behind a Quick Reply `/trigger`. `message` is ignored.                                                                         |
+| Action        | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send`        | Appends the user message, then generates an assistant reply. `message` is required.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `regenerate`  | Removes the last assistant message from the prompt and generates a new variant. If a previous assistant message exists, the new text is stored as a swipe; otherwise a new assistant message is appended.                                                                                                                                                                                                                                                                                                                                   |
+| `continue`    | Requires the last message to be an assistant message. Generated text is appended to that message.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `trigger`     | Generates a new assistant reply without a user message. This is the action behind a Quick Reply `/trigger`. `message` is ignored.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `impersonate` | Writes the next message as the user. The reply is a **draft**: it streams back and `done` carries it in the same shape a saved message has, so the client has one thing to read, but nothing is written to the chat — only the user's own `send` creates a message. The instruction comes from the active preset's `impersonation_prompt`, or SillyTavern's default when the preset has none. The world info scan still runs, so timed effects advance as they do in SillyTavern. Not available on the group endpoint, which answers `400`. |
+
+The `done` event for every other action carries a message that is already stored; for `impersonate` it carries a message that exists only in the response.
 
 SSE events:
 

@@ -145,6 +145,21 @@ describe('generate routes', () => {
         expect(messages[1]).toMatchObject({ name: 'Aria', is_user: false, mes: 'Stub reply.' });
     });
 
+    it('answers an impersonation with a draft and stores nothing', async () => {
+        const chatId = await createChat();
+        const body = await generate('/api/generate', { characterId: 'Aria', chatId, action: 'impersonate' });
+        expect(body).toContain('event: done');
+        expect(body).toContain('Stub reply.');
+
+        // The draft arrives in the shape a saved message would have, so the
+        // client has one thing to read — but the chat file is untouched and
+        // only the user's own send creates a message.
+        const chat = await call('GET', `/api/chats/Aria/${encodeURIComponent(chatId)}`);
+        const messages = chat.json().chat.messages as Array<Record<string, unknown>>;
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatchObject({ mes: 'Hello from Aria.' });
+    });
+
     it('continues and regenerates the last reply through the same actions', async () => {
         const chatId = await createChat();
         await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
