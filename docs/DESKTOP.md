@@ -29,7 +29,7 @@ The server is bundled into a single file so there is no `node_modules` to instal
 
 Four things had to change to make the packaged layout behave like the development one:
 
-- **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim.
+- **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim, and also defines `__filename` and `__dirname` from `import.meta.url`. Without them `write-file-atomic` — which every settings and data write goes through — throws `ReferenceError: __filename is not defined` and the write fails, so the packaged app could not save a single setting.
 - **Pretty logs only on a terminal.** The packaged server's stdout is piped into the shell, so `pino-pretty` — which is not installed there — is skipped whenever stdout is not a TTY.
 - **Verbatim paths.** Tauri hands back resource paths with the `\\?\` prefix on Windows, and Node cannot resolve a main module given that prefix; the shell strips it before spawning.
 - **The SPA ships beside the server.** The server serves `../../web/dist` relative to its own `dist`, so the bundle keeps that shape and the desktop build needs `pnpm --filter @catcup/web build` as well.
