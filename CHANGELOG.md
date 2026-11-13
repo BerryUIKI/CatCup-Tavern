@@ -26,6 +26,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Fixed
 
+- The **Tavern** wordmark in the README and About banners no longer hangs below the lockup's baseline: the T descender and the round letter bottoms crossed it, so the word moved up 33 units and the banner now has a single flat bottom edge. The light, dark and in-app copies carry the same correction.
 - The packaged desktop app can save settings again. The single-file server bundle defined `require` for its CommonJS dependencies but not `__filename`, so `write-file-atomic` threw `ReferenceError: __filename is not defined` on the first write and `GET /api/settings` answered `500`. The bundle banner now derives `__filename` and `__dirname` from `import.meta.url` alongside the `require` shim.
 - A documentation accuracy pass: the handbook's status claims now match the code (M2 complete in 0.3.0, M4 in progress), the API error table lists `SUMMARY_FAILED`, `PROVIDER_DISABLED`, `PROVIDER_KEY_REUSE` and `INVALID_BASE_URL`, two SSE endpoints rather than one are documented, the design breakpoints match the implementation, and the troubleshooting page no longer points at server logs that stay quiet on handled errors.
 
