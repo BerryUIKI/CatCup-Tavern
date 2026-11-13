@@ -156,7 +156,7 @@ Returns `image/png` for PNG cards. JSON-only cards have no avatar and return `40
 
 `multipart/form-data` with one or more file parts. Field names are ignored; every file part is processed.
 
-- Accepted: `.png` (character card with `tEXt` metadata), `.json`, and `.charx` (a RisuAI ZIP package).
+- Accepted: `.png` (character card with `tEXt` metadata), `.json`, `.charx` (a RisuAI ZIP package) and `.catcup` (the same container under CatCup's own extension).
 - Limits: 20 MB per uploaded file, 50 files per request. A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB after extraction; only `assets/**` entries are kept.
 - A CharX card with a PNG icon is stored as a PNG card; without one it is stored as JSON. Every safe `assets/**` file is written under `data/character-assets/<character id>/`.
 - The saved file is named after the character card name, with a numeric suffix on collision.
@@ -240,7 +240,7 @@ A redundant tag action that would not change a card does not write it.
 
 ### `GET /api/characters/:id/export`
 
-`?format=png` (default) downloads the stored image with its metadata intact; `?format=json` downloads the card body, promoting a legacy flat card to a V2 wrapper so the result is a valid card on its own; `?format=charx` downloads a ZIP with a V3 `card.json`, the stored `assets/**` files and — for a PNG card — the image as the icon asset. A package without a PNG icon has no icon entry. Risu `module.risum` bundles are not written.
+`?format=png` (default) downloads the stored image with its metadata intact; `?format=json` downloads the card body, promoting a legacy flat card to a V2 wrapper so the result is a valid card on its own; `?format=charx` and `?format=catcup` download a ZIP with a V3 `card.json`, the stored `assets/**` files and — for a PNG card — the image as the icon asset. The two package formats are byte-identical and differ only in the extension of the downloaded file. A package without a PNG icon has no icon entry. Risu `module.risum` bundles are not written.
 
 - `404` when the character does not exist.
 - `400` when `format=png` is asked for a JSON-only card, which has no image.
