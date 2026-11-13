@@ -19,7 +19,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - Swipes on a regenerated reply, continue, inline editing, deleting messages, copying.
 - Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings, and switch a chat's opening to another greeting from the chat header or by swiping the first message.
 - Stop a reply mid-stream; the partial text is kept.
-- **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them.
+- **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them. SillyTavern's three card modes (swap, and join with or without muted members) with a join prefix and suffix, and **auto mode** for letting the group keep talking on its own.
 - **Summary memory**: a rolling summary stored in the chat file, updated automatically after replies or on demand, shown in the Memory panel where it can be edited or deleted, injected after or before the main prompt or at a chat depth, and available as `{{summary}}`.
 - **Text to speech**: browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, a play button on every reply, and optional autoplay.
 - **Image generation**: Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, with a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat.
@@ -66,12 +66,13 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - **SillyTavern extensions.** None load.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
 - **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
-- **Impersonation has no assistant prefill.** The button writes the message as you into the composer, and the instruction is appended as a trailing system message. Anthropic endpoints hoist every system message into one block at the top, so Claude-family models may drift further from your voice than OpenAI-compatible ones; SillyTavern primes an assistant turn for those and CatCup does not.
 - **Removing the password is desktop-only.** A web or LAN install can change its password in Settings → About, but not remove it: with no password there would be nothing between the network and your data. Only the desktop app can drop back to open mode.
 
 **Partial, and worth knowing before you rely on it**
 
-- **Group chats reply one member per turn.** SillyTavern can have several members answer the same message and offers append modes that merge every member's card into the prompt; CatCup picks one speaker, uses that member's card, and leaves append modes, automatic turns and the queue UI for later. Manual groups ask you who replies next.
+- **Group chats reply one member per turn.** SillyTavern can have several members answer the same message; CatCup picks one speaker per request and appends the reply. **Auto mode** asks for the next member's reply a few seconds after each one finishes, but there is no queue UI and no way to have one request return several members' replies at once. Manual groups ask you who replies next.
+- **The join card modes merge text, not behaviour.** With **Join character cards** a group merges every member's description, personality, scenario and examples into the prompt, as SillyTavern does, and mutes are excluded or included as the mode says. A member's `system_prompt`, `post_history_instructions` and first message are still the speaking member's own, and the join prefix/suffix only see the four merged fields.
+- **Card depth prompts are injected but not editable.** A card's `extensions.depth_prompt` is now injected in chat at its depth, for single chats and for every unmuted member in the join modes. The character editor has no field for it yet, so it can only arrive by import.
 - **Group prompts use fixed defaults.** A SillyTavern preset's `new_group_chat_prompt` and `group_nudge_prompt` are ignored.
 - **Groups have no picture of their own.** The library uses the first member's avatar as the group icon.
 - **Summary memory uses the active provider only.** There is no Extras or WebLLM summarizer, no quiet-prompt builder and no automatic interval suggestions; the Memory extension's settings live in Settings → Memory.

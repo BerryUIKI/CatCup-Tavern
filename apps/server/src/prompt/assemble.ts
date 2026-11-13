@@ -7,6 +7,8 @@ import {
     type CharacterDetail,
     type ChatMessage,
     GLOBAL_PROMPT_ORDER_ID,
+    type GroupDepthPrompt,
+    type JoinedCardFields,
     type PersonaSettings,
     type RegexScript,
     regexPlacementForMessage,
@@ -78,6 +80,17 @@ export interface AssembleInput {
     summaryText?: string;
     /** Formatted summary to inject, following SillyTavern's Memory positions. */
     summaryInjection?: SummaryInjection;
+    /**
+     * Card fields merged from every group member, replacing the speaking
+     * member's own description, personality, scenario and examples. Set only
+     * for SillyTavern's two append (join) generation modes.
+     */
+    joinedCard?: JoinedCardFields | null;
+    /**
+     * In-chat asides carried by the members' cards. In swap mode the caller
+     * passes the speaking member's own `depth_prompt` as a single entry.
+     */
+    cardDepthPrompts?: readonly GroupDepthPrompt[];
 }
 
 /**
@@ -173,7 +186,19 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     const settings = sanitizePromptSettings(input.promptSettings);
     const characterId = input.characterId ?? GLOBAL_PROMPT_ORDER_ID;
     const generationType = input.generationType ?? 'normal';
-    const card = input.character.card;
+    // Joined group cards stand in for the speaking member's own fields, so the
+    // prompt, the `{{description}}` macros and the card overrides all read one
+    // set of values — as SillyTavern's `getCharacterCardFieldsLazy` does.
+    const joined = input.joinedCard ?? null;
+    const card = joined
+        ? {
+              ...input.character.card,
+              description: joined.description,
+              personality: joined.personality,
+              scenario: joined.scenario,
+              mes_example: joined.mesExample,
+          }
+        : input.character.card;
     const formats = {
         wi: input.formats?.wi ?? DEFAULT_FORMATS.wi,
         personality: input.formats?.personality ?? DEFAULT_FORMATS.personality,
@@ -404,6 +429,21 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         });
     }
 
+    // Card asides: SillyTavern's `depth_prompt` in `extensions`. One card in a
+    // single-character chat, or every non-muted member's aside in a joined
+    // group chat, injected in chat at the depth the card asks for.
+    for (const [index, aside] of (input.cardDepthPrompts ?? []).entries()) {
+        if (!aside.text.trim()) {
+            continue;
+        }
+        injections.push({
+            depth: aside.depth,
+            order: 100 + index,
+            role: aside.role,
+            content: aside.text,
+        });
+    }
+
     // Phase 6: chat history, with the injections spliced in by depth.
     // `promptOnly` scripts run here, on the copy that becomes the prompt; the
     // stored message keeps its original text. Macros expand after the scripts,
@@ -507,7 +547,7 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     // Phase 7: dialogue examples.
     if (collection.some((prompt) => prompt.identifier === IDENTIFIER.DIALOGUE_EXAMPLES)) {
         const index = collection.findIndex((prompt) => prompt.identifier === IDENTIFIER.DIALOGUE_EXAMPLES);
-        const blocks = buildExampleBlocks(input, worldInfo, substitute);
+        const blocks = buildExampleBlocks(input, worldInfo, substitute, card);
 
         let available = completion.remaining;
         const items: CompletionMessage[] = [];
@@ -612,6 +652,7 @@ function buildExampleBlocks(
     input: AssembleInput,
     worldInfo: WorldInfoPrompt | null,
     substitute: (text: string) => string,
+    card: CharacterDetail['card'],
 ): CompletionMessage[][] {
     const blocks: CompletionMessage[][] = [];
 
@@ -631,7 +672,6 @@ function buildExampleBlocks(
         ]);
     }
 
-    const card = input.character.card;
     // SillyTavern expands macros in `mes_example` before parsing the blocks,
     // so the speaker prefixes are the real names.
     const cardBlocks = parseExampleBlocks(

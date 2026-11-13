@@ -136,6 +136,14 @@ export function GroupChatView({
     const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
     const [draft, setDraft] = useState('');
     const [focusRequest, setFocusRequest] = useState(0);
+    /**
+     * Auto mode: after a reply lands, wait `auto_mode_delay` seconds and ask
+     * for the next member's reply, until it is switched off, the user types,
+     * or the group runs out of members who may speak.
+     */
+    const [autoMode, setAutoMode] = useState(false);
+    /** Why auto mode stopped itself, shown beside the toggle. */
+    const [autoStopReason, setAutoStopReason] = useState<string | null>(null);
     // A quick reply result arrives after a round trip; read the latest draft
     // instead of the one captured when the button was clicked.
     const draftRef = useRef(draft);
@@ -150,6 +158,8 @@ export function GroupChatView({
         setDraft('');
         setImageDialog(null);
         setGalleryOpen(false);
+        setAutoMode(false);
+        setAutoStopReason(null);
     }, [selectedChatId]);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
@@ -315,8 +325,59 @@ export function GroupChatView({
         if (!selectedChatId) {
             return;
         }
+        // Typing is a request to speak; auto mode hands the turn back, as
+        // SillyTavern's composer does.
+        if (autoMode) {
+            setAutoMode(false);
+            setAutoStopReason(null);
+        }
         tts.stop();
         void generation.start('send', text, group.activation_strategy === 2 ? manualSpeaker || undefined : undefined);
+    };
+
+    /**
+     * Auto mode's next turn. SillyTavern asks for the following member's reply
+     * after `auto_mode_delay` seconds; the server's activation strategy picks
+     * who that is, exactly as a `/trigger` does.
+     */
+    const requestAutoReply = useCallback(() => {
+        if (!selectedChatId) {
+            setAutoMode(false);
+            return;
+        }
+        void generation.start(
+            'trigger',
+            undefined,
+            group.activation_strategy === 2 ? manualSpeaker || undefined : undefined,
+        );
+    }, [selectedChatId, generation, group.activation_strategy, manualSpeaker]);
+
+    // A reply landing is the moment to schedule the next one. The delay is the
+    // group's own `auto_mode_delay`, so a group configured in SillyTavern keeps
+    // its pace here.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: one tick per completed reply
+    useEffect(() => {
+        if (!autoMode || generation.replySequence === 0 || generation.streaming) {
+            return;
+        }
+        const reply = generation.lastReply;
+        if (reply?.extra?.stopped) {
+            setAutoMode(false);
+            setAutoStopReason('Auto mode stopped when the reply was interrupted.');
+            return;
+        }
+        const delay = Math.max(0, group.auto_mode_delay ?? 5);
+        const timer = window.setTimeout(() => requestAutoReply(), delay * 1000);
+        return () => window.clearTimeout(timer);
+    }, [autoMode, generation.replySequence, generation.streaming, group.auto_mode_delay]);
+
+    // Nothing to say when fewer than two members can speak: a group of one
+    // would otherwise answer itself forever.
+    const canAutoMode = enabledMembers.length > 1;
+
+    const toggleAutoMode = () => {
+        setAutoStopReason(null);
+        setAutoMode((current) => !current);
     };
 
     const handleQuickReplyInput = (action: Extract<QuickReplyAction, { type: 'input' }>) => {
@@ -830,24 +891,47 @@ export function GroupChatView({
                 onGenerate={handleQuickReplyGenerate}
             />
 
-            {group.activation_strategy === 2 ? (
+            {group.activation_strategy === 2 || canAutoMode ? (
                 <div className="bg-ink/70 px-3 pt-2 md:px-6">
-                    <div className="mx-auto flex w-full max-w-4xl items-center gap-2 text-xs text-muted">
-                        <span>Reply as</span>
-                        <select
-                            className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
-                            value={manualSpeaker}
-                            onChange={(event) => setManualSpeaker(event.target.value)}
-                            disabled={enabledMembers.length === 0}
-                            aria-label="Who replies next"
-                        >
-                            {enabledMembers.map((member) => (
-                                <option key={member.fileName} value={member.fileName}>
-                                    {member.name}
-                                </option>
-                            ))}
-                        </select>
-                        <span className="hidden text-muted/60 sm:inline">Manual group: you choose who answers.</span>
+                    <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 text-xs text-muted">
+                        {group.activation_strategy === 2 ? (
+                            <>
+                                <span>Reply as</span>
+                                <select
+                                    className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
+                                    value={manualSpeaker}
+                                    onChange={(event) => setManualSpeaker(event.target.value)}
+                                    disabled={enabledMembers.length === 0}
+                                    aria-label="Who replies next"
+                                >
+                                    {enabledMembers.map((member) => (
+                                        <option key={member.fileName} value={member.fileName}>
+                                            {member.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="hidden text-muted sm:inline">
+                                    Manual group: you choose who answers.
+                                </span>
+                            </>
+                        ) : null}
+                        {canAutoMode ? (
+                            <label
+                                className="ml-auto flex items-center gap-2"
+                                title="Ask for the next member's reply a few seconds after each one finishes."
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="size-3.5 accent-amber"
+                                    checked={autoMode}
+                                    onChange={toggleAutoMode}
+                                    disabled={!selectedChatId || generation.streaming}
+                                />
+                                <span>Auto mode</span>
+                                <span className="text-muted">{group.auto_mode_delay ?? 5}s</span>
+                            </label>
+                        ) : null}
+                        {autoStopReason ? <span className="text-amber/80">{autoStopReason}</span> : null}
                     </div>
                 </div>
             ) : null}

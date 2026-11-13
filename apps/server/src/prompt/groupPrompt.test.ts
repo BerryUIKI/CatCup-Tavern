@@ -126,3 +126,115 @@ describe('group prompt assembly', () => {
         expect(contents[contents.length - 1]).not.toBe('[Write the next reply only as Seraphina.]');
     });
 });
+
+describe('joined group cards', () => {
+    it('replaces the speaker card fields with the merged ones', () => {
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'normal',
+            joinedCard: {
+                description: 'Aria guards the gate.\nBram keeps the stew.',
+                personality: 'Alert.\nWarm.',
+                scenario: 'A shared tavern.',
+                mesExample: '<START>\nSeraphina: Who goes there?',
+            },
+        });
+        const contents = prompt.messages.map((message) => message.content);
+
+        expect(contents).toContain('Aria guards the gate.\nBram keeps the stew.');
+        expect(contents).toContain('A shared tavern.');
+        expect(contents).not.toContain('A guardian of Eldoria.');
+        expect(contents).not.toContain('A forest glade.');
+        // The merged examples are parsed into example blocks for the speaker.
+        expect(contents.join('\n')).toContain('Who goes there?');
+    });
+
+    it('expands {{description}} from the merged card, as SillyTavern does', () => {
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'normal',
+            groupNudge: 'Card says: {{description}}',
+            joinedCard: {
+                description: 'Merged description.',
+                personality: 'Merged personality.',
+                scenario: 'Merged scenario.',
+                mesExample: '',
+            },
+        });
+        const last = prompt.messages[prompt.messages.length - 1];
+
+        expect(last?.content).toBe('Card says: Merged description.');
+    });
+
+    it('keeps the speaker card when no joined card is supplied', () => {
+        const prompt = buildGroupPrompt();
+        const contents = prompt.messages.map((message) => message.content);
+
+        expect(contents).toContain('A guardian of Eldoria.');
+    });
+});
+
+describe('card depth prompts', () => {
+    it('injects a card aside in chat at the depth it asks for', () => {
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'normal',
+            cardDepthPrompts: [
+                {
+                    fileName: 'Seraphina.json',
+                    charName: 'Seraphina',
+                    text: 'Stay in character.',
+                    depth: 1,
+                    role: 'system',
+                },
+            ],
+        });
+        const contents = prompt.messages.map((message) => message.content);
+
+        expect(contents).toContain('Stay in character.');
+        // Depth 1 is the last message before the newest turn.
+        const index = contents.indexOf('Stay in character.');
+        expect(contents[index - 1]).toBe('I brought stew.');
+    });
+
+    it('injects several asides in card order', () => {
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'normal',
+            cardDepthPrompts: [
+                { fileName: 'Aria.png', charName: 'Aria', text: 'Aria aside.', depth: 0, role: 'system' },
+                { fileName: 'Bram.png', charName: 'Bram', text: 'Bram aside.', depth: 0, role: 'system' },
+            ],
+        });
+        const contents = prompt.messages.map((message) => message.content);
+
+        expect(contents).toContain('Aria aside.');
+        expect(contents).toContain('Bram aside.');
+        expect(contents.indexOf('Aria aside.')).toBeLessThan(contents.indexOf('Bram aside.'));
+    });
+
+    it('skips an empty aside', () => {
+        const prompt = buildPrompt({
+            character: speaker,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'normal',
+            cardDepthPrompts: [{ fileName: 'x', charName: 'X', text: '   ', depth: 0, role: 'system' }],
+        });
+        const contents = prompt.messages.map((message) => message.content);
+        expect(contents.some((content) => content.trim() === '')).toBe(false);
+    });
+});

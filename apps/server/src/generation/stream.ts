@@ -19,6 +19,12 @@ export interface GenerationStreamInput {
     /** The character who is speaking, for group chats. */
     speaker?: GenerationSpeaker;
     /**
+     * Text the reply continues from. Anthropic receives it as a trailing
+     * assistant turn, so the model keeps writing past it; the prefill itself is
+     * never part of the reply the client sees or the chat file stores.
+     */
+    assistantPrefill?: string;
+    /**
      * Store the reply. Called once with whatever text was produced; `stopped`
      * is true when the stream aborted after some text had arrived.
      */
@@ -69,6 +75,7 @@ export async function runGenerationStream(input: GenerationStreamInput): Promise
                 topP: input.topP,
                 maxTokens: input.maxTokens,
                 signal: controller.signal,
+                ...(input.assistantPrefill ? { assistantPrefill: input.assistantPrefill } : {}),
             })) {
                 if (chunk.type === 'text') {
                     text += chunk.text;
