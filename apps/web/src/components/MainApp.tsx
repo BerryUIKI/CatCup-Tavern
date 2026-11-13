@@ -1,5 +1,5 @@
 import { type CharacterSummary, type ChatSummary, resolvePersona, substituteMacros } from '@catcup/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
     useAddSampleCharacter,
@@ -34,6 +34,9 @@ const EMPTY_CHARACTERS: CharacterSummary[] = [];
 const EMPTY_CHATS: ChatSummary[] = [];
 
 type GroupEditorState = { mode: 'create' } | { mode: 'edit'; id: string } | null;
+
+/** The card formats the server imports; a drop of anything else is refused. */
+const CARD_FILE = /\.(png|json|charx|catcup)$/i;
 
 export function MainApp() {
     const selectedCharacterId = useAppStore((state) => state.selectedCharacterId);
@@ -221,6 +224,73 @@ export function MainApp() {
             pushToast(error instanceof Error ? error.message : 'Import failed.', 'error');
         }
     };
+
+    // Dropping a card anywhere in the app imports it, like the library button.
+    // The depth counter keeps the overlay from flickering as the pointer moves
+    // between child elements.
+    const [dragging, setDragging] = useState(false);
+    const importRef = useRef(handleImport);
+    importRef.current = handleImport;
+
+    useEffect(() => {
+        let depth = 0;
+
+        const carriesFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
+
+        const onDragEnter = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            depth += 1;
+            setDragging(true);
+        };
+
+        const onDragOver = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            // Without this the browser opens the file instead of firing `drop`.
+            event.preventDefault();
+        };
+
+        const onDragLeave = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            depth = Math.max(0, depth - 1);
+            if (depth === 0) {
+                setDragging(false);
+            }
+        };
+
+        const onDrop = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            depth = 0;
+            setDragging(false);
+
+            const cards = Array.from(event.dataTransfer?.files ?? []).filter((file) => CARD_FILE.test(file.name));
+            if (cards.length === 0) {
+                pushToast('Drop a .png, .json, .charx or .catcup character card.', 'info');
+                return;
+            }
+            void importRef.current(cards);
+        };
+
+        window.addEventListener('dragenter', onDragEnter);
+        window.addEventListener('dragover', onDragOver);
+        window.addEventListener('dragleave', onDragLeave);
+        window.addEventListener('drop', onDrop);
+        return () => {
+            window.removeEventListener('dragenter', onDragEnter);
+            window.removeEventListener('dragover', onDragOver);
+            window.removeEventListener('dragleave', onDragLeave);
+            window.removeEventListener('drop', onDrop);
+        };
+    }, [pushToast]);
 
     const handleBulkErrors = (errors: Array<{ message: string }>) => {
         if (errors.length === 0) {
@@ -530,6 +600,15 @@ export function MainApp() {
                     ))}
                 </div>
             </Modal>
+
+            {dragging ? (
+                <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm">
+                    <div className="rounded-2xl border-2 border-dashed border-amber/60 px-10 py-8 text-center">
+                        <p className="font-display text-lg text-parchment">Drop a character card</p>
+                        <p className="mt-1 text-sm text-muted">PNG, JSON, CharX or CatCup package</p>
+                    </div>
+                </div>
+            ) : null}
 
             <ToastViewport />
         </div>
