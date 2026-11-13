@@ -49,6 +49,7 @@ export function MainApp() {
     const setLibraryTab = useAppStore((state) => state.setLibraryTab);
     const settingsOpen = useAppStore((state) => state.settingsOpen);
     const setSettingsOpen = useAppStore((state) => state.setSettingsOpen);
+    const openSettings = useAppStore((state) => state.openSettings);
     const sidebarOpen = useAppStore((state) => state.sidebarOpen);
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
     const pushToast = useAppStore((state) => state.pushToast);
@@ -504,7 +505,7 @@ export function MainApp() {
                 onSwitchProvider={(id) => void handleSwitchProvider(id)}
                 activeProviderName={activeProvider?.name ?? null}
                 activeProviderReady={activeProviderReady}
-                onOpenSettings={() => setSettingsOpen(true)}
+                onOpenSettings={() => openSettings()}
                 onLogout={() => void handleLogout()}
                 loggingOut={logoutMutation.isPending}
                 open={sidebarOpen}
@@ -524,7 +525,7 @@ export function MainApp() {
                         onSelectChat={selectChat}
                         onNewChat={() => void handleNewGroupChat()}
                         onOpenSidebar={() => setSidebarOpen(true)}
-                        onOpenSettings={() => setSettingsOpen(true)}
+                        onOpenSettings={(section) => openSettings(section)}
                         onEditGroup={() => setGroupEditor({ mode: 'edit', id: selectedGroup.id })}
                     />
                 ) : (
@@ -540,7 +541,7 @@ export function MainApp() {
                         onNewChat={handleNewChat}
                         onSwitchGreeting={() => setGreetingMode('switch')}
                         creatingChat={createChatMutation.isPending}
-                        onOpenSettings={() => setSettingsOpen(true)}
+                        onOpenSettings={(section) => openSettings(section)}
                         onOpenSidebar={() => setSidebarOpen(true)}
                         onOpenLibrary={() => setSidebarOpen(true)}
                     />

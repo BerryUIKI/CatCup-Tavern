@@ -10,7 +10,7 @@ This directory is the project handbook. Start with the path that matches your ro
 - **0.2.1 released** (2026-11-11): macros in stored messages, card lorebook import, greeting switching, CI on every pull request.
 - **0.3.0 released** (2026-11-13): group chats, summary memory, the Quick Replies subset, text to speech, image generation, CharX import/export, and the library's favorites, tags, sorting and bulk actions.
 - **M2 in progress** (2026-11-11 — 2026-11-12): group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end. Not yet released as a version.
-- **UX overhaul in progress** (2026-11-12): the design system, the settings shell and the Providers panel were rebuilt; the chat chrome, message experience, editors and the accessibility audit follow.
+- **UX overhaul in progress** (2026-11-12 — 2026-11-13): the design system, the settings shell and the Providers panel were rebuilt, then the chat headers were reduced to identity, chat switching, provider state and one Tools menu; the message experience, editors and the accessibility audit follow.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here

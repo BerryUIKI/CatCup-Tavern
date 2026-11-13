@@ -10,7 +10,7 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 | Stage | Surface                                               | Status               |
 | ----- | ----------------------------------------------------- | -------------------- |
 | A     | Foundations, Settings shell, Providers                | Delivered 2026-11-12 |
-| B     | App shell and chat chrome                             | Planned              |
+| B     | App shell and chat chrome                             | Delivered 2026-11-13 |
 | C     | Message experience                                    | Planned              |
 | D     | Character/group editors and remaining settings panels | Planned              |
 | E     | Accessibility, contrast and responsive audit          | Planned              |
@@ -35,7 +35,7 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 ```
 ┌───────────────┬──────────────────────────────────────────────┐
-│ Library       │ Chat header: character · chat · tools         │
+│ Library       │ Chat header: character · chat · provider · ⋯ │
 │ 286–300 px    ├──────────────────────────────────────────────┤
 │ search        │                                              │
 │ filters       │ Conversation                                 │
@@ -49,8 +49,17 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 - The library rail is fixed; the conversation takes the remaining width.
 - Below 768 px the rail becomes a drawer opened from the chat header.
-- The chat header currently carries several actions; stage B moves the low-frequency ones into a
-  Tools menu so the header keeps only identity, chat switching, provider status and one tools entry.
+- **The chat header carries four things and no more**: identity (avatar, name, one subtitle line),
+  chat switching (the chat select, and the persona pin once there is more than one persona), the
+  active provider's state, and a single **Tools** entry. Stage B moved every other action —
+  greeting, rename, memory, context inspector, image generation and gallery, delete chat — into the
+  Tools menu (`ToolsMenu.tsx`), which the character and group chat headers share.
+- The provider status pill appears at 1024 px and wider; below that the library footer carries the
+  same state, so nothing is lost when the header makes room.
+- The Tools menu is the only place a secondary chat action appears. It is a `role="menu"` with
+  arrow-key navigation, Escape to close, focus returned to the trigger, and destructive rows
+  separated at the bottom in wine behind a confirmation. A disabled row says why in a hint line
+  rather than leaving the reader to guess.
 
 ### Settings
 
@@ -193,6 +202,22 @@ for both the favicon and the in-app logo. The README banner ships in dark and li
 - Dangerous confirmations focus the safe action (Keep / Cancel) by default.
 - Dialog titles are sentence case and name the object: "Delete Custom provider?" not "Are you sure?".
 - Descriptions say what is removed and what stops working, in one or two sentences.
+- `ConfirmDialog` is also the confirmation for chat and message deletion. The character and group
+  chat views replaced `window.confirm` in stage B, so a destructive chat action is never a browser
+  prompt and keyboard focus is trapped and restored like every other layer.
+
+### Menus
+
+- `ToolsMenu` is the chat header's single overflow entry. A menu only holds actions that are
+  secondary or infrequent; one that would hold the primary action is the wrong pattern.
+- Trigger: `aria-haspopup="menu"`, `aria-expanded`, and an `aria-label` that names the menu.
+- Rows are `role="menuitem"` buttons inside a `role="menu"`, with a `hr` (not a `role="separator"`
+  div) between groups. Enter, Space and ArrowDown open the menu on its first enabled row; ArrowUp,
+  ArrowDown, Home and End move; Escape closes and returns focus to the trigger; Tab closes and lets
+  focus leave.
+- A disabled row is named, dimmed and explained in one hint line at the foot of the menu; it never
+  disappears, so the layout stays still when a chat is not yet started or a feature is off.
+- Destructive rows sit after a divider and use wine on hover — never the primary style.
 
 ### Status and feedback
 
