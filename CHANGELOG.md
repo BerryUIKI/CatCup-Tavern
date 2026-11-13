@@ -6,6 +6,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- A desktop-only `POST /api/characters/import-path` endpoint imports one card from a path on the machine, accepting the same `.png`, `.json` and `.charx` files as the upload route. A web or LAN server does not register it and answers `404`. It exists so the shell can open a card the user picked in Explorer, and the per-file import logic is now shared with the multipart route so both store CharX assets the same way.
 - The release notes the workflow writes now describe group roleplay alongside single-character roleplay, matching what 0.3.0 actually ships.
 - The desktop app opens without an access password. The shell passes `CATCUP_DESKTOP=1`, a fresh install goes straight to the library instead of a setup screen, and About → Access password can set one (the sign-in screen returns) or remove it later. Web and LAN installs keep the password model unchanged. The server refuses to start in this mode when bound to a non-loopback host, so the open API cannot reach the LAN. New endpoint: `PUT /api/auth/password`; `/api/auth/status` gains `openSession`.
 

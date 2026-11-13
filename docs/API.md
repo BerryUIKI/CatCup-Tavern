@@ -172,6 +172,18 @@ Response:
 
 Partial success is normal: imported cards are saved, failed cards are reported in `errors`.
 
+### `POST /api/characters/import-path`
+
+**Desktop only.** Imports one card from a path on the machine — this is what the shell calls when the user opens a card file from Explorer. A web or LAN server does not register the route at all and answers `404`, not `400`.
+
+```json
+{ "path": "C:\\Users\\Mira\\Cards\\seraphina.png" }
+```
+
+- Accepted extensions are the same three as the upload route: `.png`, `.json`, `.charx`
+- The file must be readable by the server process; a missing or unreadable one answers `400 Could not read the file`
+- The response has the same shape as the upload above, with at most one entry in `imported`
+
 ### `PATCH /api/characters/:id`
 
 Merge edits into the stored card.
