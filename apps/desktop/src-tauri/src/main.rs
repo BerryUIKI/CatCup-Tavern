@@ -63,9 +63,26 @@ fn server_entry(app: &tauri::App) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../server/dist/index.js")
 }
 
+/// Where the server keeps its data.
+///
+/// The desktop build normally uses the OS app-data directory, which keeps it
+/// clear of the install directory and of the web build. `CATCUP_DATA_DIR`
+/// overrides that, so the app can be pointed at an existing data folder — the
+/// web build's `data/`, a backup, or a folder on another drive — without
+/// copying it first.
+fn data_directory(app: &tauri::App) -> Result<PathBuf, String> {
+    if let Ok(value) = std::env::var("CATCUP_DATA_DIR") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed));
+        }
+    }
+    app.path().app_data_dir().map_err(|e| e.to_string())
+}
+
 /// Start the server with an ephemeral port and wait for its readiness line.
 fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = data_directory(app)?;
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
 
     let node = node_binary();
