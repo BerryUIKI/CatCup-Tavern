@@ -35,6 +35,21 @@ This directory is the project handbook. Start with the path that matches your ro
 | See what changed                                  | [../CHANGELOG.md](../CHANGELOG.md)         |
 | Contribute a change                               | [../CONTRIBUTING.md](../CONTRIBUTING.md)   |
 
+## Reading paths
+
+```mermaid
+flowchart LR
+    Start([Where do you start?]) --> P1[Use CatCup]
+    Start --> P2[Contribute]
+    Start --> P3[Deploy and operate]
+
+    P1 --> LIM[LIMITATIONS - what works today] --> MIL[MILESTONES - what comes next]
+    P2 --> ARCH[ARCHITECTURE - how it fits together]
+    ARCH --> API[API] & DF[DATA-FORMATS] & PROV[PROVIDERS] & DES[DESIGN]
+    P3 --> DEP[DEPLOYMENT - web and LAN] --> SEC[SECURITY]
+    DEP --> DESK[DESKTOP]
+```
+
 ## Documentation map
 
 | Document                                   | Purpose                                                                           |
@@ -63,5 +78,6 @@ This directory is the project handbook. Start with the path that matches your ro
 - **Docs are part of done.** A user-facing change updates the relevant page and `CHANGELOG.md` in the same PR.
 - **No secrets.** Never put API keys, session cookies or real `data/` contents in documentation, examples or tests.
 - **Relative links.** Use relative Markdown links so the docs work on GitHub and in a local checkout.
+- **Theme-aware images.** Brand images and illustrations ship as dark and light variants and switch with `<picture>` + `prefers-color-scheme`; screenshots of the dark app stay single images.
 - **Scope changes update MILESTONES.md.** If a feature moves between milestones, change this file first.
 - **Accuracy over aspiration.** Mark planned work as planned; do not describe unimplemented features as available.

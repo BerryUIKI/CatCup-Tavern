@@ -62,6 +62,26 @@ Common codes:
 
 ## Auth
 
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    Note over B,S: First run - loopback only
+    B->>S: GET /api/auth/status
+    S-->>B: { needsSetup: true }
+    B->>S: POST /api/auth/setup { password }
+    S-->>B: session cookie
+    Note over B,S: Every later visit
+    B->>S: POST /api/auth/login { password }
+    alt password correct
+        S-->>B: catcup_session cookie (30 days)
+    else wrong or rate-limited
+        S-->>B: 401 INVALID_PASSWORD
+    end
+    B->>S: /api/* with the cookie
+    S-->>B: 200 or 401 UNAUTHORIZED
+```
+
 ### `GET /api/auth/status`
 
 ```json
@@ -638,6 +658,19 @@ data: {"type":"error","message":"..."}
 - If the client disconnects or calls the stop endpoint, the server aborts the upstream request and saves the partial text with `extra.stopped = true` when possible.
 - If the upstream fails after some text was produced, the partial text is saved and an `error` event is sent.
 - The client should use `fetch` + `ReadableStream` rather than `EventSource`, because the request is a POST with a session cookie.
+
+```mermaid
+sequenceDiagram
+    participant C as Client (fetch + ReadableStream)
+    participant S as Server
+    C->>S: POST /api/generate (JSON, session cookie)
+    S-->>C: 200 text/event-stream
+    S-->>C: event: start
+    S-->>C: event: token (repeating)
+    S-->>C: event: reasoning (when the provider returns it)
+    S-->>C: event: done or error
+    Note over C,S: stop = POST /api/generate/:id/stop; partial text keeps extra.stopped
+```
 
 ### `POST /api/generate/:id/stop`
 

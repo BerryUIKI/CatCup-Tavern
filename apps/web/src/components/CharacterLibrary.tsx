@@ -318,6 +318,13 @@ export function CharacterLibrary({
     if (characters.length === 0) {
         return (
             <div className="px-4 py-10 text-center text-sm leading-relaxed text-muted">
+                <img
+                    src="/illustrations/empty-library.png"
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                    className="mx-auto mb-4 w-52"
+                />
                 <p>No characters yet. Import a PNG, JSON or CharX card to open the first door.</p>
                 <button type="button" className="btn-ghost mx-auto mt-3" onClick={onAddSample} disabled={addingSample}>
                     {addingSample ? <Spinner size={15} /> : <Sparkles size={15} />}

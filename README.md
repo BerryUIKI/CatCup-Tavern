@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="design/logo/readme-banner-d.svg" />
+  <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern — a hand-drawn cat lounging in a teacup" width="820" />
+</picture>
+
 # CatCup Tavern
 
 A **SillyTavern-compatible AI roleplay client**. One codebase, three shapes:
@@ -59,6 +64,8 @@ Captured from the 0.2.0 build; the interface has changed little since, but [docs
 | License | AGPL-3.0-only                                           |
 
 ## Quick start
+
+Requires Node.js 24+ and pnpm 9+.
 
 ```bash
 pnpm install

@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-11-13 · M0, M1 and M2 complete; the rest of M4 and M5 remain
+> Last updated: 2026-11-13 · M0, M1 and M2 complete; M4 implemented on `dev`; M3 and M5 remain
 
 ## 1. Goals and principles
 
@@ -14,34 +14,22 @@ CatCup Tavern is a **SillyTavern-compatible AI roleplay client**, not a generic 
 
 ## 2. Runtime topology
 
-### Web / LAN
+```mermaid
+flowchart TB
+    Browser["Browser - web and LAN<br/>React SPA · session cookie only"]
+    Tauri["Tauri 2 window - Windows desktop<br/>loads http://127.0.0.1:&lt;port&gt;"]
+    Server["Node 24 + Fastify 5<br/>/api/* · static apps/web/dist · data/"]
+    Providers["OpenAI / OpenRouter / Anthropic / Ollama"]
 
-```text
-Browser (React SPA)
-    │  REST + SSE (cookie auth)
-    ▼
-Node 24 + Fastify 5
-    ├── /api/*       application endpoints
-    ├── static       apps/web/dist (production)
-    └── data/        ST-compatible file storage
-    │  HTTPS (fetch)
-    ▼
-OpenAI / OpenRouter / Anthropic / Ollama
+    Browser -- "REST + SSE (cookie auth)" --> Server
+    Tauri -- "spawns the sidecar, then loads it" --> Server
+    Server -- "HTTPS fetch" --> Providers
 ```
 
 - Development: Vite on `:5173` proxies `/api` to `:8000`.
 - Production: Fastify serves the SPA and API on the same port, default `127.0.0.1:8000`.
 - LAN mode binds `0.0.0.0`; authentication is a single-user password session.
-
-### Desktop
-
-```text
-Tauri 2 window (loads http://127.0.0.1:<port>)
-    └── spawns Node sidecar (same @catcup/server)
-          └── data dir = OS app-data directory
-```
-
-The desktop shell owns only process management, port selection, the data directory, window state, the tray icon and handing a file the user opened to the server. No business logic is duplicated. The updater is still to come; see [DESKTOP.md](DESKTOP.md).
+- Desktop: the Tauri shell spawns the same server as a sidecar on an OS-chosen port and keeps its data in the OS app-data directory. It owns only process management, port selection, the data directory, window state, the tray icon and handing a file the user opened to the server; no business logic is duplicated. It updates itself from a signed release. See [DESKTOP.md](DESKTOP.md).
 
 ## 3. Stack decisions
 
@@ -199,6 +187,24 @@ event: error      data: { message }
 - Client disconnect / Stop aborts the upstream request and saves the partial text with `extra.stopped = true`.
 - A `: ping` comment is emitted every 15s to keep proxies from timing out.
 
+```mermaid
+sequenceDiagram
+    participant C as Client (SPA)
+    participant S as Server
+    participant P as Provider
+    C->>S: POST /api/generate (action, message?)
+    S->>S: append user message, assemble prompt
+    S-->>C: SSE start {generationId}
+    S->>P: stream chat request
+    loop each chunk
+        P-->>S: text / reasoning
+        S-->>C: SSE token / reasoning
+    end
+    S->>S: persist the assistant message
+    S-->>C: SSE done {message, usage?}
+    Note over C,S: stop or disconnect aborts upstream and saves partial text with extra.stopped
+```
+
 ## 7. Provider abstraction
 
 ```ts
@@ -220,6 +226,16 @@ interface ProviderAdapter {
 Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`. See [PROVIDERS.md](PROVIDERS.md) for endpoint-level details and limitations.
 
 ## 8. Prompt pipeline
+
+```mermaid
+flowchart LR
+    MAC[Macros expand] --> PM[Prompt Manager<br/>order · card overrides]
+    PM --> WI[World info scan<br/>before · after · depth]
+    WI --> TRIM[History trimmed<br/>to the token budget]
+    TRIM --> MEM[Summary memory<br/>injected]
+    MEM --> EX[Dialogue examples<br/>continue and group nudges]
+    EX --> OUT[Assembled prompt]
+```
 
 1. Macros expand in prompt entries, world info, the author's note, the summary and stored history.
 2. The Prompt Manager builds the ordered collection from the active preset, or SillyTavern's defaults when none is active, merges the fixed system prompts, applies the card's `main` and `jailbreak` overrides and populates the slots in ST's call order.
