@@ -392,3 +392,12 @@ describe('character library routes', () => {
         ).toBe(false);
     });
 });
+
+describe('desktop-only routes', () => {
+    it('does not register import-by-path outside desktop mode', async () => {
+        // The route reads a path on the machine, so a web or LAN server must
+        // not have it at all — a 404, not a 400, so it is not even advertised.
+        const response = await call('POST', '/api/characters/import-path', { path: '/tmp/card.png' });
+        expect(response.statusCode).toBe(404);
+    });
+});
