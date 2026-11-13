@@ -7,6 +7,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 ### Added
 
 - The desktop app honours `CATCUP_DATA_DIR`, so it can be pointed at an existing data folder — the web build's `data/`, a backup, or a folder on another drive — instead of its own app-data directory. Nothing is copied: the app opens the folder as it is, with its characters, chats, world info and presets. A folder with an `auth.json` still asks for that password.
+- GitHub Actions compiles the desktop shell on every pull request. A `Desktop shell` job on `windows-latest` runs `cargo check --locked` against the Tauri crate, with the Rust build cached, so a Rust compile error is caught on the pull request instead of during a release build. The job reports but is not yet a required check.
 - The release notes the workflow writes now describe group roleplay alongside single-character roleplay, matching what 0.3.0 actually ships.
 - The desktop app opens without an access password. The shell passes `CATCUP_DESKTOP=1`, a fresh install goes straight to the library instead of a setup screen, and About → Access password can set one (the sign-in screen returns) or remove it later. Web and LAN installs keep the password model unchanged. The server refuses to start in this mode when bound to a non-loopback host, so the open API cannot reach the LAN. New endpoint: `PUT /api/auth/password`; `/api/auth/status` gains `openSession`.
 

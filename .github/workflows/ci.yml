@@ -45,3 +45,49 @@ jobs:
 
             - name: Build
               run: pnpm build
+
+    desktop:
+        name: Desktop shell
+        runs-on: windows-latest
+        timeout-minutes: 30
+        steps:
+            - name: Check out
+              uses: actions/checkout@v5
+
+            - name: Set up pnpm
+              uses: pnpm/action-setup@v4
+
+            - name: Set up Node
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 24
+                  cache: pnpm
+
+            - name: Set up Rust
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Cache Rust build
+              uses: Swatinem/rust-cache@v2
+              with:
+                  workspaces: apps/desktop/src-tauri -> target
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            # `cargo check` runs the Tauri build script, which copies the
+            # server bundle, the SPA and the Node sidecar next to the binary.
+            # They have to exist first; a placeholder would only prove that a
+            # placeholder compiles.
+            - name: Build the server for bundling
+              run: pnpm --filter @catcup/server build
+              env:
+                  CATCUP_BUNDLE_DEPS: "1"
+
+            - name: Build the SPA
+              run: pnpm --filter @catcup/web build
+
+            - name: Prepare the desktop bundle
+              run: pnpm --filter @catcup/desktop bundle
+
+            - name: Check the shell
+              run: cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml

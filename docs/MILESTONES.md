@@ -394,7 +394,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
-- CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md).
+- CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md). The desktop shell is compiled on `windows-latest` too, added 2026-11-13.
 - Release automation. **Done 2026-11-13** — a merge into `main` with an untagged version creates the tag, builds the installer and publishes the release.
 - Backup/restore and upgrade documentation. **Done** — see [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore) and [DATA-FORMATS.md](DATA-FORMATS.md#backup-restore-and-upgrades).
 - Security hardening: trust-proxy/TLS guidance, optional CSRF tokens, key encryption at rest evaluation.
