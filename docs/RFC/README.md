@@ -4,7 +4,7 @@ Proposals for features that are large enough to need agreement before code. An R
 
 | RFC                               | Feature                                      | Issue                                                       | Status   |
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------------- | -------- |
-| [0001](0001-profiles.md)          | Switchable profiles (settings bundles)       | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Proposed |
+| [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer    | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Proposed |
 | [0002](0002-book-distillation.md) | Distil world info and characters from a book | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77) | Proposed |
 
 ## How an RFC moves
@@ -19,7 +19,11 @@ An accepted RFC is not a spec to copy blindly: the milestones document remains t
 
 Both proposals touch `data/settings.json` and the provider configuration from #76. They can be built in either order, but:
 
-- A profile bundles the provider list, so if profiles land first, book distillation's "Distill model" setting lives inside a profile.
-- If book distillation lands first, a profile will bundle its model choice along with everything else.
+- RFC 0001 keeps the provider list global and the active provider per profile, so book distillation's "Distill model" setting lives inside a profile and its cost estimate follows that profile's provider choice.
+- If book distillation lands first, the distillation model choice moves into a profile with everything else.
 
 Neither blocks the other; the answer only decides which document to update second.
+
+## Superseded drafts
+
+RFC 0001 was first written as a settings bundle over one shared library. Review pointed out that two unrelated campaigns cannot share a character library: ids are file names, so two casts both containing "Mira" collide, and regex rules, prompt order and book names are all name-based too. The revision scopes content to the profile and keeps only the provider list and keys global, with an opt-in shared layer for items that really are common. The reasoning is kept in §2 of the document.
