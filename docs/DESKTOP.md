@@ -63,6 +63,18 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 - **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: quitting from the tray while the window is hidden must not start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
 - **Tray icon.** An icon sits in the notification area from startup. Its menu has **Open CatCup Tavern** and **Quit**; left-clicking the icon opens the window and focuses it, and right-clicking opens the menu. This is the only way back once the window is hidden, which is why the left click is wired to open rather than to the menu.
 
+## Opening a card file
+
+The installer registers `.catcup` as a CatCup file type, so double-clicking one — or **Open with** from Explorer — starts the app with that file's path as its argument. Windows hands it over as `"<install dir>\catcup-desktop.exe" "C:\…\card.catcup"`.
+
+The path is taken literally. It is **not** run through the URL parser first: `C:\cards\mira.catcup` parses as a URL whose scheme is `c`, and converting that back to a path fails, so every drive-letter argument would be dropped and nothing would open. Only a `file://` argument — which macOS and Linux deliver — goes through the parser, so porting the shell does not quietly lose those. Arguments are accepted only when the file exists and has an extension the server imports: `.png`, `.json`, `.charx` or `.catcup`.
+
+The shell does not import the file itself. The path waits until the webview reports that the page has finished loading, then the shell evaluates a small script in the page that posts it to `POST /api/characters/import-path` and reloads, so the library shows the new card. The import is a **copy**: the original file is left where it is, and so is any later editing of the card.
+
+A second launch never starts a second server. The single-instance plugin forwards its arguments to the running app, which imports the card and brings its window to the front — including when the window was hidden in the tray. A card opened while the page is still loading waits in the same queue as one opened at startup.
+
+**Only `.catcup` is registered.** `.png` and `.json` are accepted on import, but claiming either in the installer would make CatCup the default handler for every image and every JSON file on the machine; `.charx` is RisuAI's format, so CatCup opens it but does not claim it.
+
 ## Still open
 
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.

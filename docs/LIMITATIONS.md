@@ -102,8 +102,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Closing the desktop window does not quit it.** The window hides to the notification area and the server keeps running; quit from the tray menu. If the icon has been tucked into the hidden-icons fly-out, the app can look stuck — it is still there, and a second launch brings the window back without starting another server.
 - **Downloads and sign-in persistence in the desktop app have not been exercised.**
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
-- **The installer is unsigned**, so Windows warns on first run, and there are no automatic updates.
-- **LAN traffic is plain HTTP**, including the password. Use a trusted network or a TLS proxy.
+- **The installer is unsigned**, so Windows warns on first run, and there are no automatic updates.- **LAN traffic is plain HTTP**, including the password. Use a trusted network or a TLS proxy.
 
 ## Things that may surprise a SillyTavern user
 
@@ -113,6 +112,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Deleting the active preset takes effect at once**, with no confirmation, and generation falls back to the built-in defaults.
 - **Deleting a persona** does not break chats that used it; they fall back to the default.
 - **Copy to clipboard** only works on localhost or HTTPS; over plain-HTTP LAN the button reports an error.
+- **Double-clicking a `.catcup` imports a copy of it**, which reloads the window — an open chat loses its place on the page and a reply that is still streaming is cut off. Nothing on disk is lost: the card is saved before the reload. Only `.catcup` is registered; `.charx`, `.png` and `.json` import from the library but are not file associations.
 - **Reloading the page** returns you to the first character alphabetically, not the chat you had open.
 
 ## Where the details live
