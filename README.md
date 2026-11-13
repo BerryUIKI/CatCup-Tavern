@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="design/logo/readme-banner-d.svg" />
-    <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern" width="400" />
+    <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern" width="50%" />
   </picture>
 </p>
 
