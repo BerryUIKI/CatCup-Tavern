@@ -6,6 +6,6 @@ contact_links:
     - name: Report a security vulnerability
       url: https://github.com/BerryUIKI/CatCup-Tavern/security/advisories/new
       about: Open a private advisory instead of a public issue. See docs/SECURITY.md for what to include.
-    - name: Ask a question
-      url: https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/TROUBLESHOOTING.md
-      about: Common failures and their fixes; use Discussions for anything not covered there.
+    - name: Read the handbook
+      url: https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/README.md
+      about: Troubleshooting, deployment, data formats and the rest of the documentation, before opening a general issue.
