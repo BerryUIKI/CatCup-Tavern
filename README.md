@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml"><img src="https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases/latest"><img src="https://img.shields.io/github/v/release/BerryUIKI/CatCup-Tavern?label=release" alt="Latest release" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--only-blue" alt="License: AGPL-3.0-only" /></a>
   <img src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20Web%20%C2%B7%20LAN-lightgrey" alt="Platforms: Windows, web and LAN" />
 </p>
 
@@ -30,14 +30,15 @@ _The chat view, from the 0.2.0 build._
 
 Download the installer from the [latest release](https://github.com/BerryUIKI/CatCup-Tavern/releases/latest) and run it. It installs per user, needs no administrator and no separate Node installation, and keeps your data in `%APPDATA%\dev.catcup.tavern`.
 
-Two things to know before you click through:
+One thing to know before you click through:
 
 - **The installer is unsigned.** SmartScreen warns once on the first run of a downloaded copy and names no publisher, because there is no Authenticode certificate behind it. Take the file from the [releases page](https://github.com/BerryUIKI/CatCup-Tavern/releases/latest) and nowhere else; **More info → Run anyway** is how the first run gets past the warning.
-- **It opens without a password.** The desktop build is single-user on one machine, so it starts straight into the library. Set one in Settings → About and the sign-in screen comes back.
+
+The release sets a first-run access password; the next one drops it for the desktop build and adds a tray icon and self-update.
 
 ### Web or LAN from source
 
-Requires **Node.js 22.13+** and **pnpm 11**.
+Requires **Node.js 22.13+** (CI builds on 24) and **pnpm 11**.
 
 ```bash
 pnpm install
@@ -64,7 +65,7 @@ The app has no built-in TLS. Put it behind a reverse proxy or a VPN if it is rea
 
 ## What it does
 
-**Chat.** Streaming replies with reasoning shown separately, swipes, regenerate, continue, inline editing, branching from any message, alternate greetings, rename and delete. Stop mid-reply and keep the partial text. **Write as me** drafts the next message as your persona straight into the composer — nothing is stored until you send it, and you can drop card files onto the window to import them. **next**
+**Chat.** Streaming replies with reasoning shown separately, swipes, regenerate, continue, inline editing, branching from any message, alternate greetings, rename and delete. Stop mid-reply and keep the partial text. An icon-only **write as me** button drafts the next message as your persona straight into the composer — nothing is stored until you send it — and you can drop card files onto the window to import them. **next**
 
 **Group chats.** Several characters in one room, each with their own greetings and avatars. Natural, list, manual and pooled reply order; mute a member without removing them. Replies are stored in SillyTavern's group chat files.
 
@@ -80,7 +81,7 @@ The app has no built-in TLS. Put it behind a reverse proxy or a VPN if it is rea
 
 **Characters and library.** Edit any text field and write the card back to PNG (both `chara` and `ccv3` chunks) or JSON, or export a CharX package, or CatCup's own `.catcup` container — the same ZIP layout under a different extension, so either app opens either file. **next** Tags, favorites, filters, five sort orders and bulk actions across the library.
 
-**Desktop.** A Tauri 2 window around the same server, started as a child process on an OS-chosen port: tray icon, remembered window state, `.catcup` file associations and self-update from signed releases. **next**
+**Desktop.** A Windows installer that runs the same server as a child process on an OS-chosen port — no separate Node, no administrator, no service to configure. The next release adds a tray icon, remembered window state, `.catcup` file associations and self-update. **next**
 
 **Providers.** OpenAI-compatible (including local servers), OpenRouter, Anthropic and Ollama. API keys live in `data/secrets.json` and never reach the browser.
 
@@ -97,10 +98,11 @@ SillyTavern's data model and prompt semantics are the ecosystem's lingua franca,
 
 | Area                                                                     | State                                                                    |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| Character cards — PNG V2/V3, JSON, CharX, `.catcup`                      | Works                                                                    |
+| Character cards — PNG V2/V3, JSON, CharX                                 | Works                                                                    |
+| `.catcup` packages — the same ZIP container under CatCup's own name      | Next                                                                     |
 | Chats — ST JSONL, swipes, branches, alternate greetings                  | Works                                                                    |
 | World info — keys and logic, recursion, groups, timed effects, positions | Works                                                                    |
-| OpenAI presets — import, prompt order, in-chat injection, sampling       | Works                                                                    |
+| OpenAI presets — import, prompt order, in-chat injection                 | Works; sampling covers temperature, top p, max tokens and context size   |
 | Regex scripts — all four live placements                                 | Works                                                                    |
 | Quick Replies — version 2 sets                                           | Partial: seven commands, no auto-execution or context menus              |
 | Group chats                                                              | Partial: one member replies per turn, no append modes or automatic turns |
@@ -144,10 +146,12 @@ pnpm dev          # server :8000 + web :5173
 | `pnpm lint` / `pnpm lint:fix` | Biome check / autofix                          |
 | `pnpm format`                 | Biome format                                   |
 
-The desktop shell is Rust. Its build script copies the server bundle, the SPA and the Node sidecar into `target/`, so they have to exist first:
+The desktop shell is Rust. Its build script copies the server bundle, the SPA and the Node sidecar into `target/`, so they have to exist first — the `build` script does not do that for you:
 
 ```bash
-pnpm --filter @catcup/desktop build   # prepare, then tauri build (needs Rust + the Tauri prerequisites)
+CATCUP_BUNDLE_DEPS=1 pnpm --filter @catcup/server build   # one-file server
+pnpm --filter @catcup/web build                            # SPA served beside it
+pnpm --filter @catcup/desktop build                        # prepares the bundle, then tauri build
 ```
 
 CI compiles the shell on Windows, macOS and Linux on every pull request, and builds the Windows installer for each release.
@@ -173,9 +177,9 @@ data/
 └── auth.json            # password hash and session secret
 ```
 
-Copying SillyTavern's `characters/`, `chats/`, `worlds/`, `presets/` and `groups/` folders in is enough to migrate; the in-app importer does the same after showing you a scan. Details: [Data formats](docs/DATA-FORMATS.md).
+Copying SillyTavern's `characters/`, `chats/`, `worlds/`, `presets/`, `groups/` and `group chats/` folders in is enough to migrate everything. The in-app importer does the same for characters, chats, world info and presets after showing you a scan — it does not copy groups or quick reply sets, so move those two folders yourself. Details: [Data formats](docs/DATA-FORMATS.md).
 
-Three things surprise people, and all three are SillyTavern's own behaviour:
+Three things surprise people:
 
 - **Imported lorebooks arrive disabled.** Enable them in Settings → World Info, or they scan for nothing.
 - **The importer usually finds no presets.** SillyTavern 1.19 keeps user presets inside its settings rather than as files; import those one at a time from Settings → Prompts.
@@ -194,13 +198,13 @@ Three things surprise people, and all three are SillyTavern's own behaviour:
 | [Desktop](docs/DESKTOP.md)                            | The Tauri shell, sidecar, updater and readiness contract |
 | [Security](docs/SECURITY.md)                          | Authentication, secrets, threat model and hardening      |
 
-Design, data formats, providers, development, deployment, troubleshooting, the glossary, the reuse assessment and the [changelog](CHANGELOG.md) all hang off that index.
+[Design](docs/DESIGN.md), [data formats](docs/DATA-FORMATS.md), [providers](docs/PROVIDERS.md), [development](docs/DEVELOPMENT.md), [deployment](docs/DEPLOYMENT.md), [troubleshooting](docs/TROUBLESHOOTING.md), the glossary, the reuse assessment and the [changelog](CHANGELOG.md) all hang off that index.
 
 ## Security
 
 - Single-user password authentication; first-run setup is accepted from loopback only.
 - API keys are stored server-side in `data/secrets.json` and never sent to the browser — the client only learns whether a key is set.
-- Every shape can change its password; only the desktop app can remove one, because a server with no password would be reachable and unauthenticated.
+- The desktop build can set, change or remove the access password. Web and LAN installs keep the one set at first run until the next release, which adds changing it in Settings → About. Removing it stays desktop-only either way: a server with no password would be reachable and unauthenticated.
 - There is no built-in TLS. Use a reverse proxy or a VPN beyond a trusted network.
 
 [docs/SECURITY.md](docs/SECURITY.md) has the full model, the known gaps and what to do if the password is compromised.
@@ -219,7 +223,7 @@ The UI and documentation are English-first; i18n is deferred, and Chinese (zh-CN
 
 ## License and attribution
 
-CatCup Tavern is released under **AGPL-3.0-only**. Self-hosting an unmodified copy carries no obligation; the licence attaches when you distribute a modified version, or run one where other people can reach it over a network. Contributions are accepted under the same licence. It reuses or adapts code and data formats from:
+CatCup Tavern is released under **AGPL-3.0-only**. Self-hosting an unmodified copy carries no obligation; the licence attaches when you distribute a modified version, or run a modified one where other people can reach it over a network — and then those users have to be offered the source. Contributions are accepted under the same licence. It reuses or adapts code and data formats from:
 
 - [SillyTavern](https://github.com/SillyTavern/SillyTavern) — AGPL-3.0. Character card parsing, data formats, prompt and world-info semantics, provider conversion references.
 - [RisuAI](https://github.com/kwaroran/RisuAI) — GPL-3.0. Modern TypeScript request-layer references, character import and Tauri/LAN service design. Combined with this AGPL-3.0 project under AGPLv3 §13.
