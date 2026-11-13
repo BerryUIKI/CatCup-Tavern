@@ -6,9 +6,9 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 
 **Getting your data in**
 
-- Import character cards one at a time or in a batch: PNG with V2 or V3 metadata, JSON, and CharX packages with their assets.
+- Import character cards one at a time or in a batch — PNG with V2 or V3 metadata, JSON, CharX packages with their assets, and CatCup's own `.catcup` packages — from the library's import button, or by dropping the files anywhere on the window.
 - Point at a whole SillyTavern user folder and copy its **characters, chats, world info and OpenAI presets** in one action, after a scan shows what was found.
-- Export cards back to PNG, JSON or CharX, and presets, world info and regex scripts back to JSON.
+- Export cards back to PNG, JSON, CharX or `.catcup`, and presets, world info and regex scripts back to JSON.
 
 **Chatting**
 
