@@ -408,7 +408,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 ### Scope
 
 - Mobile browser polish (chat view, composer, sidebar, settings).
-- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; phases B–E remain.
+- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; **stage B (app shell and chat chrome) done 2026-11-13**; stages C–E remain.
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
@@ -429,7 +429,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 ### Interface design
 
-Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome; C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
+Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome (**done 2026-11-13** — the chat headers keep identity, chat switching, provider state and one Tools menu, and chat/message deletion moved to the app's own confirmation); C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
 
 ### Security
 
@@ -476,3 +476,4 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 - 2026-11-09: Initial milestone document. M0 marked complete; M1 scoped.
 - 2026-11-10: M1 marked complete, including the model-aware tokenizer.
 - 2026-11-13: M2 marked complete and released as `0.3.0`; M4 marked in progress.
+- 2026-11-13: UX stage B (app shell and chat chrome) delivered.
