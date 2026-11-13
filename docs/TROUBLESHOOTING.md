@@ -7,6 +7,20 @@ curl -fsS http://127.0.0.1:8000/api/health
 CATCUP_LOG_LEVEL=debug pnpm dev
 ```
 
+```mermaid
+flowchart TB
+    Q{"Which area?"} --> A["The app does not open"]
+    Q --> B["Setup and login"]
+    Q --> C["Providers and generation"]
+    Q --> D["TTS and image generation"]
+    Q --> E["Library, chat and data"]
+    A --> A1["dev: open :5173, not :8000<br/>prod: run pnpm build first<br/>port busy: set CATCUP_PORT"]
+    B --> B1["setup 403: loopback only<br/>setup 409: auth.json exists<br/>login loop: cookies and Host header"]
+    C --> C1["check the active provider and model<br/>SSE freezes: disable proxy buffering"]
+    D --> D1["base URL ends at the API root<br/>ComfyUI needs an API-format workflow"]
+    E --> E1["chat folder follows the character name<br/>images follow the gallery folder"]
+```
+
 ## The app does not open
 
 **`pnpm dev` starts but the page is blank**

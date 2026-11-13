@@ -8,6 +8,18 @@ The desktop build is a Tauri 2 window around the same Fastify server and React S
 
 The server owns authentication, storage and the SSE stream. Running it as a process keeps one code path for the web, LAN and desktop shapes, and means a crash in one does not take the other down. Embedding it would require a Tauri-specific transport and a second way to serve the SPA.
 
+```mermaid
+sequenceDiagram
+    participant T as Tauri shell
+    participant S as Node sidecar
+    participant W as Webview
+    T->>S: spawn with HOST=127.0.0.1, PORT=0, app-data dir
+    S-->>T: CATCUP_READY &lt;port&gt;
+    T->>W: open http://127.0.0.1:&lt;port&gt;
+    Note over T,S: child runs in a job object with KILL_ON_JOB_CLOSE
+    T->>S: kill and reap on exit
+```
+
 ## What ships
 
 | Part                    | Where it comes from                                       | Size   |

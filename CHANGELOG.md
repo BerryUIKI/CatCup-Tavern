@@ -7,6 +7,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 ### Added
 
 - App icon and brand: a hand-drawn cat lounging in a teacup — cream `#fdf4e2` artwork on a coffee `#3a241c` disc over a cream rounded tile. The app icon, Tauri icon set, favicon (SVG + ICO) and Apple touch icon all derive from the single SVG master in `design/logo/`; the sidebar, login and empty-state logo now show the mark. The README gained a matching banner in dark and light variants (`design/logo/readme-banner-{d,w}.svg`) wired with `prefers-color-scheme`.
+- Documentation now leads with diagrams: Mermaid charts for the runtime topology, generation sequence, prompt pipeline, auth flow, data relationships, deployment topologies, the desktop sidecar lifecycle and a troubleshooting triage tree across `docs/` (README index, ARCHITECTURE, API, DATA-FORMATS, SECURITY, DEPLOYMENT, DESKTOP, TROUBLESHOOTING, MILESTONES).
 
 ## 0.3.0 — 2026-11-13
 

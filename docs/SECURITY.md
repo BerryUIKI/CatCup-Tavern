@@ -14,6 +14,24 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 There is no multi-tenant isolation. Anyone with a valid session has full access to every character, chat, provider and setting.
 
+```mermaid
+flowchart LR
+    Client["Browser / Tauri webview<br/>session cookie only"]
+    Server["CatCup server"]
+    Auth[("auth.json<br/>scrypt hash + session secret")]
+    Secrets[("secrets.json · mode 0600<br/>provider, tts, image keys")]
+    Data[("data/<br/>characters, chats, world info")]
+    Logs["logs<br/>authorization, cookie, x-api-key redacted"]
+    Provider["Configured chat / TTS / image endpoints"]
+
+    Client -- "catcup_session · HttpOnly · SameSite=Lax" --> Server
+    Server <--> Auth
+    Secrets -- "read at request time, never returned" --> Server
+    Server <--> Data
+    Server --> Logs
+    Server -- "HTTPS with the stored key" --> Provider
+```
+
 ## Authentication
 
 ### Password storage

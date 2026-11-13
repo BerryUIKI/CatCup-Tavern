@@ -65,6 +65,8 @@ Captured from the 0.2.0 build.
 
 ## Quick start
 
+Requires Node.js 24+ and pnpm 9+.
+
 ```bash
 pnpm install
 pnpm dev

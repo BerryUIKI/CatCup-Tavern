@@ -2,6 +2,21 @@
 
 This guide covers the web and LAN builds. The desktop build is a separate installer that starts the same server on a free port; see [DESKTOP.md](DESKTOP.md).
 
+```mermaid
+flowchart TB
+    Device["Devices<br/>same machine · LAN · VPN"]
+    Proxy["TLS reverse proxy or VPN<br/>optional"]
+    Server["CatCup server<br/>CATCUP_HOST · CATCUP_PORT"]
+    Data[("CATCUP_DATA_DIR")]
+    Providers["Chat / TTS / image providers"]
+
+    Device -- "loopback http" --> Server
+    Device -- "https" --> Proxy
+    Proxy -- "http · Host preserved · SSE unbuffered" --> Server
+    Server <--> Data
+    Server -- "https" --> Providers
+```
+
 ## Local development
 
 ```bash

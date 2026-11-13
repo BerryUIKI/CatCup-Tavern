@@ -35,6 +35,21 @@ This directory is the project handbook. Start with the path that matches your ro
 | See what changed                                  | [../CHANGELOG.md](../CHANGELOG.md)         |
 | Contribute a change                               | [../CONTRIBUTING.md](../CONTRIBUTING.md)   |
 
+## Reading paths
+
+```mermaid
+flowchart LR
+    Start([Where do you start?]) --> P1[Use CatCup]
+    Start --> P2[Contribute]
+    Start --> P3[Deploy and operate]
+
+    P1 --> LIM[LIMITATIONS - what works today] --> MIL[MILESTONES - what comes next]
+    P2 --> ARCH[ARCHITECTURE - how it fits together]
+    ARCH --> API[API] & DF[DATA-FORMATS] & PROV[PROVIDERS] & DES[DESIGN]
+    P3 --> DEP[DEPLOYMENT - web and LAN] --> SEC[SECURITY]
+    DEP --> DESK[DESKTOP]
+```
+
 ## Documentation map
 
 | Document                                   | Purpose                                                                           |

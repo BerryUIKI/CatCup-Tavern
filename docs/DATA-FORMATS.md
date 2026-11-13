@@ -36,6 +36,28 @@ data/
 └── auth.json                  # server-only
 ```
 
+```mermaid
+erDiagram
+    CHARACTER ||--o{ CHAT : "chats folder per character"
+    CHARACTER ||--o{ CHARACTER_ASSET : "character-assets folder"
+    CHARACTER ||--o{ WORLDINFO : "extensions.world link"
+    CHARACTER }o--o{ GROUP : "members are avatar file names"
+    GROUP ||--o{ GROUP_CHAT : "chats list"
+    CHAT ||--|{ MESSAGE : "one per JSONL line"
+    GROUP_CHAT ||--|{ MESSAGE : "name and original_avatar"
+    MESSAGE }o--o{ IMAGE : "extra.media paths"
+
+    CHARACTER {
+        string id "file name without extension"
+    }
+    GROUP {
+        string id "json file name"
+    }
+    MESSAGE {
+        int index "zero-based, header excluded"
+    }
+```
+
 The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data/` is gitignored.
 
 ### Identity rules

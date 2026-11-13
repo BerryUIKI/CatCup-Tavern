@@ -14,6 +14,24 @@
 | **Blocked**     | Waiting on a dependency or decision.                               |
 | **Cut**         | Explicitly removed from the current release scope.                 |
 
+```mermaid
+timeline
+    title Milestones and releases
+    section Shipped
+        2026-11-09 : M0 - foundation, cards, chats, four providers
+        2026-11-11 : M1 - world info, Prompt Manager, presets, editing
+                   : 0.2.0 - early access MVP
+                   : 0.2.1 - compatibility patch
+        2026-11-13 : 0.3.0 - groups, memory, quick replies, TTS, images, CharX
+    section In progress
+        M2 remainder : append modes, auto mode, multi-member turns
+        UX stages B-E : chat chrome, message experience, editors, accessibility
+    section Planned
+        M3 : STscript, full Quick Replies, getContext and the extension sandbox
+        M4 : signing, auto-updater, file associations, tray, macOS and Linux
+        M5 : mobile, i18n, accessibility audit, performance, v1.0
+```
+
 ## Definition of done
 
 A milestone item is not done until all of the following are true:
