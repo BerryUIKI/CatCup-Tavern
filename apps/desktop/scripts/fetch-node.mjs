@@ -12,9 +12,35 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const desktop = path.resolve(here, '..');
 const binaries = path.join(desktop, 'src-tauri', 'binaries');
 
-const triple = process.env.TAURI_ENV_TARGET_TRIPLE ?? 'x86_64-pc-windows-msvc';
+/**
+ * The target triple Tauri will look for.
+ *
+ * `TAURI_ENV_TARGET_TRIPLE` is only set for `beforeBuildCommand` hooks, and
+ * this project has no such hook, so the common case is to derive it from the
+ * running Node. Hard-coding the Windows triple — as this script used to — means
+ * a macOS or Linux build silently ships a Windows executable.
+ */
+function targetTriple() {
+    if (process.env.TAURI_ENV_TARGET_TRIPLE) {
+        return process.env.TAURI_ENV_TARGET_TRIPLE;
+    }
+
+    const architecture = process.arch === 'arm64' ? 'aarch64' : 'x86_64';
+    if (process.platform === 'win32') {
+        return `${architecture}-pc-windows-msvc`;
+    }
+    if (process.platform === 'darwin') {
+        return `${architecture}-apple-darwin`;
+    }
+    return `${architecture}-unknown-linux-gnu`;
+}
+
+const triple = targetTriple();
 const suffix = triple.includes('windows') ? '.exe' : '';
-const destination = path.join(binaries, `node-${triple}${suffix}`);
+// Not `node`: a deb or rpm install puts external binaries in `/usr/bin`, where
+// `node` collides with the distribution's nodejs package and would replace the
+// user's runtime.
+const destination = path.join(binaries, `catcup-node-${triple}${suffix}`);
 
 await mkdir(binaries, { recursive: true });
 

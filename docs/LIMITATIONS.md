@@ -103,6 +103,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
 - **The installer is unsigned**, so Windows warns on first run, and there are no automatic updates.
 - **LAN traffic is plain HTTP**, including the password. Use a trusted network or a TLS proxy.
+- **Only Windows is released.** The desktop shell builds and packages on macOS and Linux, and CI compiles both on every pull request, but nothing there has been run: an unsigned macOS app is refused by Gatekeeper on any other machine, and the Linux artifacts have not been installed.
 
 ## Things that may surprise a SillyTavern user
 

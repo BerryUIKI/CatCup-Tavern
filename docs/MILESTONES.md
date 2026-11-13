@@ -372,7 +372,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - Tray icon and window-state restore.
 - Auto-updater and signed release artifacts.
 - File associations for `.png` / `.json` character cards.
-- _MVP_ — Windows installer first; macOS/Linux packaging after.
+- _MVP_ — Windows installer first; macOS/Linux packaging after. **Packaging configured 2026-11-13** — per-platform bundle targets, a target-aware Node sidecar and a three-platform CI compile — but neither platform is released or has been run.
 - LAN mode remains available from the same server.
 
 ### Acceptance criteria
