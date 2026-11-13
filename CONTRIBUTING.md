@@ -108,7 +108,7 @@ pnpm --filter @catcup/server test
 pnpm --filter @catcup/server build
 ```
 
-CI runs the same four gates on every PR into `dev` or `main` and on every push to either branch (`.github/workflows/ci.yml`). The job name is the required status check on both protected branches, so a PR cannot merge while it is red. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on `windows-latest`; it is not a required check yet, so treat a red result there as blocking anyway.
+CI runs the same four gates on every PR into `dev` or `main` and on every push to either branch (`.github/workflows/ci.yml`). The job name is the required status check on both protected branches, so a PR cannot merge while it is red. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on Windows, macOS and Linux — that is the only place the shell is compiled before a release, so treat a red result there as blocking even though it is not a required check yet.
 
 ## Code style
 

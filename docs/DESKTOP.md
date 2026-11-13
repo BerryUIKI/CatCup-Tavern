@@ -32,6 +32,8 @@ Four things had to change to make the packaged layout behave like the developmen
 - **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim.
 - **Pretty logs only on a terminal.** The packaged server's stdout is piped into the shell, so `pino-pretty` — which is not installed there — is skipped whenever stdout is not a TTY.
 - **Verbatim paths.** Tauri hands back resource paths with the `\\?\` prefix on Windows, and Node cannot resolve a main module given that prefix; the shell strips it before spawning.
+- **The sidecar is named `catcup-node`, not `node`.** On Windows either name works, but a deb or rpm install puts external binaries in `/usr/bin`, where a binary called `node` would replace the distribution's nodejs package. The shell looks for `catcup-node` next to its own executable and falls back to `CATCUP_NODE` or whatever `node` is on `PATH`.
+- **The sidecar name carries the target triple.** `scripts/fetch-node.mjs` derives it from the running Node (`TAURI_ENV_TARGET_TRIPLE` is only set for `beforeBuildCommand` hooks, and this project has none), so a macOS or Linux build does not quietly ship a Windows executable.
 - **The SPA ships beside the server.** The server serves `../../web/dist` relative to its own `dist`, so the bundle keeps that shape and the desktop build needs `pnpm --filter @catcup/web build` as well.
 
 ## Readiness contract
@@ -68,7 +70,7 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 - **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
 - **Tray icon and window state.** The window is a single webview that closes the app; there is no tray icon, and the window's size and position are not remembered between launches.
 - **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
-- **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
+- **macOS and Linux.** The shell builds and packages on both: `tauri.macos.conf.json` produces `.app` and `.dmg`, `tauri.linux.conf.json` produces `.deb` and `.AppImage`, and CI compiles all three platforms on every pull request. But only Windows is released. An unsigned macOS build is refused by Gatekeeper on any machine that did not build it, and neither platform has been run — the CI job proves it compiles, not that the app works there.
 
 ## Layout
 
@@ -88,6 +90,21 @@ pnpm --filter @catcup/desktop build                        # prepares, then taur
 ```
 
 The installer lands in `apps/desktop/src-tauri/target/release/bundle/nsis/`.
+
+The same three commands build the other platforms, because `fetch-node.mjs` picks the target triple from the running Node and the per-platform config files pick the bundle targets:
+
+| Host    | Config                  | Artifacts                                                      |
+| ------- | ----------------------- | -------------------------------------------------------------- |
+| Windows | `tauri.conf.json`       | NSIS installer in `bundle/nsis/`                               |
+| macOS   | `tauri.macos.conf.json` | `.app` and `.dmg` in `bundle/macos/` and `bundle/dmg/`         |
+| Linux   | `tauri.linux.conf.json` | `.deb` and `.AppImage` in `bundle/deb/` and `bundle/appimage/` |
+
+Linux needs the Tauri prerequisites installed first — the CI job installs exactly these:
+
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+    librsvg2-dev libxdo-dev patchelf
+```
 
 GitHub Actions runs the same three steps on `windows-latest` when a merge into `main` carries an untagged version, or when a `v*` tag is pushed, and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
 
