@@ -12,7 +12,9 @@ use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 struct Sidecar {
     child: Mutex<Option<Child>>,
@@ -152,15 +154,72 @@ fn remembered_window_state() -> tauri_plugin_window_state::StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN
 }
 
+/// Bring the window back: un-minimise it, show it if it was hidden, and focus
+/// it. Shared by the tray menu, a left click on the tray icon and a second
+/// launch of the app.
+fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Put an icon in the notification area, with a menu that can open the window
+/// and quit the app.
+///
+/// The tray is installed once at startup. Tauri keeps the icon alive in its
+/// resource table, so the returned handle does not need to be stored.
+///
+/// This is what makes closing the window safe: the close button hides to here
+/// rather than quitting, so the server keeps running and the icon is the way
+/// back. That is also why the tray is not optional — the app refuses to start
+/// without it rather than run with a window that can be closed but not found.
+fn install_tray(app: &tauri::App) -> tauri::Result<()> {
+    let open = MenuItem::with_id(app, "open", "Open CatCup Tavern", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&open, &separator, &quit])?;
+
+    let mut tray = TrayIconBuilder::with_id("main")
+        .tooltip("CatCup Tavern")
+        .menu(&menu)
+        // Left click shows the window instead of opening the menu; the menu is
+        // on the right-click, as on every other Windows tray icon.
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_main_window(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    // `default_window_icon` comes from `tauri.conf.json`'s bundle icons. It is
+    // only absent in a build without icons at all, and a tray with no image is
+    // better than failing to start.
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         // A second launch focuses the window that already exists instead of
         // starting a second server on the same data directory.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
+            show_main_window(app);
         }))
         // Restores and persists size, position and maximised state for the
         // window built below. The plugin hooks window creation, so it also
@@ -172,6 +231,15 @@ fn main() {
                 .with_state_flags(remembered_window_state())
                 .build(),
         )
+        // Closing the window hides it to the tray instead of quitting, so the
+        // server keeps streaming while the window is out of the way. Quit from
+        // the tray calls `exit` directly, which does not raise this event.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let (child, port) = start_server(app).map_err(Box::<dyn std::error::Error>::from)?;
             println!("[shell] server ready on port {port}");
@@ -191,6 +259,8 @@ fn main() {
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(900.0, 620.0)
                 .build()?;
+
+            install_tray(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())

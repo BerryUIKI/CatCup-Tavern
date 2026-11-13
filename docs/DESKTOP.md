@@ -75,10 +75,12 @@ Pointing at a copy is the safer way to try a migration: copy `data/`, point the 
 
 ## Lifecycle
 
-- **Normal exit.** Closing the last window ends the event loop; on `RunEvent::Exit` the shell kills and reaps the child.
+- **Closing the window.** The close button hides the window to the notification area. The shell, the server and any generation in flight keep running: `WindowEvent::CloseRequested` calls `prevent_close()` and hides the window instead of letting it close. **Quit** on the tray menu is the only way to exit.
+- **Normal exit.** **Quit** calls `app.exit(0)`, which ends the event loop without raising a close request; on `RunEvent::Exit` the shell kills and reaps the child.
 - **Crash.** The child is placed in a Windows job object with `KILL_ON_JOB_CLOSE`, so killing the shell — Task Manager included — takes the server with it. If the process is already in a job that forbids nesting, the assignment is skipped and the normal exit path still applies.
-- **Second launch.** The single-instance plugin focuses the existing window instead of starting a second server against the same data directory.
-- **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: the window can be hidden rather than closed, and restoring that flag would start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
+- **Second launch.** The single-instance plugin shows and focuses the existing window instead of starting a second server against the same data directory, and it works while the window is hidden — `set_focus` alone would do nothing to a hidden window.
+- **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: quitting from the tray while the window is hidden must not start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
+- **Tray icon.** An icon sits in the notification area from startup. Its menu has **Open CatCup Tavern** and **Quit**; left-clicking the icon opens the window and focuses it, and right-clicking opens the menu. This is the only way back once the window is hidden, which is why the left click is wired to open rather than to the menu.
 
 ## Still open
 
@@ -86,9 +88,16 @@ Pointing at a copy is the safer way to try a migration: copy `data/`, point the 
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
 - **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
-- **Tray icon.** The window is a single webview that closes the app; there is no tray icon.
 - **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
 - **macOS and Linux.** The shell builds and packages on both: `tauri.macos.conf.json` produces `.app` and `.dmg`, `tauri.linux.conf.json` produces `.deb` and `.AppImage`, and CI compiles all three platforms on every pull request. But only Windows is released. An unsigned macOS build is refused by Gatekeeper on any machine that did not build it, and neither platform has been run — the CI job proves it compiles, not that the app works there.
+
+## Tray icon
+
+The icon is built in `install_tray` from the window icon declared in `tauri.conf.json`. Tauri keeps it alive in its resource table, so the shell does not have to store the handle. The menu is a `Menu` with **Open CatCup Tavern** and **Quit**, separated by a separator; **Quit** calls `app.exit(0)`, which skips the close handler and still runs the exit path that kills the sidecar.
+
+The icon needs the `tray-icon` feature on the `tauri` crate. Left-click handling is enabled by turning `show_menu_on_left_click` off, which is the opposite of the Windows default; with the default, Windows fires the click event _and_ pops the menu over the window it just opened.
+
+The tray is not optional, and `install_tray` failing aborts startup. With close-to-tray, a build that hid its only window and had no icon to bring it back would be unrecoverable — and a release build has no console to fall back on (`windows_subsystem = "windows"`).
 
 ## Layout
 
