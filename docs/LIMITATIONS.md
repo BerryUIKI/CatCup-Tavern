@@ -1,6 +1,8 @@
 # What works, and what does not
 
-CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
+CatCup Tavern is early-access software. The goal is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
+
+This page describes the repository as it stands. The published `0.3.0` build predates the desktop work: the tray icon, self-update, `.catcup` packages, impersonation, drag-and-drop import and the web password change are not in it.
 
 ## What works
 
