@@ -17,6 +17,8 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_updater::UpdaterExt;
 
 struct Sidecar {
     child: Mutex<Option<Child>>,
@@ -167,6 +169,96 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// Stop the server process, if it is still running.
+///
+/// Called on exit and before handing the install directory to the updater,
+/// which cannot replace files the server still has open.
+fn stop_sidecar<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(state) = app.try_state::<Sidecar>() {
+        if let Some(mut child) = state.child.lock().unwrap().take() {
+            println!("[shell] stopping the server");
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+/// Show a native message box.
+///
+/// Update checks run on a background thread with no page to report to, and a
+/// release build has no console, so a dialog is the only place the answer can
+/// appear.
+fn show_message<R: Runtime>(app: &AppHandle<R>, message: String, kind: MessageDialogKind) {
+    app.dialog()
+        .message(message)
+        .title("CatCup Tavern")
+        .kind(kind)
+        .show(|_| {});
+}
+
+/// Look for a newer release and install it.
+///
+/// Runs in the background so the tray menu stays responsive. On Windows the
+/// installer replaces the app and restarts it, so the server is stopped first:
+/// the bundle it runs from is one of the files being replaced.
+fn check_for_updates<R: Runtime>(app: &AppHandle<R>) {
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let updater = match handle.updater() {
+            Ok(updater) => updater,
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("Could not start the update check: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        let update = match updater.check().await {
+            Ok(Some(update)) => update,
+            Ok(None) => {
+                show_message(&handle, "CatCup Tavern is up to date.".into(), MessageDialogKind::Info);
+                return;
+            }
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("Could not check for updates: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        let version = update.version.clone();
+        let bytes = match update.download(|_, _| {}, || {}).await {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("CatCup Tavern {version} could not be downloaded: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        stop_sidecar(&handle);
+
+        // On Windows this hands over to the installer, which replaces the app
+        // and starts it again; it does not return.
+        if let Err(error) = update.install(bytes) {
+            show_message(
+                &handle,
+                format!("CatCup Tavern {version} could not be installed: {error}"),
+                MessageDialogKind::Error,
+            );
+        }
+    });
+}
+
 /// Put an icon in the notification area, with a menu that can open the window
 /// and quit the app.
 ///
@@ -179,9 +271,10 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
 /// without it rather than run with a window that can be closed but not found.
 fn install_tray(app: &tauri::App) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open CatCup Tavern", true, None::<&str>)?;
+    let update = MenuItem::with_id(app, "update", "Check for Updates…", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&open, &separator, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &update, &separator, &quit])?;
 
     let mut tray = TrayIconBuilder::with_id("main")
         .tooltip("CatCup Tavern")
@@ -191,6 +284,7 @@ fn install_tray(app: &tauri::App) -> tauri::Result<()> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_main_window(app),
+            "update" => check_for_updates(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -353,6 +447,11 @@ fn main() {
                 .with_state_flags(remembered_window_state())
                 .build(),
         )
+        .plugin(tauri_plugin_dialog::init())
+        // Reads the public key and the update endpoint from `tauri.conf.json`.
+        // Both are mandatory: the plugin panics at startup rather than quietly
+        // disabling updates if either is missing.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         // Closing the window hides it to the tray instead of quitting, so the
         // server keeps streaming while the window is out of the way. Quit from
         // the tray calls `exit` directly, which does not raise this event.
@@ -404,13 +503,7 @@ fn main() {
         .expect("could not build the CatCup Tavern window")
         .run(|app, event| {
             if let RunEvent::Exit = event {
-                if let Some(state) = app.try_state::<Sidecar>() {
-                    if let Some(mut child) = state.child.lock().unwrap().take() {
-                        println!("[shell] stopping the server");
-                        let _ = child.kill();
-                        let _ = child.wait();
-                    }
-                }
+                stop_sidecar(app);
             }
         });
 }

@@ -204,7 +204,7 @@ There is no migration framework; the server upgrades a few older shapes on read,
 
 ## Desktop
 
-The Windows installer is built by CI when a merge into `main` carries a new version, and it is attached to that release. It needs no administrator and no separate Node installation: the shell starts a bundled server on an OS-chosen port and keeps its data in the OS app-data directory, separate from this guide's `data/`. Signing, an auto-updater and file associations are not there yet, so every upgrade is a manual download of the new installer. See [DESKTOP.md](DESKTOP.md).
+The Windows installer is built by CI when a merge into `main` carries a new version, and it is attached to that release. It needs no administrator and no separate Node installation: the shell starts a bundled server on an OS-chosen port and keeps its data in the OS app-data directory, separate from this guide's `data/`. An installed copy can update itself from the tray's **Check for Updates…** once a release has been published with the signing key; without one, every upgrade is a manual download of the new installer. Double-clicking a `.catcup` package opens it in the app. The installer has no Authenticode certificate, so Windows warns on first run. See [DESKTOP.md](DESKTOP.md).
 
 ## Related docs
 

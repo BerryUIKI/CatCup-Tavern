@@ -102,7 +102,7 @@ CatCup Tavern 0.3.0 is early-access software. The goal is narrow: someone who al
 - **Closing the desktop window does not quit it.** The window hides to the notification area and the server keeps running; quit from the tray menu. If the icon has been tucked into the hidden-icons fly-out, the app can look stuck — it is still there, and a second launch brings the window back without starting another server.
 - **Downloads and sign-in persistence in the desktop app have not been exercised.**
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
-- **The installer is unsigned**, so Windows warns on first run, and there are no automatic updates.
+- **The installer is unsigned**, so Windows warns on first run. Updates are not checked automatically: **Check for Updates…** in the tray menu asks, and an update only exists for a release that was built with the signing key. Until one is, upgrading means downloading the installer again — and since the installer is unsigned, Windows warns every time.
 - **LAN traffic is plain HTTP**, including the password. Use a trusted network or a TLS proxy.
 - **Only Windows is released.** The desktop shell builds and packages on macOS and Linux, and CI compiles both on every pull request, but nothing there has been run: an unsigned macOS app is refused by Gatekeeper on any other machine, and the Linux artifacts have not been installed.
 
