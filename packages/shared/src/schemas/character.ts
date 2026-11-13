@@ -158,7 +158,7 @@ export const characterBulkRequestSchema = z
 export type CharacterBulkRequest = z.infer<typeof characterBulkRequestSchema>;
 
 /** How a card is exported. */
-export type CharacterExportFormat = 'png' | 'json' | 'charx';
+export type CharacterExportFormat = 'png' | 'json' | 'charx' | 'catcup';
 
 export type CharacterBookEntry = z.infer<typeof characterBookEntrySchema>;
 export type CharacterBook = z.infer<typeof characterBookSchema>;

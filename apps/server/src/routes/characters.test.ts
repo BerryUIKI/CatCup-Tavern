@@ -140,6 +140,25 @@ describe('CharX routes', () => {
         expect(copied.isFile()).toBe(true);
     });
 
+    it('round-trips a CatCup package', async () => {
+        const exported = await call('GET', '/api/characters/Nova/export?format=catcup');
+        expect(exported.statusCode).toBe(200);
+        expect(exported.headers['content-type']).toBe('application/zip');
+        expect(String(exported.headers['content-disposition'])).toContain('Nova.catcup');
+
+        // `.catcup` is the same container as CharX, under CatCup's own name.
+        const files = unzipSync(new Uint8Array(exported.rawPayload));
+        expect(files['card.json']).toBeDefined();
+        expect(files['assets/icon/image/icon.png']).toBeDefined();
+        expect(files['assets/background/image/inn.webp']).toEqual(new Uint8Array([1, 2, 3]));
+
+        const imported = await upload('nova-copy.catcup', exported.rawPayload);
+        expect(imported.statusCode).toBe(200);
+        const body = imported.json() as { imported: Array<{ fileName: string }>; errors: unknown[] };
+        expect(body.errors).toEqual([]);
+        expect(body.imported[0]?.fileName).toMatch(/^Nova.*\.png$/);
+    });
+
     it('imports a package without a PNG icon as a JSON card', async () => {
         const response = await upload('plain.charx', charx('Plain', null));
         expect(response.statusCode).toBe(200);

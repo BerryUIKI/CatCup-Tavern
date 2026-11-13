@@ -120,7 +120,7 @@ Character book entries use V2 character-book fields such as `keys`, `secondary_k
 
 ### Library metadata
 
-Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON and CharX exports.
+Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON, CharX and CatCup exports.
 
 Tags are `data.tags`, a string array. Bulk add/remove compares case- and whitespace-insensitively, keeps the spelling already on each card and never rewrites unrelated tags; a redundant action does not write the file. New tags cannot contain commas because the character editor splits the field on commas. CatCup does not reproduce SillyTavern's settings-level tag registry (`tags`/`tag_map` in `settings.json`, with colors, folders and manual order).
 
@@ -128,20 +128,22 @@ The library's creation sort reads `data.creation_date` (Unix seconds), then a ro
 
 ### Import limits
 
-- `.png`, `.json` and `.charx`; other extensions are reported per file.
+- `.png`, `.json`, `.charx` and `.catcup`; other extensions are reported per file.
 - 20 MB per uploaded file, 50 files per request.
-- A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
+- A `.charx` or `.catcup` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
 - The saved file name is the sanitized card name. Name collisions get ` (2)`, ` (3)`, and so on.
 
-### CharX packages
+### CharX and CatCup packages
 
-A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. CatCup imports it as a normal character:
+A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. `.catcup` is CatCup's own name for the same container: identical layout, different extension. A `.catcup` is a `.charx` renamed, so either app opens either file, and CatCup parses both with the same code.
+
+CatCup imports both as a normal character:
 
 - A PNG icon asset (`type: "icon"`, `uri: "embeded://assets/…"`) becomes the character image, and the card is stored as a PNG card with `chara` and `ccv3` chunks. Without a PNG icon the card is stored as JSON and has no avatar.
 - Every safe `assets/**` entry is written under `data/character-assets/<character id>/` with its archive-relative path. CatCup does not display these files yet; they are kept so an export can include them.
 - `module.risum` and root files other than `card.json` are skipped. `.charx` embedded-JPEG files (`charxJpeg`) are not recognized.
 
-`GET /api/characters/:id/export?format=charx` writes a V3 `card.json` and the stored assets. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
+`GET /api/characters/:id/export?format=charx|catcup` writes a V3 `card.json` and the stored assets, with the extension the caller asked for — the bytes are identical. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
 
 ### Writing cards back
 

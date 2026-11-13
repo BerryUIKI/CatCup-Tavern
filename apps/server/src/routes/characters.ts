@@ -41,14 +41,25 @@ const idParamsSchema = z.object({
 });
 
 const exportQuerySchema = z.object({
-    format: z.enum(['png', 'json', 'charx']).default('png'),
+    format: z.enum(['png', 'json', 'charx', 'catcup']).default('png'),
 });
 
 /** The card that ships with the app, relative to the assets folder. */
 const SAMPLE_CARD = 'samples/mira.json';
 
 /** The card formats the importer accepts, by extension. */
-const CARD_EXTENSIONS = /\.(png|json|charx)$/i;
+const CARD_EXTENSIONS = /\.(png|json|charx|catcup)$/i;
+
+/**
+ * Packages that are a ZIP holding `card.json` and `assets/`.
+ *
+ * `.catcup` is CatCup's own name for that layout. It is deliberately the same
+ * container CharX uses, so the two convert by renaming and one parser serves
+ * both.
+ */
+const PACKAGE_EXTENSIONS = /\.(charx|catcup)$/i;
+
+const CARD_EXTENSION_MESSAGE = 'Only .png, .json, .charx and .catcup character cards are supported';
 
 const importPathSchema = z.object({
     path: z.string().trim().min(1).max(4096),
@@ -66,11 +77,11 @@ async function importCardFile(
     log: FastifyBaseLogger,
 ): Promise<ImportCharactersResponse['imported'][number]> {
     if (!CARD_EXTENSIONS.test(fileName)) {
-        throw new Error('Only .png, .json and .charx character cards are supported');
+        throw new Error(CARD_EXTENSION_MESSAGE);
     }
 
     let detail: CharacterDetail;
-    if (/\.charx$/i.test(fileName)) {
+    if (PACKAGE_EXTENSIONS.test(fileName)) {
         const parsed = parseCharx(buffer);
         const payload = buildCardPayload(parsed.card.raw, {});
         if (parsed.icon) {
@@ -232,7 +243,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
 
         const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
 
-        if (format === 'charx') {
+        if (format === 'charx' || format === 'catcup') {
             const assets = await readCharacterAssets(found.detail.id);
             const avatar = found.detail.format === 'png' ? await readFile(found.filePath) : null;
             const archive = buildCharx({
@@ -244,7 +255,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             });
             return reply
                 .header('Content-Type', 'application/zip')
-                .header('Content-Disposition', `attachment; filename="${safeName}.charx"`)
+                .header('Content-Disposition', `attachment; filename="${safeName}.${format}"`)
                 .send(archive);
         }
 
@@ -328,7 +339,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             const fileName = path.basename(filePath);
 
             if (!CARD_EXTENSIONS.test(fileName)) {
-                throw badRequest('Only .png, .json and .charx character cards are supported');
+                throw badRequest(CARD_EXTENSION_MESSAGE);
             }
 
             let buffer: Buffer;
