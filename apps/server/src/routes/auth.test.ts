@@ -139,7 +139,7 @@ describe('desktop open session', () => {
         expect(short.statusCode).toBe(400);
     });
 
-    it('does not expose the password route in web mode', async () => {
+    it('lets a web install change its password, and the old one stops working', async () => {
         const booted = await boot(false);
         app = booted.app;
         root = booted.root;
@@ -152,12 +152,79 @@ describe('desktop open session', () => {
         });
         const cookie = String(setup.headers['set-cookie'] ?? '').split(';')[0] ?? '';
 
-        // Signed in, so the auth gate passes and the route's own desktop check
-        // is what answers.
+        const changed = await app.inject({
+            method: 'PUT',
+            url: '/api/auth/password',
+            payload: { password: 'a much longer password', currentPassword: 'a long enough password' },
+            headers: { cookie },
+        });
+        expect(changed.statusCode).toBe(200);
+        expect(changed.json()).toMatchObject({ ok: true, openSession: false });
+
+        // The response carries a session signed by the new secret, so this
+        // browser stays signed in.
+        const rotated = String(changed.headers['set-cookie'] ?? '').split(';')[0] ?? '';
+        const stillIn = await app.inject({ method: 'GET', url: '/api/settings', headers: { cookie: rotated } });
+        expect(stillIn.statusCode).toBe(200);
+
+        const oldPassword = await app.inject({
+            method: 'POST',
+            url: '/api/auth/login',
+            payload: { password: 'a long enough password' },
+            remoteAddress: '127.0.0.1',
+        });
+        expect(oldPassword.statusCode).toBe(401);
+
+        const newPassword = await app.inject({
+            method: 'POST',
+            url: '/api/auth/login',
+            payload: { password: 'a much longer password' },
+            remoteAddress: '127.0.0.1',
+        });
+        expect(newPassword.statusCode).toBe(200);
+    });
+
+    it('rejects a web password change without the current password', async () => {
+        const booted = await boot(false);
+        app = booted.app;
+        root = booted.root;
+
+        const setup = await app.inject({
+            method: 'POST',
+            url: '/api/auth/setup',
+            payload: { password: 'a long enough password' },
+            remoteAddress: '127.0.0.1',
+        });
+        const cookie = String(setup.headers['set-cookie'] ?? '').split(';')[0] ?? '';
+
         const attempt = await app.inject({
             method: 'PUT',
             url: '/api/auth/password',
-            payload: { password: '' },
+            payload: { password: 'a much longer password' },
+            headers: { cookie },
+        });
+        expect(attempt.statusCode).toBe(401);
+    });
+
+    it('refuses to remove the password on a web install', async () => {
+        const booted = await boot(false);
+        app = booted.app;
+        root = booted.root;
+
+        const setup = await app.inject({
+            method: 'POST',
+            url: '/api/auth/setup',
+            payload: { password: 'a long enough password' },
+            remoteAddress: '127.0.0.1',
+        });
+        const cookie = String(setup.headers['set-cookie'] ?? '').split(';')[0] ?? '';
+
+        // Removing it would leave a server reachable from the LAN with no
+        // password at all, so the route refuses even with the current one.
+        const attempt = await app.inject({
+            method: 'PUT',
+            url: '/api/auth/password',
+            payload: { password: '', currentPassword: 'a long enough password' },
             headers: { cookie },
         });
         expect(attempt.statusCode).toBe(403);

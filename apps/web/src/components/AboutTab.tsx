@@ -86,32 +86,37 @@ export function AboutTab() {
                 plain SillyTavern-format files you can copy out at any time. API keys never leave the server.
             </p>
 
-            <DesktopPassword />
+            <PasswordPanel />
         </div>
     );
 }
 
 /**
- * The desktop password switch.
+ * The access password panel.
  *
- * Rendered only in an open desktop session. A web or LAN install never reaches
- * this state: it always has a password, so `openSession` is false and the
- * panel stays hidden.
+ * It has two shapes. In a desktop open session it sets a first password; on any
+ * install that already has one — web, LAN, or a desktop that opted in — it
+ * changes it. Only the desktop may remove a password, so there is no remove
+ * button here: doing so on a LAN install would leave the server reachable and
+ * signed out.
  */
-function DesktopPassword() {
+function PasswordPanel() {
     const auth = useQuery({
         queryKey: queryKeys.auth,
         queryFn: api.auth.status,
         staleTime: Number.POSITIVE_INFINITY,
     });
     const passwordMutation = useSetPassword();
+    const [current, setCurrent] = useState('');
     const [password, setPassword] = useState('');
     const [confirm, setConfirm] = useState('');
     const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
 
-    if (!auth.data?.openSession) {
+    if (!auth.data) {
         return null;
     }
+
+    const openSession = auth.data.openSession;
 
     const submit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -121,26 +126,46 @@ function DesktopPassword() {
             return;
         }
         try {
-            await passwordMutation.mutateAsync({ password });
+            await passwordMutation.mutateAsync({ password, ...(openSession ? {} : { currentPassword: current }) });
+            setCurrent('');
             setPassword('');
             setConfirm('');
-            setMessage({ kind: 'ok', text: 'Password set. The app now asks for it when it starts.' });
+            setMessage({
+                kind: 'ok',
+                text: openSession
+                    ? 'Password set. The app now asks for it when it starts.'
+                    : 'Password changed. Other browsers and devices are signed out.',
+            });
         } catch (caught) {
             setMessage({
                 kind: 'error',
-                text: caught instanceof Error ? caught.message : 'Could not set the password.',
+                text: caught instanceof Error ? caught.message : 'Could not save the password.',
             });
         }
     };
+
+    const canSubmit =
+        !passwordMutation.isPending && password !== '' && (openSession || current !== '') && password === confirm;
 
     return (
         <form className="rounded-xl border border-brass/25 bg-brass/5 p-4" onSubmit={submit}>
             <h4 className="text-sm font-medium text-parchment">Access password</h4>
             <p className="mt-1 text-xs leading-relaxed text-muted">
-                This desktop app opens without a password, because only you can reach it on this machine. Setting one
-                brings back the sign-in screen; removing it later restores open mode.
+                {openSession
+                    ? 'This desktop app opens without a password, because only you can reach it on this machine. Setting one brings back the sign-in screen.'
+                    : 'Changing the password signs out every other browser and device. This one stays signed in.'}
             </p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {openSession ? null : (
+                    <input
+                        type="password"
+                        className="input sm:col-span-2"
+                        placeholder="Current password"
+                        autoComplete="current-password"
+                        value={current}
+                        onChange={(event) => setCurrent(event.target.value)}
+                    />
+                )}
                 <input
                     type="password"
                     className="input"
@@ -159,9 +184,9 @@ function DesktopPassword() {
                 />
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="submit" className="btn-secondary" disabled={passwordMutation.isPending || !password}>
+                <button type="submit" className="btn-secondary" disabled={!canSubmit}>
                     {passwordMutation.isPending ? <Spinner size={14} /> : null}
-                    Set password
+                    {openSession ? 'Set password' : 'Change password'}
                 </button>
             </div>
             {message ? (
