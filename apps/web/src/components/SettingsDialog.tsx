@@ -32,7 +32,7 @@ import {
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
-import { useAppStore } from '../store/app';
+import { type SettingsSectionId, useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
@@ -47,18 +47,7 @@ import { Spinner } from './Spinner';
 import { TtsSettings } from './TtsSettings';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
-export type SettingsSectionId =
-    | 'providers'
-    | 'generation'
-    | 'prompts'
-    | 'worldinfo'
-    | 'regex'
-    | 'memory'
-    | 'persona'
-    | 'quickreplies'
-    | 'tts'
-    | 'images'
-    | 'about';
+export type { SettingsSectionId };
 
 type SettingsGroup = 'Model' | 'Prompt' | 'Chat' | 'Media' | 'About';
 
@@ -178,6 +167,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const worlds = worldsQuery.data?.worlds ?? [];
     const globalBooks = settings?.worldInfo.globalBooks ?? [];
     const pushToast = useAppStore((state) => state.pushToast);
+    const requestedSection = useAppStore((state) => state.settingsSection);
 
     const [section, setSection] = useState<SettingsSectionId>('providers');
     const [generationForm, setGenerationForm] = useState<GenerationSettings | null>(null);
@@ -208,8 +198,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             return;
         }
         initializedRef.current = true;
+        // A surface that deep-linked here (the chat header's provider pill,
+        // or a hint inside a tool menu) opens on that section; otherwise the
+        // dialog keeps showing wherever it was last left.
+        if (requestedSection) {
+            setSection(requestedSection);
+            setEditingBookId(null);
+        }
         setGenerationForm({ ...settings.generation });
-    }, [open, settings]);
+    }, [open, settings, requestedSection]);
 
     const providerIsDirty = () => section === 'providers' && (providerRef.current?.isDirty() ?? false);
     const hasUnsavedChanges = () => providerIsDirty() || generationDirty;

@@ -24,7 +24,6 @@ import {
     Pencil,
     Play,
     Plus,
-    Settings2,
     Sparkles,
     Trash2,
     X,
@@ -48,6 +47,7 @@ import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ContextInspector } from './ContextInspector';
 import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
@@ -58,6 +58,7 @@ import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
+import { ToolsMenu, type ToolsMenuItem } from './ToolsMenu';
 
 interface ChatViewProps {
     character: CharacterSummary | null;
@@ -72,7 +73,8 @@ interface ChatViewProps {
     onNewChat: () => void;
     onSwitchGreeting: () => void;
     creatingChat: boolean;
-    onOpenSettings: () => void;
+    /** Opens Settings; `providers` deep-links to the panel the header's pill names. */
+    onOpenSettings: (section?: 'providers') => void;
     onOpenSidebar: () => void;
     onOpenLibrary: () => void;
 }
@@ -184,6 +186,10 @@ export function ChatView({
     const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
+    /** Which destructive action is waiting on a confirmation. */
+    const [pendingDelete, setPendingDelete] = useState<{ kind: 'message'; index: number } | { kind: 'chat' } | null>(
+        null,
+    );
     const [draft, setDraft] = useState('');
     const [focusRequest, setFocusRequest] = useState(0);
     // A quick reply result arrives after a round trip; read the latest draft
@@ -233,7 +239,8 @@ export function ChatView({
     // is not silent.
     const composerError = impersonation.error ?? generation.error;
     const dismissComposerError = impersonation.error ? impersonation.clearError : generation.clearError;
-    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const settingsData = useSettings().data;
+    const imageEnabled = settingsData?.imageGeneration.enabled ?? false;
     const imageTarget: ImageChatTarget | null =
         character && selectedChatId
             ? { kind: 'character', id: character.id, chatId: selectedChatId, name: character.name }
@@ -393,12 +400,13 @@ export function ChatView({
     };
 
     const handleDelete = (index: number) => {
-        if (!window.confirm('Delete this message? This cannot be undone.')) {
-            return;
-        }
         tts.stop();
         deleteMessageMutation.mutate(index, {
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => setPendingDelete(null),
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
@@ -470,19 +478,89 @@ export function ChatView({
         if (!selectedChatId) {
             return;
         }
-        if (!window.confirm('Delete this chat? This cannot be undone.')) {
-            return;
-        }
         deleteChatMutation.mutate(selectedChatId, {
-            onSuccess: () => pushToast('Chat deleted.', 'success'),
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => {
+                setPendingDelete(null);
+                pushToast('Chat deleted.', 'success');
+            },
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
+    const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
+    const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    const disabledReason = !selectedChatId ? 'Start a chat first.' : undefined;
+
+    const tools: ToolsMenuItem[] = character
+        ? [
+              {
+                  id: 'greeting',
+                  label: 'Switch greeting',
+                  icon: Sparkles,
+                  onSelect: onSwitchGreeting,
+                  disabled: !selectedChatId,
+                  ...(disabledReason ? { hint: disabledReason } : {}),
+              },
+              {
+                  id: 'rename',
+                  label: 'Rename chat',
+                  icon: Pencil,
+                  onSelect: handleOpenRename,
+                  disabled: !selectedChatId,
+                  ...(disabledReason ? { hint: disabledReason } : {}),
+              },
+              {
+                  id: 'memory',
+                  label: 'Memory',
+                  icon: Brain,
+                  onSelect: () => setMemoryOpen(true),
+                  disabled: !selectedChatId || messages.length === 0,
+                  hint: !selectedChatId ? disabledReason : 'This chat has no messages to summarize yet.',
+              },
+              {
+                  id: 'inspect',
+                  label: 'Inspect context',
+                  icon: Eye,
+                  onSelect: () => setInspectorOpen(true),
+                  disabled: !selectedChatId,
+                  ...(disabledReason ? { hint: disabledReason } : {}),
+              },
+              {
+                  id: 'generate-image',
+                  label: 'Generate image',
+                  icon: ImagePlus,
+                  onSelect: () => setImageDialog({}),
+                  disabled: !selectedChatId || !imageEnabled,
+                  hint: 'Enable image generation in Settings → Images.',
+              },
+              {
+                  id: 'gallery',
+                  label: 'Image gallery',
+                  icon: Images,
+                  onSelect: () => setGalleryOpen(true),
+                  disabled: !imageEnabled,
+                  hint: 'Enable image generation in Settings → Images.',
+              },
+              {
+                  id: 'delete-chat',
+                  label: 'Delete chat',
+                  icon: Trash2,
+                  onSelect: () => setPendingDelete({ kind: 'chat' }),
+                  disabled: !selectedChatId || deleteChatMutation.isPending,
+                  ...(disabledReason ? { hint: disabledReason } : {}),
+                  danger: true,
+                  separate: true,
+              },
+          ]
+        : [];
+
     const header = (
-        <header className="flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
+        <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
             <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>
@@ -523,7 +601,7 @@ export function ChatView({
                     </div>
                     {personas.length > 1 ? (
                         <select
-                            className="max-w-[140px] rounded-lg border border-line bg-ink px-2 py-1.5 text-xs text-parchment-dim"
+                            className="hidden max-w-[140px] rounded-lg border border-line bg-ink px-2 py-1.5 text-xs text-parchment-dim sm:block"
                             value={pinnedPersonaId ?? ''}
                             onChange={(event) => handlePersonaChange(event.target.value || null)}
                             disabled={!selectedChatId || setPersona.isPending}
@@ -550,88 +628,36 @@ export function ChatView({
                         aria-label="New chat"
                     >
                         {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
-                    </button>{' '}
-                    <div className="hidden items-center gap-1 sm:flex">
+                    </button>
+                    {provider ? (
                         <button
                             type="button"
-                            className="icon-btn"
-                            onClick={onSwitchGreeting}
-                            disabled={!selectedChatId}
-                            title="Switch greeting"
-                            aria-label="Switch greeting"
+                            className="hidden max-w-[170px] items-center gap-1.5 rounded-lg border border-line/70 px-2.5 py-1.5 text-xs transition hover:border-amber/40 hover:text-parchment lg:flex"
+                            onClick={() => onOpenSettings('providers')}
+                            title={
+                                providerReady
+                                    ? `${provider.name} is ready`
+                                    : `${provider.name} may need an API key. Open Settings → Providers.`
+                            }
                         >
-                            <Sparkles size={16} />
+                            <span
+                                className={
+                                    providerReady
+                                        ? 'size-1.5 shrink-0 rounded-full bg-sage'
+                                        : 'size-1.5 shrink-0 rounded-full bg-amber/80'
+                                }
+                                aria-hidden="true"
+                            />
+                            <span className="truncate text-parchment-dim">
+                                {provider.name}
+                                {provider.model ? ` · ${provider.model}` : ''}
+                            </span>
+                            <span className="sr-only">
+                                {providerReady ? 'Active provider is ready' : 'Active provider may need a key'}
+                            </span>
                         </button>
-                        <button
-                            type="button"
-                            className="icon-btn"
-                            onClick={handleOpenRename}
-                            disabled={!selectedChatId}
-                            title="Rename chat"
-                            aria-label="Rename chat"
-                        >
-                            <Pencil size={16} />
-                        </button>
-                        <button
-                            type="button"
-                            className="icon-btn hover:text-wine"
-                            onClick={handleDeleteChat}
-                            disabled={!selectedChatId || deleteChatMutation.isPending}
-                            title="Delete chat"
-                            aria-label="Delete chat"
-                        >
-                            {deleteChatMutation.isPending ? <Spinner size={16} /> : <Trash2 size={16} />}
-                        </button>
-                    </div>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={onOpenSettings}
-                        title="Settings"
-                        aria-label="Settings"
-                    >
-                        <Settings2 size={18} />
-                    </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => setImageDialog({})}
-                        disabled={!selectedChatId || !imageEnabled}
-                        title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
-                        aria-label="Generate image"
-                    >
-                        <ImagePlus size={18} />
-                    </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => setGalleryOpen(true)}
-                        disabled={!imageEnabled}
-                        title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
-                        aria-label="Image gallery"
-                    >
-                        <Images size={18} />
-                    </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => setMemoryOpen(true)}
-                        disabled={!selectedChatId || messages.length === 0}
-                        title="Memory"
-                        aria-label="Memory"
-                    >
-                        <Brain size={18} />
-                    </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={() => setInspectorOpen(true)}
-                        disabled={!selectedChatId}
-                        title="Inspect context"
-                        aria-label="Inspect context"
-                    >
-                        <Eye size={18} />
-                    </button>
+                    ) : null}
+                    <ToolsMenu items={tools} />
                 </div>
             ) : null}
         </header>
@@ -726,7 +752,7 @@ export function ChatView({
                                         }
                                         disabled={actionsDisabled}
                                         onRegenerate={handleRegenerate}
-                                        onDelete={() => handleDelete(index)}
+                                        onDelete={() => setPendingDelete({ kind: 'message', index })}
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
@@ -874,6 +900,27 @@ export function ChatView({
             ) : null}
 
             <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                tone="danger"
+                title={pendingDelete?.kind === 'chat' ? 'Delete this chat?' : 'Delete this message?'}
+                description={
+                    pendingDelete?.kind === 'chat'
+                        ? 'The chat file is removed from disk. The character and every other chat are kept.'
+                        : 'The message is removed from the chat file. Messages after it move up one place, and swipes and branches that pointed at it are unchanged.'
+                }
+                confirmLabel={pendingDelete?.kind === 'chat' ? 'Delete chat' : 'Delete message'}
+                onCancel={() => setPendingDelete(null)}
+                onConfirm={() => {
+                    if (pendingDelete?.kind === 'chat') {
+                        handleDeleteChat();
+                    } else if (pendingDelete?.kind === 'message') {
+                        handleDelete(pendingDelete.index);
+                    }
+                }}
+                busy={deleteMessageMutation.isPending || deleteChatMutation.isPending}
+            />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">
