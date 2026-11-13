@@ -1,14 +1,16 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="design/logo/readme-banner-d.svg" />
-  <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern — a hand-drawn cat lounging in a teacup" width="820" />
-</picture>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="design/logo/readme-banner-d.svg" />
+    <img src="design/logo/readme-banner-w.svg" alt="CatCup Tavern" width="400" />
+  </picture>
+</p>
 
-# CatCup Tavern
-
-[![CI](https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml/badge.svg)](https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml)
-[![Latest release](https://img.shields.io/github/v/release/BerryUIKI/CatCup-Tavern?label=release)](https://github.com/BerryUIKI/CatCup-Tavern/releases/latest)
-[![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-![Platforms](https://img.shields.io/badge/platforms-Windows%20%C2%B7%20Web%20%C2%B7%20LAN-lightgrey)
+<p align="center">
+  <a href="https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml"><img src="https://github.com/BerryUIKI/CatCup-Tavern/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases/latest"><img src="https://img.shields.io/github/v/release/BerryUIKI/CatCup-Tavern?label=release" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="License: AGPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20Web%20%C2%B7%20LAN-lightgrey" alt="Platforms: Windows, web and LAN" />
+</p>
 
 A **SillyTavern-compatible AI roleplay client** with a modern interface, a server-owned generation pipeline and a desktop build that carries its own runtime.
 
