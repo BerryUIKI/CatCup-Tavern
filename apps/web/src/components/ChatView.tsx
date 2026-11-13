@@ -52,7 +52,6 @@ import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
 import { ImageGenerationDialog } from './ImageGenerationDialog';
 import { ImageLightbox, type LightboxImage } from './ImageLightbox';
-import { Logo } from './Logo';
 import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
@@ -636,7 +635,15 @@ export function ChatView({
                 <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
                     {!character ? (
                         <EmptyState
-                            icon={<Logo size={44} className="text-amber/80" />}
+                            image={
+                                <img
+                                    src="/illustrations/empty-book.png"
+                                    alt=""
+                                    aria-hidden="true"
+                                    draggable={false}
+                                    className="w-56"
+                                />
+                            }
                             title="Pull up a chair"
                             description="Choose a character from the library, or import a PNG or JSON card to open the first door."
                             action={

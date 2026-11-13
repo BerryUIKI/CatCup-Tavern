@@ -7,7 +7,7 @@
 | `catcup-icon.svg` | 应用图标母版（1134×1134，圆角方砖 + 咖啡圆盘 + 奶油色猫杯）。所有 PNG / ICO / favicon / Tauri 图标都由它导出 |
 | `readme-banner-d.svg` | README banner 深色版（奶油色图案，用于深色背景） |
 | `readme-banner-w.svg` | README banner 浅色版（咖啡色图案，用于浅色背景） |
-| `og-image.svg` | 社交预览卡片母版（1200×630，咖啡底 + 深色锁版） |
+| `og-image.png` | 社交预览图（1280×640，酒馆场景 + 锁版，用于 GitHub 社交分享） |
 
 配色：奶油 `#fdf4e2` · 咖啡 `#3a241c`。
 
@@ -41,16 +41,10 @@ cp export/icon.ico export/tauri-icons/icon.ico
 
 然后把 `export/` 的结果复制到 `apps/desktop/src-tauri/icons/` 和 `apps/web/public/` 对应位置。
 
-## 社交预览图
+## 社交预览图与空状态插画
 
-`og-image.svg`：1200×630 社交预览卡片（咖啡底 + 深色版锁版，无额外文字）。PNG 在 `export/og/`，提供 1200×630 与 1280×640 两种规格。
-
-```bash
-mkdir -p export/og
-cp og-image.svg export/og/
-magick -background none og-image.svg -resize 1200x630 -depth 8 export/og/og-image-1200x630.png
-magick export/og/og-image-1200x630.png -background '#3a241c' -gravity center -extent 1280x640 -depth 8 export/og/og-image-1280x640.png
-```
+- `og-image.png`：1280×640 社交预览图（GPT-Image 生成的酒馆场景 + 奶油锁版），用于 GitHub 仓库的社交分享；同图也存于 `export/og/og-image-1280x640.png`。
+- 空状态插画：应用使用的深色版在 `apps/web/public/illustrations/`（`empty-library.png`、`empty-book.png`，已抠底透明，注册为空图书馆与暂无聊天的占位图）；浅色版在 `export/illustrations/`，供浅色文档与未来的浅色主题使用。
 
 所有图标尺寸（含 ico / favicon 内嵌槽位）都直接由 `catcup-icon.svg` 缩放生成；专用的 16–32 px 图标稿
 留给设计师单独绘制，见 `design/BRIEFS.md`。
