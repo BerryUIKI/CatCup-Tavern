@@ -1,0 +1,65 @@
+name: Bug report
+description: Something behaves differently from what the documentation says.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for the report. Before filing, check [TROUBLESHOOTING.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/TROUBLESHOOTING.md) and search the open issues.
+
+              **Do not paste API keys, session cookies, `data/secrets.json` or private chat content.** Remove them from logs before pasting.
+    - type: dropdown
+      id: shape
+      attributes:
+          label: How are you running CatCup Tavern?
+          options:
+              - Desktop app (Windows installer)
+              - Web or LAN from source
+              - Development build (`pnpm dev`)
+              - Other
+      validations:
+          required: true
+    - type: input
+      id: version
+      attributes:
+          label: Version
+          description: The release tag you installed, or the commit you built from (`git rev-parse --short HEAD`).
+          placeholder: 0.3.0
+      validations:
+          required: true
+    - type: textarea
+      id: what-happened
+      attributes:
+          label: What happened?
+          description: What you saw, and what you expected instead. A screenshot helps for interface problems.
+      validations:
+          required: true
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to reproduce
+          description: The smallest sequence that shows the problem. Mention the character, chat or preset only if it is required.
+          placeholder: |
+              1. Open a chat with…
+              2. Send…
+              3. …
+      validations:
+          required: true
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs
+          description: Server output from the terminal, or the desktop app's error dialog. Redact secrets first.
+          render: shell
+      validations:
+          required: false
+    - type: checkboxes
+      id: checks
+      attributes:
+          label: Checklist
+          options:
+              - label: I removed API keys, cookies and private chat content from this report.
+                required: true
+              - label: This is not a security vulnerability — those go through a private advisory (see SECURITY.md).
+                required: true

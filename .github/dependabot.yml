@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+    # pnpm workspace: one entry covers the root and every app and package.
+    - package-ecosystem: npm
+      directory: "/"
+      schedule:
+          interval: weekly
+      open-pull-requests-limit: 5
+      groups:
+          npm-minor-and-patch:
+              update-types:
+                  - minor
+                  - patch
+
+    # The Tauri shell's Rust crates.
+    - package-ecosystem: cargo
+      directory: "/apps/desktop/src-tauri"
+      schedule:
+          interval: weekly
+      open-pull-requests-limit: 3
+      groups:
+          cargo-minor-and-patch:
+              update-types:
+                  - minor
+                  - patch
+
+    # The actions in .github/workflows.
+    - package-ecosystem: github-actions
+      directory: "/"
+      schedule:
+          interval: monthly

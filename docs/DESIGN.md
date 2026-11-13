@@ -151,9 +151,9 @@ Rules:
 
 The app icon and the in-app `Logo` are one design: a hand-drawn cat lounging in a teacup, drawn
 as cream `#fdf4e2` artwork on a coffee `#3a241c` disc over a cream rounded tile. The single SVG
-master lives at `design/logo/catcup-icon.svg`; `apps/web/public/favicon.svg` carries the same art
+master lives at `assets/brand/catcup-icon.svg`; `apps/web/public/favicon.svg` carries the same art
 for both the favicon and the in-app logo. The README banner ships in dark and light variants
-(`design/logo/readme-banner-{d,w}.svg`) that switch with `prefers-color-scheme`.
+(`assets/brand/readme-banner-{d,w}.svg`) that switch with `prefers-color-scheme`.
 
 ### Buttons
 

@@ -39,29 +39,33 @@ Releases are cut by merging `dev` into `main` after bumping the version: `.githu
 ## Layout
 
 ```text
-apps/server/            Fastify server
-  src/cards/            character card parsing (PNG tEXt / JSON v2-v3) and CharX/CatCup packages
-  src/providers/        OpenAI-compatible / OpenRouter / Anthropic / Ollama
-  src/prompt/           prompt assembly, token budgeting and group prompts
-  src/generation/       the SSE stream shared by single-character and group generation
-  src/worldinfo/        world info loader, scanner, timed effects and prompt buckets
-  src/group/            group member resolution, speaker selection and reply cleanup
-  src/memory/           rolling summaries: schedule, request building and injection
-  src/quickreplies/     quick reply storage target and command execution
-  src/tts/              OpenAI-compatible speech adapter
-  src/images/           A1111 / ComfyUI / OpenAI-compatible image adapters
-  src/import/           SillyTavern folder import
-  src/routes/           REST + SSE routes
-  src/security/         password hashing, session cookies
-  src/storage/          ST-compatible file storage
-apps/web/               React SPA
-  src/components/       layout, chat, groups, settings, auth
-  src/hooks/            React Query data hooks
-  src/lib/              API / SSE clients
-  src/store/            Zustand UI state
-apps/desktop/           Tauri 2 shell; src-tauri/ holds the Rust sidecar host, tray, updater and window state
+.github/                CI and release workflows, issue and pull-request templates, Dependabot
+apps/
+  server/               Fastify server
+    src/cards/          character card parsing (PNG tEXt / JSON v2-v3) and CharX/CatCup packages
+    src/providers/      OpenAI-compatible / OpenRouter / Anthropic / Ollama
+    src/prompt/         prompt assembly, token budgeting and group prompts
+    src/generation/     the SSE stream shared by single-character and group generation
+    src/worldinfo/      world info loader, scanner, timed effects and prompt buckets
+    src/group/          group member resolution, speaker selection and reply cleanup
+    src/memory/         rolling summaries: schedule, request building and injection
+    src/quickreplies/   quick reply storage target and command execution
+    src/tts/            OpenAI-compatible speech adapter
+    src/images/         A1111 / ComfyUI / OpenAI-compatible image adapters
+    src/import/         SillyTavern folder import
+    src/routes/         REST + SSE routes
+    src/security/       password hashing, session cookies
+    src/storage/        ST-compatible file storage
+  web/                  React SPA
+    src/components/     layout, chat, groups, settings, auth
+    src/hooks/          React Query data hooks
+    src/lib/            API / SSE clients
+    src/store/          Zustand UI state
+  desktop/              Tauri 2 shell; src-tauri/ holds the Rust sidecar host, tray, updater and window state
 packages/shared/        Zod schemas, shared types, ST data models
+assets/brand/           brand masters and their generated icons (see assets/brand/README.md)
 docs/                   handbook (see docs/README.md)
+scripts/                repository tooling; `pnpm icons` rebuilds every icon from the brand masters
 .ref/                   SillyTavern / RisuAI reference checkouts (gitignored)
 data/                   runtime data (gitignored)
 ```
