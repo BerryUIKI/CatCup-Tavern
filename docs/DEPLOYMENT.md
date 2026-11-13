@@ -193,6 +193,8 @@ tar -xzf catcup-backup-YYYYMMDD.tgz
 
 The backup contains credentials (`secrets.json`, `auth.json`) and private chats. Store it like a password vault. Do not commit it to Git or attach it to issues.
 
+The `data/` tree holds every profile under `profiles/`, the shared provider list and keys, and the profile index. Back it up whole: a single profile's folder is not a complete backup.
+
 ## Upgrades
 
 1. Back up `data/`.
@@ -200,6 +202,8 @@ The backup contains credentials (`secrets.json`, `auth.json`) and private chats.
 3. Run quality gates and build.
 4. Restart the server.
 5. Check `/api/health` and open the UI.
+
+An upgrade from a version before profiles moves the tree into `data/profiles/default/` on that first start, keeping the old settings file as `settings.json.v1-backup`. To see the plan before it runs, stop the server and use `CATCUP_MIGRATE_DRY_RUN=1 pnpm start`.
 
 ```bash
 git pull --ff-only
