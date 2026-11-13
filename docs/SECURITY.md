@@ -39,6 +39,7 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - It is not a general bypass: web and LAN mode ignore `CATCUP_DESKTOP`, and a desktop install that has a password still requires one.
 - The server **refuses to start** if `CATCUP_DESKTOP` is set, no password exists, and `CATCUP_HOST` is not loopback. There is no way to reach an unauthenticated API from the LAN through this path.
 - `PUT /api/auth/password` exists only in desktop mode: it sets a password, or removes one with `{ "password": "" }` plus the current password. Removing it returns the app to open mode.
+- `POST /api/characters/import-path` is registered only in desktop mode, because it reads a file path supplied by the caller. A web or LAN server answers `404`. In open session any local process that can reach the loopback port could call it; the origin check still rejects a cross-origin `POST` from a page in a browser, and the extension allowlist means only card files are read into the library.
 - The session cookie is unaffected; a stored password keeps working and the login screen comes back with it.
 
 ### Sessions
