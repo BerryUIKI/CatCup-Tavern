@@ -1,8 +1,9 @@
-import type { CharacterSummary } from '@catcup/shared';
+import type { CharacterSummary, ScopeFilter } from '@catcup/shared';
 import {
     ArrowUpDown,
     BookOpen,
     Check,
+    Globe,
     ListChecks,
     Pencil,
     Sparkles,
@@ -17,6 +18,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../lib/cn';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
+import { matchesScopeFilter, ScopeFilterRow } from './ScopeFilter';
+import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 
 type SortKey = 'name' | 'name-desc' | 'updated' | 'created' | 'favorite';
@@ -32,6 +35,8 @@ const SORT_OPTIONS: Array<{ value: SortKey; label: string }> = [
 
 const SORT_STORAGE_KEY = 'catcup.library.sort';
 const FAVORITES_STORAGE_KEY = 'catcup.library.favoritesOnly';
+/** The scope filter is remembered per profile, so hiding shared items is a per-campaign choice. */
+const scopeStorageKey = (profileId: string | null): string => `catcup.library.scope.${profileId ?? 'none'}`;
 
 function readStorage(key: string): string | null {
     try {
@@ -69,6 +74,10 @@ const BULK_BUTTON =
 
 interface CharacterLibraryProps {
     characters: CharacterSummary[];
+    /** The active profile, so the scope filter is remembered per profile. */
+    profileId?: string | null;
+    /** Move or copy one card between this profile and the shared scope. */
+    onShare?: (character: CharacterSummary, action: 'move' | 'copy') => void;
     loading: boolean;
     query: string;
     onClearQuery: () => void;
@@ -93,6 +102,8 @@ interface CharacterLibraryProps {
  */
 export function CharacterLibrary({
     characters,
+    profileId = null,
+    onShare,
     loading,
     query,
     onClearQuery,
@@ -112,6 +123,10 @@ export function CharacterLibrary({
         return isSortKey(stored) ? stored : 'name';
     });
     const [favoritesOnly, setFavoritesOnly] = useState(() => readStorage(FAVORITES_STORAGE_KEY) === '1');
+    const [scope, setScope] = useState<ScopeFilter>(() => {
+        const stored = readStorage(scopeStorageKey(profileId));
+        return stored === 'profile' || stored === 'shared' ? stored : 'all';
+    });
     const [tagFilters, setTagFilters] = useState<Set<string>>(() => new Set());
     const [selecting, setSelecting] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -135,6 +150,7 @@ export function CharacterLibrary({
 
     useEffect(() => writeStorage(SORT_STORAGE_KEY, sort), [sort]);
     useEffect(() => writeStorage(FAVORITES_STORAGE_KEY, favoritesOnly ? '1' : '0'), [favoritesOnly]);
+    useEffect(() => writeStorage(scopeStorageKey(profileId), scope), [profileId, scope]);
 
     const normalizedQuery = query.trim().toLowerCase();
     const allTags = useMemo(() => {
@@ -162,6 +178,9 @@ export function CharacterLibrary({
     const filtered = useMemo(
         () =>
             characters.filter((character) => {
+                if (!matchesScopeFilter(character, scope)) {
+                    return false;
+                }
                 if (favoritesOnly && !character.fav) {
                     return false;
                 }
@@ -180,7 +199,7 @@ export function CharacterLibrary({
                     character.tags.some((tag) => tag.toLowerCase().includes(normalizedQuery))
                 );
             }),
-        [characters, favoritesOnly, tagFilters, normalizedQuery],
+        [characters, favoritesOnly, scope, tagFilters, normalizedQuery],
     );
 
     const sorted = useMemo(() => {
@@ -204,7 +223,11 @@ export function CharacterLibrary({
 
     const visibleIds = useMemo(() => new Set(sorted.map((character) => character.id)), [sorted]);
     const favoriteCount = characters.filter((character) => character.fav).length;
-    const hasFilters = Boolean(normalizedQuery || favoritesOnly || tagFilters.size > 0);
+    const scopeCounts = {
+        profile: characters.filter((character) => character.scope === 'profile').length,
+        shared: characters.filter((character) => character.scope === 'shared').length,
+    };
+    const hasFilters = Boolean(normalizedQuery || favoritesOnly || tagFilters.size > 0 || scope !== 'all');
     const emptyMessage =
         favoritesOnly && tagFilters.size === 0 && !normalizedQuery
             ? 'No favorites yet. Use the star on a character to keep it here.'
@@ -424,6 +447,10 @@ export function CharacterLibrary({
                     </div>
                 ) : null}
 
+                {scopeCounts.shared > 0 ? (
+                    <ScopeFilterRow value={scope} onChange={setScope} counts={scopeCounts} />
+                ) : null}
+
                 <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted/80">
                     <span aria-live="polite">
                         {hasFilters
@@ -571,6 +598,7 @@ export function CharacterLibrary({
                                                     aria-label="Favorite"
                                                 />
                                             ) : null}
+                                            {!selecting ? <ScopeMarks item={character} /> : null}
                                             {character.hasCharacterBook ? (
                                                 <BookOpen
                                                     size={12}
@@ -612,6 +640,26 @@ export function CharacterLibrary({
                                         >
                                             <Star size={13} className={character.fav ? 'fill-current' : ''} />
                                         </button>
+                                        {onShare ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onShare(character, 'move')}
+                                                aria-label={
+                                                    character.scope === 'shared'
+                                                        ? `Take ${character.name} out of the shared scope`
+                                                        : `Make ${character.name} reusable in every profile`
+                                                }
+                                                title={
+                                                    character.scope === 'shared'
+                                                        ? 'Take into this profile'
+                                                        : 'Reusable in every profile'
+                                                }
+                                                disabled={busy}
+                                                className="icon-btn size-7 shrink-0 text-muted hover:text-parchment disabled:opacity-40"
+                                            >
+                                                <Globe size={13} />
+                                            </button>
+                                        ) : null}
                                         <button
                                             type="button"
                                             onClick={() => onEdit(character.id)}

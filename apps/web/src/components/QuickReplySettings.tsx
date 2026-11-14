@@ -4,7 +4,7 @@ import {
     type QuickReplySetView,
     quickReplyItemSchema,
 } from '@catcup/shared';
-import { ArrowDown, ArrowUp, Download, Plus, Save, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, Globe, Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -14,10 +14,12 @@ import {
     useQuickReplies,
     useSaveQuickReplySet,
     useSettings,
+    useShareItem,
     useUpdateSettings,
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
 /** Copy so edits never mutate the React Query cache. */
@@ -60,6 +62,7 @@ export function QuickReplySettings() {
     const createSet = useCreateQuickReplySet();
     const saveSet = useSaveQuickReplySet();
     const deleteSet = useDeleteQuickReplySet();
+    const shareItem = useShareItem();
     const importSet = useImportQuickReplySet();
     const pushToast = useAppStore((state) => state.pushToast);
 
@@ -187,7 +190,7 @@ export function QuickReplySettings() {
         }
         creatingRef.current = true;
         try {
-            const { set } = await createSet.mutateAsync(name);
+            const { set } = await createSet.mutateAsync({ name });
             setNewName('');
             selectedOnce.current = true;
             setDirty(false);
@@ -236,6 +239,26 @@ export function QuickReplySettings() {
             pushToast('Quick reply set saved.', 'success');
         } catch (error) {
             pushToast(errorMessage(error, 'Could not save the quick reply set.'), 'error');
+        }
+    };
+
+    /** Move this set between the profile and the shared scope. */
+    const handleShare = async () => {
+        const stored = sets.find((set) => set.id === selectedId);
+        if (!stored) {
+            return;
+        }
+        const target = stored.scope === 'shared' ? 'profile' : 'shared';
+        try {
+            await shareItem.mutateAsync({ kind: 'quickreplies', id: stored.id, action: 'move', scope: target });
+            pushToast(
+                target === 'shared'
+                    ? `"${stored.name}" is now shared.`
+                    : `"${stored.name}" belongs to this profile again.`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(errorMessage(error, 'Could not change where this set lives.'), 'error');
         }
     };
 
@@ -510,7 +533,10 @@ export function QuickReplySettings() {
                                         : 'text-parchment-dim hover:bg-surface-2/60'
                                 }`}
                             >
-                                <span className="min-w-0 flex-1 truncate">{set.name}</span>
+                                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <span className="truncate">{set.name}</span>
+                                    {set.scope === 'shared' ? <SharedBadge /> : null}
+                                </span>
                                 <span className="shrink-0 text-[11px] text-muted">{set.qrList.length}</span>
                             </button>
                         ))}
@@ -542,6 +568,17 @@ export function QuickReplySettings() {
                                     <Download size={13} />
                                     Export
                                 </a>
+                                <button
+                                    type="button"
+                                    className="btn-ghost h-9 px-3 text-xs"
+                                    onClick={() => void handleShare()}
+                                    disabled={shareItem.isPending}
+                                >
+                                    <Globe size={13} />
+                                    {sets.find((set) => set.id === selectedId)?.scope === 'shared'
+                                        ? 'Take into this profile'
+                                        : 'Reusable in every profile'}
+                                </button>
                                 <button
                                     type="button"
                                     className="btn-ghost h-9 px-3 text-xs hover:text-wine"

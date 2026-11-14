@@ -261,7 +261,7 @@ Never commit `data/`.
 
 **Backup and restore**
 
-Copy the entire `data/` directory while the server is stopped. It holds every profile under `profiles/`, the shared provider list and keys, and the profile index; back it up whole rather than profile by profile. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
+Copy the entire `data/` directory while the server is stopped. It holds every profile under `profiles/`, the items marked reusable under `shared/`, the shared provider list and keys, and the profile index; back it up whole rather than profile by profile. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
 
 **Upgrading from a single-profile install**
 
@@ -278,6 +278,16 @@ The plan it prints is the plan the real start performs. If a migration fails par
 **A character or book went missing after upgrading**
 
 The library footer names the active profile. An install upgraded from a single-profile version opens `Default`, which is where the old tree went. If a different profile is active, switch back from the footer. Archived profiles are listed under Settings → Profiles → Archived and restored with one click.
+
+**An item I marked reusable disappeared from its own profile**
+
+It did not move out of the library — it moved into `data/shared/`, and the profile now sees it from there. A shared item and a profile item with the same name cannot both be listed, so if the profile already had one, the profile's copy wins and the shared original is hidden behind it. The row that hides it says so in small text. To get at the shared original, take a copy into the profile — the copy gets a free name — or delete the profile's version.
+
+If the character library looks emptier than expected, check the **Scope** filter above the list: _Shared_ shows only the reusable items and _This profile_ only the local ones. The filter is remembered per profile, so it can stay set from an earlier session.
+
+**A move was refused with "the destination already has an item with that id"**
+
+Both scopes would end up holding the same id. Overwriting would silently destroy one of two things you can see at the same time, so the move stops instead. Rename one of them, or take a copy instead of a move — a copy picks a free name for itself.
 
 ## Logs and diagnostics
 

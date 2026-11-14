@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { ItemScope } from './shared.js';
+
 /**
  * Character Card V2/V3 schemas.
  *
@@ -195,6 +197,10 @@ export interface CharacterSummary {
     createdAt: number;
     updatedAt: number;
     avatarUrl: string;
+    /** The scope this card was read from: the profile's own folder or the shared one. */
+    scope: ItemScope;
+    /** `true` when this profile card hides a shared card with the same id. */
+    shadowed?: boolean;
 }
 
 export interface CharacterDetail extends CharacterSummary {

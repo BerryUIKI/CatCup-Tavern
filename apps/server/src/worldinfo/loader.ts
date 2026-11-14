@@ -8,6 +8,7 @@ import { worldInfoEntrySchema } from '@catcup/shared';
 
 import { readJsonFile } from '../storage/jsonFile.js';
 import { assertSimpleName, paths, resolveInside } from '../storage/paths.js';
+import { locateItem } from '../storage/scopes.js';
 import { getStringHash } from './hash.js';
 import { parseDecorators } from './matching.js';
 import type { ScanEntry } from './types.js';
@@ -126,7 +127,7 @@ export function parseWorldInfoBook(id: string, raw: unknown): ScanEntry[] {
     return entries;
 }
 
-/** List world info books in `dir` (defaults to `data/worlds`). */
+/** List world info books in one folder (defaults to this profile's `worlds/`). */
 export async function listWorldInfoBooks(dir: string = paths.worlds): Promise<WorldInfoBookSummary[]> {
     let names: string[];
     try {
@@ -160,10 +161,27 @@ export async function listWorldInfoBooks(dir: string = paths.worlds): Promise<Wo
     return books.filter((book): book is WorldInfoBookSummary => book !== null).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/** Read one book. Returns `null` when the file does not exist. */
-export async function readWorldInfoBook(id: string, dir: string = paths.worlds): Promise<WorldInfoBook | null> {
+/**
+ * Read one book. Returns `null` when the file does not exist.
+ *
+ * With no `dir`, the book is looked up the way generation looks it up: this
+ * profile's folder first, then the shared one. A `dir` is an explicit override
+ * for tests and for importing from a folder that is not a scope.
+ */
+export async function readWorldInfoBook(id: string, dir?: string): Promise<WorldInfoBook | null> {
     assertSimpleName(id);
-    const file = resolveInside(dir, `${id}.json`);
+
+    let file: string;
+    if (dir === undefined) {
+        const found = await locateItem('worlds', id, ['.json']);
+        if (!found) {
+            return null;
+        }
+        file = found.filePath;
+    } else {
+        file = resolveInside(dir, `${id}.json`);
+    }
+
     const raw = await readJsonFile<unknown>(file, null);
     if (raw === null) {
         return null;
@@ -177,7 +195,7 @@ export async function readWorldInfoBook(id: string, dir: string = paths.worlds):
  * A book that cannot be read is not fatal: the scan proceeds with whatever
  * loaded, and the caller decides whether to surface the gap.
  */
-export async function loadWorldInfoEntries(ids: readonly string[], dir: string = paths.worlds): Promise<ScanEntry[]> {
+export async function loadWorldInfoEntries(ids: readonly string[], dir?: string): Promise<ScanEntry[]> {
     const books = await Promise.all(ids.map((id) => readWorldInfoBook(id, dir).catch(() => null)));
     return books.flatMap((book) => book?.entries ?? []);
 }

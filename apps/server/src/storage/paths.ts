@@ -70,6 +70,16 @@ export const paths = {
     get regex(): string {
         return inside('regex.json');
     },
+    /**
+     * A profile's reusable personas.
+     *
+     * Before the shared layer personas lived only inside `settings.json`. A
+     * profile that marks one reusable keeps its own copies here, so the shared
+     * file and the profile file are the same shape and a move is a real move.
+     */
+    get personas(): string {
+        return inside('personas.json');
+    },
     /** The active profile's configuration. */
     get settings(): string {
         return inside('settings.json');
@@ -83,6 +93,33 @@ export const paths = {
     /** API keys, shared by every profile. */
     secrets: path.join(config.dataDir, 'secrets.json'),
     auth: path.join(config.dataDir, 'auth.json'),
+
+    // The shared layer: items a profile marked as reusable. Never inside a
+    // profile, so an archived profile cannot take a shared item with it.
+    get shared(): string {
+        return path.join(config.dataDir, 'shared');
+    },
+    get sharedCharacters(): string {
+        return path.join(config.dataDir, 'shared', 'characters');
+    },
+    get sharedCharacterAssets(): string {
+        return path.join(config.dataDir, 'shared', 'character-assets');
+    },
+    get sharedWorlds(): string {
+        return path.join(config.dataDir, 'shared', 'worlds');
+    },
+    get sharedPresets(): string {
+        return path.join(config.dataDir, 'shared', 'presets');
+    },
+    get sharedQuickReplies(): string {
+        return path.join(config.dataDir, 'shared', 'quickreplies');
+    },
+    get sharedRegex(): string {
+        return path.join(config.dataDir, 'shared', 'regex.json');
+    },
+    get sharedPersonas(): string {
+        return path.join(config.dataDir, 'shared', 'personas.json');
+    },
 } as const;
 
 /**
@@ -102,6 +139,14 @@ export const SCOPED_DIRECTORIES = [
     'quickreplies',
     'user/images',
 ] as const;
+
+/**
+ * Plain JSON libraries a profile owns, relative to its root.
+ *
+ * They are written as files when a profile marks an item reusable, so a folder
+ * that has never used the shared layer simply does not carry them.
+ */
+export const SCOPED_FILES = ['regex.json', 'personas.json'] as const;
 
 /** Create the content folders under `directory`, defaulting to the active scope. */
 export async function ensureDataDirs(directory: string = activeScope): Promise<void> {

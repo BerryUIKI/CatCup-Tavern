@@ -5,7 +5,7 @@ import {
     runRegexScript,
     SUBSTITUTE_REGEX,
 } from '@catcup/shared';
-import { ArrowDown, ArrowUp, Download, Pencil, Plus, Save, Trash2, Upload, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, Download, Globe, Pencil, Plus, Save, Trash2, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -14,11 +14,13 @@ import {
     useImportRegexScripts,
     useRegexScripts,
     useReorderRegexScripts,
+    useShareItem,
     useUpdateRegexScript,
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
 const PLACEMENTS: { value: number; label: string }[] = [
@@ -135,6 +137,7 @@ export function RegexSettings() {
     const deleteScript = useDeleteRegexScript();
     const reorderScripts = useReorderRegexScripts();
     const importScripts = useImportRegexScripts();
+    const shareItem = useShareItem();
     const pushToast = useAppStore((state) => state.pushToast);
 
     const scripts = scriptsQuery.data?.scripts ?? [];
@@ -172,12 +175,31 @@ export function RegexSettings() {
             if (editingId) {
                 await updateScript.mutateAsync({ id: editingId, patch });
             } else {
-                await createScript.mutateAsync(patch);
+                await createScript.mutateAsync({ patch });
             }
             pushToast('Regex script saved.', 'success');
             cancel();
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the script.', 'error');
+        }
+    };
+
+    /** Move this rule between the profile's list and the shared one. */
+    const share = async (script: RegexScript) => {
+        const target = script.scope === 'shared' ? 'profile' : 'shared';
+        try {
+            await shareItem.mutateAsync({ kind: 'regex', id: script.id, action: 'move', scope: target });
+            if (editingId === script.id) {
+                cancel();
+            }
+            pushToast(
+                target === 'shared'
+                    ? `"${script.scriptName || 'Untitled'}" is now shared.`
+                    : `"${script.scriptName || 'Untitled'}" belongs to this profile again.`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not change where this rule lives.', 'error');
         }
     };
 
@@ -209,7 +231,7 @@ export function RegexSettings() {
         ids[index] = other;
         ids[target] = current;
         try {
-            await reorderScripts.mutateAsync(ids);
+            await reorderScripts.mutateAsync({ ids });
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not reorder the scripts.', 'error');
         }
@@ -319,7 +341,10 @@ export function RegexSettings() {
                             />
 
                             <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm text-parchment">{script.scriptName || '(untitled)'}</p>
+                                <p className="flex items-center gap-1.5 truncate text-sm text-parchment">
+                                    <span className="truncate">{script.scriptName || '(untitled)'}</span>
+                                    {script.scope === 'shared' ? <SharedBadge /> : null}
+                                </p>
                                 <p className="truncate text-[11px] text-muted">
                                     {scopeLabel(script)} · {script.placement.length} place
                                     {script.placement.length === 1 ? '' : 's'} · {script.findRegex || 'no pattern'}
@@ -333,6 +358,21 @@ export function RegexSettings() {
                                 aria-label={`Edit ${script.scriptName}`}
                             >
                                 <Pencil size={14} />
+                            </button>
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={() => void share(script)}
+                                aria-label={
+                                    script.scope === 'shared'
+                                        ? `Take ${script.scriptName} into this profile`
+                                        : `Make ${script.scriptName} reusable in every profile`
+                                }
+                                title={
+                                    script.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'
+                                }
+                            >
+                                <Globe size={14} />
                             </button>
                             <button
                                 type="button"

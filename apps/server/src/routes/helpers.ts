@@ -4,12 +4,7 @@ import { badRequest, notFound } from '../http/errors.js';
 import { getCharacter } from '../storage/characters.js';
 
 export async function requireCharacter(id: string): Promise<CharacterDetail> {
-    let character: CharacterDetail | null = null;
-    try {
-        character = await getCharacter(id);
-    } catch {
-        character = null;
-    }
+    const character = await getCharacter(id);
     if (!character) {
         throw notFound('Character not found');
     }

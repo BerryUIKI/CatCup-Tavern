@@ -11,6 +11,8 @@ import type {
     GroupPatch,
     GroupView,
     ImportCharactersResponse,
+    ItemScope,
+    Persona,
     ProfileCreate,
     ProfileRename,
     ProviderDraftTestInput,
@@ -19,6 +21,7 @@ import type {
     RegexScriptPatch,
     SettingsPatch,
     SettingsResponse,
+    SharedItemKind,
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
@@ -140,8 +143,8 @@ export function useCharacter(id: string | null) {
 
 export function useImportCharacters() {
     const queryClient = useQueryClient();
-    return useMutation<ImportCharactersResponse, Error, File[]>({
-        mutationFn: (files) => api.characters.import(files),
+    return useMutation<ImportCharactersResponse, Error, { files: File[]; scope?: ItemScope }>({
+        mutationFn: (variables) => api.characters.import(variables.files, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
             // A new card can resolve a member a group lists as missing.
@@ -753,7 +756,8 @@ export function useQuickReplies() {
 export function useCreateQuickReplySet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (name: string) => api.quickReplies.create(name),
+        mutationFn: (variables: { name: string; scope?: ItemScope }) =>
+            api.quickReplies.create(variables.name, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
         },
@@ -790,8 +794,8 @@ export function useDeleteQuickReplySet() {
 export function useImportQuickReplySet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { data: unknown; name?: string }) =>
-            api.quickReplies.import(variables.data, variables.name),
+        mutationFn: (variables: { data: unknown; name?: string; scope?: ItemScope }) =>
+            api.quickReplies.import(variables.data, variables.name, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
         },
@@ -815,7 +819,8 @@ export function useExecuteQuickReply() {
 export function useCreateRegexScript() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (patch: RegexScriptPatch) => api.regex.create(patch),
+        mutationFn: (variables: { patch: RegexScriptPatch; scope?: ItemScope }) =>
+            api.regex.create(variables.patch, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
@@ -846,7 +851,8 @@ export function useDeleteRegexScript() {
 export function useReorderRegexScripts() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (ids: string[]) => api.regex.reorder(ids),
+        mutationFn: (variables: { ids: string[]; scope?: ItemScope }) =>
+            api.regex.reorder(variables.ids, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
@@ -856,8 +862,8 @@ export function useReorderRegexScripts() {
 export function useImportRegexScripts() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { data: unknown; mode: 'append' | 'replace' }) =>
-            api.regex.import(variables.data, variables.mode),
+        mutationFn: (variables: { data: unknown; mode: 'append' | 'replace'; scope?: ItemScope }) =>
+            api.regex.import(variables.data, variables.mode, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
@@ -943,8 +949,8 @@ export function useWorlds() {
 export function useImportWorld() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { fileName?: string; book: unknown }) =>
-            api.worlds.import(variables.fileName, variables.book),
+        mutationFn: (variables: { fileName?: string; book: unknown; scope?: ItemScope }) =>
+            api.worlds.import(variables.fileName, variables.book, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
         },
@@ -1136,8 +1142,8 @@ export function useUpdatePreset(id: string | null) {
 export function useImportPreset() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { fileName?: string; preset: unknown }) =>
-            api.presets.import(variables.fileName, variables.preset),
+        mutationFn: (variables: { fileName?: string; preset: unknown; scope?: ItemScope }) =>
+            api.presets.import(variables.fileName, variables.preset, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
         },
@@ -1151,6 +1157,64 @@ export function useDeletePreset() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
             void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+/**
+ * Move or copy one library item between the profile and the shared scope.
+ *
+ * Every scope change is answered by refetching every library list: a move
+ * changes what the profile list holds, what the shared list holds, and — for a
+ * character or a book — what a chat, a group or a preset link resolves to. One
+ * blanket invalidation is simpler to keep right than enumerating the kinds, and
+ * these are lists, not chat streams.
+ */
+export function useShareItem() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { kind: SharedItemKind; id: string; action: 'move' | 'copy'; scope: ItemScope }) =>
+            api.share(variables.kind, variables.id, variables.action, variables.scope),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useCreatePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { name: string; description: string; scope: ItemScope }) =>
+            api.personas.create({ name: variables.name, description: variables.description }, variables.scope),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useUpdatePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; patch: Partial<Omit<Persona, 'id'>> }) =>
+            api.personas.update(variables.id, variables.patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useDeletePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.personas.remove(id),
+        onSuccess: (data) => {
+            queryClient.setQueryData(queryKeys.settings, data.settings);
         },
     });
 }
