@@ -15,12 +15,12 @@ import {
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
     LEGACY_PERSONA_ID,
+    type PersonaView,
     type ProviderConfig,
     type ProviderInput,
     type ProviderPublic,
     personaSchema,
     providerConfigSchema,
-    type PersonaView,
     type SettingsPatch,
     type SettingsResponse,
 } from '@catcup/shared';

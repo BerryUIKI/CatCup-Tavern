@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '../lib/cn';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
-import { ScopeFilterRow, matchesScopeFilter } from './ScopeFilter';
+import { matchesScopeFilter, ScopeFilterRow } from './ScopeFilter';
 import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 

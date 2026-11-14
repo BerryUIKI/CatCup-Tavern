@@ -252,7 +252,9 @@ export function QuickReplySettings() {
         try {
             await shareItem.mutateAsync({ kind: 'quickreplies', id: stored.id, action: 'move', scope: target });
             pushToast(
-                target === 'shared' ? `"${stored.name}" is now shared.` : `"${stored.name}" belongs to this profile again.`,
+                target === 'shared'
+                    ? `"${stored.name}" is now shared.`
+                    : `"${stored.name}" belongs to this profile again.`,
                 'success',
             );
         } catch (error) {

@@ -7,8 +7,8 @@ import { withFileLock } from './mutex.js';
 import { paths, resolveInside, safeFileName } from './paths.js';
 import {
     copyItemIntoScope,
-    locateItem,
     listMergedItems,
+    locateItem,
     moveItemBetweenScopes,
     removeIfPresent,
     type ScopeMoveResult,
@@ -43,7 +43,10 @@ export async function listPresets(): Promise<PresetSummary[]> {
     const summaries = await Promise.all(
         merged.map(async (item): Promise<PresetSummary | null> => {
             try {
-                const [stats, raw] = await Promise.all([stat(item.filePath), readJsonFile<unknown>(item.filePath, null)]);
+                const [stats, raw] = await Promise.all([
+                    stat(item.filePath),
+                    readJsonFile<unknown>(item.filePath, null),
+                ]);
                 const preset = isRecord(raw) ? raw : {};
                 return {
                     id: item.id,
@@ -108,9 +111,7 @@ export async function createPreset(input: {
     const base = normalizeId(preferred);
     const directory = scope === 'shared' ? paths.sharedPresets : paths.presets;
 
-    const existing = new Set(
-        (await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()),
-    );
+    const existing = new Set((await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()));
 
     let id = base;
     let index = 2;

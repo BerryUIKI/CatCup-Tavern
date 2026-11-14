@@ -17,8 +17,8 @@ import {
     useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
-    useShareItem,
     useSettings,
+    useShareItem,
     useUpdateSettings,
 } from '../hooks/data';
 import { pluralize } from '../lib/format';

@@ -23,8 +23,8 @@ import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 import {
     copyItemIntoScope,
-    locateItem,
     listMergedItems,
+    locateItem,
     moveItemBetweenScopes,
     removeIfPresent,
     type ScopeMoveResult,
@@ -60,7 +60,10 @@ export async function listWorlds(): Promise<WorldSummary[]> {
     const summaries = await Promise.all(
         merged.map(async (item): Promise<WorldSummary | null> => {
             try {
-                const [stats, raw] = await Promise.all([stat(item.filePath), readJsonFile<unknown>(item.filePath, null)]);
+                const [stats, raw] = await Promise.all([
+                    stat(item.filePath),
+                    readJsonFile<unknown>(item.filePath, null),
+                ]);
                 return {
                     id: item.id,
                     name: item.id,
@@ -109,9 +112,7 @@ export async function createWorld(input: {
     const scope = input.scope ?? 'profile';
     const base = normalizeId(input.fileName?.trim() || 'world');
     const directory = scope === 'shared' ? paths.sharedWorlds : paths.worlds;
-    const existing = new Set(
-        (await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()),
-    );
+    const existing = new Set((await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()));
 
     let id = base;
     let index = 2;

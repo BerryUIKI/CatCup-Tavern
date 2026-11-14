@@ -172,7 +172,10 @@ describe('regex across scopes', () => {
         await regex.createRegexScript({ scriptName: 'own', findRegex: 'c', replaceString: 'd' }, 'profile');
 
         const listed = await regex.listRegexScripts();
-        expect(listed.map((script) => `${script.scope}:${script.scriptName}`)).toEqual(['profile:own', 'shared:shared']);
+        expect(listed.map((script) => `${script.scope}:${script.scriptName}`)).toEqual([
+            'profile:own',
+            'shared:shared',
+        ]);
     });
 
     it('drops a shared rule whose id a profile rule uses, and marks the winner', async () => {
@@ -227,9 +230,9 @@ describe('personas across scopes', () => {
         // Writing settings must not persist the shared persona into the profile.
         await settings.updateSettings({ generation: { temperature: 0.9 } });
 
-        const raw = JSON.parse(
-            await (await import('node:fs/promises')).readFile(paths.paths.settings, 'utf8'),
-        ) as { personas: { name: string; scope?: string }[] };
+        const raw = JSON.parse(await (await import('node:fs/promises')).readFile(paths.paths.settings, 'utf8')) as {
+            personas: { name: string; scope?: string }[];
+        };
 
         expect(raw.personas.some((persona) => persona.name === 'Alex')).toBe(false);
         // `scope` is derived on read, never stored.

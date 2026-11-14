@@ -368,7 +368,9 @@ export function RegexSettings() {
                                         ? `Take ${script.scriptName} into this profile`
                                         : `Make ${script.scriptName} reusable in every profile`
                                 }
-                                title={script.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'}
+                                title={
+                                    script.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'
+                                }
                             >
                                 <Globe size={14} />
                             </button>

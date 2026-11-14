@@ -1173,12 +1173,8 @@ export function useDeletePreset() {
 export function useShareItem() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: {
-            kind: SharedItemKind;
-            id: string;
-            action: 'move' | 'copy';
-            scope: ItemScope;
-        }) => api.share(variables.kind, variables.id, variables.action, variables.scope),
+        mutationFn: (variables: { kind: SharedItemKind; id: string; action: 'move' | 'copy'; scope: ItemScope }) =>
+            api.share(variables.kind, variables.id, variables.action, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
             void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });

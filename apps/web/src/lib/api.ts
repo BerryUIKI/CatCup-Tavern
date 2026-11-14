@@ -155,10 +155,9 @@ export const api = {
      * a copy takes a free id instead.
      */
     share: (kind: SharedItemKind, id: string, action: 'move' | 'copy', scope: ItemScope) =>
-        request<SharedItemActionResult>(
-            `/shared/${kind}/${encodeURIComponent(id)}/${action}?scope=${scope}`,
-            { method: 'POST' },
-        ),
+        request<SharedItemActionResult>(`/shared/${kind}/${encodeURIComponent(id)}/${action}?scope=${scope}`, {
+            method: 'POST',
+        }),
     personas: {
         create: (persona: Pick<Persona, 'name' | 'description'>, scope: ItemScope) =>
             request<{ persona: PersonaView }>('/personas', {

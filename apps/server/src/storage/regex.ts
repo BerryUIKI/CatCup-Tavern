@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-    isRecord,
     type ItemScope,
+    isRecord,
     type RegexScript,
     type RegexScriptPatch,
     type RegexScriptView,
@@ -243,7 +243,10 @@ export async function deleteRegexScript(id: string): Promise<boolean> {
  * are ignored, because their order is not this list's to decide. Ids the caller
  * omits keep their relative order at the end.
  */
-export async function reorderRegexScripts(ids: readonly string[], scope: ItemScope = 'profile'): Promise<RegexScriptView[]> {
+export async function reorderRegexScripts(
+    ids: readonly string[],
+    scope: ItemScope = 'profile',
+): Promise<RegexScriptView[]> {
     await mutate(scope, (current) => {
         const byId = new Map(current.map((script) => [script.id, script]));
         const ordered: RegexScript[] = [];

@@ -4,11 +4,11 @@ import {
     BookOpen,
     Brain,
     Download,
+    Globe,
     ImagePlus,
     Info,
     Layers,
     ListOrdered,
-    Globe,
     Pencil,
     Regex,
     Save,
@@ -42,13 +42,13 @@ import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
-import { ScopeMarks } from './SharedBadge';
 import { PersonaSettings } from './PersonaSettings';
 import { ProfileSettings } from './ProfileSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
+import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 import { TtsSettings } from './TtsSettings';
 import { WorldInfoEditor } from './WorldInfoEditor';
@@ -666,7 +666,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 type="button"
                                 className="icon-btn size-7"
                                 onClick={() => void handleShare('worlds', world, world.id)}
-                                title={world.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'}
+                                title={
+                                    world.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'
+                                }
                                 aria-label={
                                     world.scope === 'shared'
                                         ? `Take ${world.id} into this profile`

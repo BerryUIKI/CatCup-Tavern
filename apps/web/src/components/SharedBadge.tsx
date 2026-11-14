@@ -33,7 +33,10 @@ export function SharedBadge({ className }: { className?: string }) {
  */
 export function ShadowedNote({ className }: { className?: string }) {
     return (
-        <span className={cn('text-[10px] text-muted', className)} title="A shared item with the same name is hidden by this one">
+        <span
+            className={cn('text-[10px] text-muted', className)}
+            title="A shared item with the same name is hidden by this one"
+        >
             hides a shared one
         </span>
     );

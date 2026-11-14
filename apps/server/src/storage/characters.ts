@@ -13,7 +13,13 @@ import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/writ
 import { deleteCharacterAssets } from './characterAssets.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
-import { locateItem, listMergedItems, copyItemIntoScope, moveItemBetweenScopes, type ScopeMoveResult } from './scopes.js';
+import {
+    copyItemIntoScope,
+    listMergedItems,
+    locateItem,
+    moveItemBetweenScopes,
+    type ScopeMoveResult,
+} from './scopes.js';
 
 /** A card may be a PNG with embedded data or a plain JSON export. */
 const CARD_EXTENSIONS = ['.png', '.json'] as const;
@@ -195,9 +201,7 @@ export async function getCharacter(id: string): Promise<CharacterDetail | null> 
     return loadCharacterFile(found.filePath, found.fileName, found.scope);
 }
 
-export async function getCharacterFile(
-    id: string,
-): Promise<{ filePath: string; detail: CharacterDetail } | null> {
+export async function getCharacterFile(id: string): Promise<{ filePath: string; detail: CharacterDetail } | null> {
     const cleanId = normalizeCharacterId(id);
     assertSimpleName(cleanId);
 
