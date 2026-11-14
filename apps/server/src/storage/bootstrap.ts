@@ -1,5 +1,6 @@
 import { describePlan, migrateDataFolder, planMigration } from './migrate.js';
 import { activateProfile, readProfileIndex, seedProfileIndex } from './profiles.js';
+import { ensureSharedDirs } from './scopes.js';
 
 /**
  * Bring the data folder into the profile shape and point the server at the
@@ -23,6 +24,7 @@ export async function prepareDataFolder(): Promise<void> {
     }
 
     await migrateDataFolder();
+    await ensureSharedDirs();
 
     const index = await readProfileIndex();
     if (index) {

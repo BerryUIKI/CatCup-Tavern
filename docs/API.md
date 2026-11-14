@@ -862,6 +862,33 @@ A profile is a data scope: its own characters, chats, groups, world info, preset
 
 `PUT /api/profiles/active` answers `409 PROFILE_BUSY` while a generation is running — finish or stop the reply first. After a switch the client must refetch every scoped collection: characters, chats, groups, world info, presets, regex, quick replies, images and settings.
 
+### The shared scope
+
+An item the library shows can live in the profile or in `data/shared/`, where every profile sees it. The rule is one sentence: **the profile's copy wins**, and the row that wins is marked.
+
+Every scoped list carries `scope: 'profile' | 'shared'` on each item, plus `shadowed?: true` when a profile item hides a shared one with the same id. The shared original is not listed a second time — an id addresses exactly one item — so a chat, a group membership and an `extensions.world` link keep resolving to the thing the person can see.
+
+| Method | Path                                  | Purpose                                                                                            |
+| ------ | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| POST   | `/api/shared/:kind/:id/move?scope=…`  | Move the item to `scope` (`profile` or `shared`), keeping its id so existing links still resolve    |
+| POST   | `/api/shared/:kind/:id/copy?scope=…`  | Copy it into `scope` under a free id, leaving the original alone                                   |
+
+`kind` is `characters`, `worlds`, `presets`, `quickreplies` or `regex`. Both answer `{ kind, id, scope, visibleToProfiles }`.
+
+A move is a single `rename` between the two folders, so it either happens or it does not. It answers `400 SCOPE_CONFLICT` when the destination already holds that id, because overwriting would destroy one of two items the same person can see at once.
+
+A create or an import reaches the shared scope through the same routes that already exist — `POST /api/characters/import?scope=shared`, `{ scope }` on `/api/worlds/import`, `/api/presets/import` and `/api/quick-replies`, and `?scope=shared` on `POST /api/regex`, `/api/regex/import` and `PUT /api/regex/order`. Absent, it means the profile.
+
+**Regex** is one ordered list per scope rather than a file per rule. `GET /api/regex` returns the profile's rules first, then the shared ones; a shared rule whose id a profile rule uses is not returned, and the profile's rule carries `shadowed`. The order between lists is fixed so a shared rule cannot silently jump ahead of a profile rule that depended on running first. `PUT /api/regex/order?scope=shared` reorders only that scope's list.
+
+**Personas** are a list inside `settings.json` rather than a file per item, so they have their own routes and `GET /api/settings` returns the merged list, each entry carrying `scope`. A write to the profile's file always starts from the profile's own entries, never from the merged list, so a shared persona never ends up copied into a profile.
+
+| Method | Path                 | Purpose                                                                            |
+| ------ | -------------------- | ---------------------------------------------------------------------------------- |
+| POST   | `/api/personas`      | `{ name, description?, scope }` — `shared` writes `shared/personas.json`           |
+| PATCH  | `/api/personas/:id`  | `{ name?, description? }`; lands in whichever file holds the persona               |
+| DELETE | `/api/personas/:id`  | Removes it from whichever file holds it, and returns the refreshed settings        |
+
 ### `GET /api/providers`
 
 ```json

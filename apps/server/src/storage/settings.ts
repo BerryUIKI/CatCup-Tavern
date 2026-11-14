@@ -20,6 +20,7 @@ import {
     type ProviderPublic,
     personaSchema,
     providerConfigSchema,
+    type PersonaView,
     type SettingsPatch,
     type SettingsResponse,
 } from '@catcup/shared';
@@ -27,6 +28,7 @@ import {
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
 import { paths } from './paths.js';
+import { listAllPersonas, listSharedPersonas } from './personas.js';
 
 function createDefaultSettings(): AppSettings {
     const providers: ProviderConfig[] = [
@@ -229,6 +231,20 @@ async function loadSettingsUnlocked(): Promise<AppSettings> {
         changed = true;
     }
 
+    // A persona marked reusable lives in `data/shared/personas.json`. It joins
+    // the profile's own list here, so every consumer of `getSettings()` — the
+    // prompt assembler, a chat's persona pin — resolves against one list without
+    // each of them merging it separately. `writeProfileSettings` filters the
+    // shared entries out again, which is why this merge can be unconditional.
+    settings.personas = await listAllPersonas(settings.personas);
+    if (
+        settings.activePersonaId !== null &&
+        !settings.personas.some((persona) => persona.id === settings.activePersonaId)
+    ) {
+        settings.activePersonaId = settings.personas[0]?.id ?? null;
+        changed = true;
+    }
+
     if (changed) {
         await writeProfileSettings(settings);
     }
@@ -237,15 +253,27 @@ async function loadSettingsUnlocked(): Promise<AppSettings> {
 }
 
 /**
- * Write a profile's settings file, without the shared provider list.
+ * Write a profile's settings file.
  *
- * `AppSettings` carries `providers` in memory so every caller can read it from
- * one place, but the field belongs to `providers.json`. Writing it into the
- * profile would shadow the shared file on the next load — a provider created
- * after the last write would vanish.
+ * Two fields are in memory but not in this file. `providers` belongs to
+ * `providers.json`, and writing it here would shadow the shared file on the
+ * next load — a provider created after the last write would vanish. A persona
+ * that lives in `shared/personas.json` belongs there for the same reason:
+ * writing it here would duplicate it on the next load and make it undeletable.
+ *
+ * Every write goes through here, so a caller that only touched an unrelated
+ * field still cannot leak a shared persona into the profile. That matters
+ * because `getSettings()` hands back the merged list.
  */
 async function writeProfileSettings(settings: AppSettings): Promise<void> {
     const { providers: _shared, ...profile } = settings;
+    const sharedIds = new Set((await listSharedPersonas()).map((persona) => persona.id));
+    // The list in memory is the merged one, whose entries carry `scope` and
+    // `shadowed`. Neither belongs in this file: every persona stored here is the
+    // profile's own by definition, and the scope is derived again on read.
+    profile.personas = profile.personas
+        .filter((persona) => !sharedIds.has(persona.id))
+        .map((persona) => ({ id: persona.id, name: persona.name, description: persona.description }));
     await writeJsonFile(paths.settings, profile);
 }
 
@@ -257,6 +285,12 @@ async function mutateSettings<T>(mutator: (settings: AppSettings) => T | Promise
         cachedSettings = settings;
         return result;
     });
+}
+
+/** The personas this profile itself owns, without the shared ones merged in. */
+export async function profilePersonas(settings: AppSettings): Promise<AppSettings['personas']> {
+    const sharedIds = new Set((await listSharedPersonas()).map((persona) => persona.id));
+    return settings.personas.filter((persona) => !sharedIds.has(persona.id));
 }
 
 export async function getSettings(): Promise<AppSettings> {
@@ -354,6 +388,11 @@ export async function getSettingsResponse(): Promise<SettingsResponse> {
     const [providers, secrets] = await Promise.all([getPublicProviders(), getSecrets()]);
     return {
         ...settings,
+        // `loadSettingsUnlocked` merges the shared personas in and stamps each
+        // entry with its scope, so the list is already the shape the response
+        // wants. Merging here instead would treat the shared entries as this
+        // profile's own.
+        personas: settings.personas as PersonaView[],
         providers,
         ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]),
         imageHasKey: Boolean(secrets[IMAGE_SECRET_KEY]),

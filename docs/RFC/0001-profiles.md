@@ -81,7 +81,16 @@ This is the one place the design spends complexity, because the alternative is a
 
 ### The cost of the shared layer
 
-It is the second slice, not the first. The first slice is full isolation with a global provider list; the shared scope is added once the isolation is solid. A profile that never uses the shared scope never sees it: the checkbox stays off and the folder stays empty.
+It is the second slice, not the first. The first slice is full isolation with a global provider list; the shared scope is added once the isolation is solid. A profile that never uses the shared scope never sees it: the folder stays empty.
+
+### How it shipped
+
+The second slice kept the design above and simplified one part of it. A "Reusable in every profile" checkbox on each create dialog turned out to be the wrong affordance for five of the six kinds: characters, world info books and presets have no create dialog at all — their only entry point is an import — and quick reply sets, regex rules and personas are edited inline rather than in a dialog. What shipped instead is the row action, which every kind has and which works on an item that already exists:
+
+- Every library row carries a **globe button**: _Reusable in every profile_ for a profile item, _Take into this profile_ for a shared one. It is one move, confirmed by a toast.
+- The create routes still accept `scope`, so an import can land in the shared scope directly.
+- The badge is a word plus an icon, as §13.2 says, and the scope filter exists where a filter row already did — the character library.
+- Regex and personas do not move as files. Regex keeps one ordered list per scope and personas keep one list per scope, because neither is a file per item; their "move" is an append plus a delete, and their merge is by id.
 
 ## 5. On disk
 
@@ -254,11 +263,20 @@ This keeps every existing guarantee: a character can always override, a fallback
 
 The scope in §1–13 is ready to be cut into PRs. The milestones document gains the feature with these acceptance criteria:
 
-- [ ] A second profile can hold a character with the same name as one in the first, and both open correctly.
-- [ ] A regex rule, preset, quick reply set and persona created in one profile is absent from the other.
-- [ ] Switching profiles while a reply is streaming is refused and the reply completes in the profile it started in.
-- [ ] A v1 data folder migrates with `CATCUP_MIGRATE_DRY_RUN=1` reporting the same plan the real run performs, and a failed run leaves the tree unchanged.
-- [ ] A profile can be archived and restored without losing a chat.
-- [ ] A profile's preferred model is used when the character names none, and skipped with the visible fallback marker when the active provider does not serve it.
+- [x] A second profile can hold a character with the same name as one in the first, and both open correctly.
+- [x] A regex rule, preset, quick reply set and persona created in one profile is absent from the other.
+- [x] Switching profiles while a reply is streaming is refused and the reply completes in the profile it started in.
+- [x] A v1 data folder migrates with `CATCUP_MIGRATE_DRY_RUN=1` reporting the same plan the real run performs, and a failed run leaves the tree unchanged.
+- [x] A profile can be archived and restored without losing a chat.
+- [x] A profile's preferred model is used when the character names none, and skipped with the visible fallback marker when the active provider does not serve it.
 
-The shared layer's criteria are written when its slice starts; §13.1 names what the first slice must keep open for it.
+### The shared layer's criteria
+
+The second slice (§13.1) shipped against these, and each has a test in `apps/server/src/storage/scopes.test.ts` or a step in the manual check below:
+
+- [x] An item marked reusable is visible from every other profile, and its own profile's chats, group memberships and `extensions.world` links still resolve — a move keeps the id.
+- [x] A profile item and a shared item of the same id both exist, and the profile's is the one a lookup returns; the shared original is not listed a second time.
+- [x] Taking a shared item into a profile copies it under a free name and leaves the shared original in place.
+- [x] A move refuses an id the destination already holds rather than overwriting one of the two items.
+- [x] A shared persona is merged into the settings response but never written to a profile's `settings.json`, even after an unrelated settings save.
+- [x] A shared regex rule runs after the profile's own rules, and a shared rule whose id a profile rule uses is not run twice.

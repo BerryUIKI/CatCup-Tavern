@@ -1,6 +1,12 @@
-import { readdir, stat, unlink } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 
-import { isRecord, type WorldDetail, type WorldInfoEntryPatch, type WorldSummary } from '@catcup/shared';
+import {
+    type ItemScope,
+    isRecord,
+    type WorldDetail,
+    type WorldInfoEntryPatch,
+    type WorldSummary,
+} from '@catcup/shared';
 
 import {
     appendEntry,
@@ -15,11 +21,22 @@ import { parseWorldInfoBook } from '../worldinfo/loader.js';
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
+import {
+    copyItemIntoScope,
+    locateItem,
+    listMergedItems,
+    moveItemBetweenScopes,
+    removeIfPresent,
+    type ScopeMoveResult,
+} from './scopes.js';
 
-/** Absolute path of a world info book. */
-export function worldFilePath(id: string): string {
+const BOOK_EXTENSIONS = ['.json'] as const;
+
+/** Absolute path of a world info book in one scope. */
+export function worldFilePath(id: string, scope: ItemScope = 'profile'): string {
     assertSimpleName(id);
-    return resolveInside(paths.worlds, `${id}.json`);
+    const directory = scope === 'shared' ? paths.sharedWorlds : paths.worlds;
+    return resolveInside(directory, `${id}.json`);
 }
 
 function normalizeId(candidate: string, fallback = 'world'): string {
@@ -27,68 +44,73 @@ function normalizeId(candidate: string, fallback = 'world'): string {
     return safeFileName(cleaned, fallback).slice(0, 120).trim() || fallback;
 }
 
-function detailOf(id: string, book: Record<string, unknown>): WorldDetail {
-    return { id, book, entries: readEntriesForEditor(book) };
+function detailOf(id: string, book: Record<string, unknown>, scope: ItemScope = 'profile'): WorldDetail {
+    return { id, book, entries: readEntriesForEditor(book), scope };
 }
 
-/** List world info books in `data/worlds`, newest first. */
+/**
+ * List every book this profile can see.
+ *
+ * A shared book whose id the profile uses is not listed twice: the profile's
+ * book carries `shadowed`, and it is the one a lookup resolves to.
+ */
 export async function listWorlds(): Promise<WorldSummary[]> {
-    let names: string[];
-    try {
-        names = await readdir(paths.worlds);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return [];
-        }
-        throw error;
-    }
+    const merged = await listMergedItems('worlds', BOOK_EXTENSIONS);
 
     const summaries = await Promise.all(
-        names
-            .filter((name) => name.toLowerCase().endsWith('.json'))
-            .map(async (fileName): Promise<WorldSummary | null> => {
-                const id = fileName.slice(0, -'.json'.length);
-                try {
-                    const file = worldFilePath(id);
-                    const [stats, raw] = await Promise.all([stat(file), readJsonFile<unknown>(file, null)]);
-                    return {
-                        id,
-                        name: id,
-                        entryCount: parseWorldInfoBook(id, raw).length,
-                        updatedAt: stats.mtimeMs,
-                    };
-                } catch {
-                    return null;
-                }
-            }),
+        merged.map(async (item): Promise<WorldSummary | null> => {
+            try {
+                const [stats, raw] = await Promise.all([stat(item.filePath), readJsonFile<unknown>(item.filePath, null)]);
+                return {
+                    id: item.id,
+                    name: item.id,
+                    entryCount: parseWorldInfoBook(item.id, raw).length,
+                    updatedAt: stats.mtimeMs,
+                    scope: item.scope,
+                    ...(item.shadowed ? { shadowed: true } : {}),
+                };
+            } catch {
+                return null;
+            }
+        }),
     );
 
     return summaries.filter((world): world is WorldSummary => world !== null).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
-/** Read one book. Returns `null` when the file does not exist. */
+/** Read one book, the profile's copy first. Returns `null` when neither scope has it. */
 export async function readWorld(id: string): Promise<WorldDetail | null> {
-    const raw = await readJsonFile<unknown>(worldFilePath(id), null);
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        return null;
+    }
+    const raw = await readJsonFile<unknown>(found.filePath, null);
     if (!isRecord(raw)) {
         return null;
     }
-    return detailOf(id, raw);
+    return detailOf(id, raw, found.scope);
 }
 
 /**
- * Store a book under a free name.
+ * Store a book under a free name in the requested scope.
  *
  * The body is written verbatim so unknown fields survive an export round trip;
  * the loader normalizes shapes at read time.
  */
-export async function createWorld(input: { fileName?: string; book: unknown }): Promise<WorldDetail> {
+export async function createWorld(input: {
+    fileName?: string;
+    book: unknown;
+    scope?: ItemScope;
+}): Promise<WorldDetail> {
     if (!isRecord(input.book)) {
         throw new Error('World info must be a JSON object');
     }
 
+    const scope = input.scope ?? 'profile';
     const base = normalizeId(input.fileName?.trim() || 'world');
+    const directory = scope === 'shared' ? paths.sharedWorlds : paths.worlds;
     const existing = new Set(
-        (await readdir(paths.worlds).catch(() => [] as string[])).map((name) => name.toLowerCase()),
+        (await readdir(directory).catch(() => [] as string[])).map((name) => name.toLowerCase()),
     );
 
     let id = base;
@@ -98,10 +120,10 @@ export async function createWorld(input: { fileName?: string; book: unknown }): 
         index += 1;
     }
 
-    const file = worldFilePath(id);
+    const file = worldFilePath(id, scope);
     await withFileLock(file, () => writeJsonFile(file, input.book));
 
-    return detailOf(id, input.book);
+    return detailOf(id, input.book, scope);
 }
 
 /** Outcome of an entry mutation: the refreshed book, or what was missing. */
@@ -117,13 +139,18 @@ type MutationOutcome = { status: 'ok'; uid?: number } | { status: 'missing-entry
  * Serialize a read-modify-write of one book.
  *
  * Every mutation goes through this so a settings save, a generation and an
- * editor save cannot interleave and lose an entry.
+ * editor save cannot interleave and lose an entry. The book is resolved through
+ * both scopes, so editing a shared book edits the shared file and not a copy.
  */
 async function mutateBook(
     id: string,
     mutate: (book: Record<string, unknown>) => MutationOutcome,
 ): Promise<WorldEntryResult> {
-    const file = worldFilePath(id);
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        return { status: 'missing-book' } as const;
+    }
+    const file = found.filePath;
 
     return withFileLock(file, async () => {
         const raw = await readJsonFile<unknown>(file, null);
@@ -139,7 +166,7 @@ async function mutateBook(
         await writeJsonFile(file, raw);
         return {
             status: 'ok',
-            world: detailOf(id, raw),
+            world: detailOf(id, raw, found.scope),
             ...(outcome.uid === undefined ? {} : { uid: outcome.uid }),
         } as const;
     });
@@ -193,15 +220,21 @@ export async function reorderWorldEntries(id: string, uids: readonly number[]): 
     });
 }
 
-/** Delete a book. Returns false when it did not exist. */
+/** Delete a book from whichever scope holds it. Returns false when it did not exist. */
 export async function deleteWorld(id: string): Promise<boolean> {
-    try {
-        await unlink(worldFilePath(id));
-        return true;
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return false;
-        }
-        throw error;
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        return false;
     }
+    return removeIfPresent(found.filePath);
+}
+
+/** Move a book into the shared scope, or take a shared one into this profile. */
+export async function changeWorldScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
+    return moveItemBetweenScopes('worlds', id, target, BOOK_EXTENSIONS);
+}
+
+/** Copy a book into the other scope under a free name. */
+export async function copyWorldIntoScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
+    return copyItemIntoScope('worlds', id, target, BOOK_EXTENSIONS);
 }

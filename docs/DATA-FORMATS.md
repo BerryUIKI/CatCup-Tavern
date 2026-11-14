@@ -13,7 +13,14 @@ data/
 ├── secrets.json               # server-only; never returned by the API, shared by every profile
 ├── auth.json                  # server-only, shared by every profile
 ├── migration.log              # one line per step of a data-folder migration
-├── shared/                    # empty until an item is marked reusable (a later slice)
+├── shared/                    # items marked reusable in every profile
+│   ├── characters/
+│   ├── character-assets/      # assets of a shared character, beside its card
+│   ├── worlds/
+│   ├── presets/
+│   ├── quickreplies/
+│   ├── regex.json             # the shared list of regex rules
+│   └── personas.json          # the shared persona list
 ├── archive/                   # archived profiles, each a full profile folder
 └── profiles/
     └── default/               # a profile is a data scope
@@ -40,6 +47,12 @@ data/
 ```
 
 A **profile is a data scope**. Characters, chats, groups, world info, presets, quick reply sets, regex, personas, images and configuration all belong to one profile, so two campaigns can each hold a character called `Mira` without colliding. Only the provider list, its models, the API keys and auth are shared, because re-entering one endpoint and its key per campaign buys nothing.
+
+The `shared/` folder is the exception on purpose: an item a profile marks **reusable** moves there and every profile sees it. It is opt-in per item and empty on an install that never uses it.
+
+**The profile's copy wins.** When both scopes hold the same id, the profile's item is the one a lookup resolves to — so a chat, a group membership or an `extensions.world` link keeps pointing at the card the person can see. The shared original stays on disk untouched and is not listed a second time; the library labels the winning row instead, and a **Scope** filter in the character library can hide shared items entirely.
+
+Regex and personas are the two kinds that are not a file per item. Regex is one ordered list per scope (`regex.json` in each), and the profile's list runs before the shared one. Personas are a list inside `settings.json` for the profile and `shared/personas.json` for the shared scope; the settings API returns the merged list, and only the profile's own entries are ever written to `settings.json`. A shared character's CharX assets live in `shared/character-assets/<id>/`, so a profile card of the same id keeps its own rather than inheriting them.
 
 A `data/` folder written before profiles existed — one tree and one `settings.json` — is migrated on first start into `profiles/default/`, with the old file kept as `settings.json.v1-backup`. `CATCUP_MIGRATE_DRY_RUN=1` prints the plan without moving anything. See [RFC 0001](RFC/0001-profiles.md) for the reasoning.
 

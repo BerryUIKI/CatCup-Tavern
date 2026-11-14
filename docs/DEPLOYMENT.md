@@ -193,7 +193,7 @@ tar -xzf catcup-backup-YYYYMMDD.tgz
 
 The backup contains credentials (`secrets.json`, `auth.json`) and private chats. Store it like a password vault. Do not commit it to Git or attach it to issues.
 
-The `data/` tree holds every profile under `profiles/`, the shared provider list and keys, and the profile index. Back it up whole: a single profile's folder is not a complete backup.
+The `data/` tree holds every profile under `profiles/`, the library items marked reusable under `shared/`, the shared provider list and keys, and the profile index. Back it up whole: a single profile's folder is not a complete backup, and neither is `profiles/` without `shared/` — a profile that leans on a shared preset or lorebook looks broken without it.
 
 ## Upgrades
 

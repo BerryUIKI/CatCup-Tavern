@@ -40,6 +40,7 @@ interface SidebarProps {
     profiles: ProfileSummary[];
     activeProfileId: string | null;
     switchingProfile: boolean;
+    onShareCharacter: (character: CharacterSummary, action: 'move' | 'copy') => void;
     onSwitchProfile: (id: string) => void;
     onManageProfiles: () => void;
     activeProviderName: string | null;
@@ -83,6 +84,7 @@ export function Sidebar({
     profiles,
     activeProfileId,
     switchingProfile,
+    onShareCharacter,
     onSwitchProfile,
     onManageProfiles,
     activeProviderName,
@@ -221,6 +223,8 @@ export function Sidebar({
                 {libraryTab === 'characters' ? (
                     <CharacterLibrary
                         characters={characters}
+                        profileId={activeProfileId}
+                        onShare={onShareCharacter}
                         loading={loading}
                         query={query}
                         onClearQuery={() => setQuery('')}

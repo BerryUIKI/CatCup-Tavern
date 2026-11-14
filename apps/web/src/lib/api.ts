@@ -22,6 +22,9 @@ import type {
     HealthResponse,
     ImageScope,
     ImportCharactersResponse,
+    ItemScope,
+    Persona,
+    PersonaView,
     PresetDetail,
     PresetSummary,
     ProfileCreate,
@@ -34,11 +37,13 @@ import type {
     QuickReplyExecuteResponse,
     QuickReplySet,
     QuickReplySetView,
-    RegexScript,
     RegexScriptPatch,
+    RegexScriptView,
     SampleCharacterResponse,
     SettingsPatch,
     SettingsResponse,
+    SharedItemActionResult,
+    SharedItemKind,
     SillyTavernImportPlan,
     SillyTavernImportResult,
     SummarizeResponse,
@@ -47,6 +52,11 @@ import type {
     WorldInfoEntryPatch,
     WorldSummary,
 } from '@catcup/shared';
+
+/** `?scope=shared` for the routes that take a create target. */
+function scopeQuery(scope: ItemScope | undefined): string {
+    return scope === 'shared' ? '?scope=shared' : '';
+}
 
 export class ApiError extends Error {
     constructor(
@@ -137,13 +147,39 @@ async function requestBlob(path: string, body: unknown, signal?: AbortSignal): P
 
 export const api = {
     health: () => request<HealthResponse>('/health'),
+    /**
+     * Move or copy one library item between the profile and the shared scope.
+     *
+     * `scope` is where the item should end up. A move keeps the id, so every
+     * chat, group membership and world link that names the item keeps working;
+     * a copy takes a free id instead.
+     */
+    share: (kind: SharedItemKind, id: string, action: 'move' | 'copy', scope: ItemScope) =>
+        request<SharedItemActionResult>(
+            `/shared/${kind}/${encodeURIComponent(id)}/${action}?scope=${scope}`,
+            { method: 'POST' },
+        ),
+    personas: {
+        create: (persona: Pick<Persona, 'name' | 'description'>, scope: ItemScope) =>
+            request<{ persona: PersonaView }>('/personas', {
+                method: 'POST',
+                body: JSON.stringify({ ...persona, scope }),
+            }),
+        update: (id: string, patch: Partial<Omit<Persona, 'id'>>) =>
+            request<{ persona: PersonaView }>(`/personas/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            }),
+        remove: (id: string) =>
+            request<{ settings: SettingsResponse }>(`/personas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    },
     worlds: {
         list: () => request<{ worlds: WorldSummary[] }>('/worlds'),
         get: (id: string) => request<{ world: WorldDetail }>(`/worlds/${encodeURIComponent(id)}`),
-        import: (fileName: string | undefined, book: unknown) =>
+        import: (fileName: string | undefined, book: unknown, scope?: ItemScope) =>
             request<{ world: WorldDetail }>('/worlds/import', {
                 method: 'POST',
-                body: JSON.stringify({ fileName, book }),
+                body: JSON.stringify({ fileName, book, ...(scope ? { scope } : {}) }),
             }),
         remove: (id: string) => request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         createEntry: (id: string) =>
@@ -180,19 +216,25 @@ export const api = {
         },
     },
     regex: {
-        list: () => request<{ scripts: RegexScript[] }>('/regex'),
-        create: (patch: RegexScriptPatch) =>
-            request<{ script: RegexScript }>('/regex', { method: 'POST', body: JSON.stringify(patch) }),
+        list: () => request<{ scripts: RegexScriptView[] }>('/regex'),
+        create: (patch: RegexScriptPatch, scope?: ItemScope) =>
+            request<{ script: RegexScriptView }>(`/regex${scopeQuery(scope)}`, {
+                method: 'POST',
+                body: JSON.stringify(patch),
+            }),
         update: (id: string, patch: RegexScriptPatch) =>
-            request<{ script: RegexScript }>(`/regex/${encodeURIComponent(id)}`, {
+            request<{ script: RegexScriptView }>(`/regex/${encodeURIComponent(id)}`, {
                 method: 'PATCH',
                 body: JSON.stringify(patch),
             }),
         remove: (id: string) => request<{ ok: true }>(`/regex/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        reorder: (ids: string[]) =>
-            request<{ scripts: RegexScript[] }>('/regex/order', { method: 'PUT', body: JSON.stringify({ ids }) }),
-        import: (data: unknown, mode: 'append' | 'replace') =>
-            request<{ scripts: RegexScript[]; errors: string[] }>('/regex/import', {
+        reorder: (ids: string[], scope?: ItemScope) =>
+            request<{ scripts: RegexScriptView[] }>(`/regex/order${scopeQuery(scope)}`, {
+                method: 'PUT',
+                body: JSON.stringify({ ids }),
+            }),
+        import: (data: unknown, mode: 'append' | 'replace', scope?: ItemScope) =>
+            request<{ scripts: RegexScriptView[]; errors: string[] }>(`/regex/import${scopeQuery(scope)}`, {
                 method: 'POST',
                 body: JSON.stringify({ data, mode }),
             }),
@@ -200,10 +242,10 @@ export const api = {
     },
     quickReplies: {
         list: () => request<{ sets: QuickReplySetView[] }>('/quick-replies'),
-        create: (name: string) =>
+        create: (name: string, scope?: ItemScope) =>
             request<{ set: QuickReplySetView }>('/quick-replies', {
                 method: 'POST',
-                body: JSON.stringify({ name }),
+                body: JSON.stringify({ name, ...(scope ? { scope } : {}) }),
             }),
         save: (id: string, set: QuickReplySet) =>
             request<{ set: QuickReplySetView; renamedFrom?: string }>(`/quick-replies/${encodeURIComponent(id)}`, {
@@ -211,10 +253,10 @@ export const api = {
                 body: JSON.stringify(set),
             }),
         remove: (id: string) => request<{ ok: true }>(`/quick-replies/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-        import: (data: unknown, name?: string) =>
+        import: (data: unknown, name?: string, scope?: ItemScope) =>
             request<{ set: QuickReplySetView }>('/quick-replies/import', {
                 method: 'POST',
-                body: JSON.stringify({ data, name }),
+                body: JSON.stringify({ data, name, ...(scope ? { scope } : {}) }),
             }),
         exportUrl: (id: string) => `/api/quick-replies/${encodeURIComponent(id)}/export`,
         execute: (target: QuickReplyChatRef, setId: string, qrId: number) => {
@@ -231,10 +273,10 @@ export const api = {
     presets: {
         list: () => request<{ presets: PresetSummary[] }>('/presets'),
         get: (id: string) => request<{ preset: PresetDetail }>(`/presets/${encodeURIComponent(id)}`),
-        import: (fileName: string | undefined, preset: unknown) =>
+        import: (fileName: string | undefined, preset: unknown, scope?: ItemScope) =>
             request<{ preset: PresetDetail }>('/presets/import', {
                 method: 'POST',
-                body: JSON.stringify({ fileName, preset }),
+                body: JSON.stringify({ fileName, preset, ...(scope ? { scope } : {}) }),
             }),
         update: (id: string, patch: { prompts?: unknown[]; prompt_order?: unknown[] }) =>
             request<{ preset: PresetDetail }>(`/presets/${encodeURIComponent(id)}`, {
@@ -303,12 +345,12 @@ export const api = {
             }),
         exportUrl: (id: string, format: CharacterExportFormat) =>
             `/api/characters/${encodeURIComponent(id)}/export?format=${format}`,
-        import: (files: File[]) => {
+        import: (files: File[], scope?: ItemScope) => {
             const form = new FormData();
             for (const file of files) {
                 form.append('files', file, file.name);
             }
-            return request<ImportCharactersResponse>('/characters/import', {
+            return request<ImportCharactersResponse>(`/characters/import${scopeQuery(scope)}`, {
                 method: 'POST',
                 body: form,
             });

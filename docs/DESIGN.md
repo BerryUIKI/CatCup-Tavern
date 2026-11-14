@@ -232,6 +232,11 @@ for both the favicon and the in-app logo. The README banner ships in dark and li
   plain.
 - Toasts confirm completed background actions; they never carry the only copy of an error — except
   that the TTS, image and memory panels toast their validation failures until stage D fixes them.
+- **Scope marks.** An item that belongs to every profile carries a `Shared` badge — the word plus a
+  globe icon, never colour alone — and an item that hides a shared one of the same name says so in
+  quiet text beside its name. Shared items are listed by default rather than behind a toggle, because
+  a person who marks something reusable and then sees nothing would read that as broken; hiding them
+  is the library's **Scope** filter, and the choice is remembered per profile.
 
 ## Interaction rules
 

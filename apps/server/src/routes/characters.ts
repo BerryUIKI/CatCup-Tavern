@@ -10,6 +10,7 @@ import {
     characterIdSchema,
     characterPatchSchema,
     type ImportCharactersResponse,
+    type ItemScope,
 } from '@catcup/shared';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -65,6 +66,11 @@ const importPathSchema = z.object({
     path: z.string().trim().min(1).max(4096),
 });
 
+/** Which scope an import writes to; the profile's own folder when absent. */
+function importScope(query: unknown): ItemScope {
+    return z.object({ scope: z.enum(['profile', 'shared']).default('profile') }).parse(query ?? {}).scope;
+}
+
 /**
  * Import one card file, whatever shape it arrived in.
  *
@@ -75,6 +81,7 @@ async function importCardFile(
     fileName: string,
     buffer: Buffer,
     log: FastifyBaseLogger,
+    scope: ItemScope,
 ): Promise<ImportCharactersResponse['imported'][number]> {
     if (!CARD_EXTENSIONS.test(fileName)) {
         throw new Error(CARD_EXTENSION_MESSAGE);
@@ -86,16 +93,16 @@ async function importCardFile(
         const payload = buildCardPayload(parsed.card.raw, {});
         if (parsed.icon) {
             const png = writePngCard(new Uint8Array(parsed.icon), payload);
-            detail = await importCharacter('character.png', Buffer.from(png));
+            detail = await importCharacter('character.png', Buffer.from(png), scope);
         } else {
             const json = `${JSON.stringify(payload, null, 2)}\n`;
-            detail = await importCharacter('character.json', Buffer.from(json, 'utf8'));
+            detail = await importCharacter('character.json', Buffer.from(json, 'utf8'), scope);
         }
-        await storeCharacterAssets(detail.id, parsed.assets).catch((error) => {
+        await storeCharacterAssets(detail.id, parsed.assets, scope).catch((error) => {
             log.warn({ err: error, characterId: detail.id }, 'CharX assets were not stored');
         });
     } else {
-        detail = await importCharacter(fileName, buffer);
+        detail = await importCharacter(fileName, buffer, scope);
     }
 
     const { card: _card, rawCard: _rawCard, ...summary } = detail;
@@ -244,7 +251,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
         const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
 
         if (format === 'charx' || format === 'catcup') {
-            const assets = await readCharacterAssets(found.detail.id);
+            const assets = await readCharacterAssets(found.detail.id, found.detail.scope);
             const avatar = found.detail.format === 'png' ? await readFile(found.filePath) : null;
             const archive = buildCharx({
                 rawCard: found.detail.rawCard,
@@ -303,6 +310,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
     app.post('/api/characters/import', async (request) => {
         const imported: ImportCharactersResponse['imported'] = [];
         const errors: ImportCharactersResponse['errors'] = [];
+        const scope = importScope(request.query);
 
         for await (const part of request.parts()) {
             if (part.type !== 'file') {
@@ -312,7 +320,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             const buffer = await part.toBuffer();
 
             try {
-                imported.push(await importCardFile(fileName, buffer, request.log));
+                imported.push(await importCardFile(fileName, buffer, request.log, scope));
             } catch (error) {
                 errors.push({
                     fileName,
@@ -350,7 +358,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             }
 
             return {
-                imported: [await importCardFile(fileName, buffer, request.log)],
+                imported: [await importCardFile(fileName, buffer, request.log, 'profile')],
                 errors: [],
             } satisfies ImportCharactersResponse;
         });

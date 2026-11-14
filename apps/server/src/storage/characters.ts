@@ -2,7 +2,7 @@ import type { Stats } from 'node:fs';
 import { readdir, readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
-import type { CharacterDetail, CharacterPatch, CharacterSummary } from '@catcup/shared';
+import type { CharacterDetail, CharacterPatch, CharacterSummary, ItemScope } from '@catcup/shared';
 import { isRecord } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
 
@@ -13,6 +13,10 @@ import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/writ
 import { deleteCharacterAssets } from './characterAssets.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
+import { locateItem, listMergedItems, copyItemIntoScope, moveItemBetweenScopes, type ScopeMoveResult } from './scopes.js';
+
+/** A card may be a PNG with embedded data or a plain JSON export. */
+const CARD_EXTENSIONS = ['.png', '.json'] as const;
 
 interface CacheEntry {
     mtimeMs: number;
@@ -23,13 +27,13 @@ interface CacheEntry {
  * Parsed cards, keyed by scope **and** file name.
  *
  * The scope is part of the key because two profiles may hold a card with the
- * same file name; keying on the name alone would serve the previous profile's
- * Mira after a switch.
+ * same file name, and because one profile reads both its own folder and the
+ * shared one; keying on the name alone would serve the wrong Mira.
  */
 const cache = new Map<string, CacheEntry>();
 
-function cacheKey(fileName: string): string {
-    return `${paths.root}|${fileName}`;
+function cacheKey(scope: ItemScope, fileName: string): string {
+    return `${scope}:${paths.root}|${fileName}`;
 }
 
 function extensionOf(fileName: string): '.png' | '.json' | null {
@@ -81,9 +85,14 @@ function readCreatedAt(parsed: ParsedCard, stats: Stats): number {
     return stats.birthtimeMs > 0 ? stats.birthtimeMs : stats.ctimeMs;
 }
 
-async function loadCharacterFile(filePath: string, fileName: string): Promise<CharacterDetail | null> {
+async function loadCharacterFile(
+    filePath: string,
+    fileName: string,
+    scope: ItemScope,
+): Promise<CharacterDetail | null> {
     const stats = await stat(filePath);
-    const cached = cache.get(cacheKey(fileName));
+    const key = cacheKey(scope, fileName);
+    const cached = cache.get(key);
     if (cached && cached.mtimeMs === stats.mtimeMs) {
         return cached.detail;
     }
@@ -112,8 +121,9 @@ async function loadCharacterFile(filePath: string, fileName: string): Promise<Ch
             avatarUrl: `/api/characters/${encodeURIComponent(id)}/avatar?v=${Math.floor(stats.mtimeMs)}`,
             card: parsed.card,
             rawCard: parsed.raw,
+            scope,
         };
-        cache.set(cacheKey(fileName), { mtimeMs: stats.mtimeMs, detail });
+        cache.set(key, { mtimeMs: stats.mtimeMs, detail });
         return detail;
     } catch (error) {
         console.error(`[characters] Failed to parse ${fileName}:`, error);
@@ -136,74 +146,83 @@ export function toSummary(detail: CharacterDetail): CharacterSummary {
         createdAt: detail.createdAt,
         updatedAt: detail.updatedAt,
         avatarUrl: detail.avatarUrl,
+        scope: detail.scope,
+        ...(detail.shadowed ? { shadowed: true } : {}),
     };
 }
 
+/**
+ * Every card this profile can see: its own cast first, then the shared one.
+ *
+ * A shared card whose id the profile already uses is not listed twice; the
+ * profile's card carries `shadowed` so the library can say the shared one is
+ * behind it.
+ */
 export async function listCharacters(): Promise<CharacterSummary[]> {
-    let files: string[];
-    try {
-        const entries = await readdir(paths.characters, { withFileTypes: true });
-        files = entries.filter((entry) => entry.isFile() && extensionOf(entry.name)).map((entry) => entry.name);
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-            return [];
-        }
-        throw error;
-    }
+    const merged = await listMergedItems('characters', CARD_EXTENSIONS);
 
     const details = await Promise.all(
-        files.map((fileName) => loadCharacterFile(path.join(paths.characters, fileName), fileName)),
+        merged.map(async (item) => {
+            const detail = await loadCharacterFile(item.filePath, item.fileName, item.scope).catch(() => null);
+            if (!detail) {
+                return null;
+            }
+            return item.shadowed ? { ...detail, shadowed: true } : detail;
+        }),
     );
+
     return details
         .filter((detail): detail is CharacterDetail => detail !== null)
         .map(toSummary)
         .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * One card by id, the profile's copy first.
+ *
+ * The id is the file name without its extension in both scopes, so an id an
+ * existing chat or group already stores keeps resolving after its card is
+ * marked reusable.
+ */
 export async function getCharacter(id: string): Promise<CharacterDetail | null> {
     const cleanId = normalizeCharacterId(id);
     assertSimpleName(cleanId);
 
-    for (const extension of ['.png', '.json'] as const) {
-        const fileName = `${cleanId}${extension}`;
-        const filePath = resolveInside(paths.characters, fileName);
-        try {
-            await stat(filePath);
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                continue;
-            }
-            throw error;
-        }
-        return loadCharacterFile(filePath, fileName);
+    const found = await locateItem('characters', cleanId, CARD_EXTENSIONS);
+    if (!found) {
+        return null;
     }
-    return null;
+    return loadCharacterFile(found.filePath, found.fileName, found.scope);
 }
 
-export async function getCharacterFile(id: string): Promise<{ filePath: string; detail: CharacterDetail } | null> {
+export async function getCharacterFile(
+    id: string,
+): Promise<{ filePath: string; detail: CharacterDetail } | null> {
     const cleanId = normalizeCharacterId(id);
     assertSimpleName(cleanId);
 
-    for (const extension of ['.png', '.json'] as const) {
-        const fileName = `${cleanId}${extension}`;
-        const filePath = resolveInside(paths.characters, fileName);
-        try {
-            await stat(filePath);
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-                continue;
-            }
-            throw error;
-        }
-        const detail = await loadCharacterFile(filePath, fileName);
-        if (detail) {
-            return { filePath, detail };
-        }
+    const found = await locateItem('characters', cleanId, CARD_EXTENSIONS);
+    if (!found) {
+        return null;
     }
-    return null;
+    const detail = await loadCharacterFile(found.filePath, found.fileName, found.scope);
+    return detail ? { filePath: found.filePath, detail } : null;
 }
 
-export async function importCharacter(originalName: string, buffer: Buffer): Promise<CharacterDetail> {
+/**
+ * Store a card in the requested scope.
+ *
+ * A profile import lands in the profile's own folder unless the caller asked
+ * for the shared one, and a name already in use in that same scope gets a
+ * numeric suffix. The other scope does not participate: importing a second
+ * `Mira` into a profile that already sees a shared `Mira` is allowed, because
+ * the profile's copy is the one that wins and the shared one stays intact.
+ */
+export async function importCharacter(
+    originalName: string,
+    buffer: Buffer,
+    scope: ItemScope = 'profile',
+): Promise<CharacterDetail> {
     const parsed = parseCardBuffer(buffer, originalName);
     const extension = extensionOf(originalName);
     if (!extension) {
@@ -212,9 +231,10 @@ export async function importCharacter(originalName: string, buffer: Buffer): Pro
 
     const fallbackName = path.basename(originalName, path.extname(originalName));
     const baseName = safeFileName(parsed.card.name || fallbackName, 'character');
+    const directory = scope === 'shared' ? paths.sharedCharacters : paths.characters;
 
     const existing = new Set(
-        (await readdir(paths.characters, { withFileTypes: true }))
+        (await readdir(directory, { withFileTypes: true }).catch(() => []))
             .filter((entry) => entry.isFile())
             .map((entry) => entry.name.toLowerCase()),
     );
@@ -226,11 +246,11 @@ export async function importCharacter(originalName: string, buffer: Buffer): Pro
         index += 1;
     }
 
-    const target = resolveInside(paths.characters, fileName);
+    const target = resolveInside(directory, fileName);
     await withFileLock(target, () => writeFileAtomic(target, buffer, { mode: 0o644 }));
-    cache.delete(cacheKey(fileName));
+    cache.delete(cacheKey(scope, fileName));
 
-    const detail = await loadCharacterFile(target, fileName);
+    const detail = await loadCharacterFile(target, fileName, scope);
     if (!detail) {
         throw new Error('Imported card could not be read back');
     }
@@ -274,8 +294,8 @@ async function writeCardFile(
         await writeFileAtomic(found.filePath, `${JSON.stringify(outgoing, null, 2)}\n`, 'utf8');
     }
 
-    cache.delete(cacheKey(found.detail.fileName));
-    return loadCharacterFile(found.filePath, found.detail.fileName);
+    cache.delete(cacheKey(found.detail.scope, found.detail.fileName));
+    return loadCharacterFile(found.filePath, found.detail.fileName, found.detail.scope);
 }
 
 export async function updateCharacter(id: string, patch: CharacterPatch): Promise<CharacterDetail | null> {
@@ -311,7 +331,7 @@ async function mutateCharacterData(
     }
 
     return withFileLock(found.filePath, async () => {
-        const fresh = await loadCharacterFile(found.filePath, found.detail.fileName);
+        const fresh = await loadCharacterFile(found.filePath, found.detail.fileName, found.detail.scope);
         if (!fresh) {
             return { status: 'unreadable' };
         }
@@ -429,11 +449,25 @@ export async function deleteCharacter(id: string): Promise<boolean> {
         return false;
     }
     await withFileLock(found.filePath, () => unlink(found.filePath));
-    cache.delete(cacheKey(found.detail.fileName));
-    await deleteCharacterAssets(found.detail.id).catch((error) => {
+    cache.delete(cacheKey(found.detail.scope, found.detail.fileName));
+    // Assets follow the card: a shared card's assets live beside the shared
+    // folder, so the same id in the other scope keeps its own.
+    await deleteCharacterAssets(found.detail.id, found.detail.scope).catch((error) => {
         console.error(`[characters] Failed to remove assets for ${found.detail.id}:`, error);
     });
     return true;
+}
+
+/** Move a card between the profile and the shared scope. */
+export async function changeCharacterScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
+    const result = await moveItemBetweenScopes('characters', normalizeCharacterId(id), target, CARD_EXTENSIONS);
+    cache.clear();
+    return result;
+}
+
+/** Copy a card into the other scope under a free id, leaving the original in place. */
+export async function copyCharacterIntoScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
+    return copyItemIntoScope('characters', normalizeCharacterId(id), target, CARD_EXTENSIONS);
 }
 
 export function clearCharacterCache(): void {

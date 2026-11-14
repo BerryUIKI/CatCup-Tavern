@@ -17,6 +17,7 @@ import {
     useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
+    useShareItem,
     useSettings,
     useUpdateSettings,
 } from '../hooks/data';
@@ -65,6 +66,7 @@ export function MainApp() {
     const characterQuery = useCharacter(selectedCharacterId);
     const importMutation = useImportCharacters();
     const addSampleMutation = useAddSampleCharacter();
+    const shareItem = useShareItem();
     const favoriteMutation = useSetCharacterFavorite();
     const bulkMutation = useBulkCharacters();
     const updateSettingsMutation = useUpdateSettings();
@@ -187,6 +189,27 @@ export function MainApp() {
         }
     };
 
+    /**
+     * Move a card between this profile and the shared scope.
+     *
+     * A move keeps the id, so chats and group memberships keep resolving; the
+     * toast names where the card went, because the library row moves with it.
+     */
+    const handleShareCharacter = async (character: CharacterSummary, action: 'move' | 'copy') => {
+        const target = character.scope === 'shared' ? 'profile' : 'shared';
+        try {
+            await shareItem.mutateAsync({ kind: 'characters', id: character.id, action, scope: target });
+            pushToast(
+                target === 'shared'
+                    ? `"${character.name}" is now shared by every profile.`
+                    : `"${character.name}" belongs to this profile again.`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not change where this card lives.', 'error');
+        }
+    };
+
     /** Switch the provider every chat uses, from the library footer. */
     const handleSwitchProvider = async (id: string) => {
         const provider = settings?.providers.find((item) => item.id === id);
@@ -228,7 +251,7 @@ export function MainApp() {
             return;
         }
         try {
-            const result = await importMutation.mutateAsync(files);
+            const result = await importMutation.mutateAsync({ files });
             if (result.imported.length > 0) {
                 pushToast(`Imported ${pluralize(result.imported.length, 'character')}.`, 'success');
                 const first = result.imported[0];
@@ -529,6 +552,7 @@ export function MainApp() {
                 profiles={profilesQuery.data?.profiles ?? []}
                 activeProfileId={profilesQuery.data?.activeProfileId ?? null}
                 switchingProfile={activateProfile.isPending}
+                onShareCharacter={(character, action) => void handleShareCharacter(character, action)}
                 onSwitchProfile={(id) => void handleSwitchProfile(id)}
                 onManageProfiles={() => openSettings('profiles')}
                 onOpenSettings={() => openSettings()}
