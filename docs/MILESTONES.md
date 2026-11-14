@@ -408,6 +408,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 ### Scope
 
 - Mobile browser polish (chat view, composer, sidebar, settings).
+- **Profiles** ([RFC 0001](RFC/0001-profiles.md), accepted 2026-11-14): a profile is a data scope — its own characters, chats, groups, world info, presets, quick reply sets, regex, personas, images and configuration — with the provider list, models, keys and auth global. Switching needs no restart and is refused while a reply is streaming; archiving replaces deletion; a profile pins a provider and a preferred model. A per-item shared layer follows as its own slice. Acceptance criteria are in §14 of the RFC.
 - Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; **stage B (app shell and chat chrome) done 2026-11-13**; stages C–E remain.
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
@@ -476,4 +477,4 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 - 2026-11-09: Initial milestone document. M0 marked complete; M1 scoped.
 - 2026-11-10: M1 marked complete, including the model-aware tokenizer.
 - 2026-11-13: M2 marked complete and released as `0.3.0`; M4 marked in progress.
-- 2026-11-14: M2 remainder closed — group card modes, card depth prompts and auto mode. UX stage B (app shell and chat chrome) delivered.
+- 2026-11-14: M2 remainder closed — group card modes, card depth prompts and auto mode. UX stage B (app shell and chat chrome) delivered. RFC 0001 (profiles) accepted and added to M5.
