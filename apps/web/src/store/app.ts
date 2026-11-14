@@ -14,6 +14,7 @@ export type SettingsSectionId =
     | 'memory'
     | 'persona'
     | 'quickreplies'
+    | 'profiles'
     | 'tts'
     | 'images'
     | 'about';
@@ -39,6 +40,8 @@ interface AppState {
     selectCharacter: (id: string | null) => void;
     selectGroup: (id: string | null) => void;
     selectChat: (id: string | null) => void;
+    /** Return to an empty view — used when a profile switch replaces every id. */
+    resetSelection: () => void;
     setLibraryTab: (tab: LibraryTab) => void;
     setSettingsOpen: (open: boolean) => void;
     openSettings: (section?: SettingsSectionId) => void;
@@ -76,6 +79,13 @@ export const useAppStore = create<AppState>((set, get) => ({
             sidebarOpen: false,
         }),
     selectChat: (id) => set({ selectedChatId: id, sidebarOpen: false }),
+    resetSelection: () =>
+        set({
+            selectedCharacterId: null,
+            selectedGroupId: null,
+            selectedChatId: null,
+            libraryTab: 'characters',
+        }),
     setLibraryTab: (tab) => set({ libraryTab: tab }),
     setSettingsOpen: (open) => set({ settingsOpen: open, ...(open ? {} : { settingsSection: null }) }),
     openSettings: (section) => set({ settingsOpen: true, settingsSection: section ?? null }),

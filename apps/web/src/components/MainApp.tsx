@@ -2,6 +2,7 @@ import { type CharacterSummary, type ChatSummary, resolvePersona, substituteMacr
 import { useEffect, useRef, useState } from 'react';
 
 import {
+    useActivateProfile,
     useAddSampleCharacter,
     useBulkCharacters,
     useCharacter,
@@ -13,6 +14,7 @@ import {
     useGroups,
     useImportCharacters,
     useLogout,
+    useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
     useSettings,
@@ -50,6 +52,7 @@ export function MainApp() {
     const settingsOpen = useAppStore((state) => state.settingsOpen);
     const setSettingsOpen = useAppStore((state) => state.setSettingsOpen);
     const openSettings = useAppStore((state) => state.openSettings);
+    const resetSelection = useAppStore((state) => state.resetSelection);
     const sidebarOpen = useAppStore((state) => state.sidebarOpen);
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
     const pushToast = useAppStore((state) => state.pushToast);
@@ -65,6 +68,8 @@ export function MainApp() {
     const favoriteMutation = useSetCharacterFavorite();
     const bulkMutation = useBulkCharacters();
     const updateSettingsMutation = useUpdateSettings();
+    const profilesQuery = useProfiles();
+    const activateProfile = useActivateProfile();
 
     // A character and a group are mutually exclusive; the store enforces it.
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
@@ -201,6 +206,22 @@ export function MainApp() {
         }
     };
     const logoutMutation = useLogout();
+
+    /**
+     * Switch profiles. Every id on screen belongs to the old one, so the
+     * selection is cleared before the refetch lands; the activate mutation
+     * invalidates every query, which is what brings the new cast in.
+     */
+    const handleSwitchProfile = async (id: string) => {
+        try {
+            await activateProfile.mutateAsync(id);
+            resetSelection();
+            const name = profilesQuery.data?.profiles.find((profile) => profile.id === id)?.name ?? 'profile';
+            pushToast(`Switched to ${name}.`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not switch the profile.', 'error');
+        }
+    };
 
     const handleImport = async (files: File[]) => {
         if (files.length === 0) {
@@ -505,6 +526,11 @@ export function MainApp() {
                 onSwitchProvider={(id) => void handleSwitchProvider(id)}
                 activeProviderName={activeProvider?.name ?? null}
                 activeProviderReady={activeProviderReady}
+                profiles={profilesQuery.data?.profiles ?? []}
+                activeProfileId={profilesQuery.data?.activeProfileId ?? null}
+                switchingProfile={activateProfile.isPending}
+                onSwitchProfile={(id) => void handleSwitchProfile(id)}
+                onManageProfiles={() => openSettings('profiles')}
                 onOpenSettings={() => openSettings()}
                 onLogout={() => void handleLogout()}
                 loggingOut={logoutMutation.isPending}

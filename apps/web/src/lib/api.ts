@@ -24,6 +24,9 @@ import type {
     ImportCharactersResponse,
     PresetDetail,
     PresetSummary,
+    ProfileCreate,
+    ProfileRename,
+    ProfileSummary,
     ProviderDraftTestInput,
     ProviderInput,
     ProviderPublic,
@@ -527,6 +530,47 @@ export const api = {
                 body: JSON.stringify(patch),
             });
             return data.settings;
+        },
+    },
+
+    profiles: {
+        list: async () => {
+            const data = await request<{
+                activeProfileId: string | null;
+                profiles: ProfileSummary[];
+                archived: ProfileSummary[];
+            }>('/profiles');
+            return data;
+        },
+        create: async (input: ProfileCreate) => {
+            const data = await request<{ profile: ProfileSummary }>('/profiles', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.profile;
+        },
+        rename: async (id: string, patch: ProfileRename) => {
+            const data = await request<{ profile: ProfileSummary }>(`/profiles/${encodeURIComponent(id)}`, {
+                method: 'PATCH',
+                body: JSON.stringify(patch),
+            });
+            return data.profile;
+        },
+        activate: async (id: string) => {
+            const data = await request<{ activeProfileId: string; settings: SettingsResponse }>('/profiles/active', {
+                method: 'PUT',
+                body: JSON.stringify({ id }),
+            });
+            return data;
+        },
+        archive: async (id: string) => {
+            await request<{ ok: true }>(`/profiles/${encodeURIComponent(id)}/archive`, { method: 'POST' });
+        },
+        restore: async (id: string) => {
+            await request<{ ok: true }>(`/profiles/${encodeURIComponent(id)}/restore`, { method: 'POST' });
+        },
+        remove: async (id: string) => {
+            await request<{ ok: true }>(`/profiles/${encodeURIComponent(id)}`, { method: 'DELETE' });
         },
     },
 

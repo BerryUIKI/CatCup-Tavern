@@ -1,4 +1,4 @@
-import type { CharacterSummary, GroupView, ProviderPublic } from '@catcup/shared';
+import type { CharacterSummary, GroupView, ProfileSummary, ProviderPublic } from '@catcup/shared';
 import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, Users, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 
@@ -7,6 +7,7 @@ import type { LibraryTab } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { CharacterLibrary } from './CharacterLibrary';
 import { Logo } from './Logo';
+import { ProfileSwitcher } from './ProfileSwitcher';
 import { Spinner } from './Spinner';
 
 interface SidebarProps {
@@ -36,6 +37,11 @@ interface SidebarProps {
     providers: ProviderPublic[];
     activeProviderId: string | null;
     onSwitchProvider: (id: string) => void;
+    profiles: ProfileSummary[];
+    activeProfileId: string | null;
+    switchingProfile: boolean;
+    onSwitchProfile: (id: string) => void;
+    onManageProfiles: () => void;
     activeProviderName: string | null;
     activeProviderReady: boolean;
     onOpenSettings: () => void;
@@ -74,6 +80,11 @@ export function Sidebar({
     providers,
     activeProviderId,
     onSwitchProvider,
+    profiles,
+    activeProfileId,
+    switchingProfile,
+    onSwitchProfile,
+    onManageProfiles,
     activeProviderName,
     activeProviderReady,
     onOpenSettings,
@@ -303,9 +314,18 @@ export function Sidebar({
             </div>
 
             <div className="border-t border-line-soft px-3 py-3">
+                <ProfileSwitcher
+                    profiles={profiles ?? []}
+                    activeProfileId={activeProfileId}
+                    providerLine={activeProviderName ?? 'No provider configured'}
+                    providerReady={activeProviderReady}
+                    switching={switchingProfile}
+                    onSwitch={onSwitchProfile}
+                    onManage={onManageProfiles}
+                />
                 <div className="mb-2 rounded-lg bg-surface/60 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-muted/70">Active provider</p>
+                        <p className="text-[10px] uppercase tracking-[0.14em] text-muted">Active provider</p>
                         <span
                             className={cn(
                                 'size-2 shrink-0 rounded-full',
