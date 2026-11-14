@@ -844,6 +844,24 @@ Partial update. All fields are optional:
 
 ## Providers
 
+### Profiles
+
+A profile is a data scope: its own characters, chats, groups, world info, presets, quick reply sets, regex rules, personas, images and configuration. The provider list, the API keys and auth are shared. See [RFC 0001](RFC/0001-profiles.md) and [DATA-FORMATS.md](DATA-FORMATS.md).
+
+| Method | Path                        | Purpose                                                                                     |
+| ------ | --------------------------- | ------------------------------------------------------------------------------------------- |
+| GET    | `/api/profiles`             | `{ activeProfileId, profiles: ProfileSummary[], archived: ProfileSummary[] }`               |
+| POST   | `/api/profiles`             | Create one: `{ name, description?, copyFromId? }`. Copies **configuration**, never content. |
+| PATCH  | `/api/profiles/:id`         | `{ name?, description? }`                                                                   |
+| PUT    | `/api/profiles/active`      | `{ id }`. Switches the served profile and returns `{ activeProfileId, settings }`.          |
+| POST   | `/api/profiles/:id/archive` | Move the profile's folder to `archive/`; refuses the active and the last profile            |
+| POST   | `/api/profiles/:id/restore` | Move an archived profile back, keeping its name                                             |
+| DELETE | `/api/profiles/:id`         | Permanently delete an **archived** profile; refuses a live one                              |
+
+`ProfileSummary` is `{ id, name, description, archived, active, counts: { characters, chats, groups, books, presets }, sizeBytes }`.
+
+`PUT /api/profiles/active` answers `409 PROFILE_BUSY` while a generation is running — finish or stop the reply first. After a switch the client must refetch every scoped collection: characters, chats, groups, world info, presets, regex, quick replies, images and settings.
+
 ### `GET /api/providers`
 
 ```json

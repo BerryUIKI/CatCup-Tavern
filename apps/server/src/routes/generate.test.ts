@@ -345,3 +345,28 @@ describe('character model choice', () => {
         expect('catcup_model' in clearedDetail.character.card.extensions).toBe(false);
     });
 });
+
+describe('profile preferred model', () => {
+    it('uses the profile model when the character names none', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'openai',
+            name: 'Profile model',
+            baseUrl: stubUrl,
+            models: ['served-model'],
+            defaultModel: 'served-model',
+            enabled: true,
+            headers: {},
+            apiKey: 'k',
+        });
+        await call('PATCH', '/api/settings', {
+            activeProviderId: (created.json() as { provider: { id: string } }).provider.id,
+            profilePreferredModel: 'served-model',
+        });
+
+        // A character with no model of its own takes the profile's preference.
+        await call('PATCH', '/api/characters/Aria', { model: '' });
+        const chatId = await createChat();
+        const body = await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
+        expect(body).toContain('"model":"served-model"');
+    });
+});

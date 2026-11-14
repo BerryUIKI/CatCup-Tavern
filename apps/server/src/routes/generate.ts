@@ -196,7 +196,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         // The character may name its own model; one the active provider does
         // not serve falls back to the provider default, which the response
         // reports so the header can say what happened.
-        const resolved = resolveModel(provider, character.model);
+        const resolved = resolveModel(provider, character.model, settings.profilePreferredModel);
         if (!resolved.model) {
             throw badRequest('The active provider has no model selected');
         }

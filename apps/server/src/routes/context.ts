@@ -48,7 +48,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const provider = await getActiveProvider();
         // The inspector counts what a reply to this character would actually
         // use, including a fallback when the character's model is not served.
-        const model = provider ? resolveModel(provider, character.model).model : '';
+        const model = provider ? resolveModel(provider, character.model, settings.profilePreferredModel).model : '';
         const tokenCounter = provider && model ? createTokenCounter(provider.kind, model) : ESTIMATE_COUNTER;
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();

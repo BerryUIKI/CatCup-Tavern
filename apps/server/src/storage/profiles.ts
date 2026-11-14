@@ -57,6 +57,29 @@ export async function activateProfile(id: string): Promise<void> {
     setActiveScope(directory);
 }
 
+/**
+ * Switch to a profile and remember the choice in the index.
+ *
+ * The caller is expected to hold `paths.globalSettings` — the switch endpoint
+ * does — so the scope and the index cannot disagree after a failure.
+ */
+export async function switchProfile(id: string): Promise<ProfileEntry> {
+    const index = await readProfileIndex();
+    if (!index) {
+        throw new Error('Profile index not found');
+    }
+    const entry = index.profiles.find((candidate) => candidate.id === id && !candidate.archived);
+    if (!entry) {
+        throw new Error('Profile not found');
+    }
+    await activateProfile(id);
+    if (index.activeProfileId !== id) {
+        index.activeProfileId = id;
+        await writeProfileIndex(index);
+    }
+    return entry;
+}
+
 /** The id of the profile the server is currently serving, from the scope path. */
 export function activeProfileId(): string | null {
     const relative = path.relative(path.join(config.dataDir, 'profiles'), getActiveScope());
