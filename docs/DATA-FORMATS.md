@@ -42,6 +42,12 @@ data/
         ├── quickreplies/      # ST Quick Replies v2 sets, one JSON per set
         ├── user/
         │   └── images/        # generated gallery images, ST's userImages root
+        ├── books/             # uploaded books, one folder each
+        │   └── novel/
+        │       ├── source.txt # the file as it was uploaded
+        │       └── book.json  # titles and sizes; never the text
+        ├── distill/           # run records for book distillation
+        │   └── <runId>.json
         ├── regex.json         # Regex scripts (one ordered list)
         └── settings.json      # this profile's configuration
 ```
@@ -627,6 +633,19 @@ A quick reply `message` is plain text or the supported command subset documented
 A file that is not a valid version 2 set is skipped by the library, not loaded or overwritten; remove or fix it by hand in `data/quickreplies/` if one appears.
 
 The bar's enabled flag and set order live in `settings.json` under `quickReplies`. SillyTavern's per-character configs are not implemented; per-chat `chat_metadata.quickReply.setList` links are read but not edited.
+
+## Books and distillation
+
+A book uploaded for distillation lives in its own folder under the profile that uploaded it. Two files, and the split between them is the rule the whole feature rests on:
+
+- `source.txt` / `source.md` / `source.epub` — the file exactly as it arrived, byte for byte.
+- `book.json` — what parsing found: `{ name, fileName, format, bytes, addedAt, sections }`, where each section is `{ index, title, chars }`.
+
+**The text is never copied into `book.json`.** A run re-reads the source file and re-parses it, so a corrected heading rule applies to a book uploaded before the fix, and an accepted entry can always be traced back to the text that produced it. Keeping the file also means a re-run with a different model needs no second upload.
+
+The file name gives the folder id — `novel.txt` becomes `books/novel/` — and a second book of the same name gets `novel (2)`. The folder belongs to one profile, so a book uploaded in one campaign is invisible in another; marking the distilled world info book reusable is how its _output_ crosses over, and that is the ordinary shared-layer move.
+
+A run record in `distill/<runId>.json` holds the chunk map, the model, what was found, and what was accepted. It is a record, not state a run depends on: deleting it loses the review sheet, not the book.
 
 ## Internal files (not SillyTavern formats)
 

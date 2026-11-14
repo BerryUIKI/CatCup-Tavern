@@ -1,8 +1,22 @@
 # RFC 0002 — Distil world info and characters from a book
 
 - **Issue:** [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77)
-- **Status:** Proposed — awaiting review
-- **Touches:** `apps/server/src/routes/`, a new `apps/server/src/distill/`, `apps/web/src/components/`, `docs/API.md`, `docs/DATA-FORMATS.md`
+- **Status:** Accepted 2026-11-14 — implementation in progress
+- **Touches:** `apps/server/src/distill/`, `apps/server/src/routes/distill.ts`, `apps/server/src/storage/books.ts`, `apps/web/src/components/`, `docs/API.md`, `docs/DATA-FORMATS.md`
+
+## Decisions taken in review (2026-11-14)
+
+Seven questions were open when this was proposed. They are settled, and the body below is written against the answers rather than restating the question.
+
+| Question                                    | Decision                                                                                                                                                                                                      |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One book for the novel, or one per chapter? | **One book.** Chapters go in `comment`, so the world info list stays readable.                                                                                                                                |
+| Does every entity get an outline request?   | **No.** Enough mentions gets its own request; a passing mention is written straight from the merge, marked low confidence and left unticked. Roughly halves the request count.                                |
+| Does reopening the dialog show history?     | **No.** The run record on disk is enough; reopening reattaches only to a run that is still running.                                                                                                           |
+| Ship the no-model slice first?              | **No.** The complete pipeline ships, but as three PR slices — parse, sections mode, model mode — so each is reviewable on its own. Sections-only stays _a mode of the same pipeline_, not a separate feature. |
+| Is the uploaded file kept?                  | **Yes**, at `books/<id>/source.<ext>`. A run can be repeated in place with a better model, and a failed run needs no re-upload. This replaces the "no book text is written to disk" line below.               |
+| Can a person merge two entities by hand?    | **Yes.** The review sheet merges a row into a target: contents concatenate, aliases union, evidence merges in source order.                                                                                   |
+| Is there a new "distill model" setting?     | **No.** `profilePreferredModel` already exists; the run request carries its own model and the choice is not persisted.                                                                                        |
 
 ## The problem
 
@@ -64,7 +78,7 @@ One request per chunk. The prompt asks for strict JSON only:
 }
 ```
 
-Requests run concurrently, capped the way the workflow runner caps agents (a small fixed pool), and each request is cancellable. A chunk that returns malformed JSON is retried once with a repair instruction; a second failure marks the chunk **incomplete** rather than failing the run — the review sheet says which chapters were skipped, so a person can re-run only those.
+Requests run concurrently in a small fixed pool (4), and each request is cancellable. A chunk that returns malformed JSON is retried once with a repair instruction; a second failure marks the chunk **incomplete** rather than failing the run — the review sheet says which chapters were skipped, so a person can re-run only those.
 
 Progress is streamed, because a 300-page book is minutes of work, not seconds.
 
@@ -95,13 +109,13 @@ The run is recorded at `data/distill/<runId>.json` with the book's digest, the c
 
 ## Which model
 
-Distillation needs a strong, long-context model, and is exactly the kind of job a person wants on a different model from their roleplay. It therefore reuses the model list from #76:
+Distillation needs a strong, long-context model, and is exactly the kind of job a person wants on a different model from their roleplay. It therefore picks from the model list that already exists:
 
-- a **Distill model** setting (Settings → Providers), defaulting to the active provider's default model;
-- the run may name any model the active provider serves, and records which it used;
+- the run request may name any model the active provider serves, defaulting to the one `resolveModel` settles on for this profile;
+- the choice is shown in the dialog and **not persisted** — there is no second model setting to keep in step with the first;
 - a different provider is not offered, because the pipeline is one provider's problem; switching provider is one click away in the footer.
 
-Cost is shown before the run starts: `chunks × estimated prompt tokens` and a rough price if the provider reports one. The count comes from the tokenizer already used for budgeting, so an OpenAI model and an Anthropic model predict their own numbers.
+Cost is shown before the run starts: `chunks × estimated prompt tokens`, from the tokenizer already used for budgeting, so an OpenAI model and an Anthropic model predict their own numbers.
 
 ## Interface
 
@@ -118,16 +132,18 @@ The dialog is a `Modal` with the same focus and Escape rules as the rest; the ru
 ## Security and safety
 
 - The uploaded text is untrusted input. It is only ever sent to the configured provider as data inside a clearly delimited block, and the instructions are re-stated after it, so text that says "ignore the above" is treated as story text.
-- Upload size is capped (proposal: 20 MB, a limit at least as generous as any novel) and the parser refuses anything it cannot read, naming the file.
-- No book text is written to disk beyond what the person accepts; the chunk map in the run record holds offsets, not text.
-- The run costs the person's tokens and is cancellable at any point; a cancelled run writes nothing.
+- Upload size is capped at 20 MB — already the server's multipart limit — and the parser refuses anything it cannot read, naming the file.
+- The book lives in the profile that uploaded it, beside a record that holds titles and sizes only. It is never sent anywhere but the configured provider, and it is deleted with the profile or with `DELETE /api/distill/books/:id`.
+- The chunk map in the run record holds offsets, not text.
+- The run costs the person's tokens and is cancellable at any point; a cancelled run writes nothing to `worlds/` or `characters/`.
 
 ## What this deliberately leaves out of the first slice
 
-- **Section-only import with no model call.** A `txt`/`md` file becomes one world info book with an entry per heading — no analysis, no keys beyond the heading, no cards. This is small, deterministic, and useful on its own; it can ship first while the model pipeline is built.
 - **Incremental re-distillation** of one chapter added later.
 - **Images and audio** from an EPUB.
 - **Automatic linking** to an existing library entry when a run produces "Mira" and a Mira card already exists — for now it creates a new card and says so.
+
+(The "sections-only import with no model call" item that used to head this list is no longer out of scope: it is `mode: 'sections'`, part of the same pipeline.)
 
 ## Risks
 
@@ -151,9 +167,17 @@ The dialog is a `Modal` with the same focus and Escape rules as the rest; the ru
 | Review UI, inline edit, accept-to-world-and-characters | 2–3 days   |
 | Docs, tests, fixtures for each format                  | 1 day      |
 
-## Open questions for review
+## How it shipped
 
-1. **Ship the no-model slice first?** It is a day's work, it makes `.txt`/`.md` useful immediately, and it gives the review sheet a test bed. The proposal is yes.
-2. **Entries or one big book per chapter?** Proposal is one book for the whole novel, with `comment` carrying the chapter. A book per chapter is easier to review but clutters the world info list.
-3. **How much of the outline should be a second model pass?** The proposal does one pass per entity; a cheaper alternative is to write entries straight from the merge and let the review sheet be the editing surface.
-4. **Should the run be resumable after a browser close?** It keeps running server-side; whether reopening must show history from the last run is a nice-to-have the proposal leaves out.
+Three PR slices, each independently reviewable and CI-green:
+
+1. **Parse and store** — `packages/shared/src/schemas/distill.ts`, `apps/server/src/distill/{sections,parse,chunk,estimate}.ts`, `apps/server/src/storage/books.ts`, `apps/server/src/routes/distill.ts`. A book can be uploaded, listed, read back and deleted. `books/` and `distill/` join `SCOPED_DIRECTORIES`, so they are created, migrated and archived with the profile for free.
+2. **Sections mode** — the run engine without a model call, its SSE events, the dialog and the review sheet, and the accept path. This is the slice that makes the feature usable end to end.
+3. **Model mode** — analyze, merge, outline, chunk progress, manual merge.
+
+Progress and cancellation reuse the shapes already in the server: the SSE writer in `apps/server/src/sse.ts`, and a registry beside `activeGenerations`. A distill run is deliberately **not** aborted when its socket closes — minutes of work must survive a tab close — so it is stopped only through its endpoint, and the profile switch guard (`PROFILE_BUSY`) covers a run in flight.
+
+## Decisions this RFC records for later
+
+- **Chunking uses the configured context size**, not the model's real one: `ModelInfo` is `{ id, name }` and carries no context length. A model with a 1M window is therefore chunked at the profile's 32k default. This is the honest limitation of not having per-model metadata, and it is correct but wasteful rather than wrong.
+- **Entities are clustered in-process, not in the model**, except for one batched near-miss request. A per-pair request would cost more than the outline pass it is meant to save.
