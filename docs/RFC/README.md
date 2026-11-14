@@ -5,7 +5,7 @@ Proposals for features that are large enough to need agreement before code. An R
 | RFC                               | Feature                                      | Issue                                                       | Status   |
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------------- | -------- |
 | [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer    | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Accepted |
-| [0002](0002-book-distillation.md) | Distil world info and characters from a book | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77) | Proposed |
+| [0002](0002-book-distillation.md) | Distil world info and characters from a book | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77) | Accepted |
 
 ## How an RFC moves
 
