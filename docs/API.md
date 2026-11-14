@@ -868,10 +868,10 @@ An item the library shows can live in the profile or in `data/shared/`, where ev
 
 Every scoped list carries `scope: 'profile' | 'shared'` on each item, plus `shadowed?: true` when a profile item hides a shared one with the same id. The shared original is not listed a second time — an id addresses exactly one item — so a chat, a group membership and an `extensions.world` link keep resolving to the thing the person can see.
 
-| Method | Path                                  | Purpose                                                                                            |
-| ------ | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| POST   | `/api/shared/:kind/:id/move?scope=…`  | Move the item to `scope` (`profile` or `shared`), keeping its id so existing links still resolve    |
-| POST   | `/api/shared/:kind/:id/copy?scope=…`  | Copy it into `scope` under a free id, leaving the original alone                                   |
+| Method | Path                                 | Purpose                                                                                          |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| POST   | `/api/shared/:kind/:id/move?scope=…` | Move the item to `scope` (`profile` or `shared`), keeping its id so existing links still resolve |
+| POST   | `/api/shared/:kind/:id/copy?scope=…` | Copy it into `scope` under a free id, leaving the original alone                                 |
 
 `kind` is `characters`, `worlds`, `presets`, `quickreplies` or `regex`. Both answer `{ kind, id, scope, visibleToProfiles }`.
 
@@ -883,11 +883,11 @@ A create or an import reaches the shared scope through the same routes that alre
 
 **Personas** are a list inside `settings.json` rather than a file per item, so they have their own routes and `GET /api/settings` returns the merged list, each entry carrying `scope`. A write to the profile's file always starts from the profile's own entries, never from the merged list, so a shared persona never ends up copied into a profile.
 
-| Method | Path                 | Purpose                                                                            |
-| ------ | -------------------- | ---------------------------------------------------------------------------------- |
-| POST   | `/api/personas`      | `{ name, description?, scope }` — `shared` writes `shared/personas.json`           |
-| PATCH  | `/api/personas/:id`  | `{ name?, description? }`; lands in whichever file holds the persona               |
-| DELETE | `/api/personas/:id`  | Removes it from whichever file holds it, and returns the refreshed settings        |
+| Method | Path                | Purpose                                                                     |
+| ------ | ------------------- | --------------------------------------------------------------------------- |
+| POST   | `/api/personas`     | `{ name, description?, scope }` — `shared` writes `shared/personas.json`    |
+| PATCH  | `/api/personas/:id` | `{ name?, description? }`; lands in whichever file holds the persona        |
+| DELETE | `/api/personas/:id` | Removes it from whichever file holds it, and returns the refreshed settings |
 
 ### `GET /api/providers`
 
