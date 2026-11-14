@@ -1,9 +1,9 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { strToU8, zipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 /**
  * The desktop-only import-by-path route.
@@ -63,11 +63,11 @@ async function importPath(filePath: string) {
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-import-path-'));
-    cards = path.join(root, 'cards');
+    root = await createProfileDataDir('catcup-import-path-');
+    cards = fixturePath(root, 'cards');
     await mkdir(cards, { recursive: true });
 
-    vi.stubEnv('CATCUP_DATA_DIR', path.join(root, 'data'));
+    vi.stubEnv('CATCUP_DATA_DIR', fixturePath(root, 'data'));
     vi.stubEnv('CATCUP_LOG_LEVEL', 'silent');
     // The route is registered only in desktop mode, and desktop mode with no
     // password is an open session, so these requests need no cookie.

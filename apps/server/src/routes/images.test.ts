@@ -1,13 +1,12 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 
 import { DEFAULT_COMFY_WORKFLOW } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { requiresImageKey } from '../images/openaiCompatible.js';
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -55,9 +54,9 @@ async function configureImage(patch: Record<string, unknown>, key?: string) {
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-images-routes-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
+    root = await createProfileDataDir('catcup-images-routes-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
 
     stub = createServer((request, response) => {
         const chunks: Buffer[] = [];
@@ -393,10 +392,10 @@ describe('image generation routes', () => {
         });
         expect(request?.authorization).toBe(`Basic ${Buffer.from('image-secret').toString('base64')}`);
 
-        const saved = await readFile(path.join(root, 'user', 'images', 'Aria', image.file));
+        const saved = await readFile(fixturePath(root, 'user', 'images', 'Aria', image.file));
         expect(saved.equals(png)).toBe(true);
         const sidecar = JSON.parse(
-            await readFile(path.join(root, 'user', 'images', 'Aria', `${image.file}.json`), 'utf8'),
+            await readFile(fixturePath(root, 'user', 'images', 'Aria', `${image.file}.json`), 'utf8'),
         ) as Record<string, unknown>;
         expect(sidecar).toMatchObject({ prompt: 'best quality, a knight in a tavern', seed: 4242 });
     });
@@ -437,7 +436,7 @@ describe('image generation routes', () => {
         });
         expect(urlResponse.statusCode).toBe(200);
         const fetched = await readFile(
-            path.join(root, 'user', 'images', 'Aria', urlResponse.json().image.file as string),
+            fixturePath(root, 'user', 'images', 'Aria', urlResponse.json().image.file as string),
         );
         expect(fetched.equals(png)).toBe(true);
     });
@@ -503,10 +502,10 @@ describe('image generation routes', () => {
         expect(requests.filter((item) => item.path.startsWith('/history/')).length).toBeGreaterThanOrEqual(2);
         expect(requests.some((item) => item.path.startsWith('/view'))).toBe(true);
 
-        const saved = await readFile(path.join(root, 'user', 'images', 'Aria', image.file));
+        const saved = await readFile(fixturePath(root, 'user', 'images', 'Aria', image.file));
         expect(saved.equals(png)).toBe(true);
         const sidecar = JSON.parse(
-            await readFile(path.join(root, 'user', 'images', 'Aria', `${image.file}.json`), 'utf8'),
+            await readFile(fixturePath(root, 'user', 'images', 'Aria', `${image.file}.json`), 'utf8'),
         ) as Record<string, unknown>;
         expect(sidecar).toMatchObject({ backend: 'comfyui', model: 'sd/dream.safetensors', seed: 1234 });
     });

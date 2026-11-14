@@ -1,11 +1,9 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 import { strippedDraft } from './generate.js';
 
 let root: string;
@@ -51,7 +49,7 @@ async function generate(url: string, body: Record<string, unknown>): Promise<str
 
 /** Simulate the partial reply a stopped stream persists. */
 async function markLastStopped(chatId: string): Promise<void> {
-    const file = path.join(root, 'chats', 'Aria', `${chatId}.jsonl`);
+    const file = fixturePath(root, 'chats', 'Aria', `${chatId}.jsonl`);
     const lines = (await readFile(file, 'utf8')).trimEnd().split('\n');
     const header = lines[0];
     const messages = lines.slice(1).map((line) => JSON.parse(line) as Record<string, unknown>);
@@ -63,10 +61,10 @@ async function markLastStopped(chatId: string): Promise<void> {
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-generate-routes-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
-    await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
+    root = await createProfileDataDir('catcup-generate-routes-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
+    await writeFile(fixturePath(root, 'characters', 'Bram.json'), card('Bram'));
 
     stub = createServer((request, response) => {
         // Collect the body as it arrives. Waiting for the stream to end before

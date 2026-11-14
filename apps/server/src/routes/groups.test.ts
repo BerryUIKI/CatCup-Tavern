@@ -1,9 +1,8 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -22,13 +21,13 @@ async function call(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, pa
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-groups-routes-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
-    await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
-    await writeFile(path.join(root, 'characters', 'Cass.json'), card('Cass'));
+    root = await createProfileDataDir('catcup-groups-routes-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
+    await writeFile(fixturePath(root, 'characters', 'Bram.json'), card('Bram'));
+    await writeFile(fixturePath(root, 'characters', 'Cass.json'), card('Cass'));
     await writeFile(
-        path.join(root, 'characters', 'Dara.json'),
+        fixturePath(root, 'characters', 'Dara.json'),
         JSON.stringify({
             spec: 'chara_card_v2',
             spec_version: '2.0',
@@ -188,7 +187,7 @@ describe('group routes', () => {
             members: ['Aria', 'Bram'],
         });
         const groupId = created.json().group.id as string;
-        await rm(path.join(root, 'characters', 'Bram.json'));
+        await rm(fixturePath(root, 'characters', 'Bram.json'));
 
         const updated = await call('PATCH', `/api/groups/${groupId}`, {
             name: 'Still here',
@@ -199,7 +198,7 @@ describe('group routes', () => {
         expect(updated.json().group.members).toEqual(['Aria.json', 'Bram.json']);
 
         // Restore the card for the later tests.
-        await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
+        await writeFile(fixturePath(root, 'characters', 'Bram.json'), card('Bram'));
     });
 
     it('deletes a group and its chats', async () => {

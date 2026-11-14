@@ -28,7 +28,7 @@ import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerTtsRoutes } from './routes/tts.js';
 import { registerWorldRoutes } from './routes/worlds.js';
-import { ensureDataDirs } from './storage/paths.js';
+import { prepareDataFolder } from './storage/bootstrap.js';
 
 const PUBLIC_API_PATHS = new Set([
     '/api/health',
@@ -66,7 +66,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         bodyLimit: 25 * 1024 * 1024,
     });
 
-    await ensureDataDirs();
+    await prepareDataFolder();
 
     await app.register(cookie);
     await app.register(multipart, {
