@@ -253,14 +253,31 @@ Default `./data` at the repository root; check `CATCUP_DATA_DIR` if set. The ser
 Stop the server first. Then:
 
 - password/session reset: delete `data/auth.json`;
-- provider reset: delete `data/settings.json` and `data/secrets.json`;
+- provider reset: delete `data/providers.json` and `data/secrets.json`;
+- profile reset: delete `data/profiles/<id>/` after archiving that profile from Settings → Profiles;
 - full reset: back up and remove `data/` (deletes characters, chats and credentials).
 
 Never commit `data/`.
 
 **Backup and restore**
 
-Copy the entire `data/` directory while the server is stopped. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
+Copy the entire `data/` directory while the server is stopped. It holds every profile under `profiles/`, the shared provider list and keys, and the profile index; back it up whole rather than profile by profile. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
+
+**Upgrading from a single-profile install**
+
+The first start on a version with profiles moves the old tree into `data/profiles/default/` and rewrites `data/settings.json` as the profile index. Nothing is copied — the move is a rename — and the old settings file is kept as `data/settings.json.v1-backup`. Each step is written to `data/migration.log`.
+
+To see what will happen before it does, stop the server and run:
+
+```bash
+CATCUP_MIGRATE_DRY_RUN=1 pnpm start
+```
+
+The plan it prints is the plan the real start performs. If a migration fails partway, it moves everything back before the process exits, so the folder is unchanged and the error names the step.
+
+**A character or book went missing after upgrading**
+
+The library footer names the active profile. An install upgraded from a single-profile version opens `Default`, which is where the old tree went. If a different profile is active, switch back from the footer. Archived profiles are listed under Settings → Profiles → Archived and restored with one click.
 
 ## Logs and diagnostics
 
