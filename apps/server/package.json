@@ -28,7 +28,7 @@
         "zod": "^4.6.7"
     },
     "devDependencies": {
-        "@types/node": "^24.0.0",
+        "@types/node": "^26.6.6",
         "@types/png-chunk-text": "^1.0.3",
         "@types/png-chunks-extract": "^1.0.2",
         "@types/sanitize-filename": "^1.6.3",
