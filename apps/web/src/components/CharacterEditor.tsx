@@ -1,5 +1,5 @@
 import type { CharacterPatch } from '@catcup/shared';
-import { BookOpen, Download, Package, Plus, Save, Trash2 } from 'lucide-react';
+import { BookOpen, Download, ImagePlus, Package, Plus, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
@@ -13,6 +13,7 @@ import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
+import { PortraitDialog } from './PortraitDialog';
 import { Spinner } from './Spinner';
 
 interface Draft {
@@ -130,6 +131,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
     const pushToast = useAppStore((state) => state.pushToast);
     const settings = useSettings().data;
     const [draft, setDraft] = useState<Draft | null>(null);
+    const [portraitOpen, setPortraitOpen] = useState(false);
 
     // The model list comes from the active provider; a character can also keep
     // a model that provider no longer lists, so it stays selectable and marked.
@@ -239,6 +241,15 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                             <Download size={15} />
                             JSON
                         </a>
+                        <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => setPortraitOpen(true)}
+                            title="Draft a portrait prompt from this card and make the result its picture"
+                        >
+                            <ImagePlus size={15} />
+                            Portrait
+                        </button>
                         {character.format === 'png' ? (
                             <a className="btn-ghost" href={api.characters.exportUrl(character.id, 'png')} download>
                                 <Download size={15} />
@@ -458,6 +469,18 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                     </div>
                 </div>
             )}
+
+            {/*
+             * Rendered outside the card body so the portrait flow keeps its own
+             * focus trap and Escape target rather than nesting two modals.
+             */}
+            {portraitOpen && characterId ? (
+                <PortraitDialog
+                    characterId={characterId}
+                    characterName={character?.name ?? characterId}
+                    onClose={() => setPortraitOpen(false)}
+                />
+            ) : null}
         </Modal>
     );
 }

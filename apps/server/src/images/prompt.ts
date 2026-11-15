@@ -1,6 +1,7 @@
 import {
     type ChatMessage,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,
+    DEFAULT_PORTRAIT_PROMPT_TEMPLATE,
     type ImageGenerationSettings,
     type ProviderConfig,
 } from '@catcup/shared';
@@ -101,6 +102,89 @@ export async function draftImagePrompt(input: DraftImagePromptInput): Promise<st
     const cleaned = cleanImagePrompt(text);
     if (!cleaned) {
         throw new HttpError(502, 'The chat model returned no image prompt', 'IMAGE_PROMPT_FAILED');
+    }
+    return cleaned;
+}
+
+export interface DraftPortraitPromptInput {
+    settings: ImageGenerationSettings;
+    provider: ProviderConfig;
+    apiKey?: string;
+    card: { name: string; description: string; personality: string };
+    signal: AbortSignal;
+}
+
+/**
+ * A portrait request's messages.
+ *
+ * The card is the whole input. The description comes first because that is
+ * where appearance lives; the personality is included because it decides the
+ * expression and the pose, which is what makes two portraits of two characters
+ * from the same book look like different people rather than the same model in
+ * two coats.
+ *
+ * The name is sent as data, not as an instruction: a model that has heard of a
+ * name can otherwise draw the wrong character entirely.
+ */
+export function portraitMessages(input: DraftPortraitPromptInput): PromptMessage[] {
+    const description = input.card.description.trim();
+    const personality = input.card.personality.trim();
+
+    return [
+        {
+            role: 'system',
+            content: input.settings.portraitPromptTemplate.trim() || DEFAULT_PORTRAIT_PROMPT_TEMPLATE,
+        },
+        {
+            role: 'user',
+            content: [
+                '<character>',
+                `Name: ${input.card.name}`,
+                description ? `Description: ${description}` : '',
+                personality ? `Personality: ${personality}` : '',
+                '</character>',
+                '',
+                'Write only the image prompt for a portrait of this character.',
+            ]
+                .filter((line) => line !== '')
+                .join('\n'),
+        },
+    ];
+}
+
+/**
+ * Ask the active chat model for a portrait prompt built from a card.
+ *
+ * Nothing about a chat is involved, which is why this works for a character that
+ * has never been spoken to — a distilled card, or one just imported.
+ */
+export async function draftPortraitPrompt(input: DraftPortraitPromptInput): Promise<string> {
+    const adapter = getAdapter(input.provider);
+    let text = '';
+    try {
+        for await (const chunk of adapter.streamChat(input.provider, input.apiKey, {
+            model: input.provider.defaultModel,
+            messages: portraitMessages(input),
+            temperature: 1,
+            topP: 1,
+            maxTokens: 400,
+            signal: input.signal,
+        })) {
+            if (chunk.type === 'text') {
+                text += chunk.text;
+            }
+        }
+    } catch (error) {
+        throw new HttpError(
+            502,
+            `Could not draft a portrait prompt: ${error instanceof Error ? error.message : 'chat provider failed'}`,
+            'IMAGE_PROMPT_FAILED',
+        );
+    }
+
+    const cleaned = cleanImagePrompt(text);
+    if (!cleaned) {
+        throw new HttpError(502, 'The chat model returned no portrait prompt', 'IMAGE_PROMPT_FAILED');
     }
     return cleaned;
 }

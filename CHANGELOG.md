@@ -8,6 +8,18 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 - Interface copy names what the app does rather than the client its formats came from. The import entry is now **Import from another app**, its dialog asks for a data folder, and its error, the About tab, the Settings, Memory, Quick Replies and Regex hints, the empty group editor, the Quick Replies format check and the `index.html` / `package.json` descriptions no longer name SillyTavern. Attribution stays where it must: `NOTICE`, `docs/REUSE.md`, the per-file `Derived from` headers and the compatibility pages are unchanged, and the data-format and API pages still describe the formats in the ecosystem's terms.
 
+### Added
+
+- **The distillation pipeline can leave the app.** **Distil somewhere else → Skill** in the book dialog — and `GET /api/distill/skill` — downloads a Claude Skill as a ZIP: the four stages, every prompt verbatim, the JSON Schema for the analysis reply and the draft rows, and a description of SillyTavern's world info and Character Card V2 shapes. It is prompt-only and generated from the same constants a run sends, so a prompt edit changes both the server and the export; a test fails if a bundle ever carries a prompt the runtime no longer uses. It needs no provider, model or uploaded book, and carries no book text, key or secret.
+- **Play as this character.** A button in the character library copies a card into a persona — `description`, `personality`, `scenario` and example messages — so you can speak as someone from your cast instead of retyping them. The card's opening line is deliberately left behind: that is the assistant's line, and a persona carrying it makes the model greet itself. The persona is a copy, so editing it never touches the card.
+- **A persona can carry a card's voice.** `personality`, `scenario` and `mesExample` join `name` and `description` as optional fields. In the prompt the first three are joined into the one persona slot as labelled paragraphs, and the examples are parsed as **your** turns — never the assistant's. All three default to absent, so an existing `settings.json` produces exactly the prompt it always did, and the persona editor shows them behind a disclosure.
+- **Generate a portrait from a card.** **Portrait** in the character editor drafts an image prompt from the card's description and personality — no chat involved, so it works for a card that has never been spoken to — and **Use as portrait** makes the result the character's picture. A PNG card is rewritten with the same data embedded; a JSON card becomes a PNG card, because a card's picture and its data are one file. The previous picture is not kept, and the confirmation says so. The instruction is editable as **Portrait instruction** in Settings → Images.
+- **Drafting an image prompt no longer needs an image backend.** Drafting is a chat-model call, so **Draft from chat** and **Draft from card** work with image generation disabled, and a **Copy** button puts the prompt wherever you want it. Only generating and setting a portrait need a backend.
+
+### Fixed
+
+- A portrait has to be a PNG, and the API says so (`IMAGE_PORTRAIT_FORMAT`) rather than accepting a JPEG or WebP that cannot hold the card data.
+
 ## 0.3.1 — 2026-11-15
 
 ### Added

@@ -18,6 +18,7 @@ import type {
     DistilledBook,
     DistillRun,
     DraftImagePromptRequest,
+    DraftPortraitPromptRequest,
     ExistingInstallPlan,
     ExistingInstallResult,
     GeneratedImage,
@@ -164,10 +165,23 @@ export const api = {
             method: 'POST',
         }),
     personas: {
-        create: (persona: Pick<Persona, 'name' | 'description'>, scope: ItemScope) =>
+        create: (persona: Omit<Persona, 'id'>, scope: ItemScope) =>
             request<{ persona: PersonaView }>('/personas', {
                 method: 'POST',
                 body: JSON.stringify({ ...persona, scope }),
+            }),
+        /**
+         * Make a persona out of a character card, so the card can be *played*
+         * rather than talked to.
+         *
+         * The server decides which card fields travel — a persona carries the
+         * card's description, personality, scenario and examples, never its
+         * opening line, which belongs to the assistant.
+         */
+        fromCard: (characterId: string, scope: ItemScope) =>
+            request<{ persona: PersonaView; card: string }>('/personas/from-card', {
+                method: 'POST',
+                body: JSON.stringify({ characterId, scope }),
             }),
         update: (id: string, patch: Partial<Omit<Persona, 'id'>>) =>
             request<{ persona: PersonaView }>(`/personas/${encodeURIComponent(id)}`, {
@@ -335,6 +349,14 @@ export const api = {
             discard: (id: string) =>
                 request<{ ok: true }>(`/distill/runs/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         },
+        /**
+         * The pipeline as a portable Claude Skill.
+         *
+         * A plain link rather than a fetch: the browser downloads the ZIP, and
+         * the export needs no provider, model or uploaded book, so there is
+         * nothing to wait for.
+         */
+        skillUrl: () => '/api/distill/skill',
     },
     auth: {
         status: () => request<AuthStatus>('/auth/status'),
@@ -709,6 +731,22 @@ export const api = {
                 body: JSON.stringify(input),
             });
             return data.prompt;
+        },
+        /** A portrait prompt built from a character card, with no chat involved. */
+        draftPortrait: async (input: DraftPortraitPromptRequest) => {
+            const data = await request<{ prompt: string }>('/images/draft-portrait', {
+                method: 'POST',
+                body: JSON.stringify(input),
+            });
+            return data.prompt;
+        },
+        /** Promote one gallery image to the card's picture. */
+        portrait: async (characterId: string, file: string) => {
+            const data = await request<{ character: CharacterDetail }>('/images/portrait', {
+                method: 'POST',
+                body: JSON.stringify({ characterId, file }),
+            });
+            return data.character;
         },
         generate: async (input: GenerateImageRequest) => {
             const data = await request<{ image: GeneratedImage }>('/images/generate', {

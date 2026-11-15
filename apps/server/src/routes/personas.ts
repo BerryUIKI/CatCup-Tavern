@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { type PersonaView, personaEntrySchema } from '@catcup/shared';
+import { type PersonaView, personaEntrySchema, personaFromCard } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
+import { getCharacter } from '../storage/characters.js';
 import { addSharedPersona, deleteSharedPersona, listSharedPersonas, updateSharedPersona } from '../storage/personas.js';
 import { getSettings, getSettingsResponse, profilePersonas, updateSettings } from '../storage/settings.js';
 
@@ -13,7 +14,24 @@ const idParams = z.object({ id: z.string().min(1).max(200) });
 const createSchema = z.object({
     name: z.string().trim().min(1).max(80),
     description: z.string().max(10_000).default(''),
+    /** The card's voice, when the persona was made from one. */
+    personality: z.string().max(10_000).optional(),
+    scenario: z.string().max(10_000).optional(),
+    mesExample: z.string().max(20_000).optional(),
     /** `shared` creates the persona reusable in every profile. */
+    scope: z.enum(['profile', 'shared']).default('profile'),
+});
+
+/**
+ * Build a persona from a character card.
+ *
+ * The route exists so the library can offer "play as this character" without the
+ * client reshaping the card itself: which fields travel from a card to a persona
+ * is a product decision, and it belongs where the rest of the persona rules are.
+ */
+const fromCardSchema = z.object({
+    characterId: z.string().trim().min(1).max(200),
+    /** `shared` writes the persona into `shared/personas.json`. */
     scope: z.enum(['profile', 'shared']).default('profile'),
 });
 
@@ -40,17 +58,49 @@ export async function registerPersonaRoutes(app: FastifyInstance): Promise<void>
     }
 
     app.post('/api/personas', async (request, reply) => {
-        const body = createSchema.parse(request.body ?? {});
+        const { scope, ...draft } = createSchema.parse(request.body ?? {});
         reply.code(201);
 
-        if (body.scope === 'shared') {
-            return { persona: await addSharedPersona(body.name, body.description) };
+        if (scope === 'shared') {
+            return { persona: await addSharedPersona(draft) };
         }
 
-        const persona = { id: randomUUID(), name: body.name, description: body.description };
+        const persona = { id: randomUUID(), ...draft };
         const settings = await getSettings();
         await updateSettings({ personas: [...(await profilePersonas(settings)), persona] });
         return { persona: { ...persona, scope: 'profile' } satisfies PersonaView };
+    });
+
+    /**
+     * Create a persona from a character card, so the person can play that
+     * character rather than talk to them.
+     *
+     * A card the library can see is enough: `getCharacter` resolves profile-first
+     * and then shared, so this works for a distilled cast member in either scope.
+     * The persona is a *copy* — editing it later never touches the card, which is
+     * what makes "play as" safe to offer on a card someone else's chats use.
+     */
+    app.post('/api/personas/from-card', async (request, reply) => {
+        const body = fromCardSchema.parse(request.body ?? {});
+        const character = await getCharacter(body.characterId);
+        if (!character) {
+            throw notFound('Character not found');
+        }
+
+        const draft = personaFromCard(character.card);
+        reply.code(201);
+
+        if (body.scope === 'shared') {
+            return { persona: await addSharedPersona(draft), card: character.name };
+        }
+
+        const persona = { id: randomUUID(), ...draft };
+        const settings = await getSettings();
+        await updateSettings({ personas: [...(await profilePersonas(settings)), persona] });
+        return {
+            persona: { ...persona, scope: 'profile' } satisfies PersonaView,
+            card: character.name,
+        };
     });
 
     app.patch('/api/personas/:id', async (request) => {

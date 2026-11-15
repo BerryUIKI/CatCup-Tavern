@@ -4,6 +4,7 @@ import { getAdapter } from '../providers/index.js';
 import type { PromptMessage } from '../providers/types.js';
 import { extractJson } from './analyze.js';
 import type { Cluster } from './merge.js';
+import { characterOutlineMessages, placeOutlineMessages } from './prompts.js';
 
 /**
  * Turn merged entities into drafts.
@@ -42,77 +43,24 @@ function evidenceOf(cluster: Cluster): string {
 }
 
 function characterPrompt(cluster: Cluster): PromptMessage[] {
-    return [
-        {
-            role: 'system',
-            content: [
-                'You write character cards from a work of fiction.',
-                'Reply with a single JSON object and nothing else, with these keys:',
-                '{"name": string, "description": string, "personality": string, "scenario": string,',
-                ' "first_mes": string, "mes_example": string, "tags": string[]}',
-                '',
-                'Rules:',
-                '- Write in the present tense, addressed to a role-playing model that will play this character.',
-                '- "description" is who they are: role, appearance, history, what they want.',
-                '- "personality" is how they behave and speak.',
-                '- "scenario" is where a conversation with them starts.',
-                '- "first_mes" is one line of dialogue and action that opens a scene, in character.',
-                '- "mes_example" is one exchange in the format "{{user}}: ...\\n{{char}}: ...".',
-                '- Use only what the evidence supports. Where the book is silent, write what is consistent with it.',
-            ].join('\n'),
-        },
-        {
-            role: 'user',
-            content: [
-                `Character: ${cluster.name}`,
-                cluster.aliases.length > 0 ? `Also known as: ${cluster.aliases.join(', ')}` : '',
-                cluster.description ? `What the text says: ${cluster.description}` : '',
-                cluster.facts.length > 0 ? `Facts:\n${cluster.facts.map((fact) => `- ${fact}`).join('\n')}` : '',
-                '',
-                'Evidence:',
-                evidenceOf(cluster),
-                '',
-                'Reply with only the JSON object.',
-            ]
-                .filter(Boolean)
-                .join('\n'),
-        },
-    ];
+    return characterOutlineMessages({
+        name: cluster.name,
+        aliases: cluster.aliases.length > 0 ? `Also known as: ${cluster.aliases.join(', ')}` : '',
+        description: cluster.description ? `What the text says: ${cluster.description}` : '',
+        facts: cluster.facts.length > 0 ? `Facts:\n${cluster.facts.map((fact) => `- ${fact}`).join('\n')}` : '',
+        evidence: evidenceOf(cluster),
+    });
 }
 
 function placePrompt(cluster: Cluster): PromptMessage[] {
-    return [
-        {
-            role: 'system',
-            content: [
-                'You write lorebook entries from a work of fiction.',
-                'Reply with a single JSON object and nothing else, with these keys:',
-                '{"comment": string, "content": string, "keys": string[]}',
-                '',
-                'Rules:',
-                '- "comment" is a short title, a few words.',
-                '- "content" is self-contained prose: someone reading it never saw the book.',
-                '- "keys" are the words someone would type in play to bring this up, lowest-case.',
-                '- Use only what the evidence supports. Do not invent.',
-            ].join('\n'),
-        },
-        {
-            role: 'user',
-            content: [
-                `${cluster.kind === 'place' ? 'Place' : 'Subject'}: ${cluster.name}`,
-                cluster.aliases.length > 0 ? `Also known as: ${cluster.aliases.join(', ')}` : '',
-                cluster.description ? `What the text says: ${cluster.description}` : '',
-                cluster.facts.length > 0 ? `Facts:\n${cluster.facts.map((fact) => `- ${fact}`).join('\n')}` : '',
-                '',
-                'Evidence:',
-                evidenceOf(cluster),
-                '',
-                'Reply with only the JSON object.',
-            ]
-                .filter(Boolean)
-                .join('\n'),
-        },
-    ];
+    return placeOutlineMessages({
+        kind: cluster.kind === 'place' ? 'Place' : 'Subject',
+        name: cluster.name,
+        aliases: cluster.aliases.length > 0 ? `Also known as: ${cluster.aliases.join(', ')}` : '',
+        description: cluster.description ? `What the text says: ${cluster.description}` : '',
+        facts: cluster.facts.length > 0 ? `Facts:\n${cluster.facts.map((fact) => `- ${fact}`).join('\n')}` : '',
+        evidence: evidenceOf(cluster),
+    });
 }
 
 /** Drain one request into text. The adapters only stream. */

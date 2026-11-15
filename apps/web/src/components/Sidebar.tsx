@@ -16,6 +16,8 @@ interface SidebarProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
+    /** Create a persona from a card, so it can be played rather than talked to. */
+    onPlayAsCharacter: (character: CharacterSummary) => void;
     onToggleFavorite: (character: CharacterSummary) => void;
     onBulkFavorite: (ids: string[], favorite: boolean) => void;
     onBulkTag: (ids: string[], mode: 'add' | 'remove', tag: string) => void;
@@ -61,6 +63,7 @@ export function Sidebar({
     selectedCharacterId,
     onSelect,
     onEditCharacter,
+    onPlayAsCharacter,
     onToggleFavorite,
     onBulkFavorite,
     onBulkTag,
@@ -241,6 +244,7 @@ export function Sidebar({
                         selectedCharacterId={selectedCharacterId}
                         onSelect={onSelect}
                         onEdit={onEditCharacter}
+                        onPlayAs={onPlayAsCharacter}
                         onToggleFavorite={onToggleFavorite}
                         onBulkFavorite={onBulkFavorite}
                         onBulkTag={onBulkTag}
