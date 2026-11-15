@@ -4,6 +4,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Added
+
+- A checked-in Claude Code skill, `novel-to-catcup`, that turns a novel or any long text into a pack CatCup imports as-is: one V2 character card per character, one ST-shaped world info book, persona text for a character the user wants to play, and portrait prompts for every card. It carries a pack validator and an offline PNG card writer that stamps `chara`/`ccv3` metadata into a chosen portrait, plus a script that compares its output with the server's own writer. This is the static, script-backed variant for people working in a checkout; it is distinct from the generated, prompt-only export served at `GET /api/distill/skill`, which carries no scripts. See `docs/DEVELOPMENT.md#skills`.
+
 ### Changed
 
 - Interface copy names what the app does rather than the client its formats came from. The import entry is now **Import from another app**, its dialog asks for a data folder, and its error, the About tab, the Settings, Memory, Quick Replies and Regex hints, the empty group editor, the Quick Replies format check and the `index.html` / `package.json` descriptions no longer name SillyTavern. Attribution stays where it must: `NOTICE`, `docs/REUSE.md`, the per-file `Derived from` headers and the compatibility pages are unchanged, and the data-format and API pages still describe the formats in the ecosystem's terms.
