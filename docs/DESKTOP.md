@@ -8,6 +8,18 @@ The desktop build is a Tauri 2 window around the same Fastify server and React S
 
 The server owns authentication, storage and the SSE stream. Running it as a process keeps one code path for the web, LAN and desktop shapes, and means a crash in one does not take the other down. Embedding it would require a Tauri-specific transport and a second way to serve the SPA.
 
+```mermaid
+sequenceDiagram
+    participant T as Tauri shell
+    participant S as Node sidecar
+    participant W as Webview
+    T->>S: spawn with HOST=127.0.0.1, PORT=0, app-data dir
+    S-->>T: CATCUP_READY &lt;port&gt;
+    T->>W: open http://127.0.0.1:&lt;port&gt;
+    Note over T,S: child runs in a job object with KILL_ON_JOB_CLOSE
+    T->>S: kill and reap on exit
+```
+
 ## What ships
 
 | Part                    | Where it comes from                                       | Size   |
@@ -29,20 +41,22 @@ The server is bundled into a single file so there is no `node_modules` to instal
 
 Four things had to change to make the packaged layout behave like the development one:
 
-- **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim.
+- **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim, and also defines `__filename` and `__dirname` from `import.meta.url`. Without them `write-file-atomic` — which every settings and data write goes through — throws `ReferenceError: __filename is not defined` and the write fails, so the packaged app could not save a single setting.
 - **Pretty logs only on a terminal.** The packaged server's stdout is piped into the shell, so `pino-pretty` — which is not installed there — is skipped whenever stdout is not a TTY.
 - **Verbatim paths.** Tauri hands back resource paths with the `\\?\` prefix on Windows, and Node cannot resolve a main module given that prefix; the shell strips it before spawning.
+- **The sidecar is named `catcup-node`, not `node`.** On Windows either name works, but a deb or rpm install puts external binaries in `/usr/bin`, where a binary called `node` would replace the distribution's nodejs package. The shell looks for `catcup-node` next to its own executable and falls back to `CATCUP_NODE` or whatever `node` is on `PATH`.
+- **The sidecar name carries the target triple.** `scripts/fetch-node.mjs` derives it from the running Node (`TAURI_ENV_TARGET_TRIPLE` is only set for `beforeBuildCommand` hooks, and this project has none), so a macOS or Linux build does not quietly ship a Windows executable.
 - **The SPA ships beside the server.** The server serves `../../web/dist` relative to its own `dist`, so the bundle keeps that shape and the desktop build needs `pnpm --filter @catcup/web build` as well.
 
 ## Readiness contract
 
 The shell starts the server with:
 
-| Variable          | Value            | Why                                                  |
-| ----------------- | ---------------- | ---------------------------------------------------- |
-| `CATCUP_HOST`     | `127.0.0.1`      | The desktop app is loopback-only; it has no LAN mode |
-| `CATCUP_PORT`     | `0`              | The OS picks a free port                             |
-| `CATCUP_DATA_DIR` | the app data dir | Keeps desktop data out of the install directory      |
+| Variable          | Value                             | Why                                                  |
+| ----------------- | --------------------------------- | ---------------------------------------------------- |
+| `CATCUP_HOST`     | `127.0.0.1`                       | The desktop app is loopback-only; it has no LAN mode |
+| `CATCUP_PORT`     | `0`                               | The OS picks a free port                             |
+| `CATCUP_DATA_DIR` | the app data dir, or the override | Keeps desktop data out of the install directory      |
 
 Once listening, the server writes exactly one line to stdout:
 
@@ -54,21 +68,91 @@ The shell reads stdout until that line, with a 30 second timeout, then opens `ht
 
 `CATCUP_PORT=0` is deliberate. Probing for a free port and then binding to it leaves a window where another process takes it; asking the OS to pick removes the race.
 
+## Data directory
+
+The desktop app keeps its data in the OS app-data directory — `%APPDATA%\dev.catcup.tavern` on Windows — which is separate from the web build's `data/`. That is deliberate: an installer that wrote into its own install folder would lose data on upgrade, and a shared folder would let two servers write the same chat files.
+
+Setting `CATCUP_DATA_DIR` before launch overrides that. The shell passes it straight to the server, so pointing it at the web build's `data/` folder opens the desktop app on the same characters, chats, world info and presets, without copying anything:
+
+```bash
+CATCUP_DATA_DIR="F:/dev/CatCup-Tavern/data" catcup-tavern.exe
+```
+
+Two things to know before doing that:
+
+- **Only one shape at a time.** The per-file locks in storage are in-process mutexes, not OS file locks, and nothing locks the folder itself. Two servers pointed at the same folder would overwrite each other, so stop the web server first.
+- **The password travels with the folder.** If `auth.json` exists, the desktop app asks for that password like any other install; only a folder with no `auth.json` opens straight into the app.
+
+Pointing at a copy is the safer way to try a migration: copy `data/`, point the app at the copy, and keep the original untouched until the desktop build has been used for a while.
+
 ## Lifecycle
 
-- **Normal exit.** Closing the last window ends the event loop; on `RunEvent::Exit` the shell kills and reaps the child.
+- **Closing the window.** The close button hides the window to the notification area. The shell, the server and any generation in flight keep running: `WindowEvent::CloseRequested` calls `prevent_close()` and hides the window instead of letting it close. **Quit** on the tray menu is the only way to exit.
+- **Normal exit.** **Quit** calls `app.exit(0)`, which ends the event loop without raising a close request; on `RunEvent::Exit` the shell kills and reaps the child.
 - **Crash.** The child is placed in a Windows job object with `KILL_ON_JOB_CLOSE`, so killing the shell — Task Manager included — takes the server with it. If the process is already in a job that forbids nesting, the assignment is skipped and the normal exit path still applies.
-- **Second launch.** The single-instance plugin focuses the existing window instead of starting a second server against the same data directory.
+- **Second launch.** The single-instance plugin shows and focuses the existing window instead of starting a second server against the same data directory, and it works while the window is hidden — `set_focus` alone would do nothing to a hidden window.
+- **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: quitting from the tray while the window is hidden must not start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
+- **Tray icon.** An icon sits in the notification area from startup. Its menu has **Open CatCup Tavern** and **Quit**; left-clicking the icon opens the window and focuses it, and right-clicking opens the menu. This is the only way back once the window is hidden, which is why the left click is wired to open rather than to the menu.
+
+## Opening a card file
+
+The installer registers `.catcup` as a CatCup file type, so double-clicking one — or **Open with** from Explorer — starts the app with that file's path as its argument. Windows hands it over as `"<install dir>\catcup-desktop.exe" "C:\…\card.catcup"`.
+
+The path is taken literally. It is **not** run through the URL parser first: `C:\cards\mira.catcup` parses as a URL whose scheme is `c`, and converting that back to a path fails, so every drive-letter argument would be dropped and nothing would open. Only a `file://` argument — which macOS and Linux deliver — goes through the parser, so porting the shell does not quietly lose those. Arguments are accepted only when the file exists and has an extension the server imports: `.png`, `.json`, `.charx` or `.catcup`.
+
+The shell does not import the file itself. The path waits until the webview reports that the page has finished loading, then the shell evaluates a small script in the page that posts it to `POST /api/characters/import-path` and reloads, so the library shows the new card. The import is a **copy**: the original file is left where it is, and so is any later editing of the card.
+
+A second launch never starts a second server. The single-instance plugin forwards its arguments to the running app, which imports the card and brings its window to the front — including when the window was hidden in the tray. A card opened while the page is still loading waits in the same queue as one opened at startup.
+
+**Only `.catcup` is registered.** `.png` and `.json` are accepted on import, but claiming either in the installer would make CatCup the default handler for every image and every JSON file on the machine; `.charx` is RisuAI's format, so CatCup opens it but does not claim it.
 
 ## Still open
 
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
-- **Signing and the auto-updater.** Both need certificates and a hosting story that a demo does not have; until they land, an upgrade is a manual download of the new installer.
-- **Tray icon and window state.** The window is a single webview that closes the app; there is no tray icon, and the window's size and position are not remembered between launches.
-- **The access password.** A fresh install opens the setup screen, and later launches the login screen, exactly as the web build does. Making the desktop build open without a password is tracked in issue #43.
-- **macOS and Linux.** Only Windows is packaged. The Rust code is portable apart from the job object, which is behind `#[cfg(windows)]`.
+- **Code signing is deferred.** The installer has no Authenticode certificate, so SmartScreen warns once on the first run of a downloaded installer; the user clicks through it. This does not hold anything back: the update archive is signed with CatCup's own key and verified before it installs, and an update downloaded by the app never carries the browser's download mark, so SmartScreen does not appear on updates at all. Signing buys a publisher name in that one warning — not the ability to run.
+- **The access password is optional here.** The shell sets `CATCUP_DESKTOP=1`, so a fresh install opens straight into the app and never shows a setup screen. A password set from About → Access password brings the login screen back, and removing it returns to open mode. Web and LAN installs are unchanged. The server refuses to start in this mode with a non-loopback host, so an unauthenticated desktop API cannot reach the LAN.
+- **macOS and Linux.** The shell builds and packages on both: `tauri.macos.conf.json` produces `.app` and `.dmg`, `tauri.linux.conf.json` produces `.deb` and `.AppImage`, and CI compiles all three platforms on every pull request. But only Windows is released. An unsigned macOS build is refused by Gatekeeper on any machine that did not build it, and neither platform has been run — the CI job proves it compiles, not that the app works there.
+
+## Tray icon
+
+The icon is built in `install_tray` from the window icon declared in `tauri.conf.json`. Tauri keeps it alive in its resource table, so the shell does not have to store the handle. The menu is a `Menu` with **Open CatCup Tavern**, **Check for Updates…** and **Quit**, separated from **Quit** by a separator; **Quit** calls `app.exit(0)`, which skips the close handler and still runs the exit path that kills the sidecar.
+
+The icon needs the `tray-icon` feature on the `tauri` crate. Left-click handling is enabled by turning `show_menu_on_left_click` off, which is the opposite of the Windows default; with the default, Windows fires the click event _and_ pops the menu over the window it just opened.
+
+The tray is not optional, and `install_tray` failing aborts startup. With close-to-tray, a build that hid its only window and had no icon to bring it back would be unrecoverable — and a release build has no console to fall back on (`windows_subsystem = "windows"`).
+
+## Updates
+
+The shell carries `tauri-plugin-updater`. **Check for Updates…** in the tray menu asks the configured endpoint for a newer release; if there is one, the archive is downloaded, the server is stopped, and the installer replaces the app and starts it again. The check runs on a background thread so the menu stays usable, and its result — installed, up to date, or failed — appears in a native message box, because a release build has no console.
+
+| Piece              | Where                                                                                           |
+| ------------------ | ----------------------------------------------------------------------------------------------- |
+| Update endpoint    | `plugins.updater.endpoints` in `tauri.conf.json` — `…/releases/latest/download/latest.json`     |
+| Signing public key | `plugins.updater.pubkey`, generated with `tauri signer generate`                                |
+| Installer UI       | `plugins.updater.windows.installMode` — `passive`, so progress shows but no questions are asked |
+
+Both the endpoint and the key are mandatory: the plugin panics at startup rather than silently disabling updates when either is missing or malformed, so a broken config fails immediately instead of shipping an app that can never update.
+
+The server is stopped before the installer runs, because the Node runtime, the server bundle and the SPA all live inside the install directory and cannot be replaced while the server holds them open. That is why `download` and `install` are called separately instead of `download_and_install`, which gives no point to intervene between the two.
+
+### Releasing an update
+
+`createUpdaterArtifacts` is deliberately **not** in `tauri.conf.json` — the release workflow enables it for the build:
+
+```bash
+pnpm --filter @catcup/desktop exec tauri build --config '{"bundle":{"createUpdaterArtifacts":true}}'
+```
+
+Keeping it out of the checked-in config means a local `tauri build` still works without the signing key. The key lives in repository secrets:
+
+- `TAURI_SIGNING_PRIVATE_KEY` — the contents of the key file from `tauri signer generate`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — only when the key was generated with a password
+
+Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the run uploads the installer, the `.nsis.zip` archive, its `.sig`, and a `latest.json` manifest naming the archive by URL and carrying the signature. `releases/latest/download/latest.json` then resolves that manifest for every installed app.
+
+Losing the private key means every installed app has to be updated by hand once: the public key pinned in `tauri.conf.json` no longer matches anything the workflow can sign.
 
 ## Layout
 
@@ -88,6 +172,21 @@ pnpm --filter @catcup/desktop build                        # prepares, then taur
 ```
 
 The installer lands in `apps/desktop/src-tauri/target/release/bundle/nsis/`.
+
+The same three commands build the other platforms, because `fetch-node.mjs` picks the target triple from the running Node and the per-platform config files pick the bundle targets:
+
+| Host    | Config                  | Artifacts                                                      |
+| ------- | ----------------------- | -------------------------------------------------------------- |
+| Windows | `tauri.conf.json`       | NSIS installer in `bundle/nsis/`                               |
+| macOS   | `tauri.macos.conf.json` | `.app` and `.dmg` in `bundle/macos/` and `bundle/dmg/`         |
+| Linux   | `tauri.linux.conf.json` | `.deb` and `.AppImage` in `bundle/deb/` and `bundle/appimage/` |
+
+Linux needs the Tauri prerequisites installed first — the CI job installs exactly these:
+
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+    librsvg2-dev libxdo-dev patchelf
+```
 
 GitHub Actions runs the same three steps on `windows-latest` when a merge into `main` carries an untagged version, or when a `v*` tag is pushed, and attaches the installer to the GitHub release; see [DEVELOPMENT.md](DEVELOPMENT.md#continuous-integration). The local commands above are for iterating on the shell.
 

@@ -43,6 +43,18 @@ export const personaEntrySchema = personaSchema.extend({
 });
 export type Persona = z.infer<typeof personaEntrySchema>;
 
+/**
+ * A persona as a library row sees it.
+ *
+ * `scope` says which file holds it: this profile's `settings.json` or
+ * `data/shared/personas.json`. `shadowed` marks a profile persona that hides a
+ * shared one of the same id.
+ */
+export interface PersonaView extends Persona {
+    scope: 'profile' | 'shared';
+    shadowed?: boolean;
+}
+
 export const DEFAULT_PERSONA: PersonaSettings = {
     name: 'You',
     description: '',
@@ -203,11 +215,24 @@ export type MemorySettingsPatch = z.infer<typeof memorySettingsPatchSchema>;
 export const appSettingsSchema = z.object({
     version: z.literal(1).default(1),
     activeProviderId: z.string().nullable().default(null),
+    /**
+     * A model this profile prefers, when the active provider serves it. Sits
+     * between the character's own choice and the provider default; empty means
+     * no preference.
+     */
+    profilePreferredModel: z.string().max(200).default(''),
     providers: z.array(providerConfigSchema).default([]),
     /** Active ST OpenAI preset id under `data/presets`, or `null`. */
     activePresetId: z.string().nullable().default(null),
     generation: generationSettingsSchema.default(DEFAULT_GENERATION_SETTINGS),
-    /** The personas a user can switch between. Empty only before migration. */
+    /**
+     * The personas a user can switch between. Empty only before migration.
+     *
+     * This is what a profile's file stores: its own personas, no scope. The
+     * in-memory settings that `getSettings()` hands back carries
+     * `AppSettingsWithPersonaScopes` instead — the same list with the shared
+     * personas merged in and each entry stamped with the scope it came from.
+     */
     personas: z.array(personaEntrySchema).default([]),
     /** Default persona for chats that do not pin one. */
     activePersonaId: z.string().nullable().default(null),
@@ -221,8 +246,14 @@ export const appSettingsSchema = z.object({
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
-export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
+export interface SettingsResponse extends Omit<AppSettings, 'providers' | 'personas'> {
     providers: ProviderPublic[];
+    /**
+     * Every persona this profile can use — its own list merged with the shared
+     * one — each carrying the scope it came from, so the editor can say which
+     * file an edit belongs to.
+     */
+    personas: PersonaView[];
     /** Whether a TTS API key is stored; the key itself never leaves the server. */
     ttsHasKey: boolean;
     /** Whether an image generation API key is stored; the key never leaves the server. */
@@ -231,6 +262,7 @@ export interface SettingsResponse extends Omit<AppSettings, 'providers'> {
 
 export const settingsPatchSchema = z.object({
     activeProviderId: z.string().nullable().optional(),
+    profilePreferredModel: z.string().max(200).optional(),
     activePresetId: z.string().nullable().optional(),
     generation: generationSettingsSchema.partial().optional(),
     personas: z.array(personaEntrySchema).optional(),

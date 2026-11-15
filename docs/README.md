@@ -9,8 +9,8 @@ This directory is the project handbook. Start with the path that matches your ro
 - **0.2.0 released** (2026-11-11): regex scripts, card editing/export, multiple personas, SillyTavern data import, Windows desktop app.
 - **0.2.1 released** (2026-11-11): macros in stored messages, card lorebook import, greeting switching, CI on every pull request.
 - **0.3.0 released** (2026-11-13): group chats, summary memory, the Quick Replies subset, text to speech, image generation, CharX import/export, and the library's favorites, tags, sorting and bulk actions.
-- **M2 in progress** (2026-11-11 — 2026-11-12): group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end. Not yet released as a version.
-- **UX overhaul in progress** (2026-11-12): the design system, the settings shell and the Providers panel were rebuilt; the chat chrome, message experience, editors and the accessibility audit follow.
+- **0.3.1 released** (2026-11-15): profiles as data scopes with an opt-in per-item shared layer, one provider serving several models with a per-character and per-profile model choice, group generation handling modes, and book distillation — a `.txt`/`.md`/`.epub` becomes a world info book and, with a model, character-card drafts.
+- **UX overhaul in progress** (2026-11-12 — 2026-11-13): the design system, the settings shell and the Providers panel were rebuilt, then the chat headers were reduced to identity, chat switching, provider state and one Tools menu; the message experience, editors and the accessibility audit follow.
 - See [MILESTONES.md](MILESTONES.md) for the authoritative scope and acceptance criteria.
 
 ## Start here
@@ -18,6 +18,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | If you want to…                                   | Read                                       |
 | ------------------------------------------------- | ------------------------------------------ |
 | Understand where the project is going             | [MILESTONES.md](MILESTONES.md)             |
+| Read a proposal for a large feature               | [RFC/](RFC/README.md)                      |
 | Understand how the system is put together         | [ARCHITECTURE.md](ARCHITECTURE.md)         |
 | Build or change the interface                     | [DESIGN.md](DESIGN.md)                     |
 | Set up a development environment                  | [DEVELOPMENT.md](DEVELOPMENT.md)           |
@@ -35,15 +36,31 @@ This directory is the project handbook. Start with the path that matches your ro
 | See what changed                                  | [../CHANGELOG.md](../CHANGELOG.md)         |
 | Contribute a change                               | [../CONTRIBUTING.md](../CONTRIBUTING.md)   |
 
+## Reading paths
+
+```mermaid
+flowchart LR
+    Start([Where do you start?]) --> P1[Use CatCup]
+    Start --> P2[Contribute]
+    Start --> P3[Deploy and operate]
+
+    P1 --> LIM[LIMITATIONS - what works today] --> MIL[MILESTONES - what comes next]
+    P2 --> ARCH[ARCHITECTURE - how it fits together]
+    ARCH --> API[API] & DF[DATA-FORMATS] & PROV[PROVIDERS] & DES[DESIGN]
+    P3 --> DEP[DEPLOYMENT - web and LAN] --> SEC[SECURITY]
+    DEP --> DESK[DESKTOP]
+```
+
 ## Documentation map
 
 | Document                                   | Purpose                                                                           |
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | [MILESTONES.md](MILESTONES.md)             | Scope, sequencing, acceptance criteria and current status                         |
+| [RFC/](RFC/README.md)                      | Proposals for large features, with the open questions still awaiting an answer    |
 | [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers              |
 | [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility   |
 | [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes             |
-| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible character cards, chat JSONL, world info, presets and internal files |
+| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible cards, chats, groups, world info, presets, regex and internal files |
 | [PROVIDERS.md](PROVIDERS.md)               | Provider kinds, endpoint mapping, streaming normalization and adapter guide       |
 | [LIMITATIONS.md](LIMITATIONS.md)           | User-facing: what this release does and does not do                               |
 | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) | Feature-by-feature compatibility matrix and known deviations                      |
@@ -55,7 +72,7 @@ This directory is the project handbook. Start with the path that matches your ro
 | [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                |
 | [REUSE.md](REUSE.md)                       | Licensing and code reuse assessment                                               |
 | [../CHANGELOG.md](../CHANGELOG.md)         | Release history and unreleased changes                                            |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, quality gates and contribution rules                                     |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, releases, branch protection and quality gates                            |
 
 ## Documentation conventions
 
@@ -63,5 +80,6 @@ This directory is the project handbook. Start with the path that matches your ro
 - **Docs are part of done.** A user-facing change updates the relevant page and `CHANGELOG.md` in the same PR.
 - **No secrets.** Never put API keys, session cookies or real `data/` contents in documentation, examples or tests.
 - **Relative links.** Use relative Markdown links so the docs work on GitHub and in a local checkout.
+- **Theme-aware images.** Brand images and illustrations ship as dark and light variants and switch with `<picture>` + `prefers-color-scheme`; screenshots of the dark app stay single images.
 - **Scope changes update MILESTONES.md.** If a feature moves between milestones, change this file first.
 - **Accuracy over aspiration.** Mark planned work as planned; do not describe unimplemented features as available.

@@ -149,6 +149,23 @@ describe('prompt assembly', () => {
         expect(systemMessages.some((message) => message.content.includes('[Character:'))).toBe(false);
     });
 
+    it('appends the impersonation instruction after the history', () => {
+        const result = buildPrompt({
+            character,
+            messages: history,
+            persona,
+            settings,
+            generationType: 'impersonate',
+        });
+
+        const last = result.messages[result.messages.length - 1];
+        expect(last?.role).toBe('system');
+        expect(last?.content).toContain('from the point of view of Alex');
+
+        const normal = buildPrompt({ character, messages: history, persona, settings });
+        expect(normal.messages.some((message) => message.content.includes('from the point of view of'))).toBe(false);
+    });
+
     it('places world info in its own slots', () => {
         const result = buildPrompt({
             character,

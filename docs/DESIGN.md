@@ -10,7 +10,7 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 | Stage | Surface                                               | Status               |
 | ----- | ----------------------------------------------------- | -------------------- |
 | A     | Foundations, Settings shell, Providers                | Delivered 2026-11-12 |
-| B     | App shell and chat chrome                             | Planned              |
+| B     | App shell and chat chrome                             | Delivered 2026-11-13 |
 | C     | Message experience                                    | Planned              |
 | D     | Character/group editors and remaining settings panels | Planned              |
 | E     | Accessibility, contrast and responsive audit          | Planned              |
@@ -24,7 +24,8 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 3. **State is always visible.** Active provider, missing key, unsaved edits, streaming, selection.
    Never rely on a colour alone; pair it with a label or an icon.
 4. **Keyboard and touch have parity.** No action exists only on hover. Every control can be reached
-   with Tab, has a visible focus ring, and is at least 32 px tall (40 px for primary actions).
+   with Tab and has a visible focus ring. The 32 px minimum (40 px for primary actions) is not
+   met everywhere yet; stage E widens the small icon rows.
 5. **Restrained motion.** Motion explains a change (a dialog opening, a result arriving). It never
    decorates. `prefers-reduced-motion` turns it off.
 
@@ -34,7 +35,7 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 ```
 ┌───────────────┬──────────────────────────────────────────────┐
-│ Library       │ Chat header: character · chat · tools         │
+│ Library       │ Chat header: character · chat · provider · ⋯ │
 │ 286–300 px    ├──────────────────────────────────────────────┤
 │ search        │                                              │
 │ filters       │ Conversation                                 │
@@ -48,8 +49,21 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 - The library rail is fixed; the conversation takes the remaining width.
 - Below 768 px the rail becomes a drawer opened from the chat header.
-- The chat header currently carries several actions; stage B moves the low-frequency ones into a
-  Tools menu so the header keeps only identity, chat switching, provider status and one tools entry.
+- **The chat header carries four things and no more**: identity (avatar, name, one subtitle line),
+  chat switching (the chat select, and the persona pin once there is more than one persona), the
+  active provider's state, and a single **Tools** entry. Stage B moved every other action —
+  greeting, rename, memory, context inspector, image generation and gallery, delete chat — into the
+  Tools menu (`ToolsMenu.tsx`), which the character and group chat headers share.
+- The provider status pill appears at 1024 px and wider; below that the library footer carries the
+  same state, so nothing is lost when the header makes room.
+- The library footer is two rows: the **profile** on top — a switch that replaces the cast, the
+  lorebooks and the way prompts are built — and the active provider beneath it, the lighter and more
+  frequent choice. A profile is never a colour-only signal: its name is on the row, and a switch
+  toasts the name it moved to.
+- The Tools menu is the only place a secondary chat action appears. It is a `role="menu"` with
+  arrow-key navigation, Escape to close, focus returned to the trigger, and destructive rows
+  separated at the bottom in wine behind a confirmation. A disabled row says why in a hint line
+  rather than leaving the reader to guess.
 
 ### Settings
 
@@ -80,12 +94,11 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 ### Breakpoints
 
-| Width        | Behaviour                                                                       |
-| ------------ | ------------------------------------------------------------------------------- |
-| ≥ 1280 px    | Full library rail, three-pane Providers, all settings sections visible          |
-| 1024–1279 px | Same, slightly narrower detail column                                           |
-| 768–1023 px  | Settings nav rail + provider select; library drawer available                   |
-| < 768 px     | Settings section select, provider select, single-column forms; full-width modal |
+| Width       | Behaviour                                                                       |
+| ----------- | ------------------------------------------------------------------------------- |
+| ≥ 1024 px   | Full library rail, settings nav rail and the three-pane Providers panel         |
+| 768–1023 px | The provider list becomes a select above the form; both rails stay docked       |
+| < 768 px    | Settings section select, provider select, single-column forms; full-width modal |
 
 ## Colour
 
@@ -147,6 +160,14 @@ Rules:
 
 ## Components
 
+### Brand mark
+
+The app icon and the in-app `Logo` are one design: a hand-drawn cat lounging in a teacup, drawn
+as cream `#fdf4e2` artwork on a coffee `#3a241c` disc over a cream rounded tile. The single SVG
+master lives at `assets/brand/catcup-icon.svg`; `apps/web/public/favicon.svg` carries the same art
+for both the favicon and the in-app logo. The README banner ships in dark and light variants
+(`assets/brand/readme-banner-{d,w}.svg`) that switch with `prefers-color-scheme`.
+
 ### Buttons
 
 - `.btn-primary` — one per surface: amber background, ink text.
@@ -164,16 +185,34 @@ Rules:
 - Prefer a visible label; placeholders are examples, not labels.
 - Errors appear in a `role="alert"` strip that stays visible above the footer, and inline where a
   single field is at fault. Never rely on a toast for a validation failure.
-- Password-like values (API keys) get a show/hide button and are never prefilled.
+- Password-like values (API keys) are never prefilled; only the provider key gets a show/hide button.
 - Use a real `<form>`; Enter submits, and destructive buttons are `type="button"`.
 
 ### Settings section
 
 - Fixed header: 36 px icon tile, title, one-sentence description, `line-soft` bottom border.
-- Body scrolls; the header and footer do not.
-- A sticky footer carries the save action, the test action and the dirty state.
-- A three-way leave guard protects unsaved provider edits: **Save and continue**, **Discard
-  changes**, **Keep editing** (focused by default).
+- The section header does not scroll; the body does. Only the Providers panel pins its footer —
+  other panels scroll their action row with the form.
+- The Providers footer carries the save action, the test action and the dirty state.
+- A three-way leave guard protects unsaved provider and Generation edits: **Save and continue**,
+  **Discard changes**, **Keep editing** (focused by default).
+
+### Review sheets
+
+A review sheet is the surface between a long job and the library: the person sees what the job
+found and decides what to keep. Three rules carry it.
+
+- **Group by the unit the person remembers.** A distilled book groups its rows by chapter, not by
+  the order the run happened to find them.
+- **Edit in place.** A row expands to its own fields — the same three the world info editor shows
+  (`comment`, `keys`, `content`) — because the moment to fix a bad key is while the source quote is
+  on the same row. No second screen, no separate "edit" mode.
+- **Unticked means excluded.** The checkbox is the promise: an unticked row is not written. Say so
+  in one line at the foot, and show the kept count next to the total.
+
+A merge control belongs on the sheet when the job can split one thing into two — clustering a
+character under two names, say. Select rows, merge into the first; contents concatenate, keys
+union, and the strongest confidence survives.
 
 ### Dialogs
 
@@ -184,6 +223,22 @@ Rules:
 - Dangerous confirmations focus the safe action (Keep / Cancel) by default.
 - Dialog titles are sentence case and name the object: "Delete Custom provider?" not "Are you sure?".
 - Descriptions say what is removed and what stops working, in one or two sentences.
+- `ConfirmDialog` is also the confirmation for chat and message deletion. The character and group
+  chat views replaced `window.confirm` in stage B, so a destructive chat action is never a browser
+  prompt and keyboard focus is trapped and restored like every other layer.
+
+### Menus
+
+- `ToolsMenu` is the chat header's single overflow entry. A menu only holds actions that are
+  secondary or infrequent; one that would hold the primary action is the wrong pattern.
+- Trigger: `aria-haspopup="menu"`, `aria-expanded`, and an `aria-label` that names the menu.
+- Rows are `role="menuitem"` buttons inside a `role="menu"`, with a `hr` (not a `role="separator"`
+  div) between groups. Enter, Space and ArrowDown open the menu on its first enabled row; ArrowUp,
+  ArrowDown, Home and End move; Escape closes and returns focus to the trigger; Tab closes and lets
+  focus leave.
+- A disabled row is named, dimmed and explained in one hint line at the foot of the menu; it never
+  disappears, so the layout stays still when a chat is not yet started or a feature is off.
+- Destructive rows sit after a divider and use wine on hover — never the primary style.
 
 ### Status and feedback
 
@@ -192,7 +247,13 @@ Rules:
 - Loading: a spinner sized to the control, plus a stable disabled state. Avoid layout jumps.
 - Empty states name the next action ("Add provider", "Import a character card") and keep the tone
   plain.
-- Toasts confirm completed background actions; they never carry the only copy of an error.
+- Toasts confirm completed background actions; they never carry the only copy of an error — except
+  that the TTS, image and memory panels toast their validation failures until stage D fixes them.
+- **Scope marks.** An item that belongs to every profile carries a `Shared` badge — the word plus a
+  globe icon, never colour alone — and an item that hides a shared one of the same name says so in
+  quiet text beside its name. Shared items are listed by default rather than behind a toggle, because
+  a person who marks something reusable and then sees nothing would read that as broken; hiding them
+  is the library's **Scope** filter, and the choice is remembered per profile.
 
 ## Interaction rules
 
@@ -217,7 +278,8 @@ Rules:
   tabindex; the panel uses `role="tabpanel"`.
 - Dialogs use `role="dialog"`/`role="alertdialog"` with `aria-modal` and a labelled title.
 - Status strips use `role="status"`; failures use `role="alert"`.
-- Touch targets are at least 32 px; primary actions at least 40 px.
+- Touch targets should be at least 32 px and primary actions at least 40 px; the small message
+  and list icon rows are still below that, and stage E audits them.
 - Motion respects `prefers-reduced-motion`; the stylesheet disables the fade-up and streaming caret
   animations.
 - Test at 900, 768 and 390 px, with a keyboard only, and with reduced motion enabled.

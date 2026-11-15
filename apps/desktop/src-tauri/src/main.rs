@@ -8,11 +8,17 @@
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::webview::PageLoadEvent;
+use tauri::{AppHandle, Manager, RunEvent, Runtime, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use tauri_plugin_updater::UpdaterExt;
 
 struct Sidecar {
     child: Mutex<Option<Child>>,
@@ -36,10 +42,14 @@ fn plain_path(path: &std::path::Path) -> PathBuf {
 
 /// The bundled Node runtime sits next to the executable; in development the
 /// one on `PATH` is used instead.
+///
+/// The packaged copy is named `catcup-node`, not `node`. A deb or rpm install
+/// puts external binaries in `/usr/bin`, where a binary called `node` would
+/// collide with — and replace — the distribution's nodejs package.
 fn node_binary() -> PathBuf {
     if let Ok(exe) = std::env::current_exe() {
         if let Some(directory) = exe.parent() {
-            let bundled = directory.join(if cfg!(windows) { "node.exe" } else { "node" });
+            let bundled = directory.join(if cfg!(windows) { "catcup-node.exe" } else { "catcup-node" });
             if bundled.exists() {
                 return plain_path(&bundled);
             }
@@ -63,9 +73,26 @@ fn server_entry(app: &tauri::App) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../server/dist/index.js")
 }
 
+/// Where the server keeps its data.
+///
+/// The desktop build normally uses the OS app-data directory, which keeps it
+/// clear of the install directory and of the web build. `CATCUP_DATA_DIR`
+/// overrides that, so the app can be pointed at an existing data folder — the
+/// web build's `data/`, a backup, or a folder on another drive — without
+/// copying it first.
+fn data_directory(app: &tauri::App) -> Result<PathBuf, String> {
+    if let Ok(value) = std::env::var("CATCUP_DATA_DIR") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Ok(PathBuf::from(trimmed));
+        }
+    }
+    app.path().app_data_dir().map_err(|e| e.to_string())
+}
+
 /// Start the server with an ephemeral port and wait for its readiness line.
 fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
-    let data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let data_dir = data_directory(app)?;
     std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
 
     let node = node_binary();
@@ -78,6 +105,9 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
         .env("CATCUP_HOST", "127.0.0.1")
         .env("CATCUP_PORT", "0")
         .env("CATCUP_DATA_DIR", &data_dir)
+        // Tells the server this is the single-user desktop shape, so an install
+        // with no password opens straight into the app instead of a setup screen.
+        .env("CATCUP_DESKTOP", "1")
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn()
@@ -116,16 +146,321 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
     }
 }
 
+/// Window state remembered between launches.
+///
+/// Visibility is deliberately left out: a window that was hidden when the app
+/// closed — from the tray, or by the user — must not come back invisible, with
+/// nothing on screen to click. Decorations are left out too, because the shell
+/// never changes them.
+fn remembered_window_state() -> tauri_plugin_window_state::StateFlags {
+    use tauri_plugin_window_state::StateFlags;
+
+    StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN
+}
+
+/// Bring the window back: un-minimise it, show it if it was hidden, and focus
+/// it. Shared by the tray menu, a left click on the tray icon and a second
+/// launch of the app.
+fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
+/// Stop the server process, if it is still running.
+///
+/// Called on exit and before handing the install directory to the updater,
+/// which cannot replace files the server still has open.
+fn stop_sidecar<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(state) = app.try_state::<Sidecar>() {
+        if let Some(mut child) = state.child.lock().unwrap().take() {
+            println!("[shell] stopping the server");
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
+/// Show a native message box.
+///
+/// Update checks run on a background thread with no page to report to, and a
+/// release build has no console, so a dialog is the only place the answer can
+/// appear.
+fn show_message<R: Runtime>(app: &AppHandle<R>, message: String, kind: MessageDialogKind) {
+    app.dialog()
+        .message(message)
+        .title("CatCup Tavern")
+        .kind(kind)
+        .show(|_| {});
+}
+
+/// Look for a newer release and install it.
+///
+/// Runs in the background so the tray menu stays responsive. On Windows the
+/// installer replaces the app and restarts it, so the server is stopped first:
+/// the bundle it runs from is one of the files being replaced.
+fn check_for_updates<R: Runtime>(app: &AppHandle<R>) {
+    let handle = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let updater = match handle.updater() {
+            Ok(updater) => updater,
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("Could not start the update check: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        let update = match updater.check().await {
+            Ok(Some(update)) => update,
+            Ok(None) => {
+                show_message(&handle, "CatCup Tavern is up to date.".into(), MessageDialogKind::Info);
+                return;
+            }
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("Could not check for updates: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        let version = update.version.clone();
+        let bytes = match update.download(|_, _| {}, || {}).await {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                show_message(
+                    &handle,
+                    format!("CatCup Tavern {version} could not be downloaded: {error}"),
+                    MessageDialogKind::Error,
+                );
+                return;
+            }
+        };
+
+        stop_sidecar(&handle);
+
+        // On Windows this hands over to the installer, which replaces the app
+        // and starts it again; it does not return.
+        if let Err(error) = update.install(bytes) {
+            show_message(
+                &handle,
+                format!("CatCup Tavern {version} could not be installed: {error}"),
+                MessageDialogKind::Error,
+            );
+        }
+    });
+}
+
+/// Put an icon in the notification area, with a menu that can open the window
+/// and quit the app.
+///
+/// The tray is installed once at startup. Tauri keeps the icon alive in its
+/// resource table, so the returned handle does not need to be stored.
+///
+/// This is what makes closing the window safe: the close button hides to here
+/// rather than quitting, so the server keeps running and the icon is the way
+/// back. That is also why the tray is not optional — the app refuses to start
+/// without it rather than run with a window that can be closed but not found.
+fn install_tray(app: &tauri::App) -> tauri::Result<()> {
+    let open = MenuItem::with_id(app, "open", "Open CatCup Tavern", true, None::<&str>)?;
+    let update = MenuItem::with_id(app, "update", "Check for Updates…", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let menu = Menu::with_items(app, &[&open, &update, &separator, &quit])?;
+
+    let mut tray = TrayIconBuilder::with_id("main")
+        .tooltip("CatCup Tavern")
+        .menu(&menu)
+        // Left click shows the window instead of opening the menu; the menu is
+        // on the right-click, as on every other Windows tray icon.
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "open" => show_main_window(app),
+            "update" => check_for_updates(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    // `default_window_icon` comes from `tauri.conf.json`'s bundle icons. It is
+    // only absent in a build without icons at all, and a tray with no image is
+    // better than failing to start.
+    if let Some(icon) = app.default_window_icon().cloned() {
+        tray = tray.icon(icon);
+    }
+
+    tray.build(app)?;
+    Ok(())
+}
+
+/// The extensions the shell hands to the server, matching its import route.
+const CARD_EXTENSIONS: [&str; 4] = ["png", "json", "charx", "catcup"];
+
+/// Card files the app was asked to open, and whether the page can take them.
+///
+/// Paths arrive before the window can use them: on a first launch they are this
+/// process's arguments, and on a second launch the single-instance plugin
+/// forwards them while the page may still be loading. They wait here until the
+/// webview reports that the page has finished loading.
+struct OpenFiles {
+    pending: Mutex<Vec<PathBuf>>,
+    page_ready: AtomicBool,
+}
+
+/// Read one argument as a card path.
+///
+/// A Windows association hands the file over as `"<exe>" "<path>"`, so the
+/// argument is a plain path, usually with a drive letter. It must not go
+/// through `Url::parse`: `C:\cards\mira.catcup` parses as a URL whose scheme is
+/// `c`, and the following `to_file_path` then fails — which silently drops
+/// every file a user opened.
+fn card_path(raw: &str) -> Option<PathBuf> {
+    let path = if raw.starts_with("file:") {
+        // macOS and Linux deliver file URLs; the branch is here so porting the
+        // shell does not quietly lose them.
+        tauri::Url::parse(raw).ok()?.to_file_path().ok()?
+    } else {
+        PathBuf::from(raw)
+    };
+
+    if !path.is_file() {
+        return None;
+    }
+
+    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
+    CARD_EXTENSIONS.contains(&extension.as_str()).then_some(path)
+}
+
+/// The card paths among a set of arguments.
+///
+/// The executable path that every launch carries is filtered out by the
+/// extension check, so callers do not have to skip the first argument.
+fn card_paths(args: &[String]) -> Vec<PathBuf> {
+    args.iter().filter_map(|argument| card_path(argument)).collect()
+}
+
+/// Ask the page to import these cards, then reload it so the library shows them.
+///
+/// The page is a remote origin served by the sidecar, so Tauri IPC is not
+/// available to it; `eval` runs in the page instead, and the request rides on
+/// the session cookie the webview already holds.
+fn deliver_open_files<R: Runtime>(window: &tauri::WebviewWindow<R>, paths: &[PathBuf]) {
+    let Ok(encoded) = serde_json::to_string(
+        &paths
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<_>>(),
+    ) else {
+        println!("[shell] could not encode the card paths");
+        return;
+    };
+
+    let script = format!(
+        "(async () => {{
+            for (const path of {encoded}) {{
+                try {{
+                    const response = await fetch('/api/characters/import-path', {{
+                        method: 'POST',
+                        headers: {{ 'content-type': 'application/json' }},
+                        body: JSON.stringify({{ path }}),
+                    }});
+                    if (!response.ok) console.error('CatCup import failed', path, await response.text());
+                }} catch (error) {{
+                    console.error('CatCup import failed', path, error);
+                }}
+            }}
+            location.reload();
+        }})()"
+    );
+
+    if let Err(error) = window.eval(script) {
+        println!("[shell] could not hand the card to the window: {error}");
+    }
+}
+
+/// Hand over anything waiting, if the page is ready for it.
+fn flush_open_files<R: Runtime>(app: &AppHandle<R>) {
+    let Some(state) = app.try_state::<OpenFiles>() else {
+        return;
+    };
+    if !state.page_ready.load(Ordering::SeqCst) {
+        return;
+    }
+
+    let paths = {
+        let mut pending = state.pending.lock().unwrap();
+        std::mem::take(&mut *pending)
+    };
+    if paths.is_empty() {
+        return;
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        deliver_open_files(&window, &paths);
+    }
+}
+
 fn main() {
+    // Arguments for this launch. A card the user double-clicked is one of them.
+    let startup_args: Vec<String> = std::env::args().skip(1).collect();
+
     tauri::Builder::default()
+        // Registered before any plugin so a second launch that forwards a card
+        // while the first is still starting still finds somewhere to put it.
+        .manage(OpenFiles {
+            pending: Mutex::new(card_paths(&startup_args)),
+            page_ready: AtomicBool::new(false),
+        })
         // A second launch focuses the window that already exists instead of
         // starting a second server on the same data directory.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.set_focus();
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            show_main_window(app);
+            if let Some(state) = app.try_state::<OpenFiles>() {
+                state.pending.lock().unwrap().extend(card_paths(&args));
             }
+            flush_open_files(app);
         }))
+        // Restores and persists size, position and maximised state for the
+        // window built below. The plugin hooks window creation, so it also
+        // covers a window that is created at runtime rather than in
+        // `tauri.conf.json`; the state lives in `.window-state.json` under the
+        // app config directory.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(remembered_window_state())
+                .build(),
+        )
+        .plugin(tauri_plugin_dialog::init())
+        // Reads the public key and the update endpoint from `tauri.conf.json`.
+        // Both are mandatory: the plugin panics at startup rather than quietly
+        // disabling updates if either is missing.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        // Closing the window hides it to the tray instead of quitting, so the
+        // server keeps streaming while the window is out of the way. Quit from
+        // the tray calls `exit` directly, which does not raise this event.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let (child, port) = start_server(app).map_err(Box::<dyn std::error::Error>::from)?;
             println!("[shell] server ready on port {port}");
@@ -144,22 +479,85 @@ fn main() {
                 .title("CatCup Tavern")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(900.0, 620.0)
+                // A card opened before the page loaded waits until it can be
+                // imported, and a reload after importing clears the flag again.
+                .on_page_load(|window, payload| match payload.event() {
+                    PageLoadEvent::Started => {
+                        if let Some(state) = window.try_state::<OpenFiles>() {
+                            state.page_ready.store(false, Ordering::SeqCst);
+                        }
+                    }
+                    PageLoadEvent::Finished => {
+                        if let Some(state) = window.try_state::<OpenFiles>() {
+                            state.page_ready.store(true, Ordering::SeqCst);
+                        }
+                        flush_open_files(window.app_handle());
+                    }
+                })
                 .build()?;
+
+            install_tray(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("could not build the CatCup Tavern window")
         .run(|app, event| {
             if let RunEvent::Exit = event {
-                if let Some(state) = app.try_state::<Sidecar>() {
-                    if let Some(mut child) = state.child.lock().unwrap().take() {
-                        println!("[shell] stopping the server");
-                        let _ = child.kill();
-                        let _ = child.wait();
-                    }
-                }
+                stop_sidecar(app);
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A real file with the given extension, in the system temp directory.
+    ///
+    /// `temp_dir()` is an absolute path with a drive letter on Windows, which
+    /// is exactly the shape that the URL parser used to swallow.
+    fn card_file(extension: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!("catcup-card-path-{}.{extension}", std::process::id()));
+        std::fs::write(&path, b"card").expect("could not write the test card");
+        path
+    }
+
+    #[test]
+    fn accepts_a_plain_path_with_a_drive_letter() {
+        let path = card_file("catcup");
+        assert_eq!(card_path(&path.to_string_lossy()), Some(path.clone()));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn accepts_a_file_url() {
+        let path = card_file("png");
+        let url = tauri::Url::from_file_path(&path).expect("not an absolute path");
+        assert_eq!(card_path(url.as_str()), Some(path.clone()));
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn ignores_a_file_that_is_not_a_card() {
+        let path = card_file("txt");
+        assert_eq!(card_path(&path.to_string_lossy()), None);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn ignores_a_path_that_does_not_exist() {
+        let mut path = std::env::temp_dir();
+        path.push("catcup-card-that-is-not-there.catcup");
+        assert_eq!(card_path(&path.to_string_lossy()), None);
+    }
+
+    #[test]
+    fn ignores_arguments_that_are_not_files() {
+        // A second launch forwards the whole command line, executable first.
+        let args = vec!["C:\\Program Files\\CatCup\\catcup-desktop.exe".to_string(), "--flag".to_string()];
+        assert!(card_paths(&args).is_empty());
+    }
 }
 
 #[cfg(windows)]

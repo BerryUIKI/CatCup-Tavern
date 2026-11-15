@@ -1,7 +1,8 @@
 import { type CharacterSummary, type ChatSummary, resolvePersona, substituteMacros } from '@catcup/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
+    useActivateProfile,
     useAddSampleCharacter,
     useBulkCharacters,
     useCharacter,
@@ -13,13 +14,16 @@ import {
     useGroups,
     useImportCharacters,
     useLogout,
+    useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
     useSettings,
+    useShareItem,
     useUpdateSettings,
 } from '../hooks/data';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
+import { BookDistillDialog } from './BookDistillDialog';
 import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { GroupChatView } from './GroupChatView';
@@ -35,6 +39,9 @@ const EMPTY_CHATS: ChatSummary[] = [];
 
 type GroupEditorState = { mode: 'create' } | { mode: 'edit'; id: string } | null;
 
+/** The card formats the server imports; a drop of anything else is refused. */
+const CARD_FILE = /\.(png|json|charx|catcup)$/i;
+
 export function MainApp() {
     const selectedCharacterId = useAppStore((state) => state.selectedCharacterId);
     const selectedGroupId = useAppStore((state) => state.selectedGroupId);
@@ -46,6 +53,8 @@ export function MainApp() {
     const setLibraryTab = useAppStore((state) => state.setLibraryTab);
     const settingsOpen = useAppStore((state) => state.settingsOpen);
     const setSettingsOpen = useAppStore((state) => state.setSettingsOpen);
+    const openSettings = useAppStore((state) => state.openSettings);
+    const resetSelection = useAppStore((state) => state.resetSelection);
     const sidebarOpen = useAppStore((state) => state.sidebarOpen);
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
     const pushToast = useAppStore((state) => state.pushToast);
@@ -58,15 +67,19 @@ export function MainApp() {
     const characterQuery = useCharacter(selectedCharacterId);
     const importMutation = useImportCharacters();
     const addSampleMutation = useAddSampleCharacter();
+    const shareItem = useShareItem();
     const favoriteMutation = useSetCharacterFavorite();
     const bulkMutation = useBulkCharacters();
     const updateSettingsMutation = useUpdateSettings();
+    const profilesQuery = useProfiles();
+    const activateProfile = useActivateProfile();
 
     // A character and a group are mutually exclusive; the store enforces it.
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
     const [stImportOpen, setStImportOpen] = useState(false);
+    const [distillOpen, setDistillOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
     const groups = groupsQuery.data ?? [];
@@ -178,6 +191,27 @@ export function MainApp() {
         }
     };
 
+    /**
+     * Move a card between this profile and the shared scope.
+     *
+     * A move keeps the id, so chats and group memberships keep resolving; the
+     * toast names where the card went, because the library row moves with it.
+     */
+    const handleShareCharacter = async (character: CharacterSummary, action: 'move' | 'copy') => {
+        const target = character.scope === 'shared' ? 'profile' : 'shared';
+        try {
+            await shareItem.mutateAsync({ kind: 'characters', id: character.id, action, scope: target });
+            pushToast(
+                target === 'shared'
+                    ? `"${character.name}" is now shared by every profile.`
+                    : `"${character.name}" belongs to this profile again.`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not change where this card lives.', 'error');
+        }
+    };
+
     /** Switch the provider every chat uses, from the library footer. */
     const handleSwitchProvider = async (id: string) => {
         const provider = settings?.providers.find((item) => item.id === id);
@@ -198,12 +232,28 @@ export function MainApp() {
     };
     const logoutMutation = useLogout();
 
+    /**
+     * Switch profiles. Every id on screen belongs to the old one, so the
+     * selection is cleared before the refetch lands; the activate mutation
+     * invalidates every query, which is what brings the new cast in.
+     */
+    const handleSwitchProfile = async (id: string) => {
+        try {
+            await activateProfile.mutateAsync(id);
+            resetSelection();
+            const name = profilesQuery.data?.profiles.find((profile) => profile.id === id)?.name ?? 'profile';
+            pushToast(`Switched to ${name}.`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not switch the profile.', 'error');
+        }
+    };
+
     const handleImport = async (files: File[]) => {
         if (files.length === 0) {
             return;
         }
         try {
-            const result = await importMutation.mutateAsync(files);
+            const result = await importMutation.mutateAsync({ files });
             if (result.imported.length > 0) {
                 pushToast(`Imported ${pluralize(result.imported.length, 'character')}.`, 'success');
                 const first = result.imported[0];
@@ -221,6 +271,73 @@ export function MainApp() {
             pushToast(error instanceof Error ? error.message : 'Import failed.', 'error');
         }
     };
+
+    // Dropping a card anywhere in the app imports it, like the library button.
+    // The depth counter keeps the overlay from flickering as the pointer moves
+    // between child elements.
+    const [dragging, setDragging] = useState(false);
+    const importRef = useRef(handleImport);
+    importRef.current = handleImport;
+
+    useEffect(() => {
+        let depth = 0;
+
+        const carriesFiles = (event: DragEvent) => Array.from(event.dataTransfer?.types ?? []).includes('Files');
+
+        const onDragEnter = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            depth += 1;
+            setDragging(true);
+        };
+
+        const onDragOver = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            // Without this the browser opens the file instead of firing `drop`.
+            event.preventDefault();
+        };
+
+        const onDragLeave = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            depth = Math.max(0, depth - 1);
+            if (depth === 0) {
+                setDragging(false);
+            }
+        };
+
+        const onDrop = (event: DragEvent) => {
+            if (!carriesFiles(event)) {
+                return;
+            }
+            event.preventDefault();
+            depth = 0;
+            setDragging(false);
+
+            const cards = Array.from(event.dataTransfer?.files ?? []).filter((file) => CARD_FILE.test(file.name));
+            if (cards.length === 0) {
+                pushToast('Drop a .png, .json, .charx or .catcup character card.', 'info');
+                return;
+            }
+            void importRef.current(cards);
+        };
+
+        window.addEventListener('dragenter', onDragEnter);
+        window.addEventListener('dragover', onDragOver);
+        window.addEventListener('dragleave', onDragLeave);
+        window.addEventListener('drop', onDrop);
+        return () => {
+            window.removeEventListener('dragenter', onDragEnter);
+            window.removeEventListener('dragover', onDragOver);
+            window.removeEventListener('dragleave', onDragLeave);
+            window.removeEventListener('drop', onDrop);
+        };
+    }, [pushToast]);
 
     const handleBulkErrors = (errors: Array<{ message: string }>) => {
         if (errors.length === 0) {
@@ -425,6 +542,7 @@ export function MainApp() {
                 onNewGroup={() => setGroupEditor({ mode: 'create' })}
                 onEditGroup={(id) => setGroupEditor({ mode: 'edit', id })}
                 onImportSillyTavern={() => setStImportOpen(true)}
+                onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
                 onImport={(files) => void handleImport(files)}
@@ -434,7 +552,13 @@ export function MainApp() {
                 onSwitchProvider={(id) => void handleSwitchProvider(id)}
                 activeProviderName={activeProvider?.name ?? null}
                 activeProviderReady={activeProviderReady}
-                onOpenSettings={() => setSettingsOpen(true)}
+                profiles={profilesQuery.data?.profiles ?? []}
+                activeProfileId={profilesQuery.data?.activeProfileId ?? null}
+                switchingProfile={activateProfile.isPending}
+                onShareCharacter={(character, action) => void handleShareCharacter(character, action)}
+                onSwitchProfile={(id) => void handleSwitchProfile(id)}
+                onManageProfiles={() => openSettings('profiles')}
+                onOpenSettings={() => openSettings()}
                 onLogout={() => void handleLogout()}
                 loggingOut={logoutMutation.isPending}
                 open={sidebarOpen}
@@ -454,7 +578,7 @@ export function MainApp() {
                         onSelectChat={selectChat}
                         onNewChat={() => void handleNewGroupChat()}
                         onOpenSidebar={() => setSidebarOpen(true)}
-                        onOpenSettings={() => setSettingsOpen(true)}
+                        onOpenSettings={(section) => openSettings(section)}
                         onEditGroup={() => setGroupEditor({ mode: 'edit', id: selectedGroup.id })}
                     />
                 ) : (
@@ -470,7 +594,7 @@ export function MainApp() {
                         onNewChat={handleNewChat}
                         onSwitchGreeting={() => setGreetingMode('switch')}
                         creatingChat={createChatMutation.isPending}
-                        onOpenSettings={() => setSettingsOpen(true)}
+                        onOpenSettings={(section) => openSettings(section)}
                         onOpenSidebar={() => setSidebarOpen(true)}
                         onOpenLibrary={() => setSidebarOpen(true)}
                     />
@@ -480,6 +604,8 @@ export function MainApp() {
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
             <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
+
+            <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 
             <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
 
@@ -530,6 +656,15 @@ export function MainApp() {
                     ))}
                 </div>
             </Modal>
+
+            {dragging ? (
+                <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-ink/80 backdrop-blur-sm">
+                    <div className="rounded-2xl border-2 border-dashed border-amber/60 px-10 py-8 text-center">
+                        <p className="font-display text-lg text-parchment">Drop a character card</p>
+                        <p className="mt-1 text-sm text-muted">PNG, JSON, CharX or CatCup package</p>
+                    </div>
+                </div>
+            ) : null}
 
             <ToastViewport />
         </div>

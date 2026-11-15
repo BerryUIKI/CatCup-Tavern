@@ -7,6 +7,20 @@ curl -fsS http://127.0.0.1:8000/api/health
 CATCUP_LOG_LEVEL=debug pnpm dev
 ```
 
+```mermaid
+flowchart TB
+    Q{"Which area?"} --> A["The app does not open"]
+    Q --> B["Setup and login"]
+    Q --> C["Providers and generation"]
+    Q --> D["TTS and image generation"]
+    Q --> E["Library, chat and data"]
+    A --> A1["dev: open :5173, not :8000<br/>prod: run pnpm build first<br/>port busy: set CATCUP_PORT"]
+    B --> B1["setup 403: loopback only<br/>setup 409: auth.json exists<br/>login loop: cookies and Host header"]
+    C --> C1["check the active provider and model<br/>SSE freezes: disable proxy buffering"]
+    D --> D1["base URL ends at the API root<br/>ComfyUI needs an API-format workflow"]
+    E --> E1["chat folder follows the character name<br/>images follow the gallery folder"]
+```
+
 ## The app does not open
 
 **`pnpm dev` starts but the page is blank**
@@ -19,7 +33,7 @@ CATCUP_LOG_LEVEL=debug pnpm dev
 
 - Run `pnpm build` first; the server serves `apps/web/dist` only when it exists.
 - Open http://127.0.0.1:8000.
-- Check the server log for the static root path.
+- Check that `apps/web/dist/index.html` exists; the server does not log the static root it resolved.
 
 **Port already in use**
 
@@ -41,7 +55,7 @@ First-run setup is accepted only from loopback. Open the app on the machine runn
 
 **Setup returns 409**
 
-`data/auth.json` already exists. Use login instead. If the password is lost, see “Reset the password” below.
+`data/auth.json` already exists. Use login instead. If the password is lost, see “Password reset” below.
 
 **Login says “Incorrect password”**
 
@@ -58,7 +72,9 @@ First-run setup is accepted only from loopback. Open the app on the machine runn
 
 **Password reset**
 
-Stop the server, back up `data/`, delete `data/auth.json`, start the server and set a new password. This logs out every device. Do not delete `data/settings.json` unless you also want to reset providers.
+If you know the current password, change it in Settings → About: every other device is signed out and this one stays in. That is the only route that does not touch files.
+
+If the password is lost, stop the server, back up `data/`, delete `data/auth.json`, start the server and set a new password. This logs out every device. Do not delete `data/settings.json` unless you also want to reset providers.
 
 ## Providers
 
@@ -94,7 +110,7 @@ The test calls the provider's model-list endpoint. Some OpenAI-compatible server
 
 **Generation starts and immediately errors**
 
-- Check the server log for the provider status and response body.
+- The provider's status and response body arrive in the error message the client sees; a failed generation is an SSE `error` event, which the server log does not record.
 - Verify the active provider and model in Settings.
 - Some providers reject the configured `max_tokens` or sampling values; lower them.
 - If a reverse proxy is used, disable buffering for SSE and increase read timeouts.
@@ -114,7 +130,7 @@ Settings → TTS must be enabled and saved. The button appears on replies and na
 - The base URL should end at the API root, e.g. `https://api.openai.com/v1` or `http://127.0.0.1:8880/v1`.
 - `api.openai.com` requires a saved key; a local server usually does not.
 - Check the model, voice and audio format against what the endpoint supports. A `TTS_FAILED` error includes the provider's response detail.
-- The server log has the same message; the browser only sees the error.
+- The browser shows the provider's detail in the error; the server log records only unhandled errors, so it stays quiet here.
 
 **Autoplay does not start**
 
@@ -139,7 +155,7 @@ Settings → Images must be enabled and saved. The buttons appear in the chat he
 - The base URL is the API root, usually ending in `/v1`.
 - `api.openai.com` requires a saved key; a local server usually does not.
 - The model is required. DALL·E and gpt-image models accept only their own sizes, so CatCup maps the configured width and height to the nearest supported size.
-- A `502 IMAGE_FAILED` includes the provider's response detail. The server log has the same message.
+- A `502 IMAGE_FAILED` includes the provider's response detail in the response body; the server log records only unhandled errors.
 - If the provider returns an image URL, the server downloads it; a URL that is not reachable from the server fails even when the browser could open it.
 
 **ComfyUI fails**
@@ -165,7 +181,7 @@ Images live in `data/user/images/<character name>/` (or the group id). Renaming 
 
 **Moving to another machine loses the images**
 
-Copy `data/user/images/` together with `data/chats/` and `data/characters/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
+Copy `data/user/images/` together with `data/chats/` and `data/characters/` — and, for group chats, `data/groups/` and `data/group chats/`. The chat stores a relative `user/images/...` path, so the folder layout must be preserved.
 
 ## Character library
 
@@ -188,6 +204,36 @@ Bulk actions report per-card errors and leave the other cards updated. A missing
 **Deleting characters left chats behind**
 
 Bulk and single delete remove the card file and `data/character-assets/<id>/` but keep chat files on disk, as single delete always did. The chats are no longer reachable from the library; back up or remove the folders under `data/chats/` by hand.
+
+## Book distillation
+
+**An EPUB is refused, but it opens in a reader**
+
+The refusal names the reason. `That EPUB is encrypted with DRM` means a document in the book's spine is itself encrypted — the text is locked and no parser can help. Font obfuscation is **not** that, and it is accepted: almost every commercial EPUB lists its fonts in `META-INF/encryption.xml`, so CatCup only refuses when a spine document is the encrypted one. `has no package document` means the archive is missing `META-INF/container.xml` or its OPF, which some tools that pack HTML into a ZIP produce; open it in an EPUB editor and save it again.
+
+**A chapter count looks wrong**
+
+Sections are cut at chapter headings — `Chapter N`, `Part N`, `Prologue`, `第N章`, `序章` — and a file with no heading anywhere is cut into runs of paragraphs instead. `Chapter twelve was the one where everything changed` is prose, not a heading: a heading must be a line of its own under 60 characters. The section list on the upload step is the place to check; a wrong split there is a wrong split in the book.
+
+**A distilled entry never comes up in chat**
+
+In **sections only** a run, its keys come from its chapter title. `Chapter 3` has no useful word in it, so the entry carries no keys and only its comment names it — enable it, then add keys in the world info editor, or use **Model draft**, which chooses keys from how the book talks about the thing.
+
+**A model draft found little, or nothing**
+
+Two causes, both visible in the run. A chapter marked **incomplete** means the provider's reply could not be read twice — usually a model too small to follow the JSON contract, or a request cut off by `maxTokens`. And entities need to be mentioned to be written up: one mention gets a thin row, two or more get their own request. If almost everything is thin, the model is summarising rather than extracting; try a larger one.
+
+**A model draft costs more than expected**
+
+The estimate counts the analysis requests only. A run also spends one request per entity mentioned twice or more, plus at most one batched request to settle near-identical names, and none at all on characters mentioned once. A long book with a large cast therefore costs more than `chunks × 1`. Stop the run at any point and nothing is written.
+
+**A run is still going after the dialog closed**
+
+That is on purpose. A run over a long book is minutes of work, so it is not tied to the dialog or the tab; closing either leaves it running. Reopen **Distil from a book** and use **Reattach to a running book** to watch the rest. **Stop** is the only thing that cancels it, and a stopped run writes nothing.
+
+**Switching profiles is refused while a run is going**
+
+`PROFILE_BUSY` means a generation or a distillation run is in flight. Both resolve their scope when they start and would write into the wrong profile if it moved underneath them. Wait for the run or stop it, then switch.
 
 ## Chat and messages
 
@@ -224,7 +270,7 @@ Regenerate stores the previous assistant text in `extra.swipes` and selects the 
 
 **Context trimming cuts off the start of a long chat**
 
-The M0 prompt builder uses an approximate token budget (`contextSize - maxTokens`) and keeps the newest messages. This is expected until the model-aware tokenizer lands in M1. Reduce the message length or raise context size if the provider supports it.
+The prompt builder trims history to the token budget (`contextSize - maxTokens`, less a small reserve) and keeps the newest messages, so a long chat always loses its earliest ones first. Counting uses the model-aware tokenizer where the model is recognised and a labelled estimate otherwise; the context inspector names the counter in use. Raise the context size or lower max tokens if the provider allows it.
 
 ## Data and reset
 
@@ -237,14 +283,41 @@ Default `./data` at the repository root; check `CATCUP_DATA_DIR` if set. The ser
 Stop the server first. Then:
 
 - password/session reset: delete `data/auth.json`;
-- provider reset: delete `data/settings.json` and `data/secrets.json`;
+- provider reset: delete `data/providers.json` and `data/secrets.json`;
+- profile reset: delete `data/profiles/<id>/` after archiving that profile from Settings → Profiles;
 - full reset: back up and remove `data/` (deletes characters, chats and credentials).
 
 Never commit `data/`.
 
 **Backup and restore**
 
-Copy the entire `data/` directory while the server is stopped. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
+Copy the entire `data/` directory while the server is stopped. It holds every profile under `profiles/`, the items marked reusable under `shared/`, the shared provider list and keys, and the profile index; back it up whole rather than profile by profile. The backup contains API keys and password hashes; protect it. Restore by copying it back and restarting.
+
+**Upgrading from a single-profile install**
+
+The first start on a version with profiles moves the old tree into `data/profiles/default/` and rewrites `data/settings.json` as the profile index. Nothing is copied — the move is a rename — and the old settings file is kept as `data/settings.json.v1-backup`. Each step is written to `data/migration.log`.
+
+To see what will happen before it does, stop the server and run:
+
+```bash
+CATCUP_MIGRATE_DRY_RUN=1 pnpm start
+```
+
+The plan it prints is the plan the real start performs. If a migration fails partway, it moves everything back before the process exits, so the folder is unchanged and the error names the step.
+
+**A character or book went missing after upgrading**
+
+The library footer names the active profile. An install upgraded from a single-profile version opens `Default`, which is where the old tree went. If a different profile is active, switch back from the footer. Archived profiles are listed under Settings → Profiles → Archived and restored with one click.
+
+**An item I marked reusable disappeared from its own profile**
+
+It did not move out of the library — it moved into `data/shared/`, and the profile now sees it from there. A shared item and a profile item with the same name cannot both be listed, so if the profile already had one, the profile's copy wins and the shared original is hidden behind it. The row that hides it says so in small text. To get at the shared original, take a copy into the profile — the copy gets a free name — or delete the profile's version.
+
+If the character library looks emptier than expected, check the **Scope** filter above the list: _Shared_ shows only the reusable items and _This profile_ only the local ones. The filter is remembered per profile, so it can stay set from an earlier session.
+
+**A move was refused with "the destination already has an item with that id"**
+
+Both scopes would end up holding the same id. Overwriting would silently destroy one of two things you can see at the same time, so the move stops instead. Rename one of them, or take a copy instead of a move — a copy picks a free name for itself.
 
 ## Logs and diagnostics
 

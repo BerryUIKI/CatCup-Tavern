@@ -14,6 +14,24 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 There is no multi-tenant isolation. Anyone with a valid session has full access to every character, chat, provider and setting.
 
+```mermaid
+flowchart LR
+    Client["Browser / Tauri webview<br/>session cookie only"]
+    Server["CatCup server"]
+    Auth[("auth.json<br/>scrypt hash + session secret")]
+    Secrets[("secrets.json · mode 0600<br/>provider, tts, image keys")]
+    Data[("data/<br/>characters, chats, world info")]
+    Logs["logs<br/>authorization, cookie, x-api-key redacted"]
+    Provider["Configured chat / TTS / image endpoints"]
+
+    Client -- "catcup_session · HttpOnly · SameSite=Lax" --> Server
+    Server <--> Auth
+    Secrets -- "read at request time, never returned" --> Server
+    Server <--> Data
+    Server --> Logs
+    Server -- "HTTPS with the stored key" --> Provider
+```
+
 ## Authentication
 
 ### Password storage
@@ -32,6 +50,16 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - Do not enable remote setup on an untrusted network: the first visitor could claim the instance.
 - Setup is rate-limited to 5 attempts per minute.
 
+### Desktop open mode
+
+- The desktop shell starts the server with `CATCUP_DESKTOP=1` and `CATCUP_HOST=127.0.0.1`.
+- In that mode, an install **with no password** serves the API without a session. The boundary is the OS user session plus the loopback bind, which is the same reasoning a local desktop app uses for its own database.
+- It is not a general bypass: web and LAN mode ignore `CATCUP_DESKTOP`, and a desktop install that has a password still requires one.
+- The server **refuses to start** if `CATCUP_DESKTOP` is set, no password exists, and `CATCUP_HOST` is not loopback. There is no way to reach an unauthenticated API from the LAN through this path.
+- `PUT /api/auth/password` lets every shape change its password, but only the desktop may remove one. Removing it on a web or LAN install would leave the server reachable and unauthenticated, so that answers `403`. The current password is required whenever one exists, and a successful change replaces the session cookie so every other device is signed out.
+- `POST /api/characters/import-path` is registered only in desktop mode, because it reads a file path supplied by the caller. A web or LAN server answers `404`. In open session any local process that can reach the loopback port could call it; the origin check still rejects a cross-origin `POST` from a page in a browser, and the extension allowlist means only card files are read into the library.
+- The session cookie is unaffected; a stored password keeps working and the login screen comes back with it.
+
 ### Sessions
 
 - Cookie name: `catcup_session`.
@@ -39,11 +67,11 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 - Lifetime: 30 days.
 - Attributes: `HttpOnly`, `SameSite=Lax`, `Path=/`.
 - `Secure` is set only when the Node process sees the request as HTTPS. There is no `trustProxy` configuration yet, so a TLS-terminating reverse proxy will not set the flag on the browser cookie.
-- No server-side session store. A stolen cookie remains valid until it expires or the session secret changes. Deleting `auth.json` and restarting invalidates all sessions (and requires setting a new password).
+- No server-side session store. A stolen cookie remains valid until it expires or the session secret changes. Changing the password rotates that secret, which signs every device out and re-issues a cookie to the one that made the change; deleting `auth.json` and restarting invalidates all sessions too, and requires setting a new password.
 
 ### CSRF and origin checks
 
-- Mutating API requests (`POST`, `PATCH`, `DELETE`) are rejected when an `Origin` header is present and its host does not match the request `Host`.
+- Mutating API requests (anything other than `GET`, `HEAD` or `OPTIONS`) are rejected when an `Origin` header is present and its host does not match the request `Host`.
 - Requests without an `Origin` header (curl, server-to-server) are allowed.
 - There is no dedicated CSRF token. `SameSite=Lax` plus the origin check is the current mitigation. This is acceptable for a single-user LAN app but is on the hardening list.
 
@@ -51,6 +79,8 @@ There is no multi-tenant isolation. Anyone with a valid session has full access 
 
 - Login: 10 attempts per minute.
 - Setup: 5 attempts per minute.
+- Password change (`PUT /api/auth/password`): 10 attempts per minute. It sits behind the session gate, so an unauthenticated caller never reaches the current-password check.
+- Provider draft tests (`POST /api/providers/test`): 30 per minute.
 - Other endpoints are not rate-limited yet.
 
 ## API keys

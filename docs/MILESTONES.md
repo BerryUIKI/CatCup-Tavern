@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1 and the 0.2.x MVP are complete**; 0.2.1 is a compatibility patch. M2 is in progress: group chats, summary memory, a Quick Replies subset, text to speech, image generation, CharX import/export and the library's favorites, tags, sorting and bulk actions are usable end to end.
+> Current status: **M0, M1, M2 and M4's shell are complete**, released as `0.3.1` on 2026-11-15; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch and `0.3.0` the M2 feature release. M4's remaining acceptance criteria are open; M3 and M5 are planned.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -13,6 +13,24 @@
 | **Planned**     | Scoped but not started.                                            |
 | **Blocked**     | Waiting on a dependency or decision.                               |
 | **Cut**         | Explicitly removed from the current release scope.                 |
+
+```mermaid
+timeline
+    title Milestones and releases
+    section Shipped
+        2026-11-09 : M0 - foundation, cards, chats, four providers
+        2026-11-11 : M1 - world info, Prompt Manager, presets, editing
+                   : 0.2.0 - early access MVP
+                   : 0.2.1 - compatibility patch
+        2026-11-13 : 0.3.0 - groups, memory, quick replies, TTS, images, CharX
+        2026-11-15 : 0.3.1 - profiles and the shared layer, multi-model, book distillation
+    section In progress
+        UX stages C-E : message experience, editors, accessibility
+    section Planned
+        M3 : STscript, full Quick Replies, getContext and the extension sandbox
+        M4 : Authenticode signing; macOS and Linux releases
+        M5 : mobile, i18n, accessibility audit, performance, v1.0
+```
 
 ## Definition of done
 
@@ -98,9 +116,9 @@ Released after the MVP, before M2:
 | --------- | -------------------------------------------------------------------------- | ----------- | ---------- |
 | **M0**    | Runnable foundation: web + server + ST data basics                         | Complete    | —          |
 | **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete    | M0         |
-| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | In progress | M1         |
+| **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Complete    | M1         |
 | **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
-| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | Planned     | M0, M1     |
+| **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | In progress | M0, M1     |
 | **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
 
 ## M0 — Runnable foundation (Complete)
@@ -186,7 +204,7 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 - **Model-aware tokenizer**: generation and the context inspector count with the exact tiktoken encoding for the active OpenAI or OpenAI-compatible model (`o200k_base`, `cl100k_base`, `p50k_base` or `r50k_base`), and with the bundled Claude vocabulary for Anthropic providers. Models with their own tokenizer, such as a local Llama, fall back to a character-based estimate. The inspector names the counter in use.
 - 124 unit tests covering matching, loading, recursion, groups, timed effects, positions, prompt ordering, injection, macro expansion, preset resolution, world info turn helpers, entry editing, keyword splitting and tokenizer selection, plus the SillyTavern sample book as a fixture.
 
-M1 is complete. Next is M2.
+M1 is complete. M2 shipped in `0.3.0`.
 
 ### Scope
 
@@ -282,16 +300,17 @@ M1 is complete. Next is M2.
 - Tokenizer model coverage may lag the model list; always keep the estimator fallback.
 - Scope creep: group chat and STscript must stay out of M1.
 
-## M2 — Extended roleplay (In progress)
+## M2 — Extended roleplay (Complete)
 
 **Goal:** cover the common "table full of characters" and media features without yet implementing the full ST extension/scripting platform.
 
-Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until after `0.2.0`.
+Three items are pulled into the [MVP](#mvp--020-early-access); the rest shipped in `0.3.0`.
 
 ### Delivered so far
 
 - **Group chat storage** (2026-11-11): groups and their chats are stored in SillyTavern's `data/groups/<id>.json` and `data/group chats/<chatId>.jsonl` shape, with `members` as avatar file names, unknown fields preserved and `original_avatar` on group messages. `/api/groups` creates, edits and deletes groups, their chats and their messages.
 - **Group chat UI and generation** (2026-11-11): a Groups tab with a group editor, a group chat pane with per-member avatars, and server-side replies. Natural, list, manual and pooled selection; each request generates one reply from the chosen member's card, with a group nudge, `Name:` history prefixes, ST's group new-chat marker, reply trimming and a manual speaker picker. New chats seed one greeting per member, muted included.
+- **Group card modes, depth prompts and auto mode** (2026-11-14): all three of SillyTavern's `group_generation_mode` values. Swap keeps the speaker's own card; the two join modes merge every member's description, personality, scenario and examples into one prompt, excluding or including muted members as the mode says, with the group's join prefix and suffix and `<FIELDNAME>`/`{{char}}` expansion. A card's `extensions.depth_prompt` is injected in chat at its depth and role — the speaker's own in a single chat or swap mode, every unmuted member's in the join modes — and the context inspector and single-character route show the same text the generation uses. Auto mode asks for the next member's reply a few seconds after each one finishes, using the group's stored `auto_mode_delay`, and hands the turn back when you type.
 - **Summary memory** (2026-11-11): rolling summaries stored as `extra.memory` on the message they cover, exactly where SillyTavern's Memory extension writes them. Automatic updates follow the message or word interval; a Memory panel can summarize now, edit, restore or delete; the injection template and position (after/before the main prompt, or in chat at a depth with a role) mirror the extension. `{{summary}}` and `{{words}}` expand in prompts, and the context inspector has a Memory tab with the injected text and its token cost. Works in group chats too.
 - **Quick Replies (subset)** (2026-11-12): SillyTavern version 2 quick reply sets live one file per set under `data/quickreplies/`, with import, export, rename and delete. The bar above the message box shows the enabled sets in account order; Settings → Quick Replies edits sets, buttons, colors and bar order. Plain text fills the composer (or pastes literally when the set disables sending), and `/send`, `/sys`, `/echo`, `/trigger`, `/continue`, `/regenerate` and `/run` execute and chain with `|`. A new `trigger` generation action lets a button ask for a reply without a user message, choosing a group speaker by name or index. Per-chat set links in `chat_metadata.quickReply` are honoured.
 - **Text to speech** (2026-11-12): a provider-agnostic TTS layer with two adapters. Browser speech synthesis works offline with the operating system's voices; the OpenAI-compatible adapter calls `/audio/speech` on OpenAI or a local server that implements the same API, keeping its key in `data/secrets.json`. Settings → TTS configures the backend, voices, speed/rate, per-character and narrator voices, autoplay and text cleaning. Every reply gets a play button, and new replies play automatically when autoplay is on. Audio is generated on demand and never written to the data directory.
@@ -321,7 +340,9 @@ Two items are pulled into the [MVP](#mvp--020-early-access); the rest wait until
 - [x] Image generation has at least one working adapter with clear configuration docs.
 - [x] The character library supports favorites, tag filters, sorting and bulk actions.
 - [x] Regex rules round-trip with ST and apply in prompt/render paths as configured.
-- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern.
+- [ ] Character edits export to a valid PNG/JSON card that ST can open. Implemented and covered by `apps/server/src/cards/write.test.ts` and the CharX round-trip route test; the remaining step is one manual open of an exported card in SillyTavern, which is why M2 closed with this one still unticked.
+
+M2 shipped in `0.3.0` on 2026-11-13. The 434 unit tests the release carries (98 shared, 336 server) cover every item above except the manual ST round trip.
 
 ### Suggested PR slices
 
@@ -356,7 +377,7 @@ The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: gro
 - The sandbox must not become a security bypass.
 - STscript is large; implement by usage frequency and document the gaps.
 
-## M4 — Desktop (MVP subset in progress)
+## M4 — Desktop (In progress)
 
 **Goal:** ship a Windows-first Tauri 2 desktop app that reuses the same server and SPA.
 
@@ -366,19 +387,20 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 - _MVP_ — Tauri 2 shell with a bundled Node sidecar (`CATCUP_DATA_DIR` set to the OS app-data directory).
 - _MVP_ — Port selection and readiness handshake; single-instance behaviour.
-- _MVP_ — Tray icon, window state, graceful shutdown of the sidecar.
-- Auto-updater and signed release artifacts.
-- File associations for `.png` / `.json` character cards.
-- _MVP_ — Windows installer first; macOS/Linux packaging after.
+- _MVP_ — Graceful shutdown of the sidecar.
+- Tray icon and window-state restore.
+- Auto-updater. **Signed release artifacts (Authenticode) are deferred by decision on 2026-11-13.** An unsigned installer triggers one SmartScreen warning on the first install of a downloaded copy, which the user clicks through, and the update archive carries CatCup's own signature either way — so self-update works with or without a certificate. A publisher certificate buys a name in that one warning, not the ability to run. Reopen the decision only if the warning turns into a real distribution complaint, or if an Apple certificate is wanted for the macOS build.
+- File associations for `.catcup` character card packages. The scope originally said `.png` / `.json`; both were rejected after checking the NSIS bundler, which writes the extension's default handler unconditionally — claiming `.json` would make CatCup the default program for every JSON file on the account, and `.png` for every image.
+- _MVP_ — Windows installer first; macOS/Linux packaging after. **Packaging configured 2026-11-13** — per-platform bundle targets, a target-aware Node sidecar and a three-platform CI compile — but neither platform is released or has been run.
 - LAN mode remains available from the same server.
 
 ### Acceptance criteria
 
-- [ ] A clean Windows machine can install and run the app without a separate Node installation.
+- [x] A clean Windows machine can install and run the app without a separate Node installation.
 - [ ] The desktop app and the browser/LAN mode share the same data directory and behaviour.
-- [ ] The sidecar stops when the app exits and does not leave orphan processes.
-- [ ] Updates and file associations work.
-- [ ] Data can be migrated from the web build.
+- [x] The sidecar stops when the app exits and does not leave orphan processes.
+- [ ] Updates and file associations work — `.catcup` associations ship in the installer, and self-update lives behind the tray's **Check for Updates…**. Neither is ticked: the association has only been exercised from a development build, and an update only reaches installed apps once a release is built with `TAURI_SIGNING_PRIVATE_KEY` in the repository secrets.
+- [x] Data can be migrated from the web build — `CATCUP_DATA_DIR` points the desktop app at an existing folder, so a web `data/` directory opens as it is. Verified by listing a web folder's characters from the desktop server; there is no in-app migration screen. See [DESKTOP.md](DESKTOP.md#data-directory).
 
 ## M5 — Polish and release (Planned)
 
@@ -387,13 +409,17 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 ### Scope
 
 - Mobile browser polish (chat view, composer, sidebar, settings).
-- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; phases B–E remain.
+- **Profiles** ([RFC 0001](RFC/0001-profiles.md), accepted 2026-11-14): a profile is a data scope — its own characters, chats, groups, world info, presets, quick reply sets, regex, personas, images and configuration — with the provider list, models, keys and auth global. Switching needs no restart and is refused while a reply is streaming; archiving replaces deletion; a profile pins a provider and a preferred model. A per-item shared layer follows as its own slice. Acceptance criteria are in §14 of the RFC.
+
+- **Shared scope** (the second slice of [RFC 0001](RFC/0001-profiles.md), §4 and §13.2): any library item — character, world info book, preset, quick reply set, regex rule or persona — can be marked reusable and then lives in `data/shared/`, where every profile sees it. The profile's own copy wins on an id collision and the winning row is labelled, so an id still addresses one item; a shared regex rule and a shared persona each keep their own file, merged on read. Shared items are visible by default behind a badge, with a **Scope** filter in the character library. Acceptance: (a) an item marked reusable appears in a second profile and its original profile's chats, groups and lorebook links still resolve; (b) a profile item and a shared item of the same id both exist and the profile's is the one that loads; (c) taking a shared item into a profile copies it under a free name and leaves the shared original untouched; (d) a move refuses an id the destination already holds instead of overwriting it; (e) a shared persona never lands in a profile's `settings.json`, even after an unrelated settings save.
+- **Book distillation** ([RFC 0002](RFC/0002-book-distillation.md), accepted 2026-11-14): an uploaded `.txt`, `.md` or `.epub` becomes a world info book, and — with a model — a set of character-card drafts. Chapters are section boundaries, so the world info editor and the review sheet group the same way. The uploaded file is kept in the profile that uploaded it and re-parsed on demand, so a run can be repeated with a better model. Nothing reaches `worlds/` or `characters/` until the review sheet is accepted. Acceptance: (a) a `.txt`, `.md` or `.epub` becomes a world info book that opens in SillyTavern — **done**; (b) **sections only** needs no model call and produces one entry per chapter — **done**; (c) the model mode chunks a book larger than the context window and reports which sections it could not read — **done**; (d) nothing is written to `worlds/` or `characters/` before the sheet is accepted — **done**; (e) a run can be cancelled at any point and writes nothing — **done**; (f) the accepted output can be written to the profile or to the shared scope — **done**.
+- Full-app UX overhaul: grouped settings navigation, provider management, chat chrome, message actions and editor forms, following [DESIGN.md](DESIGN.md). **Phase A (foundations, Settings and Providers) done 2026-11-12**; **stage B (app shell and chat chrome) done 2026-11-13**; stages C–E remain.
 - i18n with English and zh-CN first, then community locales.
 - Accessibility pass: focus management, labels, keyboard navigation, contrast.
 - Performance: route/feature code splitting, smaller initial bundle, streaming render efficiency.
-- CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md).
-- Release automation.
-- Backup/restore and upgrade documentation.
+- CI workflow: typecheck, lint, test and build on every pull request. **Done 2026-11-11** — see [DEVELOPMENT.md](DEVELOPMENT.md). The desktop shell is compiled on `windows-latest` too, added 2026-11-13.
+- Release automation. **Done 2026-11-13** — a merge into `main` with an untagged version creates the tag, builds the installer and publishes the release.
+- Backup/restore and upgrade documentation. **Done** — see [DEPLOYMENT.md](DEPLOYMENT.md#backup-and-restore) and [DATA-FORMATS.md](DATA-FORMATS.md#backup-restore-and-upgrades).
 - Security hardening: trust-proxy/TLS guidance, optional CSRF tokens, key encryption at rest evaluation.
 - Release notes and v1.0 checklist.
 
@@ -408,7 +434,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 ### Interface design
 
-Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome; C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
+Tracked in [DESIGN.md](DESIGN.md). The full-app UX overhaul is delivered in five stages: A, foundations and Settings/Providers (**done 2026-11-12**); B, app shell and chat chrome (**done 2026-11-13** — the chat headers keep identity, chat switching, provider state and one Tools menu, and chat/message deletion moved to the app's own confirmation); C, message experience; D, character/group editors and remaining settings panels; E, accessibility, contrast and responsive audit. Every stage follows the same principles: one primary action per surface, progressive disclosure, visible state, keyboard/touch parity and restrained motion.
 
 ### Security
 
@@ -445,7 +471,7 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 | ST extension compatibility is unbounded     | Schedule and scope                | Compatibility tiers; sandbox; document unsupported APIs |
 | World Info/Prompt Manager semantics diverge | Users notice different replies    | Port algorithms; fixture tests; compare with ST         |
 | Tokenizer coverage lags providers           | Context budget wrong              | Estimator fallback; per-family tokenizers               |
-| Tauri sidecar packaging on Windows          | Desktop milestone slips           | Prototype early in M4; keep web mode independent        |
+| Tauri auto-updater and code signing         | Unshipped M4 features             | Deferred deliberately; unsigned installs documented     |
 | Single-user assumption                      | No multi-user LAN                 | Document explicitly; defer multi-user                   |
 | i18n late                                   | Rework if strings scattered       | English-first with centralized UI strings               |
 | Windows release builds are unsigned         | SmartScreen warnings on first run | Documented; signing arrives in M4                       |
@@ -453,3 +479,7 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 ## Document history
 
 - 2026-11-09: Initial milestone document. M0 marked complete; M1 scoped.
+- 2026-11-10: M1 marked complete, including the model-aware tokenizer.
+- 2026-11-13: M2 marked complete and released as `0.3.0`; M4 marked in progress.
+- 2026-11-14: M2 remainder closed — group card modes, card depth prompts and auto mode. UX stage B (app shell and chat chrome) delivered. RFC 0001 (profiles) accepted and added to M5. RFC 0002 (book distillation) accepted and added to M5; its first slice, book parsing and storage, landed on `dev`.
+- 2026-11-15: Book distillation's second slice landed — sections mode runs end to end, from the upload through the review sheet to a written world info book and linked cards. The run registry is separate from generations because a distill run deliberately survives a closed tab. The third slice closed the same day: the model draft reads the book per chunk, merges the entities in plain code with one batched request for near-identical names, and spends an outline request only where a character or place recurs. All six acceptance criteria are met.

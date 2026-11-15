@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-11-12 · M0 and M1 complete, M2 in progress
+> Last updated: 2026-11-13 · M0, M1 and M2 complete; M4 implemented on `dev`; M3 and M5 remain
 
 ## 1. Goals and principles
 
@@ -14,34 +14,22 @@ CatCup Tavern is a **SillyTavern-compatible AI roleplay client**, not a generic 
 
 ## 2. Runtime topology
 
-### Web / LAN
+```mermaid
+flowchart TB
+    Browser["Browser - web and LAN<br/>React SPA · session cookie only"]
+    Tauri["Tauri 2 window - Windows desktop<br/>loads http://127.0.0.1:&lt;port&gt;"]
+    Server["Node 24 + Fastify 5<br/>/api/* · static apps/web/dist · data/"]
+    Providers["OpenAI / OpenRouter / Anthropic / Ollama"]
 
-```text
-Browser (React SPA)
-    │  REST + SSE (cookie auth)
-    ▼
-Node 24 + Fastify 5
-    ├── /api/*       application endpoints
-    ├── static       apps/web/dist (production)
-    └── data/        ST-compatible file storage
-    │  HTTPS (fetch)
-    ▼
-OpenAI / OpenRouter / Anthropic / Ollama
+    Browser -- "REST + SSE (cookie auth)" --> Server
+    Tauri -- "spawns the sidecar, then loads it" --> Server
+    Server -- "HTTPS fetch" --> Providers
 ```
 
 - Development: Vite on `:5173` proxies `/api` to `:8000`.
 - Production: Fastify serves the SPA and API on the same port, default `127.0.0.1:8000`.
 - LAN mode binds `0.0.0.0`; authentication is a single-user password session.
-
-### Desktop
-
-```text
-Tauri 2 window (loads http://127.0.0.1:<port>)
-    └── spawns Node sidecar (same @catcup/server)
-          └── data dir = OS app-data directory
-```
-
-The desktop shell owns only process management, port selection and the data directory. No business logic is duplicated. A tray icon, window-state restore, file associations and the updater are still to come; see [DESKTOP.md](DESKTOP.md).
+- Desktop: the Tauri shell spawns the same server as a sidecar on an OS-chosen port and keeps its data in the OS app-data directory. It owns only process management, port selection, the data directory, window state, the tray icon and handing a file the user opened to the server; no business logic is duplicated. It updates itself from a signed release. See [DESKTOP.md](DESKTOP.md).
 
 ## 3. Stack decisions
 
@@ -64,27 +52,31 @@ apps/server/
     app.ts               Fastify assembly
     index.ts             entrypoint
     config.ts            env + default paths
+    assets.ts            shipped asset paths (tokenizer, vocabularies)
     cards/               PNG tEXt / JSON v2-v3 parsing, CharX packages
     generation/          shared SSE generation stream and stop registry
     group/               member resolution, speaker selection, reply cleanup
+    http/                HTTP helpers: errors, URL joining, shared guards
     images/              image adapters (A1111, ComfyUI, OpenAI-compatible), prompt drafting, connection test
+    import/              SillyTavern user-folder scan and copy
     memory/              rolling summaries: schedule, request building, injection
     providers/           provider adapters (normalized streaming chunks)
-    prompt/              prompt assembly, macros, token budget
+    prompt/              prompt assembly, macros, token budget, group prompts
     quickreplies/        quick reply parsing target, command execution
-    routes/              auth / characters / chats / generate / groups / images / memory / quick replies / tts / providers / settings
+    routes/              auth / characters / chats / context / generate / groups / images / import / memory / presets / providers / quick replies / regex / settings / tts / worlds
     security/            scrypt password, HMAC session
     storage/             ST-compatible file storage, character assets, library metadata, atomic writes, file locks
     sse.ts               client SSE writer
     tts/                 OpenAI-compatible speech adapter
+    worldinfo/           ST loader, scanner, entries, timed effects and prompt buckets
 apps/web/
   src/
-    components/          auth, sidebar, chat, settings
+    components/          auth, library, chat, groups, images, memory, quick replies, regex, settings
     hooks/               React Query wrappers
     lib/                 fetch / SSE / formatting
     store/               Zustand
 packages/shared/
-  src/schemas/           character / chat / worldinfo / preset / provider / settings / images / api
+  src/schemas/           character / chat / group / worldinfo / preset / provider / quickreplies / regex / tts / settings / images / api
 ```
 
 ## 5. Data layer (SillyTavern compatible)
@@ -134,46 +126,50 @@ The chat folder is named after the character (ST behavior), with the character i
 - World info is modeled after ST's `entries[uid]` structure (key/keysecondary/content/constant/order/position/depth/...).
 - Presets accept ST OpenAI preset fields (`prompts`, `prompt_order`, sampling parameters).
 
-Schemas exist in `packages/shared`; see [DATA-FORMATS.md](DATA-FORMATS.md). The scanner and prompt-manager execution arrive in M1; see [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
+Schemas exist in `packages/shared`; see [DATA-FORMATS.md](DATA-FORMATS.md). The scanner and prompt-manager execution landed in M1; see [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md).
 
 ## 6. API and streaming
 
 REST prefix `/api`. Everything except `/api/auth/*` and `/api/health` requires a session. Full request and response shapes are documented in [API.md](API.md).
 
-| Method       | Path                                          | Purpose                                    |
-| ------------ | --------------------------------------------- | ------------------------------------------ |
-| GET          | `/api/auth/status`                            | `needsSetup` / `authenticated`             |
-| POST         | `/api/auth/setup`                             | first-run password (loopback only)         |
-| POST         | `/api/auth/login` / `logout`                  | session lifecycle                          |
-| GET/POST     | `/api/characters`                             | list / import (multipart)                  |
-| GET/DELETE   | `/api/characters/:id`                         | detail / delete                            |
-| GET          | `/api/characters/:id/avatar`                  | avatar bytes                               |
-| GET          | `/api/characters/:id/export`                  | PNG / JSON / CharX download                |
-| PATCH        | `/api/characters/:id/favorite`                | set the library favorite flag              |
-| POST         | `/api/characters/bulk`                        | bulk favorite, tag or delete               |
-| GET/POST     | `/api/characters/:id/chats`                   | chat list / create                         |
-| GET          | `/api/chats/:characterId/:chatId`             | full chat                                  |
-| PATCH/DELETE | `/api/chats/.../messages/:index`              | edit / delete (PATCH also selects a swipe) |
-| CRUD         | `/api/groups`                                 | group metadata                             |
-| CRUD         | `/api/groups/:groupId/chats`                  | group chats and messages                   |
-| POST         | `/api/groups/:groupId/chats/:chatId/generate` | group reply, returns the same SSE stream   |
-| POST         | `/api/generate`                               | start generation, returns SSE              |
-| POST         | `/api/generate/:id/stop`                      | stop generation                            |
-| CRUD         | `/api/quick-replies`                          | quick reply sets and their files           |
-| POST         | `/api/chats/…/quick-replies/execute`          | run a quick reply, returns client actions  |
-| POST         | `/api/groups/…/quick-replies/execute`         | the same for a group chat                  |
-| POST         | `/api/tts/speak`                              | text to speech; returns audio bytes        |
-| POST         | `/api/images/draft`                           | draft an image prompt from the chat        |
-| POST         | `/api/images/generate`                        | generate and store one gallery image       |
-| POST         | `/api/images/attach`                          | append a generated image message to a chat |
-| POST         | `/api/images/test`                            | check the saved image backend              |
-| GET          | `/api/images`                                 | list a character or group gallery          |
-| GET/DELETE   | `/api/images/:folder/:file`                   | serve or delete one image                  |
-| GET/PATCH    | `/api/settings`                               | app settings                               |
-| CRUD         | `/api/providers`                              | provider configuration; keys go to secrets |
-| POST         | `/api/providers/test`                         | test an unsaved provider form              |
-| POST         | `/api/providers/:id/test`                     | connectivity test                          |
-| GET          | `/api/providers/:id/models`                   | model list                                 |
+| Method           | Path                                          | Purpose                                    |
+| ---------------- | --------------------------------------------- | ------------------------------------------ |
+| GET              | `/api/auth/status`                            | `needsSetup` / `authenticated`             |
+| POST             | `/api/auth/setup`                             | first-run password (loopback only)         |
+| POST             | `/api/auth/login` / `logout`                  | session lifecycle                          |
+| GET              | `/api/characters`                             | list characters                            |
+| POST             | `/api/characters/import`                      | import PNG / JSON / CharX (multipart)      |
+| POST             | `/api/characters/sample`                      | add the bundled sample character           |
+| POST             | `/api/characters/bulk`                        | bulk favorite, tag and delete              |
+| GET/PATCH/DELETE | `/api/characters/:id`                         | detail / edit / delete                     |
+| GET              | `/api/characters/:id/avatar`                  | avatar bytes                               |
+| POST             | `/api/characters/:id/lorebook`                | import the card's embedded lorebook        |
+| GET              | `/api/characters/:id/export`                  | PNG / JSON / CharX download                |
+| PATCH            | `/api/characters/:id/favorite`                | set the library favorite flag              |
+| POST             | `/api/characters/bulk`                        | bulk favorite, tag or delete               |
+| GET/POST         | `/api/characters/:id/chats`                   | chat list / create                         |
+| GET              | `/api/chats/:characterId/:chatId`             | full chat                                  |
+| PATCH/DELETE     | `/api/chats/.../messages/:index`              | edit / delete (PATCH also selects a swipe) |
+| CRUD             | `/api/groups`                                 | group metadata                             |
+| CRUD             | `/api/groups/:groupId/chats`                  | group chats and messages                   |
+| POST             | `/api/groups/:groupId/chats/:chatId/generate` | group reply, returns the same SSE stream   |
+| POST             | `/api/generate`                               | start generation, returns SSE              |
+| POST             | `/api/generate/:id/stop`                      | stop generation                            |
+| CRUD             | `/api/quick-replies`                          | quick reply sets and their files           |
+| POST             | `/api/chats/…/quick-replies/execute`          | run a quick reply, returns client actions  |
+| POST             | `/api/groups/…/quick-replies/execute`         | the same for a group chat                  |
+| POST             | `/api/tts/speak`                              | text to speech; returns audio bytes        |
+| POST             | `/api/images/draft`                           | draft an image prompt from the chat        |
+| POST             | `/api/images/generate`                        | generate and store one gallery image       |
+| POST             | `/api/images/attach`                          | append a generated image message to a chat |
+| POST             | `/api/images/test`                            | check the saved image backend              |
+| GET              | `/api/images`                                 | list a character or group gallery          |
+| GET/DELETE       | `/api/images/:folder/:file`                   | serve or delete one image                  |
+| GET/PATCH        | `/api/settings`                               | app settings                               |
+| CRUD             | `/api/providers`                              | provider configuration; keys go to secrets |
+| POST             | `/api/providers/test`                         | test an unsaved provider form              |
+| POST             | `/api/providers/:id/test`                     | connectivity test                          |
+| GET              | `/api/providers/:id/models`                   | model list                                 |
 
 `POST /api/generate` SSE events:
 
@@ -191,13 +187,31 @@ event: error      data: { message }
 - Client disconnect / Stop aborts the upstream request and saves the partial text with `extra.stopped = true`.
 - A `: ping` comment is emitted every 15s to keep proxies from timing out.
 
+```mermaid
+sequenceDiagram
+    participant C as Client (SPA)
+    participant S as Server
+    participant P as Provider
+    C->>S: POST /api/generate (action, message?)
+    S->>S: append user message, assemble prompt
+    S-->>C: SSE start {generationId}
+    S->>P: stream chat request
+    loop each chunk
+        P-->>S: text / reasoning
+        S-->>C: SSE token / reasoning
+    end
+    S->>S: persist the assistant message
+    S-->>C: SSE done {message, usage?}
+    Note over C,S: stop or disconnect aborts upstream and saves partial text with extra.stopped
+```
+
 ## 7. Provider abstraction
 
 ```ts
 interface ProviderAdapter {
-    streamChat(cfg, request): AsyncIterable<StreamChunk>;
-    listModels(cfg): Promise<ModelInfo[]>;
-    test(cfg): Promise<ProviderTestResult>;
+    streamChat(cfg, apiKey, request): AsyncIterable<StreamChunk>;
+    listModels(cfg, apiKey): Promise<ModelInfo[]>;
+    test(cfg, apiKey): Promise<ProviderTestResult>;
 }
 ```
 
@@ -212,6 +226,16 @@ interface ProviderAdapter {
 Normalized stream chunks: `{ type: 'text' | 'reasoning' | 'usage', ... }`. See [PROVIDERS.md](PROVIDERS.md) for endpoint-level details and limitations.
 
 ## 8. Prompt pipeline
+
+```mermaid
+flowchart LR
+    MAC[Macros expand] --> PM[Prompt Manager<br/>order · card overrides]
+    PM --> WI[World info scan<br/>before · after · depth]
+    WI --> TRIM[History trimmed<br/>to the token budget]
+    TRIM --> MEM[Summary memory<br/>injected]
+    MEM --> EX[Dialogue examples<br/>continue and group nudges]
+    EX --> OUT[Assembled prompt]
+```
 
 1. Macros expand in prompt entries, world info, the author's note, the summary and stored history.
 2. The Prompt Manager builds the ordered collection from the active preset, or SillyTavern's defaults when none is active, merges the fixed system prompts, applies the card's `main` and `jailbreak` overrides and populates the slots in ST's call order.
@@ -237,25 +261,25 @@ The assembled prompt is also what the context inspector shows; `/api/chats/:char
 
 - Password: `scrypt` (N=16384, r=8, p=1), constant-time comparison.
 - Session: HMAC-SHA256 signed cookie, `HttpOnly` + `SameSite=Lax`, 30-day default.
-- First-run setup accepts loopback requests only.
+- First-run setup accepts loopback requests only. The desktop build skips setup entirely: with `CATCUP_DESKTOP=1` and no password it serves the API in open session, which is why that mode refuses a non-loopback bind.
 - API keys: only `data/secrets.json`; responses expose `hasKey` only (providers), `ttsHasKey` (text to speech) or `imageHasKey` (image generation); logs redact `authorization`, `cookie` and `x-api-key`.
 - Paths: every `:id` / `:chatId` passes through `resolveInside()` to block traversal.
 - Login rate limiting; put the LAN server behind HTTPS when exposing it beyond a trusted network.
-- Uploads: 20 MB per file, `.png` / `.json` only.
+- Uploads: 20 MB per file, `.png` / `.json` / `.charx` only.
 - No trust-proxy support yet; see [SECURITY.md](SECURITY.md) before exposing the server behind a TLS proxy.
 
 ## 11. Milestones
 
 The authoritative scope, status and acceptance criteria live in [MILESTONES.md](MILESTONES.md). Summary:
 
-| Milestone | Status      | Theme                                                               |
-| --------- | ----------- | ------------------------------------------------------------------- |
-| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers    |
-| M1        | Complete    | World info, Prompt Manager, presets, editing/branching, tokenizer   |
-| M2        | In progress | Groups, summary memory, Quick Replies subset, TTS, images, CharX    |
-| M3        | Planned     | STscript, Quick Replies, getContext/event bus, extension sandbox    |
-| M4        | Planned     | Desktop signing, auto-updater, file associations, tray, macOS/Linux |
-| M5        | Planned     | Mobile, i18n, accessibility, performance, v1.0                      |
+| Milestone | Status      | Theme                                                             |
+| --------- | ----------- | ----------------------------------------------------------------- |
+| M0        | Complete    | Runnable web + server foundation, ST cards/chats, four providers  |
+| M1        | Complete    | World info, Prompt Manager, presets, editing/branching, tokenizer |
+| M2        | Complete    | Groups, summary memory, Quick Replies subset, TTS, images, CharX  |
+| M3        | Planned     | STscript, full Quick Replies, getContext/event bus, extensions    |
+| M4        | In progress | Signing, auto-updater, file associations, tray, macOS/Linux       |
+| M5        | Planned     | Mobile, i18n, accessibility, UX stages B–E, performance, v1.0     |
 
 ## 12. Decision log
 

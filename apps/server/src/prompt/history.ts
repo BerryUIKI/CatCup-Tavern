@@ -47,6 +47,22 @@ export interface ExampleMessage {
     name: 'example_user' | 'example_assistant';
 }
 
+export interface ParseExampleOptions {
+    /**
+     * Every other group member's name. A line starting with one belongs to that
+     * character, not to the persona — this is what makes a joined card's
+     * examples parse at all, since the merged text carries every member's
+     * `Name:` lines. SillyTavern reads the same list from `getGroupNames()`.
+     */
+    otherNames?: readonly string[];
+    /**
+     * Prefix each turn with its speaker, as SillyTavern does for group chats
+     * (`appendNamesForGroup` in `parseExampleIntoIndividual`), so the model can
+     * tell three characters' examples apart.
+     */
+    appendNames?: boolean;
+}
+
 /**
  * Split a card's `mes_example` into SillyTavern's example blocks.
  *
@@ -55,7 +71,12 @@ export interface ExampleMessage {
  * message whose `name` is the literal `example_user` or `example_assistant`,
  * not the speaker's name.
  */
-export function parseExampleBlocks(mesExample: string, charName: string, userName: string): ExampleMessage[][] {
+export function parseExampleBlocks(
+    mesExample: string,
+    charName: string,
+    userName: string,
+    options: ParseExampleOptions = {},
+): ExampleMessage[][] {
     if (!mesExample.trim()) {
         return [];
     }
@@ -63,20 +84,37 @@ export function parseExampleBlocks(mesExample: string, charName: string, userNam
     return mesExample
         .split(/<START>/i)
         .slice(1)
-        .map((block) => parseExampleBlock(block, charName, userName));
+        .map((block) => parseExampleBlock(block, charName, userName, options));
 }
 
-function parseExampleBlock(block: string, charName: string, userName: string): ExampleMessage[] {
+function parseExampleBlock(
+    block: string,
+    charName: string,
+    userName: string,
+    options: ParseExampleOptions,
+): ExampleMessage[] {
     const lines = block.split('\n');
     const result: ExampleMessage[] = [];
     let current: string[] = [];
     let inUser = false;
     let inBot = false;
-    const botName = charName;
+    let botName = charName;
+
+    // Longest first, so "Bram Wyrd:" wins over "Bram:".
+    const otherNames = [...(options.otherNames ?? [])]
+        .filter((name) => name && name !== charName)
+        .sort((a, b) => b.length - a.length);
 
     const flush = (speaker: string, name: ExampleMessage['name']): void => {
-        const parsed = current.join('\n').replace(`${speaker}:`, '').trim();
-        result.push({ role: 'system', content: parsed, name });
+        // SillyTavern removes the speaker prefix once, from the start of the
+        // turn; every later line keeps whatever prefix it arrived with.
+        const joined = current.join('\n').trim();
+        const stripped = joined.startsWith(`${speaker}:`) ? joined.slice(speaker.length + 1).trim() : joined;
+        result.push({
+            role: 'system',
+            content: options.appendNames && stripped ? `${speaker}: ${stripped}` : stripped,
+            name,
+        });
         current = [];
     };
 
@@ -90,7 +128,14 @@ function parseExampleBlock(block: string, charName: string, userName: string): E
                 flush(botName, 'example_assistant');
             }
             inBot = false;
-        } else if (line.startsWith(`${charName}:`)) {
+        } else if (line.startsWith(`${charName}:`) || otherNames.some((name) => line.startsWith(`${name}:`))) {
+            // A line for another member switches the speaker, exactly as a line
+            // for the card's own character does.
+            if (!line.startsWith(`${charName}:`)) {
+                botName = line.slice(0, line.indexOf(':'));
+            } else {
+                botName = charName;
+            }
             inBot = true;
             if (inUser) {
                 flush(userName, 'example_user');

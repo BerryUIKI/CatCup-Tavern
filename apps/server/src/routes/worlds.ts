@@ -23,6 +23,8 @@ const entryParams = idParams.extend({ uid: z.coerce.number().int().min(0) });
 const importSchema = z.object({
     fileName: z.string().max(200).optional(),
     book: z.record(z.string(), z.unknown()),
+    /** `shared` creates the book reusable in every profile. */
+    scope: z.enum(['profile', 'shared']).default('profile'),
 });
 
 const reorderSchema = z.object({

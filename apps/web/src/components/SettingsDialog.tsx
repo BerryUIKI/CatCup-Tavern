@@ -4,8 +4,10 @@ import {
     BookOpen,
     Brain,
     Download,
+    Globe,
     ImagePlus,
     Info,
+    Layers,
     ListOrdered,
     Pencil,
     Regex,
@@ -26,39 +28,32 @@ import {
     useImportPreset,
     useImportWorld,
     usePresets,
+    useProfiles,
     useSettings,
+    useShareItem,
     useUpdateSettings,
     useWorlds,
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
-import { useAppStore } from '../store/app';
+import { type SettingsSectionId, useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
+import { ProfileSettings } from './ProfileSettings';
 import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
+import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 import { TtsSettings } from './TtsSettings';
 import { WorldInfoEditor } from './WorldInfoEditor';
 
-export type SettingsSectionId =
-    | 'providers'
-    | 'generation'
-    | 'prompts'
-    | 'worldinfo'
-    | 'regex'
-    | 'memory'
-    | 'persona'
-    | 'quickreplies'
-    | 'tts'
-    | 'images'
-    | 'about';
+export type { SettingsSectionId };
 
 type SettingsGroup = 'Model' | 'Prompt' | 'Chat' | 'Media' | 'About';
 
@@ -71,6 +66,13 @@ interface SettingsSection {
 }
 
 const SECTIONS: SettingsSection[] = [
+    {
+        id: 'profiles',
+        label: 'Profiles',
+        icon: Layers,
+        group: 'Model',
+        description: 'Each profile is its own cast, lorebooks, presets and settings; the provider list is shared.',
+    },
     {
         id: 'providers',
         label: 'Providers',
@@ -165,6 +167,9 @@ function generationEqual(left: GenerationSettings, right: GenerationSettings): b
 }
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const shareItem = useShareItem();
+    const profilesQuery = useProfiles();
+    const profiles = profilesQuery.data?.profiles ?? [];
     const settingsQuery = useSettings();
     const settings = settingsQuery.data;
     const updateSettings = useUpdateSettings();
@@ -177,7 +182,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const deleteWorldMutation = useDeleteWorld();
     const worlds = worldsQuery.data?.worlds ?? [];
     const globalBooks = settings?.worldInfo.globalBooks ?? [];
+    const activePreset = presets.find((preset) => preset.id === settings?.activePresetId) ?? null;
     const pushToast = useAppStore((state) => state.pushToast);
+    const requestedSection = useAppStore((state) => state.settingsSection);
 
     const [section, setSection] = useState<SettingsSectionId>('providers');
     const [generationForm, setGenerationForm] = useState<GenerationSettings | null>(null);
@@ -208,8 +215,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             return;
         }
         initializedRef.current = true;
+        // A surface that deep-linked here (the chat header's provider pill,
+        // or a hint inside a tool menu) opens on that section; otherwise the
+        // dialog keeps showing wherever it was last left.
+        if (requestedSection) {
+            setSection(requestedSection);
+            setEditingBookId(null);
+        }
         setGenerationForm({ ...settings.generation });
-    }, [open, settings]);
+    }, [open, settings, requestedSection]);
 
     const providerIsDirty = () => section === 'providers' && (providerRef.current?.isDirty() ?? false);
     const hasUnsavedChanges = () => providerIsDirty() || generationDirty;
@@ -372,6 +386,39 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         }
     };
 
+    /**
+     * Move a world info book, a preset or a quick reply set between this profile
+     * and the shared scope.
+     *
+     * The confirmation names how many profiles the item becomes visible in when
+     * it goes shared, because a preset every profile inherits is a decision a
+     * person should make knowingly rather than discover.
+     */
+    const handleShare = async (
+        kind: 'worlds' | 'presets' | 'quickreplies',
+        item: { id: string; scope: string; name?: string },
+        label: string,
+    ) => {
+        const target = item.scope === 'shared' ? 'profile' : 'shared';
+        if (target === 'shared' && profiles.length > 1) {
+            const confirmed = window.confirm(
+                `"${label}" becomes visible in every profile on this machine (${profiles.length} profiles). Continue?`,
+            );
+            if (!confirmed) {
+                return;
+            }
+        }
+        try {
+            await shareItem.mutateAsync({ kind, id: item.id, action: 'move', scope: target });
+            pushToast(
+                target === 'shared' ? `"${label}" is now shared.` : `"${label}" belongs to this profile again.`,
+                'success',
+            );
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not change where this lives.', 'error');
+        }
+    };
+
     const renderGenerationPanel = () => (
         <div className="space-y-5 p-5">
             <p className="text-sm leading-relaxed text-muted">
@@ -481,7 +528,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     <option value="">Built-in defaults</option>
                     {presets.map((preset) => (
                         <option key={preset.id} value={preset.id}>
-                            {preset.id} ({preset.promptCount} prompts)
+                            {preset.id} ({preset.promptCount} prompts){preset.scope === 'shared' ? ' — Shared' : ''}
                         </option>
                     ))}
                 </select>
@@ -491,6 +538,21 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                         : 'No preset selected. Preset files in data/presets take effect once activated.'}
                 </p>
             </div>
+
+            {activePreset ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface/50 px-3 py-2 text-xs">
+                    <span className="truncate text-parchment">{activePreset.id}</span>
+                    <ScopeMarks item={activePreset} />
+                    <button
+                        type="button"
+                        className="btn-ghost ml-auto"
+                        onClick={() => void handleShare('presets', activePreset, activePreset.id)}
+                    >
+                        <Globe size={14} />
+                        {activePreset.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'}
+                    </button>
+                </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -597,8 +659,24 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                     onChange={(event) => void handleToggleBook(world.id, event.target.checked)}
                                 />
                                 <span className="truncate text-sm text-parchment">{world.id}</span>
+                                <ScopeMarks item={world} />
                                 <span className="shrink-0 text-xs text-muted">{world.entryCount} entries</span>
                             </label>
+                            <button
+                                type="button"
+                                className="icon-btn size-7"
+                                onClick={() => void handleShare('worlds', world, world.id)}
+                                title={
+                                    world.scope === 'shared' ? 'Take into this profile' : 'Reusable in every profile'
+                                }
+                                aria-label={
+                                    world.scope === 'shared'
+                                        ? `Take ${world.id} into this profile`
+                                        : `Make ${world.id} reusable in every profile`
+                                }
+                            >
+                                <Globe size={14} />
+                            </button>
                             <a
                                 className="icon-btn size-7"
                                 href={api.worlds.exportUrl(world.id)}
@@ -671,7 +749,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         }
 
         const panel =
-            section === 'generation' ? (
+            section === 'profiles' ? (
+                <ProfileSettings />
+            ) : section === 'generation' ? (
                 renderGenerationPanel()
             ) : section === 'prompts' ? (
                 renderPromptsPanel()

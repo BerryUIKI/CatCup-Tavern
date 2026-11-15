@@ -23,11 +23,20 @@ export default defineConfig({
     /**
      * Dependencies are CommonJS and call `require` internally. In an ESM bundle
      * esbuild turns those into a dynamic require that throws, so the bundle
-     * needs a real `require` in scope.
+     * needs a real `require` in scope. Their `__filename` and `__dirname` need
+     * the same treatment: `write-file-atomic`, which every settings and data
+     * write goes through, builds a temp file name from `__filename` and fails
+     * the whole write with `ReferenceError: __filename is not defined`.
      */
     banner: bundleDependencies
         ? {
-              js: "import { createRequire as __catcupCreateRequire } from 'node:module'; const require = __catcupCreateRequire(import.meta.url);",
+              js: [
+                  "import { createRequire as __catcupCreateRequire } from 'node:module';",
+                  "import { fileURLToPath as __catcupFileURLToPath } from 'node:url';",
+                  'const require = __catcupCreateRequire(import.meta.url);',
+                  'const __filename = __catcupFileURLToPath(import.meta.url);',
+                  "const __dirname = __catcupFileURLToPath(new URL('.', import.meta.url));",
+              ].join('\n'),
           }
         : undefined,
 });

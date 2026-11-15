@@ -13,8 +13,15 @@ interface AnthropicMessage {
  * Consecutive same-role messages are merged because the Messages API rejects
  * them. The first message must be a user message; an assistant greeting is
  * therefore preceded by a small start marker.
+ *
+ * `prefill` appends a trailing assistant turn the model continues from, which
+ * SillyTavern uses for impersonation: it is how Claude is told to keep speaking
+ * as the user even though every system message was hoisted to `system`.
  */
-function convertMessages(messages: PromptMessage[]): { system: string; messages: AnthropicMessage[] } {
+export function convertMessages(
+    messages: PromptMessage[],
+    prefill?: string,
+): { system: string; messages: AnthropicMessage[] } {
     const systemParts: string[] = [];
     const converted: AnthropicMessage[] = [];
 
@@ -45,6 +52,18 @@ function convertMessages(messages: PromptMessage[]): { system: string; messages:
         converted.unshift({ role: 'user', content: '[Start of chat]' });
     }
 
+    // Anthropic prefilling: the last turn is an assistant turn the model must
+    // continue. Trailing whitespace is rejected, so it is trimmed.
+    const trimmedPrefill = prefill?.trimEnd();
+    if (trimmedPrefill) {
+        const last = converted[converted.length - 1];
+        if (last?.role === 'assistant') {
+            last.content += trimmedPrefill;
+        } else {
+            converted.push({ role: 'assistant', content: trimmedPrefill });
+        }
+    }
+
     return { system: systemParts.join('\n\n'), messages: converted };
 }
 
@@ -72,7 +91,7 @@ async function* streamChat(
     apiKey: string | undefined,
     request: ProviderRequest,
 ): AsyncGenerator<StreamChunk> {
-    const converted = convertMessages(request.messages);
+    const converted = convertMessages(request.messages, request.assistantPrefill);
     const body: Record<string, unknown> = {
         model: request.model,
         max_tokens: request.maxTokens,

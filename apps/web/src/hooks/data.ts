@@ -6,16 +6,23 @@ import type {
     CharacterSummary,
     ChatDetail,
     ChatSummary,
+    DistillAcceptInput,
     GroupChatDetail,
     GroupCreate,
     GroupPatch,
     GroupView,
     ImportCharactersResponse,
+    ItemScope,
+    Persona,
+    ProfileCreate,
+    ProfileRename,
     ProviderDraftTestInput,
     ProviderInput,
     QuickReplySet,
     RegexScriptPatch,
     SettingsPatch,
+    SettingsResponse,
+    SharedItemKind,
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
@@ -33,6 +40,7 @@ export const queryKeys = {
     groupChats: (groupId: string | null) => ['groupChats', groupId] as const,
     groupChat: (groupId: string | null, chatId: string | null) => ['groupChat', groupId, chatId] as const,
     settings: ['settings'] as const,
+    profiles: ['profiles'] as const,
     presets: ['presets'] as const,
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
@@ -40,6 +48,9 @@ export const queryKeys = {
     regex: ['regex'] as const,
     quickReplies: ['quickReplies'] as const,
     images: (folder: string) => ['images', folder] as const,
+    distillBooks: ['distillBooks'] as const,
+    distillRuns: ['distillRuns'] as const,
+    distillRun: (id: string | null) => ['distillRun', id] as const,
 };
 
 export function useAuthStatus() {
@@ -57,6 +68,7 @@ function useAuthenticated() {
         queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
             needsSetup: false,
             authenticated: true,
+            openSession: false,
         });
         queryClient.removeQueries({
             predicate: (query) => query.queryKey[0] !== 'auth',
@@ -88,9 +100,31 @@ export function useLogout() {
             queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
                 needsSetup: false,
                 authenticated: false,
+                openSession: false,
             });
             queryClient.removeQueries({
                 predicate: (query) => query.queryKey[0] !== 'auth',
+            });
+        },
+    });
+}
+
+/**
+ * Set or remove the desktop password.
+ *
+ * Removing it (`password: ''`) puts the app back into open session, so the
+ * cached status has to say so or the login screen reappears on every reload.
+ */
+export function useSetPassword() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ password, currentPassword }: { password: string; currentPassword?: string }) =>
+            api.auth.setPassword(password, currentPassword),
+        onSuccess: (result) => {
+            queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
+                needsSetup: false,
+                authenticated: true,
+                openSession: result.openSession,
             });
         },
     });
@@ -113,8 +147,8 @@ export function useCharacter(id: string | null) {
 
 export function useImportCharacters() {
     const queryClient = useQueryClient();
-    return useMutation<ImportCharactersResponse, Error, File[]>({
-        mutationFn: (files) => api.characters.import(files),
+    return useMutation<ImportCharactersResponse, Error, { files: File[]; scope?: ItemScope }>({
+        mutationFn: (variables) => api.characters.import(variables.files, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
             // A new card can resolve a member a group lists as missing.
@@ -726,7 +760,8 @@ export function useQuickReplies() {
 export function useCreateQuickReplySet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (name: string) => api.quickReplies.create(name),
+        mutationFn: (variables: { name: string; scope?: ItemScope }) =>
+            api.quickReplies.create(variables.name, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
         },
@@ -763,8 +798,8 @@ export function useDeleteQuickReplySet() {
 export function useImportQuickReplySet() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { data: unknown; name?: string }) =>
-            api.quickReplies.import(variables.data, variables.name),
+        mutationFn: (variables: { data: unknown; name?: string; scope?: ItemScope }) =>
+            api.quickReplies.import(variables.data, variables.name, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
         },
@@ -788,7 +823,8 @@ export function useExecuteQuickReply() {
 export function useCreateRegexScript() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (patch: RegexScriptPatch) => api.regex.create(patch),
+        mutationFn: (variables: { patch: RegexScriptPatch; scope?: ItemScope }) =>
+            api.regex.create(variables.patch, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
@@ -819,7 +855,8 @@ export function useDeleteRegexScript() {
 export function useReorderRegexScripts() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (ids: string[]) => api.regex.reorder(ids),
+        mutationFn: (variables: { ids: string[]; scope?: ItemScope }) =>
+            api.regex.reorder(variables.ids, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
@@ -829,11 +866,76 @@ export function useReorderRegexScripts() {
 export function useImportRegexScripts() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { data: unknown; mode: 'append' | 'replace' }) =>
-            api.regex.import(variables.data, variables.mode),
+        mutationFn: (variables: { data: unknown; mode: 'append' | 'replace'; scope?: ItemScope }) =>
+            api.regex.import(variables.data, variables.mode, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
         },
+    });
+}
+
+/** The profile list and the one the server is serving. */
+export function useProfiles() {
+    return useQuery({
+        queryKey: queryKeys.profiles,
+        queryFn: api.profiles.list,
+    });
+}
+
+/** Invalidate everything a profile switch changes: every scoped store. */
+function invalidateAll(queryClient: ReturnType<typeof useQueryClient>, settings: SettingsResponse) {
+    queryClient.setQueryData(queryKeys.settings, settings);
+    void queryClient.invalidateQueries();
+}
+
+export function useActivateProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.activate(id),
+        onSuccess: ({ settings }) => invalidateAll(queryClient, settings),
+    });
+}
+
+export function useCreateProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: ProfileCreate) => api.profiles.create(input),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useRenameProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, patch }: { id: string; patch: ProfileRename }) => api.profiles.rename(id, patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.profiles });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useArchiveProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.archive(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useRestoreProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.restore(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
+    });
+}
+
+export function useDeleteProfile() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.profiles.remove(id),
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.profiles }),
     });
 }
 
@@ -851,8 +953,8 @@ export function useWorlds() {
 export function useImportWorld() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { fileName?: string; book: unknown }) =>
-            api.worlds.import(variables.fileName, variables.book),
+        mutationFn: (variables: { fileName?: string; book: unknown; scope?: ItemScope }) =>
+            api.worlds.import(variables.fileName, variables.book, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
         },
@@ -1044,8 +1146,8 @@ export function useUpdatePreset(id: string | null) {
 export function useImportPreset() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { fileName?: string; preset: unknown }) =>
-            api.presets.import(variables.fileName, variables.preset),
+        mutationFn: (variables: { fileName?: string; preset: unknown; scope?: ItemScope }) =>
+            api.presets.import(variables.fileName, variables.preset, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
         },
@@ -1059,6 +1161,131 @@ export function useDeletePreset() {
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
             void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+/**
+ * Move or copy one library item between the profile and the shared scope.
+ *
+ * Every scope change is answered by refetching every library list: a move
+ * changes what the profile list holds, what the shared list holds, and — for a
+ * character or a book — what a chat, a group or a preset link resolves to. One
+ * blanket invalidation is simpler to keep right than enumerating the kinds, and
+ * these are lists, not chat streams.
+ */
+export function useShareItem() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { kind: SharedItemKind; id: string; action: 'move' | 'copy'; scope: ItemScope }) =>
+            api.share(variables.kind, variables.id, variables.action, variables.scope),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.presets });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.quickReplies });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.regex });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
+        },
+    });
+}
+
+export function useCreatePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { name: string; description: string; scope: ItemScope }) =>
+            api.personas.create({ name: variables.name, description: variables.description }, variables.scope),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useUpdatePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { id: string; patch: Partial<Omit<Persona, 'id'>> }) =>
+            api.personas.update(variables.id, variables.patch),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+export function useDeletePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.personas.remove(id),
+        onSuccess: (data) => {
+            queryClient.setQueryData(queryKeys.settings, data.settings);
+        },
+    });
+}
+
+export function useDistillBooks() {
+    return useQuery({ queryKey: queryKeys.distillBooks, queryFn: api.distill.books.list });
+}
+
+export function useUploadBook() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (file: File) => api.distill.books.upload(file),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillBooks });
+        },
+    });
+}
+
+export function useDeleteBook() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.distill.books.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillBooks });
+        },
+    });
+}
+
+export function useDistillRuns() {
+    return useQuery({ queryKey: queryKeys.distillRuns, queryFn: api.distill.runs.list });
+}
+
+export function useDistillRun(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.distillRun(id),
+        queryFn: () => api.distill.runs.get(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+export function useDiscardDistillRun() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.distill.runs.discard(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRuns });
+        },
+    });
+}
+
+/**
+ * Write an accepted draft.
+ *
+ * The run writes a new world info book and its cards, so everything a scoped
+ * store holds may now be stale — characters, worlds, and the character queries
+ * that key on an id which did not exist a moment ago.
+ */
+export function useAcceptDistill(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: DistillAcceptInput) => api.distill.runs.accept(id as string, input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRuns });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRun(id) });
         },
     });
 }

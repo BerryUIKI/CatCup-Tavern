@@ -43,11 +43,14 @@ const groupChatParamsSchema = z.object({
 
 const createSchema = z.object({
     name: z.string().trim().min(1).max(120),
+    /** `shared` creates the set reusable in every profile. */
+    scope: z.enum(['profile', 'shared']).default('profile'),
 });
 
 const importSchema = z.object({
     data: z.unknown(),
     name: z.string().trim().min(1).max(120).optional(),
+    scope: z.enum(['profile', 'shared']).default('profile'),
 });
 
 const executeSchema = z.object({
@@ -142,13 +145,13 @@ export async function registerQuickReplyRoutes(app: FastifyInstance): Promise<vo
     app.post('/api/quick-replies', async (request, reply) => {
         const body = createSchema.parse(request.body ?? {});
         reply.code(201);
-        return { set: unwrap(await createQuickReplySet(body.name)) };
+        return { set: unwrap(await createQuickReplySet(body.name, body.scope)) };
     });
 
     app.post('/api/quick-replies/import', async (request, reply) => {
         const body = importSchema.parse(request.body ?? {});
         reply.code(201);
-        return { set: unwrap(await importQuickReplySet(body.data, body.name)) };
+        return { set: unwrap(await importQuickReplySet(body.data, body.name, body.scope)) };
     });
 
     app.get('/api/quick-replies/:id/export', async (request, reply) => {

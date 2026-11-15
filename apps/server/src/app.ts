@@ -14,6 +14,7 @@ import { registerAuthRoutes, requireAuth } from './routes/auth.js';
 import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
 import { registerContextRoutes } from './routes/context.js';
+import { registerDistillRoutes } from './routes/distill.js';
 import { registerGenerateRoutes } from './routes/generate.js';
 import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
 import { registerGroupRoutes } from './routes/groups.js';
@@ -21,14 +22,17 @@ import { registerHealthRoutes } from './routes/health.js';
 import { registerImageRoutes } from './routes/images.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerMemoryRoutes } from './routes/memory.js';
+import { registerPersonaRoutes } from './routes/personas.js';
 import { registerPresetRoutes } from './routes/presets.js';
+import { registerProfileRoutes } from './routes/profiles.js';
 import { registerProviderRoutes } from './routes/providers.js';
 import { registerQuickReplyRoutes } from './routes/quickReplies.js';
 import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerSharedRoutes } from './routes/shared.js';
 import { registerTtsRoutes } from './routes/tts.js';
 import { registerWorldRoutes } from './routes/worlds.js';
-import { ensureDataDirs } from './storage/paths.js';
+import { prepareDataFolder } from './storage/bootstrap.js';
 
 const PUBLIC_API_PATHS = new Set([
     '/api/health',
@@ -66,7 +70,7 @@ export async function buildApp(): Promise<FastifyInstance> {
         bodyLimit: 25 * 1024 * 1024,
     });
 
-    await ensureDataDirs();
+    await prepareDataFolder();
 
     await app.register(cookie);
     await app.register(multipart, {
@@ -140,11 +144,15 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerTtsRoutes(app);
     await registerImageRoutes(app);
     await registerProviderRoutes(app);
+    await registerProfileRoutes(app);
+    await registerSharedRoutes(app);
     await registerPresetRoutes(app);
+    await registerPersonaRoutes(app);
     await registerWorldRoutes(app);
     await registerRegexRoutes(app);
     await registerQuickReplyRoutes(app);
     await registerImportRoutes(app);
+    await registerDistillRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);
     await registerGroupGenerateRoutes(app);

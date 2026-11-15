@@ -2,15 +2,34 @@ import type { CharacterDetail, CharacterSummary } from './character.js';
 import type { ChatMessage } from './chat.js';
 import type { ModelInfo } from './provider.js';
 import type { QuickReplySet } from './quickreplies.js';
+import type { RegexScript } from './regex.js';
+import type { ItemScope } from './shared.js';
 import type { WorldInfoEntry } from './worldinfo.js';
 
 export interface AuthStatus {
     needsSetup: boolean;
     authenticated: boolean;
+    /** Desktop install with no password: the API is open to the local app. */
+    openSession: boolean;
 }
 
 export interface AuthSetupRequest {
     password: string;
+}
+
+/**
+ * Desktop-only password management. `password: ''` removes the password and
+ * returns the app to open mode; `currentPassword` is required to change or
+ * remove one that is already set.
+ */
+export interface AuthPasswordRequest {
+    password: string;
+    currentPassword?: string;
+}
+
+export interface AuthPasswordResponse {
+    ok: true;
+    openSession: boolean;
 }
 
 export interface AuthLoginRequest {
@@ -22,7 +41,7 @@ export interface ApiErrorBody {
     code?: string;
 }
 
-export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger';
+export type GenerateAction = 'send' | 'regenerate' | 'continue' | 'trigger' | 'impersonate';
 
 export interface GenerateRequest {
     characterId: string;
@@ -38,6 +57,8 @@ export interface GenerationSpeaker {
     fileName: string;
     name: string;
     avatarUrl: string;
+    /** The member's own model choice, when the card names one. */
+    model?: string;
 }
 
 export interface GroupGenerateRequest {
@@ -51,7 +72,13 @@ export interface GroupGenerateRequest {
 }
 
 export type GenerationEvent =
-    | { type: 'start'; generationId: string; speaker?: GenerationSpeaker }
+    | {
+          type: 'start';
+          generationId: string;
+          /** The model this request resolved to, after any fallback. */
+          model?: string;
+          speaker?: GenerationSpeaker;
+      }
     | { type: 'token'; text: string }
     | { type: 'reasoning'; text: string }
     | {
@@ -76,8 +103,22 @@ export interface SummarizeResponse {
     messages?: number;
 }
 
-/** A quick reply set as the API addresses it: the file id plus the stored body. */
-export type QuickReplySetView = QuickReplySet & { id: string };
+/**
+ * A quick reply set as the API addresses it: the file id plus the stored body.
+ *
+ * `scope` says which folder it was read from, so the editor can warn before
+ * changing a set every profile sees.
+ */
+export type QuickReplySetView = QuickReplySet & { id: string; scope: ItemScope; shadowed?: boolean };
+
+/**
+ * A regex script as a library row sees it.
+ *
+ * Scripts live in one ordered file per scope, so `scope` says which file the
+ * row came from and the editor can warn before changing an order every profile
+ * shares.
+ */
+export type RegexScriptView = RegexScript & { scope: ItemScope; shadowed?: boolean };
 
 /** What clicking a quick reply asks the client to do after the server's appends. */
 export type QuickReplyAction =
@@ -162,12 +203,18 @@ export interface PresetSummary {
     name: string;
     updatedAt: number;
     promptCount: number;
+    /** The scope this preset was read from. */
+    scope: ItemScope;
+    /** `true` when this profile preset hides a shared one with the same id. */
+    shadowed?: boolean;
 }
 
 export interface PresetDetail {
     id: string;
     /** The preset body exactly as stored, including unknown fields. */
     preset: Record<string, unknown>;
+    /** The scope the preset was read from. */
+    scope: ItemScope;
 }
 
 export interface ImportPresetRequest {
@@ -182,6 +229,10 @@ export interface WorldSummary {
     name: string;
     entryCount: number;
     updatedAt: number;
+    /** The scope this book was read from. */
+    scope: ItemScope;
+    /** `true` when this profile book hides a shared one with the same id. */
+    shadowed?: boolean;
 }
 
 /**
@@ -196,6 +247,8 @@ export interface WorldDetail {
     book: Record<string, unknown>;
     /** Normalized entries in the order the editor lists them. */
     entries: WorldInfoEntryView[];
+    /** The scope the book was read from. */
+    scope: ItemScope;
 }
 
 export interface ImportWorldRequest {

@@ -123,7 +123,10 @@ async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<S
     if (!provider) {
         throw badRequest('No provider is available. Configure one in Settings first.');
     }
-    if (!provider.model.trim()) {
+    // Summaries are not a character speaking, so they use the provider default
+    // rather than any character's model choice.
+    const model = provider.defaultModel;
+    if (!model) {
         throw badRequest('The active provider has no model selected');
     }
 
@@ -133,7 +136,7 @@ async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<S
     }
 
     const apiKey = await getProviderSecret(provider.id);
-    const tokenCounter = createTokenCounter(provider.kind, provider.model);
+    const tokenCounter = createTokenCounter(provider.kind, model);
     const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
     const preset = resolvePreset(activePreset, settings.generation);
 
@@ -166,7 +169,7 @@ async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<S
     let text = '';
     try {
         for await (const chunk of adapter.streamChat(provider, apiKey, {
-            model: provider.model,
+            model,
             messages: request.prompt,
             temperature: preset.generation.temperature,
             topP: preset.generation.topP,

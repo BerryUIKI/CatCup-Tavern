@@ -33,6 +33,21 @@ const ACTIVATION_OPTIONS = [
     { value: 3, label: 'Pooled — a random member who has not spoken yet' },
 ];
 
+/** SillyTavern's `group_generation_mode`, with its own option labels. */
+const GENERATION_MODE_OPTIONS = [
+    { value: 0, label: 'Swap character cards', hint: 'Each reply uses the speaking member’s own card.' },
+    {
+        value: 1,
+        label: 'Join character cards (exclude muted)',
+        hint: 'Every unmuted member’s description, personality, scenario and examples are merged into one prompt.',
+    },
+    {
+        value: 2,
+        label: 'Join character cards (include muted)',
+        hint: 'As above, and muted members’ cards are merged too.',
+    },
+];
+
 function draftsFromGroup(group: GroupView): MemberDraft[] {
     return group.memberDetails.map((member) => ({
         fileName: member.fileName,
@@ -52,6 +67,9 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
     const [members, setMembers] = useState<MemberDraft[]>([]);
     const [disabledMembers, setDisabledMembers] = useState<string[]>([]);
     const [activationStrategy, setActivationStrategy] = useState(0);
+    const [generationMode, setGenerationMode] = useState(0);
+    const [joinPrefix, setJoinPrefix] = useState('');
+    const [joinSuffix, setJoinSuffix] = useState('');
     const [allowSelfResponses, setAllowSelfResponses] = useState(false);
     const [query, setQuery] = useState('');
 
@@ -65,6 +83,9 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
         setMembers(group ? draftsFromGroup(group) : []);
         setDisabledMembers(group?.disabled_members ?? []);
         setActivationStrategy(group?.activation_strategy ?? 0);
+        setGenerationMode(group?.generation_mode ?? 0);
+        setJoinPrefix(group?.generation_mode_join_prefix ?? '');
+        setJoinSuffix(group?.generation_mode_join_suffix ?? '');
         setAllowSelfResponses(group?.allow_self_responses ?? false);
         setQuery('');
     }, [open, group?.id]);
@@ -134,7 +155,9 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
             members: members.map((member) => member.fileName),
             disabled_members: disabledMembers.filter((entry) => members.some((member) => member.fileName === entry)),
             activation_strategy: activationStrategy,
-            generation_mode: group?.generation_mode ?? 0,
+            generation_mode: generationMode,
+            generation_mode_join_prefix: joinPrefix,
+            generation_mode_join_suffix: joinSuffix,
             allow_self_responses: allowSelfResponses,
         };
 
@@ -362,16 +385,64 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                     </div>
                 </div>
 
-                <p className="text-[11px] leading-relaxed text-muted/70">
-                    CatCup currently generates one reply per turn and uses the replying member's own card, the
-                    SillyTavern “swap” generation mode.
-                </p>
-                {group && group.generation_mode !== 0 ? (
-                    <p className="text-[11px] leading-relaxed text-amber/80">
-                        This group is stored with SillyTavern's append generation mode. CatCup keeps the setting but
-                        still replies with one member's card.
+                <div>
+                    <label className="label-text" htmlFor="group-generation-mode">
+                        Card handling
+                    </label>
+                    <select
+                        id="group-generation-mode"
+                        className="input-shell"
+                        value={generationMode}
+                        onChange={(event) => setGenerationMode(Number(event.target.value))}
+                    >
+                        {GENERATION_MODE_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                        {GENERATION_MODE_OPTIONS.find((option) => option.value === generationMode)?.hint}
                     </p>
-                ) : null}
+                </div>
+
+                {generationMode !== 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <label className="label-text" htmlFor="group-join-prefix">
+                                Join prefix
+                            </label>
+                            <input
+                                id="group-join-prefix"
+                                className="input-shell"
+                                value={joinPrefix}
+                                onChange={(event) => setJoinPrefix(event.target.value)}
+                                placeholder="—"
+                            />
+                            <p className="field-hint">
+                                Placed before each member’s field. <code>{'{{char}}'}</code> is the member’s name and{' '}
+                                <code>{'<FIELDNAME>'}</code> the field, such as Description.
+                            </p>
+                        </div>
+                        <div>
+                            <label className="label-text" htmlFor="group-join-suffix">
+                                Join suffix
+                            </label>
+                            <input
+                                id="group-join-suffix"
+                                className="input-shell"
+                                value={joinSuffix}
+                                onChange={(event) => setJoinSuffix(event.target.value)}
+                                placeholder="—"
+                            />
+                            <p className="field-hint">Placed after each member’s field.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-[11px] leading-relaxed text-muted">
+                        CatCup generates one reply per turn. Each reply uses the speaking member’s own card.
+                    </p>
+                )}
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-4">
                     {group ? (

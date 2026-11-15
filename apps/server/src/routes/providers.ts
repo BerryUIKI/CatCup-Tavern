@@ -104,7 +104,8 @@ export async function registerProviderRoutes(app: FastifyInstance): Promise<void
             kind: input.provider.kind,
             name: input.provider.name,
             baseUrl,
-            model: input.provider.model,
+            models: input.provider.models,
+            defaultModel: input.provider.defaultModel,
             enabled: input.provider.enabled,
             headers: input.provider.headers,
         };

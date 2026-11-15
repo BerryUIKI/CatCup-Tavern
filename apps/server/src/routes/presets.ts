@@ -11,6 +11,8 @@ const idParams = z.object({ id: z.string().min(1).max(200) });
 const importSchema = z.object({
     fileName: z.string().max(200).optional(),
     preset: z.record(z.string(), z.unknown()),
+    /** `shared` creates the preset reusable in every profile. */
+    scope: z.enum(['profile', 'shared']).default('profile'),
 });
 
 const patchSchema = z.object({

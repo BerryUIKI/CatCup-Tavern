@@ -1,6 +1,6 @@
 # Providers
 
-CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech endpoints through a separate adapter. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
+CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech and image generation endpoints through separate adapters. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
 
 ## Provider kinds
 
@@ -12,7 +12,7 @@ CatCup Tavern speaks to four chat provider families through a small adapter inte
 | `ollama`     | `http://127.0.0.1:11434`       | Native Ollama NDJSON                      | No           |
 | `custom`     | user supplied                  | Any OpenAI-compatible `/chat/completions` | Depends      |
 
-The active provider is selected in Settings → Providers. Generation uses the provider's configured `model`; per-chat or per-character model overrides are not implemented yet.
+A provider serves **one or more models**. One is marked its default; a character may name another, and a chat falls back along an explicit rule rather than failing when its model is unavailable.
 
 ## Configuration
 
@@ -24,17 +24,36 @@ Providers are stored in `data/settings.json` as public configuration:
     "kind": "custom",
     "name": "Local model",
     "baseUrl": "http://127.0.0.1:8080/v1",
-    "model": "example-model",
+    "models": ["deepseek-v4.1-flash", "glm-5.3"],
+    "defaultModel": "deepseek-v4.1-flash",
     "enabled": true,
     "headers": {}
 }
 ```
 
+`models` is the provider's model list, seeded by **Fetch models** and editable by hand; `defaultModel` is the one a chat uses when the character names none. A file written before this change, carrying the single `model` string, is read as a one-entry list with that entry as the default and rewritten in the new shape on the next save.
+
 `headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
 The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. Adding a provider starts from a type template (OpenAI, Anthropic, OpenRouter, Ollama or Custom), which fills the default base URL; the name stays editable. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
 
+The model list also loads on its own: once the form holds a base URL that parses and either a stored key or a typed one, the panel asks the endpoint for its model list after 600 ms without further typing. A failed background fetch stays silent — an endpoint that is not running yet must not paint an error nobody asked for — and **Fetch models** remains the explicit retry that reports failures. The background fetch never replaces the connection test; the test is still a separate action.
+
 An active provider is always enabled. Disabling or deleting it moves the active mark to the first other enabled provider; when no provider is enabled, none is active until one is enabled.
+
+## Which model a request uses
+
+The character and the provider settle the model together, in this order:
+
+1. **The character's own model**, stored at `data.extensions.catcup_model` on the card. It travels with the card, so a chat opened on another machine keeps using it. CatCup writes the key; SillyTavern preserves it as an unknown extension field, so a card round-trips through both.
+2. **The provider's default model**, `defaultModel`.
+3. **The first model in the provider's list**, for a provider whose default was cleared.
+
+A character's model that the active provider does not serve is **not** an error: the chat uses the provider's default and the chat header says so, naming both the requested and the used model. That keeps one character usable across providers — a card pinned to `glm-5.3` opens on a provider that only serves `deepseek-v4.1-flash`, with the substitution visible rather than silent.
+
+The choice is per character, not per chat, so every chat with that character uses the same model. A group chat generates one member at a time, so each reply uses the speaking member's own model choice. Summary memory, prompt drafting and impersonation use the provider default, because they are not a character speaking.
+
+The model is read when a request is built, so switching a character's model affects the next reply, not one already streaming.
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
@@ -160,13 +179,13 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 
 ## Adding a provider adapter
 
-1. Add a `kind` to `providerKindSchema` and the default base URL map in `packages/shared/src/schemas/provider.ts`.
+1. Add a `kind` to `providerKindSchema`, the default base URL map and `PROVIDER_KIND_LABELS` in `packages/shared/src/schemas/provider.ts`.
 2. Implement `ProviderAdapter` in `apps/server/src/providers/<name>.ts`:
    - `streamChat(config, apiKey, request)`;
    - `listModels(config, apiKey)`;
    - `test(config, apiKey)`.
 3. Register it in `apps/server/src/providers/index.ts`.
-4. Add a provider entry to the Settings UI only if it needs custom fields; most adapters use the generic form.
+4. Add the kind to `KIND_ORDER`, `KIND_HINTS` and `KIND_INITIALS` in `apps/web/src/components/ProviderSettings.tsx`; add custom form fields only if the adapter needs them, since most use the generic form.
 5. Add tests with a mocked fetch/stream where practical.
 6. Update this page, [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) and `CHANGELOG.md`.
 7. If the adapter is derived from ST or RisuAI, update `NOTICE` and [REUSE.md](REUSE.md).
@@ -190,7 +209,7 @@ Settings → Images has three backends:
 
 The prompt sent to the backend is `imageGeneration.promptPrefix` followed by the user's prompt. The negative prompt applies to A1111 and ComfyUI. **Draft from chat** asks the active chat provider for a prompt using `promptTemplate` over the last `contextMessages` messages; it is an ordinary chat completion and counts against that provider's usage.
 
-Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB. A1111 and OpenAI-compatible requests time out after 180 seconds; a ComfyUI job gets five minutes because a model load can be slow. If the browser disconnects or the job times out, the adapter posts `/interrupt` for the job it queued, so the backend stops working on an image nobody will see; it never interrupts a job that has already finished. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
+Generated images are stored in `data/user/images/<character or group>/` with a metadata sidecar and are inserted into the chat as SillyTavern `extra.media` messages. The server caps one image at 25 MB. A1111 and OpenAI-compatible requests time out after 180 seconds; a ComfyUI job gets five minutes because a model load can be slow. If the browser disconnects or the job times out, the ComfyUI adapter posts `/interrupt` for the job it queued, so the backend stops working on an image nobody will see; it never interrupts a job that has already finished. The full field list is in [API.md](API.md#settings) and the storage layout in [DATA-FORMATS.md](DATA-FORMATS.md).
 
 ## Current limitations
 
@@ -203,9 +222,9 @@ Generated images are stored in `data/user/images/<character or group>/` with a m
 - Only string reasoning fields are mapped; provider-specific reasoning formats may be ignored.
 - No per-provider proxy configuration; use a custom base URL or server-level networking.
 - No request timeout configuration; generation is stopped by the user or by client disconnect.
-- Model lists are advisory; the model field is free text.
-- There is one active provider for every chat; per-chat or per-character model overrides and provider fallback are not available.
-- There is no automatic fallback between providers.
+- Model lists are advisory; a model id that the endpoint does not list is still accepted.
+- A model choice is per character and per provider list. There is no separate ranking or chain across providers, and no automatic fallback to a different provider when the active one is down.
+- Token counting uses the model a request resolved to, so a character pinned to a model the provider does not serve is counted with the provider default it falls back to.
 
 ## Security
 

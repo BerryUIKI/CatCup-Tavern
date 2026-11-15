@@ -1,4 +1,12 @@
-import type { CharacterDetail, ChatMessage, GenerationSettings, PersonaSettings, RegexScript } from '@catcup/shared';
+import type {
+    CharacterDetail,
+    ChatMessage,
+    GenerationSettings,
+    GroupDepthPrompt,
+    JoinedCardFields,
+    PersonaSettings,
+    RegexScript,
+} from '@catcup/shared';
 
 import type { WorldInfoPrompt } from '../worldinfo/types.js';
 import { type AssembleResult, assemblePrompt, type SummaryInjection } from './assemble.js';
@@ -26,6 +34,8 @@ export interface BuildPromptInput {
     newChatPrompt?: string;
     newExampleChatPrompt?: string;
     continueNudgePrompt?: string;
+    /** Instruction that makes the model answer as `{{user}}`. */
+    impersonationPrompt?: string;
     /** Token counter override, used by tests. */
     countTokens?: (text: string) => number;
     /** Scripts with `promptOnly`, applied to the history. */
@@ -42,6 +52,10 @@ export interface BuildPromptInput {
     summaryText?: string;
     /** Formatted summary to inject, following SillyTavern's Memory positions. */
     summaryInjection?: SummaryInjection;
+    /** Card fields merged from every group member (append modes only). */
+    joinedCard?: JoinedCardFields | null;
+    /** In-chat asides from the cards' `extensions.depth_prompt`. */
+    cardDepthPrompts?: readonly GroupDepthPrompt[];
 }
 
 /**
@@ -67,6 +81,7 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         newChatPrompt: input.newChatPrompt,
         newExampleChatPrompt: input.newExampleChatPrompt,
         continueNudgePrompt: input.continueNudgePrompt,
+        impersonationPrompt: input.impersonationPrompt,
         countTokens: input.countTokens,
         regexScripts: input.regexScripts,
         substitute: input.substitute,
@@ -75,5 +90,7 @@ export function buildPrompt(input: BuildPromptInput): AssembleResult {
         group: input.group,
         summaryText: input.summaryText,
         summaryInjection: input.summaryInjection,
+        joinedCard: input.joinedCard,
+        cardDepthPrompts: input.cardDepthPrompts,
     });
 }

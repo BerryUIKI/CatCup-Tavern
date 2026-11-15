@@ -1,7 +1,7 @@
 {
     "$schema": "https://schema.tauri.app/config/2",
     "productName": "CatCup Tavern",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "identifier": "dev.catcup.tavern",
     "build": {
         "frontendDist": "../ui"
@@ -12,11 +12,28 @@
             "csp": null
         }
     },
+    "plugins": {
+        "updater": {
+            "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEYzQUQ4M0NGNDNFOEI5N0EKUldSNnVlaER6NE90OCtCM0t0M2NqdFBYQ24vb1AyQ2pTdWU1RDZoTlozMVNLZ25KVlE5UkIrOEUK",
+            "endpoints": ["https://github.com/BerryUIKI/CatCup-Tavern/releases/latest/download/latest.json"],
+            "windows": {
+                "installMode": "passive"
+            }
+        }
+    },
     "bundle": {
         "active": true,
         "targets": ["nsis"],
-        "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
-        "externalBin": ["binaries/node"],
+        "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+        "externalBin": ["binaries/catcup-node"],
+        "fileAssociations": [
+            {
+                "ext": ["catcup"],
+                "name": "CatCupTavern.CharacterCard",
+                "description": "CatCup Tavern character card",
+                "role": "Editor"
+            }
+        ],
         "resources": {
             "bundle/server": "server",
             "bundle/web": "web"

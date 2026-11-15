@@ -5,9 +5,12 @@ import {
     type CharacterDetail,
     type ChatMessage,
     type GenerateAction,
+    type GroupDepthPrompt,
     getLatestSummary,
     REGEX_PLACEMENT,
     type RegexScript,
+    readCardDepthPrompt,
+    resolveModel,
     resolvePersona,
     sanitizeRegexMacro,
 } from '@catcup/shared';
@@ -34,7 +37,7 @@ import { requireCharacter } from './helpers.js';
 const generateSchema = z.object({
     characterId: z.string().min(1).max(200),
     chatId: z.string().min(1).max(300),
-    action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
+    action: z.enum(['send', 'regenerate', 'continue', 'trigger', 'impersonate']),
     message: z.string().max(200000).optional(),
 });
 
@@ -154,6 +157,28 @@ async function persistMessage(
     });
 }
 
+/** The prefill an impersonation request sends, and the prefix a draft inherits. */
+function impersonationPrefill(name: string): string {
+    return `${name}:`;
+}
+
+/**
+ * Remove the prefill from the start of a draft.
+ *
+ * Anthropic continues the assistant turn it was given, so the raw text starts
+ * with the prefix. The composer should show only what the model added; a
+ * prefix that never arrived (any other provider) is stripped too, so the rule
+ * does not depend on which adapter answered.
+ */
+export function strippedDraft(text: string, prefill: string): string {
+    const trimmedStart = text.replace(/^\s+/, '');
+    const prefix = prefill.trimEnd();
+    if (prefix && trimmedStart.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return trimmedStart.slice(prefix.length).replace(/^\s+/, '');
+    }
+    return trimmedStart;
+}
+
 export async function registerGenerateRoutes(app: FastifyInstance): Promise<void> {
     app.post('/api/generate', async (request, reply) => {
         const body = generateSchema.parse(request.body ?? {});
@@ -168,11 +193,15 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         if (!provider) {
             throw badRequest('No provider is available. Configure one in Settings first.');
         }
-        if (!provider.model.trim()) {
+        // The character may name its own model; one the active provider does
+        // not serve falls back to the provider default, which the response
+        // reports so the header can say what happened.
+        const resolved = resolveModel(provider, character.model, settings.profilePreferredModel);
+        if (!resolved.model) {
             throw badRequest('The active provider has no model selected');
         }
         const apiKey = await getProviderSecret(provider.id);
-        const tokenCounter = createTokenCounter(provider.kind, provider.model);
+        const tokenCounter = createTokenCounter(provider.kind, resolved.model);
 
         // Scripts and the macro context are resolved once per request; the
         // source transforms below and the prompt transform later share them.
@@ -251,6 +280,22 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
         const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
 
+        // The card's own in-chat aside, SillyTavern's
+        // `data.extensions.depth_prompt`. It is injected at the depth the card
+        // asks for, with the card as `{{char}}`.
+        const ownDepthPrompt = readCardDepthPrompt(character.card.extensions);
+        const cardDepthPrompts: GroupDepthPrompt[] = ownDepthPrompt
+            ? [
+                  {
+                      fileName: character.fileName,
+                      charName: character.name,
+                      text: substituteMacros(ownDepthPrompt.prompt, macroContext),
+                      depth: ownDepthPrompt.depth,
+                      role: ownDepthPrompt.role,
+                  },
+              ]
+            : [];
+
         // The scanner needs the whole non-system conversation as its timed
         // effect clock, so it runs before the prompt is trimmed to context.
         const worldInfoTurn = await scanWorldInfoForTurn({
@@ -283,12 +328,14 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             newChatPrompt: preset.newChatPrompt,
             newExampleChatPrompt: preset.newExampleChatPrompt,
             continueNudgePrompt: preset.continueNudgePrompt,
+            impersonationPrompt: preset.impersonationPrompt,
             squashSystemMessages: preset.squashSystemMessages,
             worldInfo: worldInfoTurn.prompt,
             generationType,
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            cardDepthPrompts,
             ...(latestSummary ? { summaryText: latestSummary.value } : {}),
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
@@ -308,23 +355,52 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             continueIndex,
             originalAssistant,
             providerKind: provider.kind,
-            providerModel: provider.model,
+            providerModel: resolved.model,
             startedAt,
             regexScripts,
             substitute,
         };
 
+        // Impersonation produces a draft for the composer, not a message: the
+        // text goes back over SSE and only the user's own Send stores it. The
+        // reply is returned in the same shape a saved message would have, so
+        // the client has one thing to read, but nothing is written and nothing
+        // should summarise it.
+        const draftOnly = body.action === 'impersonate';
+        const personaName = persona.name;
+        const prefill = impersonationPrefill(personaName);
+
         await runGenerationStream({
             reply,
             provider,
+            model: resolved.model,
             apiKey,
             prompt,
             temperature: preset.generation.temperature,
             topP: preset.generation.topP,
             maxTokens: preset.generation.maxTokens,
             generationId,
-            persist: (text, reasoning, stopped) => persistMessage(context, text, reasoning, stopped),
+            // Impersonation primes an Anthropic assistant turn with the
+            // persona's name, which is what SillyTavern sends as
+            // `assistant_impersonation`. Anthropic requires the answer to
+            // continue from that turn, so the name is removed again before the
+            // draft reaches the composer.
+            ...(draftOnly ? { assistantPrefill: prefill } : {}),
+            persist: (text, reasoning, stopped) =>
+                draftOnly
+                    ? Promise.resolve({
+                          name: personaName,
+                          is_user: true,
+                          send_date: new Date().toISOString(),
+                          mes: strippedDraft(text, prefill),
+                          extra: {},
+                      } satisfies ChatMessage)
+                    : persistMessage(context, text, reasoning, stopped),
         });
+
+        if (draftOnly) {
+            return;
+        }
 
         // Fire-and-forget: a due summary never delays the reply. The memory
         // service reads the chat again, so only a persisted reply counts.

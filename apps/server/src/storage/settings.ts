@@ -15,10 +15,12 @@ import {
     DEFAULT_WORLD_INFO_CONFIG,
     isRecord,
     LEGACY_PERSONA_ID,
+    type PersonaView,
     type ProviderConfig,
     type ProviderInput,
     type ProviderPublic,
     personaSchema,
+    providerConfigSchema,
     type SettingsPatch,
     type SettingsResponse,
 } from '@catcup/shared';
@@ -26,6 +28,7 @@ import {
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
 import { paths } from './paths.js';
+import { listAllPersonas, listSharedPersonas } from './personas.js';
 
 function createDefaultSettings(): AppSettings {
     const providers: ProviderConfig[] = [
@@ -34,7 +37,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'openai',
             name: 'OpenAI',
             baseUrl: DEFAULT_BASE_URLS.openai,
-            model: 'gpt-5',
+            models: ['gpt-5'],
+            defaultModel: 'gpt-5',
             enabled: true,
             headers: {},
         },
@@ -43,7 +47,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'anthropic',
             name: 'Anthropic',
             baseUrl: DEFAULT_BASE_URLS.anthropic,
-            model: 'claude-sonnet-5-5',
+            models: ['claude-sonnet-5-5'],
+            defaultModel: 'claude-sonnet-5-5',
             enabled: true,
             headers: {},
         },
@@ -52,7 +57,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'openrouter',
             name: 'OpenRouter',
             baseUrl: DEFAULT_BASE_URLS.openrouter,
-            model: '',
+            models: [],
+            defaultModel: '',
             enabled: true,
             headers: {},
         },
@@ -61,7 +67,8 @@ function createDefaultSettings(): AppSettings {
             kind: 'ollama',
             name: 'Ollama',
             baseUrl: DEFAULT_BASE_URLS.ollama,
-            model: 'llama3.2',
+            models: ['llama3.2'],
+            defaultModel: 'llama3.2',
             enabled: true,
             headers: {},
         },
@@ -70,6 +77,7 @@ function createDefaultSettings(): AppSettings {
     return {
         version: 1,
         activeProviderId: providers[0]?.id ?? null,
+        profilePreferredModel: '',
         providers,
         activePresetId: null,
         generation: { ...DEFAULT_GENERATION_SETTINGS },
@@ -89,8 +97,18 @@ interface NormalizedSettings {
     settings: AppSettings;
     changed: boolean;
     corrupt: boolean;
+    /** Providers to persist to the shared file, when the profile file carried them. */
+    providersFromProfile?: ProviderConfig[];
 }
 
+/**
+ * Normalize a profile's settings file.
+ *
+ * Providers are shared by every profile and live in `providers.json`, so this
+ * function does not own them: a file that still carries a `providers` array is
+ * one written before the split, and the caller lifts that array out into the
+ * shared file. Everything else is per profile.
+ */
 function normalizeSettings(raw: unknown): NormalizedSettings {
     if (!isRecord(raw)) {
         return { settings: createDefaultSettings(), changed: true, corrupt: raw !== null };
@@ -104,20 +122,12 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
     const settings = parsed.data;
     let changed = false;
 
-    if (settings.providers.length === 0) {
-        const defaults = createDefaultSettings();
-        settings.providers = defaults.providers;
-        settings.activeProviderId = defaults.activeProviderId;
+    // A settings file written before the provider list was shared keeps its
+    // providers here; the caller moves them to `providers.json`.
+    let providersFromProfile: ProviderConfig[] | undefined;
+    if (Array.isArray(raw.providers)) {
+        providersFromProfile = settings.providers.map((provider) => ({ ...provider }));
         changed = true;
-    }
-
-    const active = settings.providers.find((provider) => provider.id === settings.activeProviderId);
-    if (!active?.enabled) {
-        const nextActive = settings.providers.find((provider) => provider.enabled)?.id ?? null;
-        if (settings.activeProviderId !== nextActive) {
-            settings.activeProviderId = nextActive;
-            changed = true;
-        }
     }
 
     // Files written before the persona list carry one `persona` object. Promote
@@ -138,10 +148,61 @@ function normalizeSettings(raw: unknown): NormalizedSettings {
         changed = true;
     }
 
-    return { settings, changed, corrupt: false };
+    return { settings, changed, corrupt: false, ...(providersFromProfile ? { providersFromProfile } : {}) };
+}
+
+/** Settle the profile's active provider against the shared provider list. */
+function normalizeActiveProvider(settings: AppSettings, providers: readonly ProviderConfig[]): boolean {
+    const active = providers.find((provider) => provider.id === settings.activeProviderId);
+    if (active?.enabled) {
+        return false;
+    }
+    const nextActive = providers.find((provider) => provider.enabled)?.id ?? null;
+    if (settings.activeProviderId === nextActive) {
+        return false;
+    }
+    settings.activeProviderId = nextActive;
+    return true;
 }
 
 let cachedSettings: AppSettings | null = null;
+
+/**
+ * Read the shared provider list from `providers.json`.
+ *
+ * A missing file means a data folder written before the split: the providers
+ * are created once from the defaults, and the first mutation writes them out.
+ *
+ * A record written before #76 carries one `model` string; it is read as a
+ * one-entry list with that entry as the default, so an existing provider keeps
+ * the model it was using.
+ */
+async function loadSharedProviders(): Promise<ProviderConfig[]> {
+    const raw = await readJsonFile<unknown>(paths.providers, null);
+    if (!Array.isArray(raw)) {
+        return createDefaultSettings().providers;
+    }
+
+    const providers: ProviderConfig[] = [];
+    for (const candidate of raw) {
+        const parsed = providerConfigSchema.safeParse(candidate);
+        if (!parsed.success) {
+            continue;
+        }
+        const provider = parsed.data;
+        if (isRecord(candidate) && 'model' in candidate && !('models' in candidate)) {
+            const legacyModel = typeof candidate.model === 'string' ? candidate.model.trim() : '';
+            provider.models = legacyModel ? [legacyModel] : [];
+            provider.defaultModel = legacyModel;
+        }
+        providers.push(provider);
+    }
+    return providers;
+}
+
+async function saveSharedProviders(providers: readonly ProviderConfig[]): Promise<void> {
+    await writeJsonFile(paths.providers, providers);
+}
 
 async function loadSettingsUnlocked(): Promise<AppSettings> {
     if (cachedSettings) {
@@ -149,7 +210,9 @@ async function loadSettingsUnlocked(): Promise<AppSettings> {
     }
 
     const raw = await readJsonFile<unknown>(paths.settings, null);
-    const { settings, changed, corrupt } = normalizeSettings(raw);
+    const normalized = normalizeSettings(raw);
+    const { settings, corrupt, providersFromProfile } = normalized;
+    let changed = normalized.changed;
 
     if (corrupt && raw !== null) {
         const backup = `${paths.settings}.corrupt-${Date.now()}`;
@@ -157,21 +220,77 @@ async function loadSettingsUnlocked(): Promise<AppSettings> {
         console.error(`[settings] Invalid settings.json backed up to ${backup}`);
     }
 
+    // A file that still carries providers predates the split: move them to the
+    // shared file once and stop writing them into the profile.
+    if (providersFromProfile) {
+        await saveSharedProviders(providersFromProfile);
+    }
+    const providers = providersFromProfile ?? (await loadSharedProviders());
+    settings.providers = providers;
+    if (normalizeActiveProvider(settings, providers)) {
+        changed = true;
+    }
+
+    // A persona marked reusable lives in `data/shared/personas.json`. It joins
+    // the profile's own list here, so every consumer of `getSettings()` — the
+    // prompt assembler, a chat's persona pin — resolves against one list without
+    // each of them merging it separately. `writeProfileSettings` filters the
+    // shared entries out again, which is why this merge can be unconditional.
+    settings.personas = await listAllPersonas(settings.personas);
+    if (
+        settings.activePersonaId !== null &&
+        !settings.personas.some((persona) => persona.id === settings.activePersonaId)
+    ) {
+        settings.activePersonaId = settings.personas[0]?.id ?? null;
+        changed = true;
+    }
+
     if (changed) {
-        await writeJsonFile(paths.settings, settings);
+        await writeProfileSettings(settings);
     }
     cachedSettings = settings;
     return settings;
+}
+
+/**
+ * Write a profile's settings file.
+ *
+ * Two fields are in memory but not in this file. `providers` belongs to
+ * `providers.json`, and writing it here would shadow the shared file on the
+ * next load — a provider created after the last write would vanish. A persona
+ * that lives in `shared/personas.json` belongs there for the same reason:
+ * writing it here would duplicate it on the next load and make it undeletable.
+ *
+ * Every write goes through here, so a caller that only touched an unrelated
+ * field still cannot leak a shared persona into the profile. That matters
+ * because `getSettings()` hands back the merged list.
+ */
+async function writeProfileSettings(settings: AppSettings): Promise<void> {
+    const { providers: _shared, ...profile } = settings;
+    const sharedIds = new Set((await listSharedPersonas()).map((persona) => persona.id));
+    // The list in memory is the merged one, whose entries carry `scope` and
+    // `shadowed`. Neither belongs in this file: every persona stored here is the
+    // profile's own by definition, and the scope is derived again on read.
+    profile.personas = profile.personas
+        .filter((persona) => !sharedIds.has(persona.id))
+        .map((persona) => ({ id: persona.id, name: persona.name, description: persona.description }));
+    await writeJsonFile(paths.settings, profile);
 }
 
 async function mutateSettings<T>(mutator: (settings: AppSettings) => T | Promise<T>): Promise<T> {
     return withFileLock(paths.settings, async () => {
         const settings = await loadSettingsUnlocked();
         const result = await mutator(settings);
-        await writeJsonFile(paths.settings, settings);
+        await writeProfileSettings(settings);
         cachedSettings = settings;
         return result;
     });
+}
+
+/** The personas this profile itself owns, without the shared ones merged in. */
+export async function profilePersonas(settings: AppSettings): Promise<AppSettings['personas']> {
+    const sharedIds = new Set((await listSharedPersonas()).map((persona) => persona.id));
+    return settings.personas.filter((persona) => !sharedIds.has(persona.id));
 }
 
 export async function getSettings(): Promise<AppSettings> {
@@ -269,6 +388,11 @@ export async function getSettingsResponse(): Promise<SettingsResponse> {
     const [providers, secrets] = await Promise.all([getPublicProviders(), getSecrets()]);
     return {
         ...settings,
+        // `loadSettingsUnlocked` merges the shared personas in and stamps each
+        // entry with its scope, so the list is already the shape the response
+        // wants. Merging here instead would treat the shared entries as this
+        // profile's own.
+        personas: settings.personas as PersonaView[],
         providers,
         ttsHasKey: Boolean(secrets[TTS_SECRET_KEY]),
         imageHasKey: Boolean(secrets[IMAGE_SECRET_KEY]),
@@ -291,6 +415,9 @@ export async function getActiveProvider(): Promise<ProviderConfig | null> {
 
 async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
     return mutateSettings((settings) => {
+        if (patch.profilePreferredModel !== undefined) {
+            settings.profilePreferredModel = patch.profilePreferredModel;
+        }
         if (patch.activeProviderId !== undefined) {
             if (patch.activeProviderId !== null) {
                 const provider = settings.providers.find((item) => item.id === patch.activeProviderId);
@@ -394,22 +521,51 @@ export async function removeQuickReplySetReference(name: string): Promise<void> 
     });
 }
 
+/**
+ * Serialize a read-modify-write of the shared provider list.
+ *
+ * Providers are machine-wide, so a create in one profile is visible in every
+ * other. The profile's `activeProviderId` is adjusted separately, inside the
+ * profile's own lock, because that field *is* per profile.
+ */
+async function mutateSharedProviders<T>(mutate: (providers: ProviderConfig[]) => T): Promise<T> {
+    return withFileLock(paths.providers, async () => {
+        const providers = await loadSharedProviders();
+        const result = mutate(providers);
+        await saveSharedProviders(providers);
+        clearSettingsCache();
+        return result;
+    });
+}
+
+/** Keep the profile's active provider usable after the shared list changes. */
+async function revalidateActiveProvider(): Promise<void> {
+    await mutateSettings((settings) => {
+        normalizeActiveProvider(settings, settings.providers);
+    });
+}
+
 export async function createProvider(input: ProviderInput): Promise<ProviderPublic> {
-    const created = await mutateSettings<ProviderConfig>((settings) => {
+    const created = await mutateSharedProviders((providers) => {
         const provider: ProviderConfig = {
             id: randomUUID(),
             kind: input.kind,
             name: input.name,
             baseUrl: input.baseUrl || DEFAULT_BASE_URLS[input.kind] || '',
-            model: input.model,
+            models: [...input.models],
+            defaultModel: input.defaultModel,
             enabled: input.enabled,
             headers: input.headers,
         };
-        settings.providers.push(provider);
-        if (!settings.activeProviderId && provider.enabled) {
-            settings.activeProviderId = provider.id;
-        }
+        providers.push(provider);
         return provider;
+    });
+
+    // The first usable provider becomes this profile's active one.
+    await mutateSettings((settings) => {
+        if (!settings.activeProviderId && created.enabled) {
+            settings.activeProviderId = created.id;
+        }
     });
 
     await setProviderSecret(created.id, input.apiKey);
@@ -418,50 +574,48 @@ export async function createProvider(input: ProviderInput): Promise<ProviderPubl
 }
 
 export async function updateProvider(providerId: string, input: ProviderInput): Promise<ProviderPublic> {
-    const updated = await mutateSettings<ProviderConfig>((settings) => {
-        const provider = settings.providers.find((candidate) => candidate.id === providerId);
+    const updated = await mutateSharedProviders((providers) => {
+        const provider = providers.find((candidate) => candidate.id === providerId);
         if (!provider) {
             throw new Error('Provider not found');
         }
         provider.kind = input.kind;
         provider.name = input.name;
         provider.baseUrl = input.baseUrl || DEFAULT_BASE_URLS[input.kind] || '';
-        provider.model = input.model;
+        provider.models = [...input.models];
+        provider.defaultModel = input.defaultModel;
         provider.enabled = input.enabled;
         provider.headers = input.headers;
-
-        // The active provider is always one a generation can actually use.
-        if (settings.activeProviderId === provider.id && !provider.enabled) {
-            settings.activeProviderId =
-                settings.providers.find((candidate) => candidate.id !== provider.id && candidate.enabled)?.id ?? null;
-        } else if (!settings.activeProviderId && provider.enabled) {
-            settings.activeProviderId = provider.id;
-        }
-
         return provider;
     });
 
+    // Disabling the provider this profile had active must not leave it active.
+    await revalidateActiveProvider();
     await setProviderSecret(providerId, input.apiKey);
     const secrets = await getSecrets();
     return { ...updated, hasKey: Boolean(secrets[providerId]) };
 }
 
 export async function deleteProvider(providerId: string): Promise<void> {
-    await mutateSettings((settings) => {
-        const index = settings.providers.findIndex((provider) => provider.id === providerId);
+    await mutateSharedProviders((providers) => {
+        const index = providers.findIndex((provider) => provider.id === providerId);
         if (index === -1) {
             throw new Error('Provider not found');
         }
-        settings.providers.splice(index, 1);
-        if (settings.activeProviderId === providerId) {
-            // Never leave a disabled provider marked as active.
-            settings.activeProviderId = settings.providers.find((provider) => provider.enabled)?.id ?? null;
-        }
+        providers.splice(index, 1);
     });
 
+    await revalidateActiveProvider();
     await setProviderSecret(providerId, '');
 }
 
+/**
+ * Forget the cached configuration, so the next read comes from disk.
+ *
+ * Called when the settings change outside this module — a profile switch, or a
+ * migration that moved the file — and by tests that point the server at a new
+ * data directory.
+ */
 export function clearSettingsCache(): void {
     cachedSettings = null;
 }

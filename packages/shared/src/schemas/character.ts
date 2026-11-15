@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { ItemScope } from './shared.js';
+
 /**
  * Character Card V2/V3 schemas.
  *
@@ -110,8 +112,17 @@ export const characterPatchSchema = z
         nickname: z.string().optional(),
         /** Extra openings used in group chats; V3 cards only. */
         group_only_greetings: z.array(z.string()).optional(),
+        /**
+         * The model this character asks for, stored in
+         * `data.extensions.catcup_model`. Empty clears it, so the provider
+         * default applies.
+         */
+        model: z.string().max(200).optional(),
     })
     .strict();
+
+/** Where a card keeps its model choice; SillyTavern preserves it as unknown. */
+export const CATCUP_MODEL_EXTENSION = 'catcup_model';
 
 /** A character id: a file name without path traversal. */
 export const characterIdSchema = z
@@ -158,7 +169,7 @@ export const characterBulkRequestSchema = z
 export type CharacterBulkRequest = z.infer<typeof characterBulkRequestSchema>;
 
 /** How a card is exported. */
-export type CharacterExportFormat = 'png' | 'json' | 'charx';
+export type CharacterExportFormat = 'png' | 'json' | 'charx' | 'catcup';
 
 export type CharacterBookEntry = z.infer<typeof characterBookEntrySchema>;
 export type CharacterBook = z.infer<typeof characterBookSchema>;
@@ -178,12 +189,18 @@ export interface CharacterSummary {
     tags: string[];
     /** SillyTavern's `data.extensions.fav` flag; legacy string `'true'` also counts. */
     fav: boolean;
+    /** The card's model choice from `data.extensions.catcup_model`; empty means the provider default. */
+    model: string;
     spec: CharacterSpec;
     hasCharacterBook: boolean;
     /** File creation time in milliseconds; falls back to the change time where birthtime is unavailable. */
     createdAt: number;
     updatedAt: number;
     avatarUrl: string;
+    /** The scope this card was read from: the profile's own folder or the shared one. */
+    scope: ItemScope;
+    /** `true` when this profile card hides a shared card with the same id. */
+    shadowed?: boolean;
 }
 
 export interface CharacterDetail extends CharacterSummary {

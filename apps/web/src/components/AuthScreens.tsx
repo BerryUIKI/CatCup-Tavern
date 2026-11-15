@@ -164,7 +164,15 @@ export function SetupScreen() {
     );
 }
 
-export function LoginScreen() {
+/**
+ * The login form.
+ *
+ * `openSession` is only true in a desktop install that has no password but
+ * still reached this screen — the server answered 401 for an API call, which
+ * means a password was set while the window was open. The form then explains
+ * where the password came from instead of asking for one that was never needed.
+ */
+export function LoginScreen({ openSession = false }: { openSession?: boolean }) {
     const login = useLogin();
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -206,6 +214,12 @@ export function LoginScreen() {
                     {login.isPending ? 'Opening…' : 'Enter the tavern'}
                 </button>
             </form>
+            {openSession ? (
+                <p className="mt-4 text-xs leading-relaxed text-muted/80">
+                    This desktop install normally opens without a password. Sign in here if one was set elsewhere, or
+                    restart the app to open directly.
+                </p>
+            ) : null}
         </AuthShell>
     );
 }

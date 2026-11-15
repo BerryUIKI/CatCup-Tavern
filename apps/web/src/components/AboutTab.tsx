@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
+import { queryKeys, useSetPassword } from '../hooks/data';
 import { api } from '../lib/api';
 import { Spinner } from './Spinner';
 
@@ -43,8 +45,8 @@ export function AboutTab() {
     return (
         <div className="space-y-5 p-5">
             <div>
-                <h3 className="font-display text-lg text-parchment">CatCup Tavern</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted">
+                <img src="/brand-banner.svg" alt="CatCup Tavern" className="h-auto w-full max-w-sm" />
+                <p className="mt-3 text-sm leading-relaxed text-muted">
                     A local-first roleplay client that reads and writes SillyTavern’s files. This is early-access
                     software: it does what is listed on the left well, and it does not pretend to do the rest.
                 </p>
@@ -83,6 +85,125 @@ export function AboutTab() {
                 Your data stays in the server’s data folder: cards, chats, lorebooks, presets and regex scripts are
                 plain SillyTavern-format files you can copy out at any time. API keys never leave the server.
             </p>
+
+            <PasswordPanel />
         </div>
+    );
+}
+
+/**
+ * The access password panel.
+ *
+ * It has two shapes. In a desktop open session it sets a first password; on any
+ * install that already has one — web, LAN, or a desktop that opted in — it
+ * changes it. Only the desktop may remove a password, so there is no remove
+ * button here: doing so on a LAN install would leave the server reachable and
+ * signed out.
+ */
+function PasswordPanel() {
+    const auth = useQuery({
+        queryKey: queryKeys.auth,
+        queryFn: api.auth.status,
+        staleTime: Number.POSITIVE_INFINITY,
+    });
+    const passwordMutation = useSetPassword();
+    const [current, setCurrent] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirm, setConfirm] = useState('');
+    const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+
+    if (!auth.data) {
+        return null;
+    }
+
+    const openSession = auth.data.openSession;
+
+    const submit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setMessage(null);
+        if (password !== confirm) {
+            setMessage({ kind: 'error', text: 'The two passwords do not match.' });
+            return;
+        }
+        try {
+            await passwordMutation.mutateAsync({ password, ...(openSession ? {} : { currentPassword: current }) });
+            setCurrent('');
+            setPassword('');
+            setConfirm('');
+            setMessage({
+                kind: 'ok',
+                text: openSession
+                    ? 'Password set. The app now asks for it when it starts.'
+                    : 'Password changed. Other browsers and devices are signed out.',
+            });
+        } catch (caught) {
+            setMessage({
+                kind: 'error',
+                text: caught instanceof Error ? caught.message : 'Could not save the password.',
+            });
+        }
+    };
+
+    const canSubmit =
+        !passwordMutation.isPending && password !== '' && (openSession || current !== '') && password === confirm;
+
+    return (
+        <form className="rounded-xl border border-brass/25 bg-brass/5 p-4" onSubmit={submit}>
+            <h4 className="text-sm font-medium text-parchment">Access password</h4>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+                {openSession
+                    ? 'This desktop app opens without a password, because only you can reach it on this machine. Setting one brings back the sign-in screen.'
+                    : 'Changing the password signs out every other browser and device. This one stays signed in.'}
+            </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {openSession ? null : (
+                    <label className="block sm:col-span-2">
+                        <span className="label-text">Current password</span>
+                        <input
+                            type="password"
+                            className="input-shell"
+                            autoComplete="current-password"
+                            value={current}
+                            onChange={(event) => setCurrent(event.target.value)}
+                        />
+                    </label>
+                )}
+                <label className="block">
+                    <span className="label-text">New password</span>
+                    <input
+                        type="password"
+                        className="input-shell"
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                    />
+                </label>
+                <label className="block">
+                    <span className="label-text">Repeat the new password</span>
+                    <input
+                        type="password"
+                        className="input-shell"
+                        autoComplete="new-password"
+                        value={confirm}
+                        onChange={(event) => setConfirm(event.target.value)}
+                    />
+                </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button type="submit" className="btn-ghost" disabled={!canSubmit}>
+                    {passwordMutation.isPending ? <Spinner size={14} /> : null}
+                    {openSession ? 'Set password' : 'Change password'}
+                </button>
+            </div>
+            {message ? (
+                <p
+                    className={message.kind === 'ok' ? 'mt-2 text-xs text-sage' : 'mt-2 text-xs text-wine'}
+                    role={message.kind === 'ok' ? 'status' : 'alert'}
+                >
+                    {message.text}
+                </p>
+            ) : null}
+        </form>
     );
 }

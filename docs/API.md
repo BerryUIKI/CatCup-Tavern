@@ -1,10 +1,10 @@
 # HTTP API
 
-The server exposes a same-origin REST API under `/api` plus one SSE endpoint for generation. In development Vite proxies `/api` to `http://127.0.0.1:8000`; in production Fastify serves the SPA and API from the same port.
+The server exposes a same-origin REST API under `/api` plus two SSE endpoints for generation, `POST /api/generate` and `POST /api/groups/:groupId/chats/:chatId/generate`. In development Vite proxies `/api` to `http://127.0.0.1:8000`; in production Fastify serves the SPA and API from the same port.
 
 - All request and response bodies are JSON unless noted.
 - Authentication is a session cookie (`catcup_session`) set by `POST /api/auth/login`.
-- All endpoints except the public list below require that cookie.
+- All endpoints except the public list below require that cookie. A desktop install with no password runs in an open session and answers without one; see `GET /api/auth/status`.
 - IDs (`characterId`, `chatId`) are URL-encoded path segments. Character IDs are file names without the extension; chat IDs are JSONL file names without `.jsonl`.
 
 Public endpoints:
@@ -27,46 +27,76 @@ Error responses use:
 
 Common codes:
 
-| Code                    | HTTP      | Meaning                                                    |
-| ----------------------- | --------- | ---------------------------------------------------------- |
-| `VALIDATION`            | 400       | Zod validation failed                                      |
-| `BAD_REQUEST`           | 400       | Invalid input or state                                     |
-| `UNAUTHORIZED`          | 401       | Missing or expired session                                 |
-| `INVALID_PASSWORD`      | 401       | Wrong login password                                       |
-| `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                        |
-| `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                  |
-| `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found     |
-| `CONFLICT`              | 409       | A quick reply set name is already taken                    |
-| `ALREADY_INITIALIZED`   | 409       | Setup attempted after a password exists                    |
-| `TTS_DISABLED`          | 400       | Text to speech is switched off                             |
-| `TTS_KEY_MISSING`       | 400       | The OpenAI TTS endpoint has no key                         |
-| `TTS_CONFIG`            | 400       | TTS base URL or model is missing                           |
-| `TTS_SYSTEM_BACKEND`    | 400       | The browser TTS backend cannot be called on the server     |
-| `TTS_FAILED`            | 502       | The speech provider request failed                         |
-| `IMAGE_DISABLED`        | 400       | Image generation is switched off                           |
-| `IMAGE_KEY_MISSING`     | 400       | The OpenAI image endpoint has no key                       |
-| `IMAGE_CONFIG`          | 400       | Image base URL, model or ComfyUI workflow is invalid       |
-| `IMAGE_PROMPT_EMPTY`    | 400       | There are no messages to draft a prompt from               |
-| `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                        |
-| `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided               |
-| `IMAGE_FAILED`          | 502       | The image provider request failed                          |
-| `IMAGE_PROMPT_FAILED`   | 502       | The chat model could not draft an image prompt             |
-| `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back |
-| `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                           |
-| `PROVIDER_ERROR`        | 502       | Upstream provider request failed                           |
-| —                       | 500       | Unhandled server error                                     |
+| Code                    | HTTP      | Meaning                                                       |
+| ----------------------- | --------- | ------------------------------------------------------------- |
+| `VALIDATION`            | 400       | Zod validation failed                                         |
+| `BAD_REQUEST`           | 400       | Invalid input or state                                        |
+| `UNAUTHORIZED`          | 401       | Missing or expired session                                    |
+| `INVALID_PASSWORD`      | 401       | Wrong login password                                          |
+| `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                           |
+| `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                     |
+| `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found        |
+| `CONFLICT`              | 409       | A quick reply set name is already taken                       |
+| `ALREADY_INITIALIZED`   | 409       | Setup attempted after a password exists                       |
+| `TTS_DISABLED`          | 400       | Text to speech is switched off                                |
+| `TTS_KEY_MISSING`       | 400       | The OpenAI TTS endpoint has no key                            |
+| `TTS_CONFIG`            | 400       | TTS base URL or model is missing                              |
+| `TTS_SYSTEM_BACKEND`    | 400       | The browser TTS backend cannot be called on the server        |
+| `TTS_FAILED`            | 502       | The speech provider request failed                            |
+| `IMAGE_DISABLED`        | 400       | Image generation is switched off                              |
+| `IMAGE_KEY_MISSING`     | 400       | The OpenAI image endpoint has no key                          |
+| `IMAGE_CONFIG`          | 400       | Image base URL, model or ComfyUI workflow is invalid          |
+| `IMAGE_PROMPT_EMPTY`    | 400       | There are no messages to draft a prompt from                  |
+| `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                           |
+| `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided                  |
+| `IMAGE_FAILED`          | 502       | The image provider request failed                             |
+| `IMAGE_PROMPT_FAILED`   | 400 / 502 | The chat model could not draft an image prompt                |
+| `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back    |
+| `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text                |
+| `DISTILL_FORMAT`        | 400       | A book file CatCup cannot read, or an unsupported extension   |
+| `DISTILL_EPUB`          | 400       | An EPUB CatCup refuses — DRM, or no readable package document |
+| `DISTILL_FINISHED`      | 409       | Attach was asked for a run that has already finished          |
+| `DISTILL_RUNNING`       | 409       | Accept was asked for while the run is still going             |
+| `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                              |
+| `PROVIDER_DISABLED`     | 400       | The active provider reference is disabled                     |
+| `PROVIDER_KEY_REUSE`    | 400       | A draft test changed the endpoint without a key               |
+| `INVALID_BASE_URL`      | 400       | A provider base URL is not http or https                      |
+| `PROVIDER_ERROR`        | 502       | Upstream provider request failed                              |
+| —                       | 500       | Unhandled server error                                        |
 
 ## Auth
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    Note over B,S: First run - loopback only
+    B->>S: GET /api/auth/status
+    S-->>B: { needsSetup: true }
+    B->>S: POST /api/auth/setup { password }
+    S-->>B: session cookie
+    Note over B,S: Every later visit
+    B->>S: POST /api/auth/login { password }
+    alt password correct
+        S-->>B: catcup_session cookie (30 days)
+    else wrong or rate-limited
+        S-->>B: 401 INVALID_PASSWORD
+    end
+    B->>S: /api/* with the cookie
+    S-->>B: 200 or 401 UNAUTHORIZED
+```
 
 ### `GET /api/auth/status`
 
 ```json
-{ "needsSetup": false, "authenticated": true }
+{ "needsSetup": false, "authenticated": true, "openSession": false }
 ```
+
+`openSession` is true only in a desktop install with no password: the API answers without a session and `needsSetup` stays false so the SPA opens directly.
 
 ### `POST /api/auth/setup`
 
-First-run only. The request must originate from loopback unless `CATCUP_ALLOW_REMOTE_SETUP=true`.
+First-run only. The request must originate from loopback unless `CATCUP_ALLOW_REMOTE_SETUP=true`. Never needed in desktop mode, where an install with no password is already open.
 
 ```json
 { "password": "at-least-8-characters" }
@@ -86,12 +116,26 @@ Response: `{ "ok": true }` and a session cookie. Rate limit: 10 attempts per min
 
 Clears the cookie. Response: `{ "ok": true }`.
 
+### `PUT /api/auth/password`
+
+Sets or replaces the password. Every shape may change it; only the desktop may **remove** one. A web or LAN install answers `403 FORBIDDEN` for `{ "password": "" }`, because removing it would leave a server reachable from the network with no password at all. Changing or removing an existing password requires `currentPassword`.
+
+```json
+{ "password": "at-least-8-characters", "currentPassword": "only-when-one-exists" }
+```
+
+```json
+{ "password": "" }
+```
+
+Response: `{ "ok": true, "openSession": false }` (or `true` after removal). The session cookie is replaced with one signed by the new secret, so every other device is signed out and the caller stays signed in. Rate limit: 10 attempts per minute per client.
+
 ## Health
 
 ### `GET /api/health`
 
 ```json
-{ "ok": true, "version": "0.1.0", "needsSetup": false }
+{ "ok": true, "version": "0.3.0", "needsSetup": false }
 ```
 
 ## Characters
@@ -136,7 +180,7 @@ Returns `image/png` for PNG cards. JSON-only cards have no avatar and return `40
 
 `multipart/form-data` with one or more file parts. Field names are ignored; every file part is processed.
 
-- Accepted: `.png` (character card with `tEXt` metadata), `.json`, and `.charx` (a RisuAI ZIP package).
+- Accepted: `.png` (character card with `tEXt` metadata), `.json`, `.charx` (a RisuAI ZIP package) and `.catcup` (the same container under CatCup's own extension).
 - Limits: 20 MB per uploaded file, 50 files per request. A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB after extraction; only `assets/**` entries are kept.
 - A CharX card with a PNG icon is stored as a PNG card; without one it is stored as JSON. Every safe `assets/**` file is written under `data/character-assets/<character id>/`.
 - The saved file is named after the character card name, with a numeric suffix on collision.
@@ -152,6 +196,18 @@ Response:
 
 Partial success is normal: imported cards are saved, failed cards are reported in `errors`.
 
+### `POST /api/characters/import-path`
+
+**Desktop only.** Imports one card from a path on the machine — this is what the shell calls when the user opens a card file from Explorer. A web or LAN server does not register the route at all and answers `404`, not `400`.
+
+```json
+{ "path": "C:\\Users\\Mira\\Cards\\seraphina.png" }
+```
+
+- Accepted extensions are the same three as the upload route: `.png`, `.json`, `.charx`
+- The file must be readable by the server process; a missing or unreadable one answers `400 Could not read the file`
+- The response has the same shape as the upload above, with at most one entry in `imported`
+
 ### `PATCH /api/characters/:id`
 
 Merge edits into the stored card.
@@ -166,7 +222,8 @@ Merge edits into the stored card.
 ```
 
 - Editable: `name`, `description`, `personality`, `scenario`, `first_mes`, `mes_example`, `creator_notes`, `system_prompt`, `post_history_instructions`, `alternate_greetings`, `tags`, `creator`, `character_version`, `nickname`, `group_only_greetings`.
-- Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions`, the character book, V3 assets — is preserved.
+- `model` sets the card's model choice, written to `data.extensions.catcup_model`; an empty string clears it. It is validated only as a string — the character has no way to know which models the provider currently serves, so a model the provider does not list is accepted and resolves through the fallback order described in [PROVIDERS.md](PROVIDERS.md#which-model-a-request-uses).
+- Unknown fields are rejected with `400 VALIDATION`. Everything not listed — `extensions` beyond `catcup_model`, the character book, V3 assets — is preserved.
 - The file keeps its name: the id is what chats, avatars and world info reference. Only the card's own `name` changes.
 - A PNG card is re-encoded with both `chara` and `ccv3` chunks rewritten, so a V3 reader and a V2-only reader see the same character.
 - A card with no creation date gets `data.creation_date` (Unix seconds) on its first write, so the library's creation sort survives later atomic file writes.
@@ -208,7 +265,7 @@ A redundant tag action that would not change a card does not write it.
 
 ### `GET /api/characters/:id/export`
 
-`?format=png` (default) downloads the stored image with its metadata intact; `?format=json` downloads the card body, promoting a legacy flat card to a V2 wrapper so the result is a valid card on its own; `?format=charx` downloads a ZIP with a V3 `card.json`, the stored `assets/**` files and — for a PNG card — the image as the icon asset. A package without a PNG icon has no icon entry. Risu `module.risum` bundles are not written.
+`?format=png` (default) downloads the stored image with its metadata intact; `?format=json` downloads the card body, promoting a legacy flat card to a V2 wrapper so the result is a valid card on its own; `?format=charx` and `?format=catcup` download a ZIP with a V3 `card.json`, the stored `assets/**` files and — for a PNG card — the image as the icon asset. The two package formats are byte-identical and differ only in the extension of the downloaded file. A package without a PNG icon has no icon entry. Risu `module.risum` bundles are not written.
 
 - `404` when the character does not exist.
 - `400` when `format=png` is asked for a JSON-only card, which has no image.
@@ -216,6 +273,10 @@ A redundant tag action that would not change a card does not write it.
 ### `DELETE /api/characters/:id`
 
 Deletes the card file. Chats are not deleted automatically. Response: `{ "ok": true }`.
+
+### `POST /api/characters/sample`
+
+Adds the bundled sample character, so a fresh install has someone to talk to. Response: `{ "character": CharacterDetail, "created": boolean }` — running it twice returns the copy that is already there with `created: false` instead of making a second one.
 
 ## Chats
 
@@ -556,7 +617,7 @@ Removes the latest group-chat summary, falling back to an older one when present
 
 ### `POST /api/generate`
 
-Starts a generation and returns an SSE stream. The server persists the assistant message before emitting `done`.
+Starts a generation and returns an SSE stream. Except for `impersonate`, the server persists the assistant message before emitting `done`.
 
 ```json
 {
@@ -567,12 +628,15 @@ Starts a generation and returns an SSE stream. The server persists the assistant
 }
 ```
 
-| Action       | Behaviour                                                                                                                                                                                                 |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `send`       | Appends the user message, then generates an assistant reply. `message` is required.                                                                                                                       |
-| `regenerate` | Removes the last assistant message from the prompt and generates a new variant. If a previous assistant message exists, the new text is stored as a swipe; otherwise a new assistant message is appended. |
-| `continue`   | Requires the last message to be an assistant message. Generated text is appended to that message.                                                                                                         |
-| `trigger`    | Generates a new assistant reply without a user message. This is the action behind a Quick Reply `/trigger`. `message` is ignored.                                                                         |
+| Action        | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `send`        | Appends the user message, then generates an assistant reply. `message` is required.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `regenerate`  | Removes the last assistant message from the prompt and generates a new variant. If a previous assistant message exists, the new text is stored as a swipe; otherwise a new assistant message is appended.                                                                                                                                                                                                                                                                                                                                   |
+| `continue`    | Requires the last message to be an assistant message. Generated text is appended to that message.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `trigger`     | Generates a new assistant reply without a user message. This is the action behind a Quick Reply `/trigger`. `message` is ignored.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `impersonate` | Writes the next message as the user. The reply is a **draft**: it streams back and `done` carries it in the same shape a saved message has, so the client has one thing to read, but nothing is written to the chat — only the user's own `send` creates a message. The instruction comes from the active preset's `impersonation_prompt`, or SillyTavern's default when the preset has none. The world info scan still runs, so timed effects advance as they do in SillyTavern. Not available on the group endpoint, which answers `400`. |
+
+The `done` event for every other action carries a message that is already stored; for `impersonate` it carries a message that exists only in the response.
 
 SSE events:
 
@@ -599,6 +663,19 @@ data: {"type":"error","message":"..."}
 - If the client disconnects or calls the stop endpoint, the server aborts the upstream request and saves the partial text with `extra.stopped = true` when possible.
 - If the upstream fails after some text was produced, the partial text is saved and an `error` event is sent.
 - The client should use `fetch` + `ReadableStream` rather than `EventSource`, because the request is a POST with a session cookie.
+
+```mermaid
+sequenceDiagram
+    participant C as Client (fetch + ReadableStream)
+    participant S as Server
+    C->>S: POST /api/generate (JSON, session cookie)
+    S-->>C: 200 text/event-stream
+    S-->>C: event: start
+    S-->>C: event: token (repeating)
+    S-->>C: event: reasoning (when the provider returns it)
+    S-->>C: event: done or error
+    Note over C,S: stop = POST /api/generate/:id/stop; partial text keeps extra.stopped
+```
 
 ### `POST /api/generate/:id/stop`
 
@@ -629,6 +706,118 @@ What is read: `characters/`, `chats/<character>/*.jsonl`, `worlds/`, and OpenAI 
 Importing is additive: running it twice adds copies with numeric suffixes instead of overwriting.
 
 Group chats, backgrounds, themes and SillyTavern's own settings are not imported.
+
+## Distillation
+
+Uploading a book is the first half of [RFC 0002](RFC/0002-book-distillation.md); the model pipeline and the review sheet follow in later slices. What exists now is the store: a book is parsed, kept in the profile that uploaded it, and can be read back.
+
+### `POST /api/distill/books`
+
+Multipart upload, one file field. `.txt`, `.md` and `.epub` are accepted, up to the `@fastify/multipart` limit the server already applies (20 MB).
+
+Returns `201` with:
+
+```json
+{
+    "book": {
+        "id": "novel",
+        "name": "novel",
+        "fileName": "novel.txt",
+        "format": "txt",
+        "bytes": 482113,
+        "addedAt": 1763130000000,
+        "sections": [{ "index": 0, "title": "Chapter 1", "chars": 8123 }]
+    },
+    "estimate": { "chunks": 24, "promptTokens": 198430 }
+}
+```
+
+- `sections` carries titles and sizes, never text. The text is re-read from the stored source file when a run needs it.
+- `estimate` is computed with the tokenizer for the model a run would use, so it is the request count the dialog can show before anything is spent.
+- A `.txt` is decoded as strict UTF-8 first, then GB18030, then windows-1252, with a byte-order mark taking precedence. A Chinese novel saved as GBK therefore reads correctly instead of arriving as mojibake.
+- Sections come from chapter headings (`Chapter N`, `Part N`, `Prologue`, `第N章`, `序章`, …). A file with no heading anywhere is cut into runs of paragraphs — a 300-page import must not be one row.
+- An EPUB is read in spine order. Font obfuscation is not DRM and is accepted; a spine document listed in `META-INF/encryption.xml` is refused.
+
+Errors: `400 DISTILL_FORMAT` for a file CatCup cannot read or an unsupported extension, `400 DISTILL_EPUB` for an EPUB it refuses, `413 PAYLOAD_TOO_LARGE` over the limit.
+
+### `GET /api/distill/books`
+
+`{ "books": [ ... ] }`, newest first.
+
+### `GET /api/distill/books/:id`
+
+`{ "book": ... }`, `404` when it does not exist.
+
+### `DELETE /api/distill/books/:id`
+
+Removes the folder and the source file. Returns `{ "ok": true }`, `404` when it did not exist.
+
+### `POST /api/distill/runs`
+
+Start a run and stream its progress. The response **is** the event stream, so the dialog that started the run is also the one watching it.
+
+```json
+{ "bookId": "novel", "mode": "sections" }
+```
+
+`mode` is `sections` or `model`.
+
+- **`sections`** needs no model: every chapter becomes one world info entry whose body is that chapter. Free, instant, deterministic.
+- **`model`** reads the book once per chunk, merges what it found, and writes each entity up. It costs one request per chunk, plus one per entity that recurs (mentioned twice or more), plus at most one batched request to settle near-identical names. A passing mention is written from the merge with no request, marked low confidence and left unticked.
+
+`model` may name a model the active provider serves; without one the profile's preferred model applies, then the provider default. The choice is **not** persisted — there is no second model setting to keep in step. With no enabled provider the request is a `400`.
+
+A chunk whose reply cannot be read is retried once and then marked **incomplete**; the run carries on and its record says which chapters were skipped. One unreadable chapter never fails a book.
+
+The events are the ones in `packages/shared/src/schemas/distill.ts`:
+
+| Event      | Meaning                                                       |
+| ---------- | ------------------------------------------------------------- |
+| `start`    | `{ runId, model, chunks }` — the full row list, sent first    |
+| `chunk`    | one row changed state, with a running count of what was found |
+| `progress` | `{ done, total }`                                             |
+| `done`     | the finished run record, including the draft                  |
+| `error`    | a message                                                     |
+
+A model run appends its `outline` rows to the analysis rows once the merge finishes, so `progress` totals grow when the second stage starts. That is how the dialog says what the time is being spent on.
+
+**Closing the stream does not stop the run.** A book takes minutes; a closed tab must not throw it away. Only `POST /api/distill/runs/:id/stop` cancels it, and the record on disk is written after every chunk, so a reattach reads real progress.
+
+### `POST /api/distill/runs/:id/attach`
+
+Reattach to a run **still in progress**. The current row list is replayed as the opening `start` event, so an attach mid-run draws the rows that already finished. `404` when the id is unknown, `409 DISTILL_FINISHED` when the run has finished — a finished run is read with `GET`, not streamed.
+
+### `POST /api/distill/runs/:id/stop`
+
+`{ "ok": true }` when a run was stopped, `{ "ok": false }` when it was not running. The record is kept with `status: "stopped"` and nothing is written to the library.
+
+### `POST /api/distill/runs/:id/accept`
+
+Write an accepted draft. The client owns the inline edits, so the body is the draft to keep:
+
+```json
+{
+    "entries": [{ "key": ["mira"], "comment": "Chapter 1", "content": "…", "chapter": "Chapter 1", "accepted": true }],
+    "characters": [{ "name": "Mira", "description": "…", "accepted": true }],
+    "world": { "id": "the-inn", "scope": "profile" },
+    "characterScope": "profile",
+    "linkWorld": true
+}
+```
+
+- Only rows with `accepted: true` are written. An unticked row is excluded, not merely hidden.
+- Entries are written through the same path as `POST /api/worlds/import`, starting from SillyTavern's entry template, so the book opens in SillyTavern and in the world info editor.
+- Characters are written through the same path as a card import, as V2 cards, and carry `extensions.world` when `linkWorld` is set.
+- `scope` and `characterScope` accept `profile` or `shared`; a shared book and its cards are then visible in every profile.
+- Returns `{ "run": …, "worldId", "scope", "characterIds" }`. `409 DISTILL_RUNNING` while the run is still going.
+
+### `GET /api/distill/runs` · `GET /api/distill/runs/:id`
+
+`{ "runs": [ ... ] }` newest first, or `{ "run": ... }`. A run record holds the chunk map, the model, the draft and what was accepted — not the book text.
+
+### `DELETE /api/distill/runs/:id`
+
+Discards a run record. The book and anything already accepted are untouched.
 
 ## Settings
 
@@ -771,6 +960,51 @@ Partial update. All fields are optional:
 
 ## Providers
 
+### Profiles
+
+A profile is a data scope: its own characters, chats, groups, world info, presets, quick reply sets, regex rules, personas, images and configuration. The provider list, the API keys and auth are shared. See [RFC 0001](RFC/0001-profiles.md) and [DATA-FORMATS.md](DATA-FORMATS.md).
+
+| Method | Path                        | Purpose                                                                                     |
+| ------ | --------------------------- | ------------------------------------------------------------------------------------------- |
+| GET    | `/api/profiles`             | `{ activeProfileId, profiles: ProfileSummary[], archived: ProfileSummary[] }`               |
+| POST   | `/api/profiles`             | Create one: `{ name, description?, copyFromId? }`. Copies **configuration**, never content. |
+| PATCH  | `/api/profiles/:id`         | `{ name?, description? }`                                                                   |
+| PUT    | `/api/profiles/active`      | `{ id }`. Switches the served profile and returns `{ activeProfileId, settings }`.          |
+| POST   | `/api/profiles/:id/archive` | Move the profile's folder to `archive/`; refuses the active and the last profile            |
+| POST   | `/api/profiles/:id/restore` | Move an archived profile back, keeping its name                                             |
+| DELETE | `/api/profiles/:id`         | Permanently delete an **archived** profile; refuses a live one                              |
+
+`ProfileSummary` is `{ id, name, description, archived, active, counts: { characters, chats, groups, books, presets }, sizeBytes }`.
+
+`PUT /api/profiles/active` answers `409 PROFILE_BUSY` while a generation is running — finish or stop the reply first. After a switch the client must refetch every scoped collection: characters, chats, groups, world info, presets, regex, quick replies, images and settings.
+
+### The shared scope
+
+An item the library shows can live in the profile or in `data/shared/`, where every profile sees it. The rule is one sentence: **the profile's copy wins**, and the row that wins is marked.
+
+Every scoped list carries `scope: 'profile' | 'shared'` on each item, plus `shadowed?: true` when a profile item hides a shared one with the same id. The shared original is not listed a second time — an id addresses exactly one item — so a chat, a group membership and an `extensions.world` link keep resolving to the thing the person can see.
+
+| Method | Path                                 | Purpose                                                                                          |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| POST   | `/api/shared/:kind/:id/move?scope=…` | Move the item to `scope` (`profile` or `shared`), keeping its id so existing links still resolve |
+| POST   | `/api/shared/:kind/:id/copy?scope=…` | Copy it into `scope` under a free id, leaving the original alone                                 |
+
+`kind` is `characters`, `worlds`, `presets`, `quickreplies` or `regex`. Both answer `{ kind, id, scope, visibleToProfiles }`.
+
+A move is a single `rename` between the two folders, so it either happens or it does not. It answers `400 SCOPE_CONFLICT` when the destination already holds that id, because overwriting would destroy one of two items the same person can see at once.
+
+A create or an import reaches the shared scope through the same routes that already exist — `POST /api/characters/import?scope=shared`, `{ scope }` on `/api/worlds/import`, `/api/presets/import` and `/api/quick-replies`, and `?scope=shared` on `POST /api/regex`, `/api/regex/import` and `PUT /api/regex/order`. Absent, it means the profile.
+
+**Regex** is one ordered list per scope rather than a file per rule. `GET /api/regex` returns the profile's rules first, then the shared ones; a shared rule whose id a profile rule uses is not returned, and the profile's rule carries `shadowed`. The order between lists is fixed so a shared rule cannot silently jump ahead of a profile rule that depended on running first. `PUT /api/regex/order?scope=shared` reorders only that scope's list.
+
+**Personas** are a list inside `settings.json` rather than a file per item, so they have their own routes and `GET /api/settings` returns the merged list, each entry carrying `scope`. A write to the profile's file always starts from the profile's own entries, never from the merged list, so a shared persona never ends up copied into a profile.
+
+| Method | Path                | Purpose                                                                     |
+| ------ | ------------------- | --------------------------------------------------------------------------- |
+| POST   | `/api/personas`     | `{ name, description?, scope }` — `shared` writes `shared/personas.json`    |
+| PATCH  | `/api/personas/:id` | `{ name?, description? }`; lands in whichever file holds the persona        |
+| DELETE | `/api/personas/:id` | Removes it from whichever file holds it, and returns the refreshed settings |
+
 ### `GET /api/providers`
 
 ```json
@@ -781,7 +1015,8 @@ Partial update. All fields are optional:
             "kind": "openai",
             "name": "OpenAI",
             "baseUrl": "https://api.openai.com/v1",
-            "model": "gpt-5",
+            "models": ["gpt-5"],
+            "defaultModel": "gpt-5",
             "enabled": true,
             "headers": {},
             "hasKey": false
@@ -790,6 +1025,8 @@ Partial update. All fields are optional:
 }
 ```
 
+`models` is the provider's model list and `defaultModel` the one a chat uses when the character names none. A provider written by an older CatCup, carrying a single `model` string, is read as a one-entry list with that entry as the default.
+
 ### `POST /api/providers`
 
 ```json
@@ -797,14 +1034,15 @@ Partial update. All fields are optional:
     "kind": "custom",
     "name": "Local OpenAI-compatible",
     "baseUrl": "http://127.0.0.1:8080/v1",
-    "model": "example-model",
+    "models": ["example-model"],
+    "defaultModel": "example-model",
     "enabled": true,
     "headers": {},
     "apiKey": "optional"
 }
 ```
 
-`kind` is one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. If `baseUrl` is empty, the kind's default is used. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
+`kind` is one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. If `baseUrl` is empty, the kind's default is used. `defaultModel` must be one of `models` when `models` is non-empty; a provider with no `defaultModel` resolves to the first entry in `models`. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
 
 ### `PATCH /api/providers/:id`
 

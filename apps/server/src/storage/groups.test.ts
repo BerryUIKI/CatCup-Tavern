@@ -1,8 +1,7 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { activateFixtureScope, createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 
 let root: string;
 let groups: typeof import('./groups.js');
@@ -16,7 +15,7 @@ function card(name: string): string {
 }
 
 async function writeGroupFile(id: string, body: Record<string, unknown>): Promise<void> {
-    await writeFile(path.join(root, 'groups', `${id}.json`), JSON.stringify({ id, ...body }));
+    await writeFile(fixturePath(root, 'groups', `${id}.json`), JSON.stringify({ id, ...body }));
 }
 
 function requireCreated(created: Awaited<ReturnType<typeof groups.createGroupChat>>) {
@@ -27,16 +26,17 @@ function requireCreated(created: Awaited<ReturnType<typeof groups.createGroupCha
 }
 
 beforeAll(async () => {
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-groups-'));
-    await mkdir(path.join(root, 'characters'), { recursive: true });
-    await mkdir(path.join(root, 'groups'), { recursive: true });
-    await writeFile(path.join(root, 'characters', 'Aria.json'), card('Aria'));
-    await writeFile(path.join(root, 'characters', 'Bram.json'), card('Bram'));
+    root = await createProfileDataDir('catcup-groups-');
+    await mkdir(fixturePath(root, 'characters'), { recursive: true });
+    await mkdir(fixturePath(root, 'groups'), { recursive: true });
+    await writeFile(fixturePath(root, 'characters', 'Aria.json'), card('Aria'));
+    await writeFile(fixturePath(root, 'characters', 'Bram.json'), card('Bram'));
 
     // config reads CATCUP_DATA_DIR once, at import time; reset the registry so
     // the storage modules pick up the temporary directory.
     vi.stubEnv('CATCUP_DATA_DIR', root);
     vi.resetModules();
+    await activateFixtureScope(root);
     groups = await import('./groups.js');
 }, 60_000);
 
@@ -58,7 +58,7 @@ describe('group storage', () => {
         expect(file.group.generation_mode).toBe(0);
         expect(file.group.chats).toEqual([]);
 
-        const raw = JSON.parse(await readFile(path.join(root, 'groups', `${file.group.id}.json`), 'utf8'));
+        const raw = JSON.parse(await readFile(fixturePath(root, 'groups', `${file.group.id}.json`), 'utf8'));
         expect(raw).toMatchObject({
             id: file.group.id,
             name: 'The Cup',
@@ -88,7 +88,7 @@ describe('group storage', () => {
         const updated = await groups.updateGroup('meta', { name: 'New name' });
 
         expect(updated?.group.name).toBe('New name');
-        const raw = JSON.parse(await readFile(path.join(root, 'groups', 'meta.json'), 'utf8'));
+        const raw = JSON.parse(await readFile(fixturePath(root, 'groups', 'meta.json'), 'utf8'));
         expect(raw.custom_flag).toBe('kept');
         expect(raw.id).toBe('meta');
     });
@@ -132,7 +132,7 @@ describe('group chat storage', () => {
         expect(chat?.messages[0]?.original_avatar).toBe('Aria.json');
 
         // SillyTavern keeps the speaker's avatar at the top level of the line.
-        const raw = await readFile(path.join(root, 'group chats', 'first night.jsonl'), 'utf8');
+        const raw = await readFile(fixturePath(root, 'group chats', 'first night.jsonl'), 'utf8');
         const messageLine = raw.split('\n')[1] ?? '';
         expect(JSON.parse(messageLine)).toMatchObject({ name: 'Aria', original_avatar: 'Aria.json' });
 

@@ -2,13 +2,25 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/character-card-parser.js
 // See docs/REUSE.md.
 
-import { type CharacterPatch, isRecord } from '@catcup/shared';
+import { CATCUP_MODEL_EXTENSION, type CharacterPatch, isRecord } from '@catcup/shared';
 
 import { withTextChunks } from './png.js';
 
 function applyPatch(data: Record<string, unknown>, patch: CharacterPatch): Record<string, unknown> {
     const merged = { ...data };
     for (const [key, value] of Object.entries(patch)) {
+        // The model choice lives inside `extensions`, next to SillyTavern's own
+        // flags, so it round-trips through a client that does not know it.
+        if (key === 'model') {
+            const extensions = isRecord(merged.extensions) ? { ...merged.extensions } : {};
+            if (value === '') {
+                delete extensions[CATCUP_MODEL_EXTENSION];
+            } else if (typeof value === 'string') {
+                extensions[CATCUP_MODEL_EXTENSION] = value;
+            }
+            merged.extensions = extensions;
+            continue;
+        }
         if (value !== undefined) {
             merged[key] = value;
         }

@@ -11,6 +11,7 @@ import {
     type QuickReplyAction,
     REGEX_PLACEMENT,
     regexPlacementForMessage,
+    resolveModel,
     resolvePersona,
     substituteMacros,
 } from '@catcup/shared';
@@ -23,8 +24,8 @@ import {
     Pencil,
     Play,
     Plus,
-    Settings2,
     Trash2,
+    TriangleAlert,
     Users,
     X,
 } from 'lucide-react';
@@ -47,6 +48,7 @@ import { useTts } from '../hooks/useTts';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
+import { ConfirmDialog } from './ConfirmDialog';
 import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
 import { ImageGenerationDialog } from './ImageGenerationDialog';
@@ -56,6 +58,7 @@ import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { QuickReplyBar } from './QuickReplyBar';
 import { Spinner } from './Spinner';
+import { ToolsMenu, type ToolsMenuItem } from './ToolsMenu';
 
 interface GroupChatViewProps {
     group: GroupView;
@@ -68,7 +71,8 @@ interface GroupChatViewProps {
     onSelectChat: (id: string) => void;
     onNewChat: () => void;
     onOpenSidebar: () => void;
-    onOpenSettings: () => void;
+    /** Opens Settings; `providers` deep-links to the panel the header's pill names. */
+    onOpenSettings: (section?: 'providers') => void;
     onEditGroup: () => void;
 }
 
@@ -138,11 +142,22 @@ export function GroupChatView({
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [pendingDelete, setPendingDelete] = useState<{ kind: 'message'; index: number } | { kind: 'chat' } | null>(
+        null,
+    );
     const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
     const [draft, setDraft] = useState('');
     const [focusRequest, setFocusRequest] = useState(0);
+    /**
+     * Auto mode: after a reply lands, wait `auto_mode_delay` seconds and ask
+     * for the next member's reply, until it is switched off, the user types,
+     * or the group runs out of members who may speak.
+     */
+    const [autoMode, setAutoMode] = useState(false);
+    /** Why auto mode stopped itself, shown beside the toggle. */
+    const [autoStopReason, setAutoStopReason] = useState<string | null>(null);
     // A quick reply result arrives after a round trip; read the latest draft
     // instead of the one captured when the button was clicked.
     const draftRef = useRef(draft);
@@ -157,6 +172,8 @@ export function GroupChatView({
         setDraft('');
         setImageDialog(null);
         setGalleryOpen(false);
+        setAutoMode(false);
+        setAutoStopReason(null);
     }, [selectedChatId]);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: stop the old chat's audio on a chat switch
@@ -181,7 +198,8 @@ export function GroupChatView({
 
     const generation = useGeneration({ kind: 'group', groupId: group.id }, selectedChatId, () => scrollToBottom(true));
     const tts = useTts();
-    const imageEnabled = useSettings().data?.imageGeneration.enabled ?? false;
+    const settingsData = useSettings().data;
+    const imageEnabled = settingsData?.imageGeneration.enabled ?? false;
     const imageTarget: ImageChatTarget | null = selectedChatId
         ? { kind: 'group', id: group.id, chatId: selectedChatId, name: group.name }
         : null;
@@ -321,8 +339,59 @@ export function GroupChatView({
         if (!selectedChatId) {
             return;
         }
+        // Typing is a request to speak; auto mode hands the turn back, as
+        // SillyTavern's composer does.
+        if (autoMode) {
+            setAutoMode(false);
+            setAutoStopReason(null);
+        }
         tts.stop();
         void generation.start('send', text, group.activation_strategy === 2 ? manualSpeaker || undefined : undefined);
+    };
+
+    /**
+     * Auto mode's next turn. SillyTavern asks for the following member's reply
+     * after `auto_mode_delay` seconds; the server's activation strategy picks
+     * who that is, exactly as a `/trigger` does.
+     */
+    const requestAutoReply = useCallback(() => {
+        if (!selectedChatId) {
+            setAutoMode(false);
+            return;
+        }
+        void generation.start(
+            'trigger',
+            undefined,
+            group.activation_strategy === 2 ? manualSpeaker || undefined : undefined,
+        );
+    }, [selectedChatId, generation, group.activation_strategy, manualSpeaker]);
+
+    // A reply landing is the moment to schedule the next one. The delay is the
+    // group's own `auto_mode_delay`, so a group configured in SillyTavern keeps
+    // its pace here.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: one tick per completed reply
+    useEffect(() => {
+        if (!autoMode || generation.replySequence === 0 || generation.streaming) {
+            return;
+        }
+        const reply = generation.lastReply;
+        if (reply?.extra?.stopped) {
+            setAutoMode(false);
+            setAutoStopReason('Auto mode stopped when the reply was interrupted.');
+            return;
+        }
+        const delay = Math.max(0, group.auto_mode_delay ?? 5);
+        const timer = window.setTimeout(() => requestAutoReply(), delay * 1000);
+        return () => window.clearTimeout(timer);
+    }, [autoMode, generation.replySequence, generation.streaming, group.auto_mode_delay]);
+
+    // Nothing to say when fewer than two members can speak: a group of one
+    // would otherwise answer itself forever.
+    const canAutoMode = enabledMembers.length > 1;
+
+    const toggleAutoMode = () => {
+        setAutoStopReason(null);
+        setAutoMode((current) => !current);
     };
 
     const handleQuickReplyInput = (action: Extract<QuickReplyAction, { type: 'input' }>) => {
@@ -423,12 +492,13 @@ export function GroupChatView({
     };
 
     const handleDelete = (index: number) => {
-        if (!window.confirm('Delete this message? This cannot be undone.')) {
-            return;
-        }
         tts.stop();
         deleteMessageMutation.mutate(index, {
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => setPendingDelete(null),
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
@@ -496,19 +566,87 @@ export function GroupChatView({
         if (!selectedChatId) {
             return;
         }
-        if (!window.confirm('Delete this group chat? This cannot be undone.')) {
-            return;
-        }
         deleteChatMutation.mutate(selectedChatId, {
-            onSuccess: () => pushToast('Chat deleted.', 'success'),
-            onError: (error) => pushToast(error.message, 'error'),
+            onSuccess: () => {
+                setPendingDelete(null);
+                pushToast('Chat deleted.', 'success');
+            },
+            onError: (error) => {
+                setPendingDelete(null);
+                pushToast(error.message, 'error');
+            },
         });
     };
 
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
+    const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
+    const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    // The model this chat will use: the character's own choice when the
+    // provider serves it, otherwise the provider default. The streaming start
+    // event reports the same value once a request is under way.
+    const characterModel = generation.speaker?.model ?? '';
+    const resolvedModel = provider ? resolveModel(provider, characterModel) : null;
+    const shownModel = generation.model ?? resolvedModel?.model ?? '';
+    const modelFallback =
+        resolvedModel?.source === 'fallback' && resolvedModel.requested
+            ? `${resolvedModel.requested} is not on this provider; using ${resolvedModel.model}.`
+            : null;
+    const disabledReason = !selectedChatId ? 'Start a chat first.' : undefined;
+
+    const tools: ToolsMenuItem[] = [
+        {
+            id: 'rename',
+            label: 'Rename chat',
+            icon: Pencil,
+            onSelect: handleOpenRename,
+            disabled: !selectedChatId,
+            ...(disabledReason ? { hint: disabledReason } : {}),
+        },
+        {
+            id: 'memory',
+            label: 'Memory',
+            icon: Brain,
+            onSelect: () => setMemoryOpen(true),
+            disabled: !selectedChatId || messages.length === 0,
+            hint: !selectedChatId ? disabledReason : 'This chat has no messages to summarize yet.',
+        },
+        {
+            id: 'generate-image',
+            label: 'Generate image',
+            icon: ImagePlus,
+            onSelect: () => setImageDialog({}),
+            disabled: !selectedChatId || !imageEnabled,
+            hint: 'Enable image generation in Settings → Images.',
+        },
+        {
+            id: 'gallery',
+            label: 'Image gallery',
+            icon: Images,
+            onSelect: () => setGalleryOpen(true),
+            disabled: !imageEnabled,
+            hint: 'Enable image generation in Settings → Images.',
+        },
+        {
+            id: 'edit-group',
+            label: 'Edit group',
+            icon: Users,
+            onSelect: onEditGroup,
+        },
+        {
+            id: 'delete-chat',
+            label: 'Delete chat',
+            icon: Trash2,
+            onSelect: () => setPendingDelete({ kind: 'chat' }),
+            disabled: !selectedChatId || deleteChatMutation.isPending,
+            ...(disabledReason ? { hint: disabledReason } : {}),
+            danger: true,
+            separate: true,
+        },
+    ];
+
     const header = (
-        <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
+        <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
             <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>
@@ -530,7 +668,7 @@ export function GroupChatView({
                 </p>
             </div>
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto">
+            <div className="flex min-w-0 items-center justify-end gap-1.5">
                 <select
                     value={selectedChatId ?? ''}
                     onChange={(event) => handleSelectChat(event.target.value)}
@@ -576,74 +714,43 @@ export function GroupChatView({
                 >
                     {creatingChat ? <Spinner size={16} /> : <Plus size={18} />}
                 </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={handleOpenRename}
-                    disabled={!selectedChatId}
-                    title="Rename chat"
-                    aria-label="Rename chat"
-                >
-                    <Pencil size={16} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn hover:text-wine"
-                    onClick={handleDeleteChat}
-                    disabled={!selectedChatId || deleteChatMutation.isPending}
-                    title="Delete chat"
-                    aria-label="Delete chat"
-                >
-                    {deleteChatMutation.isPending ? <Spinner size={16} /> : <Trash2 size={16} />}
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setImageDialog({})}
-                    disabled={!selectedChatId || !imageEnabled}
-                    title={imageEnabled ? 'Generate image' : 'Enable image generation in Settings'}
-                    aria-label="Generate image"
-                >
-                    <ImagePlus size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setGalleryOpen(true)}
-                    disabled={!imageEnabled}
-                    title={imageEnabled ? 'Image gallery' : 'Enable image generation in Settings'}
-                    aria-label="Image gallery"
-                >
-                    <Images size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => setMemoryOpen(true)}
-                    disabled={!selectedChatId || messages.length === 0}
-                    title="Memory"
-                    aria-label="Memory"
-                >
-                    <Brain size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={onEditGroup}
-                    title="Edit group"
-                    aria-label="Edit group"
-                >
-                    <Users size={17} />
-                </button>
-                <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={onOpenSettings}
-                    title="Settings"
-                    aria-label="Settings"
-                >
-                    <Settings2 size={18} />
-                </button>
+
+                {provider ? (
+                    <button
+                        type="button"
+                        className="hidden max-w-[170px] items-center gap-1.5 rounded-lg border border-line/70 px-2.5 py-1.5 text-xs transition hover:border-amber/40 hover:text-parchment lg:flex"
+                        onClick={() => onOpenSettings('providers')}
+                        title={
+                            providerReady
+                                ? `${provider.name} is ready`
+                                : `${provider.name} may need an API key. Open Settings → Providers.`
+                        }
+                    >
+                        <span
+                            className={
+                                providerReady
+                                    ? 'size-1.5 shrink-0 rounded-full bg-sage'
+                                    : 'size-1.5 shrink-0 rounded-full bg-amber/80'
+                            }
+                            aria-hidden="true"
+                        />
+                        <span className="truncate text-parchment-dim">
+                            {provider.name}
+                            {shownModel ? ` · ${shownModel}` : ''}
+                        </span>
+                        {modelFallback ? (
+                            <span className="shrink-0 text-amber" title={modelFallback}>
+                                <TriangleAlert size={12} aria-hidden="true" />
+                            </span>
+                        ) : null}
+                        <span className="sr-only">
+                            {providerReady ? 'Active provider is ready' : 'Active provider may need a key'}
+                            {modelFallback ? ` ${modelFallback}` : ''}
+                        </span>
+                    </button>
+                ) : null}
+
+                <ToolsMenu items={tools} />
             </div>
         </header>
     );
@@ -718,7 +825,7 @@ export function GroupChatView({
                                         }
                                         disabled={actionsDisabled}
                                         onRegenerate={enabledMembers.length > 0 ? handleRegenerate : undefined}
-                                        onDelete={() => handleDelete(index)}
+                                        onDelete={() => setPendingDelete({ kind: 'message', index })}
                                         onCopy={() => handleCopy(message.mes)}
                                         onSwipe={(delta) => handleSwipe(index, delta)}
                                         onEdit={(text) => handleEditMessage(index, text)}
@@ -814,24 +921,47 @@ export function GroupChatView({
                 onGenerate={handleQuickReplyGenerate}
             />
 
-            {group.activation_strategy === 2 ? (
+            {group.activation_strategy === 2 || canAutoMode ? (
                 <div className="bg-ink/70 px-3 pt-2 md:px-6">
-                    <div className="mx-auto flex w-full max-w-4xl items-center gap-2 text-xs text-muted">
-                        <span>Reply as</span>
-                        <select
-                            className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
-                            value={manualSpeaker}
-                            onChange={(event) => setManualSpeaker(event.target.value)}
-                            disabled={enabledMembers.length === 0}
-                            aria-label="Who replies next"
-                        >
-                            {enabledMembers.map((member) => (
-                                <option key={member.fileName} value={member.fileName}>
-                                    {member.name}
-                                </option>
-                            ))}
-                        </select>
-                        <span className="hidden text-muted/60 sm:inline">Manual group: you choose who answers.</span>
+                    <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-2 text-xs text-muted">
+                        {group.activation_strategy === 2 ? (
+                            <>
+                                <span>Reply as</span>
+                                <select
+                                    className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
+                                    value={manualSpeaker}
+                                    onChange={(event) => setManualSpeaker(event.target.value)}
+                                    disabled={enabledMembers.length === 0}
+                                    aria-label="Who replies next"
+                                >
+                                    {enabledMembers.map((member) => (
+                                        <option key={member.fileName} value={member.fileName}>
+                                            {member.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="hidden text-muted sm:inline">
+                                    Manual group: you choose who answers.
+                                </span>
+                            </>
+                        ) : null}
+                        {canAutoMode ? (
+                            <label
+                                className="ml-auto flex items-center gap-2"
+                                title="Ask for the next member's reply a few seconds after each one finishes."
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="size-3.5 accent-amber"
+                                    checked={autoMode}
+                                    onChange={toggleAutoMode}
+                                    disabled={!selectedChatId || generation.streaming}
+                                />
+                                <span>Auto mode</span>
+                                <span className="text-muted">{group.auto_mode_delay ?? 5}s</span>
+                            </label>
+                        ) : null}
+                        {autoStopReason ? <span className="text-amber/80">{autoStopReason}</span> : null}
                     </div>
                 </div>
             ) : null}
@@ -872,6 +1002,27 @@ export function GroupChatView({
             ) : null}
 
             <ImageLightbox image={lightbox} onClose={() => setLightbox(null)} />
+
+            <ConfirmDialog
+                open={pendingDelete !== null}
+                tone="danger"
+                title={pendingDelete?.kind === 'chat' ? 'Delete this group chat?' : 'Delete this message?'}
+                description={
+                    pendingDelete?.kind === 'chat'
+                        ? 'The group chat file is removed from disk. The group and its other chats are kept.'
+                        : 'The message is removed from the group chat file. Messages after it move up one place.'
+                }
+                confirmLabel={pendingDelete?.kind === 'chat' ? 'Delete chat' : 'Delete message'}
+                onCancel={() => setPendingDelete(null)}
+                onConfirm={() => {
+                    if (pendingDelete?.kind === 'chat') {
+                        handleDeleteChat();
+                    } else if (pendingDelete?.kind === 'message') {
+                        handleDelete(pendingDelete.index);
+                    }
+                }}
+                busy={deleteMessageMutation.isPending || deleteChatMutation.isPending}
+            />
 
             <Modal open={renameOpen} onClose={() => setRenameOpen(false)} title="Rename chat">
                 <div className="space-y-4 p-5">

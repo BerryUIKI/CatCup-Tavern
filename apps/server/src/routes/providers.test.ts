@@ -1,10 +1,10 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createProfileDataDir } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -29,7 +29,8 @@ function customProvider(baseUrl: string, name = 'Stub provider') {
         kind: 'custom',
         name,
         baseUrl,
-        model: 'stub-model',
+        models: ['stub-model'],
+        defaultModel: 'stub-model',
         enabled: true,
         headers: {},
     };
@@ -69,7 +70,7 @@ beforeAll(async () => {
     }
     stubBase = `http://127.0.0.1:${address.port}`;
 
-    root = await mkdtemp(path.join(tmpdir(), 'catcup-providers-routes-'));
+    root = await createProfileDataDir('catcup-providers-routes-');
     vi.stubEnv('CATCUP_DATA_DIR', root);
     vi.stubEnv('CATCUP_LOG_LEVEL', 'silent');
 
@@ -350,5 +351,64 @@ describe('active provider invariants', () => {
     it('returns 404 when activating a provider that does not exist', async () => {
         const response = await call('PATCH', '/api/settings', { activeProviderId: 'missing-provider' });
         expect(response.statusCode).toBe(404);
+    });
+});
+
+describe('provider model lists', () => {
+    it('keeps a list and resolves a default that is not in it', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'custom',
+            name: 'Listed',
+            baseUrl: stubBase,
+            models: ['alpha', 'beta'],
+            defaultModel: 'gamma',
+            enabled: true,
+            headers: {},
+        });
+        expect(created.statusCode).toBe(200);
+        const provider = (created.json() as { provider: { models: string[]; defaultModel: string } }).provider;
+        expect(provider.models).toEqual(['alpha', 'beta']);
+        // A default the list does not contain falls back to its first model.
+        expect(provider.defaultModel).toBe('alpha');
+    });
+
+    it('de-duplicates a list and fills a missing default', async () => {
+        const created = await call('POST', '/api/providers', {
+            kind: 'custom',
+            name: 'Dupes',
+            baseUrl: stubBase,
+            models: ['alpha', 'alpha', 'beta'],
+            enabled: true,
+            headers: {},
+        });
+        const provider = (created.json() as { provider: { models: string[]; defaultModel: string } }).provider;
+        expect(provider.models).toEqual(['alpha', 'beta']);
+        expect(provider.defaultModel).toBe('alpha');
+    });
+
+    it('reads a provider written with the old single model string', async () => {
+        // Providers live in the shared file now, so a legacy provider is one
+        // written there with a single `model` string. The settings loader
+        // normalizes it on the next read and rewrites it in the new shape.
+        const { writeFile } = await import('node:fs/promises');
+        const legacy = {
+            id: 'legacy-provider',
+            kind: 'custom',
+            name: 'Legacy',
+            baseUrl: stubBase,
+            model: 'old-model',
+            enabled: true,
+            headers: {},
+        };
+        await writeFile(path.join(root, 'providers.json'), JSON.stringify([legacy]));
+
+        // A fresh process would normalize on load; here the cache holds the
+        // pre-write state, so reload through the storage module directly.
+        const settingsStorage = await import('../storage/settings.js');
+        settingsStorage.clearSettingsCache();
+        const settings = await settingsStorage.getSettings();
+        const provider = settings.providers.find((entry) => entry.id === 'legacy-provider');
+        expect(provider?.models).toEqual(['old-model']);
+        expect(provider?.defaultModel).toBe('old-model');
     });
 });

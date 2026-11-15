@@ -2,12 +2,23 @@ import os from 'node:os';
 
 import { buildApp } from './app.js';
 import { config } from './config.js';
+import { isLoopbackBind } from './http/host.js';
 import { warmTokenizers } from './prompt/tokenizer.js';
 import { getAuthFile } from './storage/auth.js';
 
 // The Claude vocabulary is 1.7 MB; reading it before listening keeps the first
 // generation from paying for the parse.
 await warmTokenizers();
+
+// Open desktop mode has no password, so it must never be reachable off the
+// machine. Refuse to start rather than serve an unauthenticated API to the LAN.
+if (config.desktop && !(await getAuthFile()) && !isLoopbackBind(config.host)) {
+    process.stderr.write(
+        `CatCup Tavern: CATCUP_DESKTOP is set with no access password, so it can only bind loopback. ` +
+            `CATCUP_HOST is "${config.host}". Set a password or bind 127.0.0.1.\n`,
+    );
+    process.exit(1);
+}
 
 const app = await buildApp();
 

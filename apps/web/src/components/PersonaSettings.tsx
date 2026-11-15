@@ -1,10 +1,11 @@
-import { DEFAULT_PERSONA, type Persona } from '@catcup/shared';
-import { Check, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { DEFAULT_PERSONA, type Persona, type PersonaView } from '@catcup/shared';
+import { Check, Globe, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { useSettings, useUpdateSettings } from '../hooks/data';
+import { useCreatePersona, useDeletePersona, useSettings, useUpdatePersona, useUpdateSettings } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
 /**
@@ -17,6 +18,9 @@ import { Spinner } from './Spinner';
 export function PersonaSettings() {
     const settingsQuery = useSettings();
     const updateSettings = useUpdateSettings();
+    const createPersona = useCreatePersona();
+    const updatePersona = useUpdatePersona();
+    const deletePersona = useDeletePersona();
     const pushToast = useAppStore((state) => state.pushToast);
 
     const settings = settingsQuery.data;
@@ -55,15 +59,23 @@ export function PersonaSettings() {
             return;
         }
 
-        const next = creating
-            ? [...personas, { ...draft, name }]
-            : personas.map((persona) => (persona.id === draft.id ? { ...draft, name } : persona));
-
+        // A shared persona is written to `shared/personas.json`, a profile one to
+        // this profile's settings. The dedicated endpoints know which, so an edit
+        // never lands in the wrong file.
+        const existing: PersonaView | undefined = personas.find((persona) => persona.id === draft.id);
         try {
-            await updateSettings.mutateAsync({
-                personas: next,
-                activePersonaId: activePersonaId ?? draft.id,
-            });
+            if (creating) {
+                await createPersona.mutateAsync({ name, description: draft.description, scope: 'profile' });
+            } else if (existing?.scope === 'shared') {
+                await updatePersona.mutateAsync({ id: draft.id, patch: { name, description: draft.description } });
+            } else {
+                await updateSettings.mutateAsync({
+                    personas: personas.map((persona) =>
+                        persona.id === draft.id ? { ...persona, name, description: draft.description } : persona,
+                    ),
+                    activePersonaId: activePersonaId ?? draft.id,
+                });
+            }
             pushToast('Persona saved.', 'success');
             cancel();
         } catch (error) {
@@ -71,12 +83,16 @@ export function PersonaSettings() {
         }
     };
 
-    const remove = async (persona: Persona) => {
+    const remove = async (persona: PersonaView) => {
         if (!window.confirm(`Delete the persona "${persona.name}"? Chats that used it fall back to the default.`)) {
             return;
         }
         try {
-            await updateSettings.mutateAsync({ personas: personas.filter((item) => item.id !== persona.id) });
+            if (persona.scope === 'shared') {
+                await deletePersona.mutateAsync(persona.id);
+            } else {
+                await updateSettings.mutateAsync({ personas: personas.filter((item) => item.id !== persona.id) });
+            }
             if (draft?.id === persona.id) {
                 cancel();
             }
@@ -85,7 +101,40 @@ export function PersonaSettings() {
         }
     };
 
-    const makeDefault = async (persona: Persona) => {
+    /**
+     * Change where a persona lives.
+     *
+     * A persona is a list entry, not a file, so neither direction overwrites:
+     * going shared copies it into `shared/personas.json` and drops the profile
+     * copy, and taking one back copies it into this profile.
+     */
+    const sharePersona = async (persona: PersonaView) => {
+        try {
+            if (persona.scope === 'shared') {
+                await createPersona.mutateAsync({
+                    name: persona.name,
+                    description: persona.description,
+                    scope: 'profile',
+                });
+                pushToast(`"${persona.name}" was copied into this profile.`, 'success');
+            } else {
+                await createPersona.mutateAsync({
+                    name: persona.name,
+                    description: persona.description,
+                    scope: 'shared',
+                });
+                await updateSettings.mutateAsync({ personas: personas.filter((item) => item.id !== persona.id) });
+                pushToast(`"${persona.name}" is now shared.`, 'success');
+            }
+            if (draft?.id === persona.id) {
+                cancel();
+            }
+        } catch (error) {
+            showError(error);
+        }
+    };
+
+    const makeDefault = async (persona: PersonaView) => {
         try {
             await updateSettings.mutateAsync({ activePersonaId: persona.id });
         } catch (error) {
@@ -134,6 +183,7 @@ export function PersonaSettings() {
                                                 Default
                                             </span>
                                         ) : null}
+                                        {persona.scope === 'shared' ? <SharedBadge /> : null}
                                     </p>
                                     <p className="truncate text-[11px] text-muted">
                                         {persona.description || 'No description'}
@@ -161,6 +211,23 @@ export function PersonaSettings() {
                                     aria-label={`Edit ${persona.name}`}
                                 >
                                     <Pencil size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className="icon-btn size-7"
+                                    onClick={() => void sharePersona(persona)}
+                                    aria-label={
+                                        persona.scope === 'shared'
+                                            ? `Take ${persona.name} into this profile`
+                                            : `Make ${persona.name} reusable in every profile`
+                                    }
+                                    title={
+                                        persona.scope === 'shared'
+                                            ? 'Take into this profile'
+                                            : 'Reusable in every profile'
+                                    }
+                                >
+                                    <Globe size={14} />
                                 </button>
                                 <button
                                     type="button"

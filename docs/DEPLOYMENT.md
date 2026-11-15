@@ -2,6 +2,21 @@
 
 This guide covers the web and LAN builds. The desktop build is a separate installer that starts the same server on a free port; see [DESKTOP.md](DESKTOP.md).
 
+```mermaid
+flowchart TB
+    Device["Devices<br/>same machine · LAN · VPN"]
+    Proxy["TLS reverse proxy or VPN<br/>optional"]
+    Server["CatCup server<br/>CATCUP_HOST · CATCUP_PORT"]
+    Data[("CATCUP_DATA_DIR")]
+    Providers["Chat / TTS / image providers"]
+
+    Device -- "loopback http" --> Server
+    Device -- "https" --> Proxy
+    Proxy -- "http · Host preserved · SSE unbuffered" --> Server
+    Server <--> Data
+    Server -- "https" --> Providers
+```
+
 ## Local development
 
 ```bash
@@ -178,6 +193,8 @@ tar -xzf catcup-backup-YYYYMMDD.tgz
 
 The backup contains credentials (`secrets.json`, `auth.json`) and private chats. Store it like a password vault. Do not commit it to Git or attach it to issues.
 
+The `data/` tree holds every profile under `profiles/`, the library items marked reusable under `shared/`, the shared provider list and keys, and the profile index. Back it up whole: a single profile's folder is not a complete backup, and neither is `profiles/` without `shared/` — a profile that leans on a shared preset or lorebook looks broken without it.
+
 ## Upgrades
 
 1. Back up `data/`.
@@ -185,6 +202,8 @@ The backup contains credentials (`secrets.json`, `auth.json`) and private chats.
 3. Run quality gates and build.
 4. Restart the server.
 5. Check `/api/health` and open the UI.
+
+An upgrade from a version before profiles moves the tree into `data/profiles/default/` on that first start, keeping the old settings file as `settings.json.v1-backup`. To see the plan before it runs, stop the server and use `CATCUP_MIGRATE_DRY_RUN=1 pnpm start`.
 
 ```bash
 git pull --ff-only
@@ -204,7 +223,7 @@ There is no migration framework; the server upgrades a few older shapes on read,
 
 ## Desktop
 
-The Windows installer is built by CI when a merge into `main` carries a new version, and it is attached to that release. It needs no administrator and no separate Node installation: the shell starts a bundled server on an OS-chosen port and keeps its data in the OS app-data directory, separate from this guide's `data/`. Signing, an auto-updater and file associations are not there yet, so every upgrade is a manual download of the new installer. See [DESKTOP.md](DESKTOP.md).
+The Windows installer is built by CI when a merge into `main` carries a new version, and it is attached to that release. It needs no administrator and no separate Node installation: the shell starts a bundled server on an OS-chosen port and keeps its data in the OS app-data directory, separate from this guide's `data/`. An installed copy can update itself from the tray's **Check for Updates…** once a release has been published with the signing key; without one, every upgrade is a manual download of the new installer. Double-clicking a `.catcup` package opens it in the app. The installer has no Authenticode certificate, so Windows warns on first run. See [DESKTOP.md](DESKTOP.md).
 
 ## Related docs
 

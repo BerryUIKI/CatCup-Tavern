@@ -1,7 +1,7 @@
 {
     "name": "catcup-tavern",
     "private": true,
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "CatCup Tavern — a SillyTavern-compatible AI roleplay client for web, LAN and desktop.",
     "license": "AGPL-3.0-only",
     "type": "module",
@@ -17,7 +17,8 @@
         "test": "pnpm -r --if-present test",
         "lint": "biome check .",
         "lint:fix": "biome check --write .",
-        "format": "biome format --write ."
+        "format": "biome format --write .",
+        "icons": "node scripts/export-icons.mjs"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.6.6",

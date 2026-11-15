@@ -1,4 +1,12 @@
-import { type ContextPreview, getLatestSummary, resolvePersona, sanitizeRegexMacro } from '@catcup/shared';
+import {
+    type ContextPreview,
+    type GroupDepthPrompt,
+    getLatestSummary,
+    readCardDepthPrompt,
+    resolveModel,
+    resolvePersona,
+    sanitizeRegexMacro,
+} from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -38,7 +46,10 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
 
         const settings = await getSettings();
         const provider = await getActiveProvider();
-        const tokenCounter = provider ? createTokenCounter(provider.kind, provider.model) : ESTIMATE_COUNTER;
+        // The inspector counts what a reply to this character would actually
+        // use, including a fallback when the character's model is not served.
+        const model = provider ? resolveModel(provider, character.model, settings.profilePreferredModel).model : '';
+        const tokenCounter = provider && model ? createTokenCounter(provider.kind, model) : ESTIMATE_COUNTER;
         const persona = resolvePersona(settings, chatPersonaId(chat));
         const regexScripts = await listRegexScripts();
         const latestSummary = getLatestSummary(chat.messages);
@@ -66,6 +77,19 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             ...(memoryText && settings.memory.scan ? { extraScanText: memoryText } : {}),
         });
 
+        const ownDepthPrompt = readCardDepthPrompt(character.card.extensions);
+        const cardDepthPrompts: GroupDepthPrompt[] = ownDepthPrompt
+            ? [
+                  {
+                      fileName: character.fileName,
+                      charName: character.name,
+                      text: substituteMacros(ownDepthPrompt.prompt, macroContext),
+                      depth: ownDepthPrompt.depth,
+                      role: ownDepthPrompt.role,
+                  },
+              ]
+            : [];
+
         const assembled = buildPrompt({
             character,
             messages: chat.messages,
@@ -82,6 +106,7 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
+            cardDepthPrompts,
             ...(latestSummary ? { summaryText: latestSummary.value } : {}),
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });

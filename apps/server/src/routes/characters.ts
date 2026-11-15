@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 import {
     type CharacterBulkResponse,
@@ -9,13 +10,15 @@ import {
     characterIdSchema,
     characterPatchSchema,
     type ImportCharactersResponse,
+    type ItemScope,
 } from '@catcup/shared';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
 import { buildCharx, parseCharx } from '../cards/charx.js';
 import { parseJsonCard } from '../cards/parse.js';
 import { buildCardPayload, writePngCard } from '../cards/write.js';
+import { config } from '../config.js';
 import { badRequest, internal, notFound } from '../http/errors.js';
 import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';
 import {
@@ -39,11 +42,72 @@ const idParamsSchema = z.object({
 });
 
 const exportQuerySchema = z.object({
-    format: z.enum(['png', 'json', 'charx']).default('png'),
+    format: z.enum(['png', 'json', 'charx', 'catcup']).default('png'),
 });
 
 /** The card that ships with the app, relative to the assets folder. */
 const SAMPLE_CARD = 'samples/mira.json';
+
+/** The card formats the importer accepts, by extension. */
+const CARD_EXTENSIONS = /\.(png|json|charx|catcup)$/i;
+
+/**
+ * Packages that are a ZIP holding `card.json` and `assets/`.
+ *
+ * `.catcup` is CatCup's own name for that layout. It is deliberately the same
+ * container CharX uses, so the two convert by renaming and one parser serves
+ * both.
+ */
+const PACKAGE_EXTENSIONS = /\.(charx|catcup)$/i;
+
+const CARD_EXTENSION_MESSAGE = 'Only .png, .json, .charx and .catcup character cards are supported';
+
+const importPathSchema = z.object({
+    path: z.string().trim().min(1).max(4096),
+});
+
+/** Which scope an import writes to; the profile's own folder when absent. */
+function importScope(query: unknown): ItemScope {
+    return z.object({ scope: z.enum(['profile', 'shared']).default('profile') }).parse(query ?? {}).scope;
+}
+
+/**
+ * Import one card file, whatever shape it arrived in.
+ *
+ * Shared by the multipart upload and by the desktop-only import-by-path route,
+ * so both accept exactly the same formats and store CharX assets the same way.
+ */
+async function importCardFile(
+    fileName: string,
+    buffer: Buffer,
+    log: FastifyBaseLogger,
+    scope: ItemScope,
+): Promise<ImportCharactersResponse['imported'][number]> {
+    if (!CARD_EXTENSIONS.test(fileName)) {
+        throw new Error(CARD_EXTENSION_MESSAGE);
+    }
+
+    let detail: CharacterDetail;
+    if (PACKAGE_EXTENSIONS.test(fileName)) {
+        const parsed = parseCharx(buffer);
+        const payload = buildCardPayload(parsed.card.raw, {});
+        if (parsed.icon) {
+            const png = writePngCard(new Uint8Array(parsed.icon), payload);
+            detail = await importCharacter('character.png', Buffer.from(png), scope);
+        } else {
+            const json = `${JSON.stringify(payload, null, 2)}\n`;
+            detail = await importCharacter('character.json', Buffer.from(json, 'utf8'), scope);
+        }
+        await storeCharacterAssets(detail.id, parsed.assets, scope).catch((error) => {
+            log.warn({ err: error, characterId: detail.id }, 'CharX assets were not stored');
+        });
+    } else {
+        detail = await importCharacter(fileName, buffer, scope);
+    }
+
+    const { card: _card, rawCard: _rawCard, ...summary } = detail;
+    return summary;
+}
 
 export async function registerCharacterRoutes(app: FastifyInstance): Promise<void> {
     app.get('/api/characters', async () => ({
@@ -186,8 +250,8 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
 
         const safeName = found.detail.name.replace(/[^\w.-]+/g, '_') || 'character';
 
-        if (format === 'charx') {
-            const assets = await readCharacterAssets(found.detail.id);
+        if (format === 'charx' || format === 'catcup') {
+            const assets = await readCharacterAssets(found.detail.id, found.detail.scope);
             const avatar = found.detail.format === 'png' ? await readFile(found.filePath) : null;
             const archive = buildCharx({
                 rawCard: found.detail.rawCard,
@@ -198,7 +262,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             });
             return reply
                 .header('Content-Type', 'application/zip')
-                .header('Content-Disposition', `attachment; filename="${safeName}.charx"`)
+                .header('Content-Disposition', `attachment; filename="${safeName}.${format}"`)
                 .send(archive);
         }
 
@@ -246,6 +310,7 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
     app.post('/api/characters/import', async (request) => {
         const imported: ImportCharactersResponse['imported'] = [];
         const errors: ImportCharactersResponse['errors'] = [];
+        const scope = importScope(request.query);
 
         for await (const part of request.parts()) {
             if (part.type !== 'file') {
@@ -254,31 +319,8 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             const fileName = part.filename ?? 'card';
             const buffer = await part.toBuffer();
 
-            if (!/\.(png|json|charx)$/i.test(fileName)) {
-                errors.push({ fileName, message: 'Only .png, .json and .charx character cards are supported' });
-                continue;
-            }
-
             try {
-                let detail: CharacterDetail;
-                if (/\.charx$/i.test(fileName)) {
-                    const parsed = parseCharx(buffer);
-                    const payload = buildCardPayload(parsed.card.raw, {});
-                    if (parsed.icon) {
-                        const png = writePngCard(new Uint8Array(parsed.icon), payload);
-                        detail = await importCharacter('character.png', Buffer.from(png));
-                    } else {
-                        const json = `${JSON.stringify(payload, null, 2)}\n`;
-                        detail = await importCharacter('character.json', Buffer.from(json, 'utf8'));
-                    }
-                    await storeCharacterAssets(detail.id, parsed.assets).catch((error) => {
-                        request.log.warn({ err: error, characterId: detail.id }, 'CharX assets were not stored');
-                    });
-                } else {
-                    detail = await importCharacter(fileName, buffer);
-                }
-                const { card: _card, rawCard: _rawCard, ...summary } = detail;
-                imported.push(summary);
+                imported.push(await importCardFile(fileName, buffer, request.log, scope));
             } catch (error) {
                 errors.push({
                     fileName,
@@ -289,6 +331,38 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
 
         return { imported, errors } satisfies ImportCharactersResponse;
     });
+
+    /**
+     * Import a card from a path on this machine.
+     *
+     * The desktop shell uses this to open a card the user double-clicked. It is
+     * only registered in desktop mode, so a web or LAN server answers 404: a
+     * route that reads an arbitrary local path has no business there. In
+     * desktop mode the boundary is the loopback bind plus the server's origin
+     * check, the same as every other endpoint (see docs/SECURITY.md).
+     */
+    if (config.desktop) {
+        app.post('/api/characters/import-path', async (request) => {
+            const { path: filePath } = importPathSchema.parse(request.body ?? {});
+            const fileName = path.basename(filePath);
+
+            if (!CARD_EXTENSIONS.test(fileName)) {
+                throw badRequest(CARD_EXTENSION_MESSAGE);
+            }
+
+            let buffer: Buffer;
+            try {
+                buffer = await readFile(filePath);
+            } catch {
+                throw badRequest('Could not read the file');
+            }
+
+            return {
+                imported: [await importCardFile(fileName, buffer, request.log, 'profile')],
+                errors: [],
+            } satisfies ImportCharactersResponse;
+        });
+    }
 
     app.delete('/api/characters/:id', async (request) => {
         const { id } = idParamsSchema.parse(request.params);

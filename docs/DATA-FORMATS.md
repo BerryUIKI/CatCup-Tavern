@@ -8,32 +8,80 @@ CatCup Tavern stores everything as files under `data/`. The goal is to stay clos
 
 ```text
 data/
-├── characters/
-│   ├── Seraphina.png
-│   └── Custom.json
-├── character-assets/          # assets extracted from CharX packages
-│   └── Seraphina/
-│       └── assets/…
-├── chats/
-│   └── Seraphina/
-│       └── Seraphina - 2026-11-09_18-42-29.jsonl
-├── groups/
-│   └── 1762839291123.json      # ST group metadata
-├── group chats/
-│   └── 2026-11-11@08h14m52s123ms.jsonl
-├── worlds/                    # World Info JSON
-├── presets/                   # ST OpenAI presets
-├── quickreplies/              # ST Quick Replies v2 sets, one JSON per set
-├── user/
-│   └── images/                # generated gallery images, ST's userImages root
-│       ├── Seraphina/
-│       │   ├── image-1762900000000-a1b2c3d4.png
-│       │   └── image-1762900000000-a1b2c3d4.png.json
-│       └── 1762839291123/     # a group's gallery, named by group id
-├── regex.json                 # Regex scripts (one ordered list)
-├── settings.json
-├── secrets.json               # server-only; never returned by the API
-└── auth.json                  # server-only
+├── settings.json              # the profile index: which profiles exist, which is active
+├── providers.json             # provider configurations and their models, shared by every profile
+├── secrets.json               # server-only; never returned by the API, shared by every profile
+├── auth.json                  # server-only, shared by every profile
+├── migration.log              # one line per step of a data-folder migration
+├── shared/                    # items marked reusable in every profile
+│   ├── characters/
+│   ├── character-assets/      # assets of a shared character, beside its card
+│   ├── worlds/
+│   ├── presets/
+│   ├── quickreplies/
+│   ├── regex.json             # the shared list of regex rules
+│   └── personas.json          # the shared persona list
+├── archive/                   # archived profiles, each a full profile folder
+└── profiles/
+    └── default/               # a profile is a data scope
+        ├── characters/
+        │   ├── Seraphina.png
+        │   └── Custom.json
+        ├── character-assets/  # assets extracted from CharX packages
+        │   └── Seraphina/
+        │       └── assets/…
+        ├── chats/
+        │   └── Seraphina/
+        │       └── Seraphina - 2026-11-09_18-42-29.jsonl
+        ├── groups/
+        │   └── 1762839291123.json      # ST group metadata
+        ├── group chats/
+        │   └── 2026-11-11@08h14m52s123ms.jsonl
+        ├── worlds/            # World Info JSON
+        ├── presets/           # ST OpenAI presets
+        ├── quickreplies/      # ST Quick Replies v2 sets, one JSON per set
+        ├── user/
+        │   └── images/        # generated gallery images, ST's userImages root
+        ├── books/             # uploaded books, one folder each
+        │   └── novel/
+        │       ├── source.txt # the file as it was uploaded
+        │       └── book.json  # titles and sizes; never the text
+        ├── distill/           # run records for book distillation
+        │   └── <runId>.json
+        ├── regex.json         # Regex scripts (one ordered list)
+        └── settings.json      # this profile's configuration
+```
+
+A **profile is a data scope**. Characters, chats, groups, world info, presets, quick reply sets, regex, personas, images and configuration all belong to one profile, so two campaigns can each hold a character called `Mira` without colliding. Only the provider list, its models, the API keys and auth are shared, because re-entering one endpoint and its key per campaign buys nothing.
+
+The `shared/` folder is the exception on purpose: an item a profile marks **reusable** moves there and every profile sees it. It is opt-in per item and empty on an install that never uses it.
+
+**The profile's copy wins.** When both scopes hold the same id, the profile's item is the one a lookup resolves to — so a chat, a group membership or an `extensions.world` link keeps pointing at the card the person can see. The shared original stays on disk untouched and is not listed a second time; the library labels the winning row instead, and a **Scope** filter in the character library can hide shared items entirely.
+
+Regex and personas are the two kinds that are not a file per item. Regex is one ordered list per scope (`regex.json` in each), and the profile's list runs before the shared one. Personas are a list inside `settings.json` for the profile and `shared/personas.json` for the shared scope; the settings API returns the merged list, and only the profile's own entries are ever written to `settings.json`. A shared character's CharX assets live in `shared/character-assets/<id>/`, so a profile card of the same id keeps its own rather than inheriting them.
+
+A `data/` folder written before profiles existed — one tree and one `settings.json` — is migrated on first start into `profiles/default/`, with the old file kept as `settings.json.v1-backup`. `CATCUP_MIGRATE_DRY_RUN=1` prints the plan without moving anything. See [RFC 0001](RFC/0001-profiles.md) for the reasoning.
+
+```mermaid
+erDiagram
+    CHARACTER ||--o{ CHAT : "chats folder per character"
+    CHARACTER ||--o{ CHARACTER_ASSET : "character-assets folder"
+    CHARACTER ||--o{ WORLDINFO : "extensions.world link"
+    CHARACTER }o--o{ GROUP : "members are avatar file names"
+    GROUP ||--o{ GROUP_CHAT : "chats list"
+    CHAT ||--|{ MESSAGE : "one per JSONL line"
+    GROUP_CHAT ||--|{ MESSAGE : "name and original_avatar"
+    MESSAGE }o--o{ IMAGE : "extra.media paths"
+
+    CHARACTER {
+        string id "file name without extension"
+    }
+    GROUP {
+        string id "json file name"
+    }
+    MESSAGE {
+        int index "zero-based, header excluded"
+    }
 ```
 
 The root is `./data` by default and can be changed with `CATCUP_DATA_DIR`. `data/` is gitignored.
@@ -96,7 +144,7 @@ The server normalizes every card into the V3 data shape. Unknown fields are pres
 | Field                                          | Type       | Notes                                                                                               |
 | ---------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------- |
 | `name`                                         | string     | Display name; defaults to `Unnamed` if absent                                                       |
-| `nickname`                                     | string?    | Optional display nickname                                                                           |
+| `nickname`                                     | string?    | Parsed and preserved; nothing in the app displays it                                                |
 | `description`                                  | string     | Character sheet                                                                                     |
 | `personality`                                  | string     | Character sheet                                                                                     |
 | `scenario`                                     | string     | Character sheet                                                                                     |
@@ -120,7 +168,9 @@ Character book entries use V2 character-book fields such as `keys`, `secondary_k
 
 ### Library metadata
 
-Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON and CharX exports.
+Favorites are stored at `data.extensions.fav` as a boolean. A legacy flat card keeps the flag at its root `fav`; CatCup reads that form but writes only the extension. The exact string `'true'` counts as true, as SillyTavern's readers do. SillyTavern clears favorites when it exports or imports a card; CatCup keeps them in its own PNG, JSON, CharX and CatCup exports.
+
+A character's model choice is `data.extensions.catcup_model`, a model id string. It is CatCup's own extension — SillyTavern preserves it as an unknown field, so a card round-trips through both clients — and it is what the character editor's **Model** select writes. An empty or missing value means the provider default.
 
 Tags are `data.tags`, a string array. Bulk add/remove compares case- and whitespace-insensitively, keeps the spelling already on each card and never rewrites unrelated tags; a redundant action does not write the file. New tags cannot contain commas because the character editor splits the field on commas. CatCup does not reproduce SillyTavern's settings-level tag registry (`tags`/`tag_map` in `settings.json`, with colors, folders and manual order).
 
@@ -128,20 +178,22 @@ The library's creation sort reads `data.creation_date` (Unix seconds), then a ro
 
 ### Import limits
 
-- `.png`, `.json` and `.charx`; other extensions are reported per file.
+- `.png`, `.json`, `.charx` and `.catcup`; other extensions are reported per file.
 - 20 MB per uploaded file, 50 files per request.
-- A `.charx` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
+- A `.charx` or `.catcup` archive is capped at 200 entries, 25 MB per entry and 60 MB in total after extraction; `card.json` is capped at 10 MB. Entries outside `assets/**` are ignored.
 - The saved file name is the sanitized card name. Name collisions get ` (2)`, ` (3)`, and so on.
 
-### CharX packages
+### CharX and CatCup packages
 
-A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. CatCup imports it as a normal character:
+A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. `.catcup` is CatCup's own name for the same container: identical layout, different extension. A `.catcup` is a `.charx` renamed, so either app opens either file, and CatCup parses both with the same code.
+
+CatCup imports both as a normal character:
 
 - A PNG icon asset (`type: "icon"`, `uri: "embeded://assets/…"`) becomes the character image, and the card is stored as a PNG card with `chara` and `ccv3` chunks. Without a PNG icon the card is stored as JSON and has no avatar.
 - Every safe `assets/**` entry is written under `data/character-assets/<character id>/` with its archive-relative path. CatCup does not display these files yet; they are kept so an export can include them.
 - `module.risum` and root files other than `card.json` are skipped. `.charx` embedded-JPEG files (`charxJpeg`) are not recognized.
 
-`GET /api/characters/:id/export?format=charx` writes a V3 `card.json` and the stored assets. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
+`GET /api/characters/:id/export?format=charx|catcup` writes a V3 `card.json` and the stored assets, with the extension the caller asked for — the bytes are identical. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
 
 ### Writing cards back
 
@@ -210,7 +262,7 @@ A quick reply `/sys` writes a narrator message: `is_user: false`, `is_system` ab
 | `memory`        | string     | Rolling summary anchored to this message, as ST's Memory extension writes it       |
 | `media`         | object[]   | Image attachments in SillyTavern's `MediaAttachment` shape                         |
 | `media_index`   | number     | Selected entry in `media`                                                          |
-| `media_display` | string     | `gallery` or `list`, as SillyTavern stores it                                      |
+| `media_display` | string     | `gallery` only: CatCup writes it and ignores `list`                                |
 | `inline_image`  | boolean    | Whether the image renders full width instead of as a gallery thumbnail             |
 
 ### Swipes
@@ -328,16 +380,16 @@ A group is one metadata file plus one JSONL per conversation, in the same two fo
 }
 ```
 
-| Field                    | Meaning                                                                                     |
-| ------------------------ | ------------------------------------------------------------------------------------------- |
-| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them               |
-| `disabled_members`       | Members that stay in the group but do not reply                                             |
-| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                               |
-| `generation_mode`        | `0` swap, `1` append, `2` append without disabled members                                   |
-| `chat_id`                | The chat the group last opened                                                              |
-| `chats`                  | Every chat id belonging to the group, oldest first                                          |
-| `auto_mode_delay`        | Seconds between automatic turns; used by the group generation step                          |
-| `generation_mode_join_*` | Wrapped around each member's character-card field in append modes; it does not wrap replies |
+| Field                    | Meaning                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `members`                | Character **avatar file names**, in display order, as SillyTavern stores them |
+| `disabled_members`       | Members that stay in the group but do not reply                               |
+| `activation_strategy`    | `0` natural, `1` list, `2` manual, `3` pooled                                 |
+| `generation_mode`        | `0` swap, `1` join excluding muted members, `2` join including them           |
+| `chat_id`                | The chat the group last opened                                                |
+| `chats`                  | Every chat id belonging to the group, oldest first                            |
+| `auto_mode_delay`        | Seconds between automatic turns in auto mode                                  |
+| `generation_mode_join_*` | Prefix and suffix around each member's field in the join modes                |
 
 The file name is authoritative for `id`, even if the body disagrees. Unknown fields survive a round trip, so a group copied between SillyTavern and CatCup keeps settings the app does not read. A member whose card no longer exists is kept in the file and shown with no resolved id rather than being dropped.
 
@@ -474,7 +526,7 @@ Because the clock is the non-system message count, a scan must receive the full 
 
 ## Presets
 
-ST OpenAI presets live in `data/presets/` (or a SillyTavern `openai-presets/` folder) as JSON. The fields the shared schema understands include:
+ST OpenAI presets live in `data/presets/` (SillyTavern keeps them in `openai presets/`, which the importer reads) as JSON. The fields the shared schema understands include:
 
 - sampling: `temperature`, `frequency_penalty`, `presence_penalty`, `top_p`, `top_k`, `openai_max_context`, `openai_max_tokens`, `stream_openai`;
 - model: `openai_model`;
@@ -582,25 +634,54 @@ A file that is not a valid version 2 set is skipped by the library, not loaded o
 
 The bar's enabled flag and set order live in `settings.json` under `quickReplies`. SillyTavern's per-character configs are not implemented; per-chat `chat_metadata.quickReply.setList` links are read but not edited.
 
+## Books and distillation
+
+A book uploaded for distillation lives in its own folder under the profile that uploaded it. Two files, and the split between them is the rule the whole feature rests on:
+
+- `source.txt` / `source.md` / `source.epub` — the file exactly as it arrived, byte for byte.
+- `book.json` — what parsing found: `{ name, fileName, format, bytes, addedAt, sections }`, where each section is `{ index, title, chars }`.
+
+**The text is never copied into `book.json`.** A run re-reads the source file and re-parses it, so a corrected heading rule applies to a book uploaded before the fix, and an accepted entry can always be traced back to the text that produced it. Keeping the file also means a re-run with a different model needs no second upload.
+
+The file name gives the folder id — `novel.txt` becomes `books/novel/` — and a second book of the same name gets `novel (2)`. The folder belongs to one profile, so a book uploaded in one campaign is invisible in another; marking the distilled world info book reusable is how its _output_ crosses over, and that is the ordinary shared-layer move.
+
+A run record in `distill/<runId>.json` holds the chunk map, the model, what was found, and what was accepted. It is a record, not state a run depends on: deleting it loses the review sheet, not the book. It is rewritten after every chunk, so a reattach after a tab close reads real progress rather than a blank list, and a crash mid-run leaves a record that says how far it got.
+
+### Accepted output
+
+A distill run writes nothing until the review sheet is accepted, and then writes through the paths the library already uses, so its output is ordinary data rather than a format of its own:
+
+- the world info book is an ordinary `worlds/<id>.json`, built from SillyTavern's entry template — a field the review sheet does not show (probability, recursion flags, `displayIndex`) still has ST's default;
+- each accepted character is an ordinary V2 card in `characters/`, with `extensions.world` naming the book when the run linked them, and `extensions.catcup_distill` recording the aliases, mention count and confidence it came from;
+- the scope chosen in the sheet decides whether they land in the profile or in `shared/`, so a distilled book can be marked reusable without a second step.
+
+An unticked row is not written at all — it is an exclusion, not a hidden flag.
+
 ## Internal files (not SillyTavern formats)
 
-### `settings.json`
+### `settings.json` (two files)
+
+`data/settings.json` is the **profile index**:
+
+```json
+{
+    "version": 2,
+    "activeProfileId": "default",
+    "profiles": [{ "id": "default", "name": "Default", "description": "", "archived": false }]
+}
+```
+
+Each profile's own configuration is `data/profiles/<id>/settings.json`, and it never contains a `providers` array — the provider list is shared:
 
 ```json
 {
     "version": 1,
     "activeProviderId": "provider-uuid",
-    "providers": [
-        {
-            "id": "provider-uuid",
-            "kind": "openai",
-            "name": "OpenAI",
-            "baseUrl": "https://api.openai.com/v1",
-            "model": "gpt-5",
-            "enabled": true,
-            "headers": {}
-        }
-    ],
+    "profilePreferredModel": "",
+    "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
+    "personas": [{ "id": "default", "name": "You", "description": "" }],
+    "activePersonaId": "default",
+    "quickReplies": { "enabled": false, "setList": [] },
     "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
@@ -645,11 +726,15 @@ The bar's enabled flag and set order live in `settings.json` under `quickReplies
 }
 ```
 
-No API keys are stored here.
+No API keys are stored here. `profilePreferredModel` is the model this profile prefers when the active provider serves it; the resolution order is in [PROVIDERS.md](PROVIDERS.md#which-model-a-request-uses).
+
+### `providers.json`
+
+The provider configurations every profile shares, in the shape `GET /api/providers` returns minus the key. A provider written before #76 with a single `model` string is read as a one-entry list and rewritten on the next save.
 
 `tts` holds the text-to-speech configuration. `backend` is `system` (browser speech synthesis) or `openai-compatible` (a server-side `/audio/speech` request); the remaining fields are described in [API.md](API.md). Audio is generated on demand and is never written to `data/`; there is no audio cache to back up.
 
-`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/user/images/` and are safe to back up or delete.
+`imageGeneration` holds the image generation configuration, also described in [API.md](API.md). The ComfyUI workflow is stored inline as a JSON string in `comfyWorkflow`, not as a separate file. The generated images themselves live under `data/profiles/<id>/user/images/` and are safe to back up or delete.
 
 ### `secrets.json`
 
@@ -665,14 +750,14 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
-- **Not imported:** group chats, quick reply sets, backgrounds, themes, and SillyTavern's own `settings.json` — that file holds its personas, regex scripts and UI settings in shapes this app does not use yet.
+- **Not imported:** group chats, backgrounds, themes, and SillyTavern's own `settings.json` — its personas, regex scripts and UI settings live in CatCup's own files; a global regex-script list imports separately from the Regex settings tab.
 - **Repeat imports add copies.** Names get numeric suffixes; nothing is overwritten. To start clean, back up `data/` and remove the folders you want replaced first.
 
-Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/` and `presets/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
+Copying by hand works too: with the server stopped, copy `characters/`, `chats/`, `worlds/`, `presets/`, `groups/` and `group chats/` into `data/`, and quick reply set files from SillyTavern's `QuickReplies/` folder into `data/quickreplies/`. The naming rules are the same, and unknown fields are preserved either way.
 
 ## Backup, restore and upgrades
 
 - Back up the whole `data/` directory, including `settings.json`, `secrets.json` and `auth.json`.
 - `secrets.json` contains credentials; protect the backup like a password store.
 - Stop the server before copying to avoid reading a chat mid-write.
-- There are no automatic data migrations yet. Back up before upgrading; unknown fields are preserved on read/write, but schema changes may still require manual adjustment.
+- `settings.json` is migrated on read when its shape is older: a single legacy `persona` is promoted into the persona list, and a stale `activePersonaId` or disabled active provider is repaired. Nothing else migrates automatically. Back up before upgrading; unknown fields are preserved on read/write.
