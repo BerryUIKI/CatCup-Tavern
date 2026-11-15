@@ -63,15 +63,32 @@ export function PersonaSettings() {
         // this profile's settings. The dedicated endpoints know which, so an edit
         // never lands in the wrong file.
         const existing: PersonaView | undefined = personas.find((persona) => persona.id === draft.id);
+        // Only the fields that carry something travel, so an untouched persona
+        // is written back exactly as it was.
+        const voice = {
+            ...(draft.personality?.trim() ? { personality: draft.personality } : {}),
+            ...(draft.scenario?.trim() ? { scenario: draft.scenario } : {}),
+            ...(draft.mesExample?.trim() ? { mesExample: draft.mesExample } : {}),
+        };
         try {
             if (creating) {
-                await createPersona.mutateAsync({ name, description: draft.description, scope: 'profile' });
+                await createPersona.mutateAsync({
+                    name,
+                    description: draft.description,
+                    ...voice,
+                    scope: 'profile',
+                });
             } else if (existing?.scope === 'shared') {
-                await updatePersona.mutateAsync({ id: draft.id, patch: { name, description: draft.description } });
+                await updatePersona.mutateAsync({
+                    id: draft.id,
+                    patch: { name, description: draft.description, ...voice },
+                });
             } else {
                 await updateSettings.mutateAsync({
                     personas: personas.map((persona) =>
-                        persona.id === draft.id ? { ...persona, name, description: draft.description } : persona,
+                        persona.id === draft.id
+                            ? { ...persona, name, description: draft.description, ...voice }
+                            : persona,
                     ),
                     activePersonaId: activePersonaId ?? draft.id,
                 });
@@ -283,6 +300,66 @@ export function PersonaSettings() {
                             Available to prompts as {'{{persona}}'}. Keep it short: it is sent with every turn.
                         </p>
                     </div>
+
+                    {/*
+                     * The card-derived fields. They sit behind a disclosure
+                     * because the common persona is still two inputs, and
+                     * someone who never makes one from a card should not have
+                     * to scroll past three boxes to find Save.
+                     */}
+                    <details
+                        className="rounded-lg border border-line-soft bg-surface/40 px-3 py-2"
+                        open={Boolean(draft.personality || draft.scenario || draft.mesExample)}
+                    >
+                        <summary className="cursor-pointer text-xs text-parchment-dim">
+                            Voice — how you behave, not just who you are
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                            <div>
+                                <span className="label-text">Personality</span>
+                                <textarea
+                                    className="input-shell min-h-[70px] resize-y leading-relaxed"
+                                    value={draft.personality ?? ''}
+                                    placeholder="Dry, watchful, kind underneath…"
+                                    onChange={(event) =>
+                                        setDraft((current) =>
+                                            current ? { ...current, personality: event.target.value } : current,
+                                        )
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <span className="label-text">Scenario</span>
+                                <textarea
+                                    className="input-shell min-h-[70px] resize-y leading-relaxed"
+                                    value={draft.scenario ?? ''}
+                                    placeholder="Where the scene starts…"
+                                    onChange={(event) =>
+                                        setDraft((current) =>
+                                            current ? { ...current, scenario: event.target.value } : current,
+                                        )
+                                    }
+                                />
+                            </div>
+                            <div>
+                                <span className="label-text">Example messages</span>
+                                <textarea
+                                    className="input-shell min-h-[90px] resize-y font-mono text-xs leading-relaxed"
+                                    value={draft.mesExample ?? ''}
+                                    placeholder={'{{user}}: Is there a room?\n{{char}}: One.'}
+                                    onChange={(event) =>
+                                        setDraft((current) =>
+                                            current ? { ...current, mesExample: event.target.value } : current,
+                                        )
+                                    }
+                                />
+                                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                                    Your own lines, written as <code>{'{{user}}'}</code>. The character answers as{' '}
+                                    <code>{'{{char}}'}</code>, so the model learns your voice without taking your seat.
+                                </p>
+                            </div>
+                        </div>
+                    </details>
 
                     <div className="flex items-center gap-2">
                         <button

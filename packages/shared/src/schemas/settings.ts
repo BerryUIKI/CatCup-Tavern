@@ -31,9 +31,33 @@ export const DEFAULT_GENERATION_SETTINGS: GenerationSettings = {
     stream: true,
 };
 
+/**
+ * A persona: how the model addresses the person, and who they are playing.
+ *
+ * `name` and `description` are the original two fields and the common case. The
+ * three optional fields let a persona carry a character card's voice, which is
+ * what makes "play as this character" mean something — a distilled cast member
+ * arrives with a personality and a way of speaking, and losing them on the way
+ * into a persona would leave only a description.
+ *
+ * Every new field defaults to empty, so a `settings.json` written before they
+ * existed reads back unchanged and produces the same prompt it always did.
+ */
 export const personaSchema = z.object({
     name: z.string().trim().min(1).max(80).default('You'),
     description: z.string().max(10000).default(''),
+    /** How they behave and speak, injected after the description when present. */
+    personality: z.string().max(10000).optional(),
+    /** Where the scene starts, injected after the description when present. */
+    scenario: z.string().max(10000).optional(),
+    /**
+     * The persona's own voice, as `{{user}}: …` turns.
+     *
+     * Always the *user* side of the examples, never the assistant's: an example
+     * where the persona speaks as the reply would teach the model to write the
+     * persona's lines from the wrong seat.
+     */
+    mesExample: z.string().max(20000).optional(),
 });
 export type PersonaSettings = z.infer<typeof personaSchema>;
 
