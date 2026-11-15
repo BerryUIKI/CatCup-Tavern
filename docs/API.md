@@ -27,38 +27,40 @@ Error responses use:
 
 Common codes:
 
-| Code                    | HTTP      | Meaning                                                    |
-| ----------------------- | --------- | ---------------------------------------------------------- |
-| `VALIDATION`            | 400       | Zod validation failed                                      |
-| `BAD_REQUEST`           | 400       | Invalid input or state                                     |
-| `UNAUTHORIZED`          | 401       | Missing or expired session                                 |
-| `INVALID_PASSWORD`      | 401       | Wrong login password                                       |
-| `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                        |
-| `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                  |
-| `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found     |
-| `CONFLICT`              | 409       | A quick reply set name is already taken                    |
-| `ALREADY_INITIALIZED`   | 409       | Setup attempted after a password exists                    |
-| `TTS_DISABLED`          | 400       | Text to speech is switched off                             |
-| `TTS_KEY_MISSING`       | 400       | The OpenAI TTS endpoint has no key                         |
-| `TTS_CONFIG`            | 400       | TTS base URL or model is missing                           |
-| `TTS_SYSTEM_BACKEND`    | 400       | The browser TTS backend cannot be called on the server     |
-| `TTS_FAILED`            | 502       | The speech provider request failed                         |
-| `IMAGE_DISABLED`        | 400       | Image generation is switched off                           |
-| `IMAGE_KEY_MISSING`     | 400       | The OpenAI image endpoint has no key                       |
-| `IMAGE_CONFIG`          | 400       | Image base URL, model or ComfyUI workflow is invalid       |
-| `IMAGE_PROMPT_EMPTY`    | 400       | There are no messages to draft a prompt from               |
-| `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                        |
-| `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided               |
-| `IMAGE_FAILED`          | 502       | The image provider request failed                          |
-| `IMAGE_PROMPT_FAILED`   | 400 / 502 | The chat model could not draft an image prompt             |
-| `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back |
-| `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text             |
-| `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                           |
-| `PROVIDER_DISABLED`     | 400       | The active provider reference is disabled                  |
-| `PROVIDER_KEY_REUSE`    | 400       | A draft test changed the endpoint without a key            |
-| `INVALID_BASE_URL`      | 400       | A provider base URL is not http or https                   |
-| `PROVIDER_ERROR`        | 502       | Upstream provider request failed                           |
-| —                       | 500       | Unhandled server error                                     |
+| Code                    | HTTP      | Meaning                                                       |
+| ----------------------- | --------- | ------------------------------------------------------------- |
+| `VALIDATION`            | 400       | Zod validation failed                                         |
+| `BAD_REQUEST`           | 400       | Invalid input or state                                        |
+| `UNAUTHORIZED`          | 401       | Missing or expired session                                    |
+| `INVALID_PASSWORD`      | 401       | Wrong login password                                          |
+| `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                           |
+| `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                     |
+| `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found        |
+| `CONFLICT`              | 409       | A quick reply set name is already taken                       |
+| `ALREADY_INITIALIZED`   | 409       | Setup attempted after a password exists                       |
+| `TTS_DISABLED`          | 400       | Text to speech is switched off                                |
+| `TTS_KEY_MISSING`       | 400       | The OpenAI TTS endpoint has no key                            |
+| `TTS_CONFIG`            | 400       | TTS base URL or model is missing                              |
+| `TTS_SYSTEM_BACKEND`    | 400       | The browser TTS backend cannot be called on the server        |
+| `TTS_FAILED`            | 502       | The speech provider request failed                            |
+| `IMAGE_DISABLED`        | 400       | Image generation is switched off                              |
+| `IMAGE_KEY_MISSING`     | 400       | The OpenAI image endpoint has no key                          |
+| `IMAGE_CONFIG`          | 400       | Image base URL, model or ComfyUI workflow is invalid          |
+| `IMAGE_PROMPT_EMPTY`    | 400       | There are no messages to draft a prompt from                  |
+| `IMAGE_PATH`            | 400       | Invalid gallery folder or file name                           |
+| `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided                  |
+| `IMAGE_FAILED`          | 502       | The image provider request failed                             |
+| `IMAGE_PROMPT_FAILED`   | 400 / 502 | The chat model could not draft an image prompt                |
+| `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back    |
+| `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text                |
+| `DISTILL_FORMAT`        | 400       | A book file CatCup cannot read, or an unsupported extension   |
+| `DISTILL_EPUB`          | 400       | An EPUB CatCup refuses — DRM, or no readable package document |
+| `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                              |
+| `PROVIDER_DISABLED`     | 400       | The active provider reference is disabled                     |
+| `PROVIDER_KEY_REUSE`    | 400       | A draft test changed the endpoint without a key               |
+| `INVALID_BASE_URL`      | 400       | A provider base URL is not http or https                      |
+| `PROVIDER_ERROR`        | 502       | Upstream provider request failed                              |
+| —                       | 500       | Unhandled server error                                        |
 
 ## Auth
 
@@ -702,6 +704,51 @@ What is read: `characters/`, `chats/<character>/*.jsonl`, `worlds/`, and OpenAI 
 Importing is additive: running it twice adds copies with numeric suffixes instead of overwriting.
 
 Group chats, backgrounds, themes and SillyTavern's own settings are not imported.
+
+## Distillation
+
+Uploading a book is the first half of [RFC 0002](RFC/0002-book-distillation.md); the model pipeline and the review sheet follow in later slices. What exists now is the store: a book is parsed, kept in the profile that uploaded it, and can be read back.
+
+### `POST /api/distill/books`
+
+Multipart upload, one file field. `.txt`, `.md` and `.epub` are accepted, up to the `@fastify/multipart` limit the server already applies (20 MB).
+
+Returns `201` with:
+
+```json
+{
+    "book": {
+        "id": "novel",
+        "name": "novel",
+        "fileName": "novel.txt",
+        "format": "txt",
+        "bytes": 482113,
+        "addedAt": 1763130000000,
+        "sections": [{ "index": 0, "title": "Chapter 1", "chars": 8123 }]
+    },
+    "estimate": { "chunks": 24, "promptTokens": 198430 }
+}
+```
+
+- `sections` carries titles and sizes, never text. The text is re-read from the stored source file when a run needs it.
+- `estimate` is computed with the tokenizer for the model a run would use, so it is the request count the dialog can show before anything is spent.
+- A `.txt` is decoded as strict UTF-8 first, then GB18030, then windows-1252, with a byte-order mark taking precedence. A Chinese novel saved as GBK therefore reads correctly instead of arriving as mojibake.
+- Sections come from chapter headings (`Chapter N`, `Part N`, `Prologue`, `第N章`, `序章`, …). A file with no heading anywhere is cut into runs of paragraphs — a 300-page import must not be one row.
+- An EPUB is read in spine order. Font obfuscation is not DRM and is accepted; a spine document listed in `META-INF/encryption.xml` is refused.
+
+Errors: `400 DISTILL_FORMAT` for a file CatCup cannot read or an unsupported extension, `400 DISTILL_EPUB` for an EPUB it refuses, `413 PAYLOAD_TOO_LARGE` over the limit.
+
+### `GET /api/distill/books`
+
+`{ "books": [ ... ] }`, newest first.
+
+### `GET /api/distill/books/:id`
+
+`{ "book": ... }`, `404` when it does not exist.
+
+### `DELETE /api/distill/books/:id`
+
+Removes the folder and the source file. Returns `{ "ok": true }`, `404` when it did not exist.
 
 ## Settings
 

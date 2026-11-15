@@ -67,6 +67,14 @@ export const paths = {
     get userImages(): string {
         return path.join(activeScope, 'user', 'images');
     },
+    /** Uploaded books, one folder per book, holding the source file and its record. */
+    get books(): string {
+        return inside('books');
+    },
+    /** Run records for book distillation. */
+    get distill(): string {
+        return inside('distill');
+    },
     get regex(): string {
         return inside('regex.json');
     },
@@ -138,6 +146,8 @@ export const SCOPED_DIRECTORIES = [
     'presets',
     'quickreplies',
     'user/images',
+    'books',
+    'distill',
 ] as const;
 
 /**

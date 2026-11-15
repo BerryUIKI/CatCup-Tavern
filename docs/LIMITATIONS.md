@@ -85,9 +85,10 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 
 - **A card's embedded lorebook is inert until you import it.** SillyTavern treats it the same way: it offers to copy the book into the world info library and leaves it unused if you decline. Use **Import lore** in the character editor; lore that only exists inside the PNG or JSON does nothing before that.
 - **Only a small macro set exists**; `{{random}}`, `{{pick}}`, `{{roll}}` and the rest arrive as literal text.
-- **Regex scripts are global.** SillyTavern's per-character and per-preset scopes and allowlists are not implemented, and scripts stored inside a card or a preset are preserved but never run.
+- **Regex scripts belong to a profile or the shared scope.** SillyTavern's per-character and per-preset scopes and allowlists are not implemented, and scripts stored inside a card or a preset are preserved but never run.
 - **The world info editor cannot edit character filters**, and a world info regex script needs "prompt only" ticked or it never runs — the same rule SillyTavern has.
 - **Personas are a name and a description.** No avatars, no per-persona injection settings, no attached lorebook.
+- **A book can be uploaded but not yet distilled.** `.txt`, `.md` and `.epub` are read into chapters and stored in your profile, and the upload reports how many requests a run would take; the model pass and the review sheet that writes world info and character cards are not there yet. Nothing reaches your library until that lands.
 - **Sampling is limited to temperature, top P, max tokens and context size.** A preset's penalties, top K, seed, stop strings and model field are stored and ignored.
 - **Prompt editing stops at order, on/off and injection.** You cannot create a preset or edit a prompt's text in the app; export, edit and re-import.
 - **Per-character prompt orders are ignored**, and saving the order editor writes only the global list.

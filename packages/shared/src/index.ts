@@ -9,6 +9,7 @@ export * from './regex.js';
 export * from './schemas/api.js';
 export * from './schemas/character.js';
 export * from './schemas/chat.js';
+export * from './schemas/distill.js';
 export * from './schemas/group.js';
 export * from './schemas/images.js';
 export * from './schemas/preset.js';
