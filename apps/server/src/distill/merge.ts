@@ -3,6 +3,7 @@ import { type DistillAnalysis, errorMessage, type ProviderConfig } from '@catcup
 import { getAdapter } from '../providers/index.js';
 import type { PromptMessage } from '../providers/types.js';
 import { extractJson } from './analyze.js';
+import { nearMissMessages } from './prompts.js';
 
 /**
  * Merge the per-chunk analyses into one cast and one set of facts.
@@ -179,6 +180,12 @@ function clusterByString(observations: readonly Observation[]): { clusters: numb
     };
 }
 
+/** A shared token has to be long enough not to be an article or a pronoun. */
+export const DISTINCTIVE_TOKEN_MIN_LENGTH = 3;
+
+/** Two names this close are worth asking about; further apart is a different person. */
+export const NEAR_MISS_MAX_DISTANCE = 2;
+
 /**
  * Candidate near-miss pairs the model is asked about.
  *
@@ -202,9 +209,9 @@ export function nearMissPairs(clusters: readonly Cluster[]): Array<[number, numb
             const bName = normalizeName(b.name);
             const aTokens = aName.split(' ');
             const bTokens = new Set(bName.split(' '));
-            const shared = aTokens.some((token) => token.length > 3 && bTokens.has(token));
+            const shared = aTokens.some((token) => token.length > DISTINCTIVE_TOKEN_MIN_LENGTH && bTokens.has(token));
 
-            if (shared || editDistance(aName, bName) <= 2) {
+            if (shared || editDistance(aName, bName) <= NEAR_MISS_MAX_DISTANCE) {
                 pairs.push([left, right]);
             }
         }
@@ -240,19 +247,7 @@ export async function resolveNearMisses(
         })
         .join('\n');
 
-    const messages: PromptMessage[] = [
-        {
-            role: 'system',
-            content: [
-                'You judge whether two names from a work of fiction refer to the same entity.',
-                'Two names are the same entity when one is a title, epithet, nickname or spelling of the other.',
-                'Two people who merely share a surname are not the same entity.',
-                'Reply with a JSON array of the 1-based line numbers that are the same entity, e.g. [1,4].',
-                'Reply with [] if none of them are.',
-            ].join('\n'),
-        },
-        { role: 'user', content: listed },
-    ];
+    const messages: PromptMessage[] = nearMissMessages(listed);
 
     const adapter = getAdapter(provider);
     let raw = '';
