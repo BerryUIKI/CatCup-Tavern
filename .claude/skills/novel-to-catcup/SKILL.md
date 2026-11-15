@@ -280,6 +280,10 @@ It checks every card has the required non-empty fields and a V2/V3 spec, and eve
 unique numeric `uid`, a non-empty `key` array, non-empty `content`, and the full ST template. Exit code
 1 means it found problems; fix them and rerun. Do not report the pack as finished while it fails.
 
+Both card kinds are checked: a `.json` export, and a `.png` card whose data sits in its `ccv3` or
+`chara` text chunk — the kind `embed-portrait.mjs` writes. A PNG with no card chunk is a failure, not
+an image.
+
 Then give the user the commands. CatCup's import endpoints are multipart and take several files per
 request:
 

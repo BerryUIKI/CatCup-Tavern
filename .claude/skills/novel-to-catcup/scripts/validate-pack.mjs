@@ -60,6 +60,71 @@ function isDirectory(path) {
     }
 }
 
+/**
+ * Read the card JSON out of a PNG card.
+ *
+ * A PNG card carries its data in `tEXt` chunks, base64-encoded, exactly as
+ * SillyTavern and CatCup write it: `ccv3` is preferred when present because it
+ * is the newer spec, and `chara` is the V2 fallback. This is the inverse of what
+ * `embed-portrait.mjs` writes, and it is here because the pack that skill
+ * produces holds PNG cards — a validator that only understood `.json` would
+ * report a correct pack as empty.
+ */
+function readPngCardText(file) {
+    let buffer;
+    try {
+        buffer = readFileSync(file);
+    } catch (error) {
+        fail(file, `cannot be read — ${error.message}`);
+        return null;
+    }
+
+    const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) {
+        fail(file, 'not a PNG — a card image has to start with the PNG signature');
+        return null;
+    }
+
+    const texts = new Map();
+    let offset = 8;
+    while (offset + 8 <= buffer.length) {
+        const length = buffer.readUInt32BE(offset);
+        const name = buffer.subarray(offset + 4, offset + 8).toString('latin1');
+        const data = buffer.subarray(offset + 8, offset + 8 + length);
+        if (name === 'tEXt') {
+            const separator = data.indexOf(0);
+            if (separator > 0) {
+                texts.set(
+                    data.subarray(0, separator).toString('latin1').toLowerCase(),
+                    data.subarray(separator + 1).toString('latin1'),
+                );
+            }
+        }
+        if (name === 'IEND') {
+            break;
+        }
+        offset += 12 + length;
+    }
+
+    const payload = texts.get('ccv3') ?? texts.get('chara');
+    if (!payload) {
+        fail(file, 'PNG card has no chara or ccv3 text chunk — import it as a plain image instead');
+        return null;
+    }
+
+    try {
+        return JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
+    } catch (error) {
+        fail(file, `card chunk is not base64 JSON — ${error.message}`);
+        return null;
+    }
+}
+
+/** Card JSON from either kind of file the pack may hold. */
+function readCard(file) {
+    return file.toLowerCase().endsWith('.png') ? readPngCardText(file) : readJson(file);
+}
+
 function listFiles(dir, extension) {
     if (!isDirectory(dir)) {
         return [];
@@ -70,7 +135,7 @@ function listFiles(dir, extension) {
 }
 
 function checkCard(file) {
-    const card = readJson(file);
+    const card = readCard(file);
     if (!card) {
         return;
     }
@@ -224,11 +289,13 @@ function main() {
     const cardDir = join(packDir, 'characters');
     const worldDir = join(packDir, 'worlds');
 
-    const cards = listFiles(cardDir, '.json');
+    // A card may be a `.json` export or a `.png` with the card inside it; the
+    // skill's own portrait step produces the PNG kind.
+    const cards = [...listFiles(cardDir, '.json'), ...listFiles(cardDir, '.png')].sort();
     const worlds = listFiles(worldDir, '.json');
 
     if (cards.length === 0) {
-        problems.push(`${cardDir}: no character cards found`);
+        problems.push(`${cardDir}: no character cards found (.json or .png)`);
     }
     if (worlds.length === 0) {
         problems.push(`${worldDir}: no world info books found`);
