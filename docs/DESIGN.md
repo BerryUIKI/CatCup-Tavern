@@ -237,6 +237,22 @@ A merge control belongs on the sheet when the job can split one thing into two �
 character under two names, say. Select rows, merge into the first; contents concatenate, keys
 union, and the strongest confidence survives.
 
+### Degrade, do not disable
+
+A control whose work does not need the missing piece stays enabled. **Draft from chat** and **Draft
+from card** are chat-model calls, so they keep working when no image backend is configured; the
+dialog explains what is missing in one line and offers **Copy**, rather than greying out the only
+part that works. The rule is one sentence: a feature that can do half its job without the setup
+should do that half and say what the other half needs.
+
+### Destructive writes name what is lost
+
+**Use as portrait** replaces a character's picture permanently, because a card's image and its data
+are one file and there is no previous version to restore. The confirmation names the character and
+says in the body — not a footnote — that the previous picture is not kept, and that the text fields
+are untouched. The same shape applies to any write that cannot be undone by reading the old value
+back first.
+
 ### Dialogs
 
 - `Modal` traps focus, focuses the dialog container on open, restores focus on close, and closes on

@@ -3,19 +3,20 @@ import {
     type CharacterDetail,
     type ChatMessage,
     draftImagePromptRequestSchema,
+    draftPortraitPromptRequestSchema,
     generateImageRequestSchema,
 } from '@catcup/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
-import { badRequest, notFound } from '../http/errors.js';
+import { badRequest, internal, notFound } from '../http/errors.js';
 import { generateImage as generateAutomatic1111Image } from '../images/automatic1111.js';
 import { generateImage as generateComfyImage } from '../images/comfyui.js';
 import { generateImage as generateOpenAiImage, requiresImageKey } from '../images/openaiCompatible.js';
-import { draftImagePrompt } from '../images/prompt.js';
+import { draftImagePrompt, draftPortraitPrompt } from '../images/prompt.js';
 import { testImageBackend } from '../images/test.js';
 import type { ImageRequest } from '../images/types.js';
-import { getCharacter } from '../storage/characters.js';
+import { getCharacter, setCharacterPortrait } from '../storage/characters.js';
 import { appendMessage, readChat } from '../storage/chats.js';
 import { appendGroupMessage, type GroupFile, getGroup, readGroupChat } from '../storage/groups.js';
 import {
@@ -43,6 +44,12 @@ const galleryScopeSchema = z
 
 const fileParamsSchema = z.object({
     folder: z.string().trim().min(1).max(200),
+    file: z.string().trim().min(1).max(200),
+});
+
+/** Promote one gallery image to a card's portrait. */
+const portraitRequestSchema = z.object({
+    characterId: z.string().trim().min(1).max(200),
     file: z.string().trim().min(1).max(200),
 });
 
@@ -146,13 +153,16 @@ export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
     /**
      * Draft an image prompt from the chat with the active text provider.
      * Nothing is generated or stored; the user can edit the result first.
+     *
+     * This deliberately does **not** require an image backend. Drafting is a
+     * chat-model call, so a person with no A1111, ComfyUI or OpenAI image
+     * endpoint can still get a prompt to copy into an image tool elsewhere —
+     * refusing here would make the one part that works depend on the part that
+     * does not.
      */
     app.post('/api/images/draft', async (request, reply) => {
         const target = draftImagePromptRequestSchema.parse(request.body ?? {});
         const settings = await getSettings();
-        if (!settings.imageGeneration.enabled) {
-            throw badRequest('Image generation is disabled', 'IMAGE_DISABLED');
-        }
 
         const chat = await loadChat(target);
         const messages =
@@ -177,6 +187,47 @@ export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
                 messages,
                 characterName: chat.name,
                 userName: persona?.name || 'You',
+                signal: controller.signal,
+            });
+            return { prompt };
+        } finally {
+            done();
+        }
+    });
+
+    /**
+     * Draft a portrait prompt from a character card.
+     *
+     * The difference from `/draft` is the source and the audience: there is no
+     * chat, so this works for a distilled card that has never been spoken to; and
+     * like `/draft`, it needs no image backend.
+     */
+    app.post('/api/images/draft-portrait', async (request, reply) => {
+        const body = draftPortraitPromptRequestSchema.parse(request.body ?? {});
+        const character = await getCharacter(body.characterId);
+        if (!character) {
+            throw notFound('Character not found');
+        }
+
+        const provider = await getActiveProvider();
+        if (!provider) {
+            throw badRequest('No chat provider is available to draft a portrait prompt', 'IMAGE_PROMPT_FAILED');
+        }
+
+        const settings = await getSettings();
+        const apiKey = await getProviderSecret(provider.id);
+        const { controller, done } = abortOnClose(reply);
+
+        try {
+            const prompt = await draftPortraitPrompt({
+                settings: settings.imageGeneration,
+                provider,
+                apiKey,
+                card: {
+                    name: character.card.name || character.name,
+                    description: character.card.description,
+                    personality: character.card.personality,
+                },
                 signal: controller.signal,
             });
             return { prompt };
@@ -279,6 +330,46 @@ export async function registerImageRoutes(app: FastifyInstance): Promise<void> {
         }
 
         return { message };
+    });
+
+    /**
+     * Make a generated image a character's portrait.
+     *
+     * The confirmation, and the fact that the previous portrait is not kept, is
+     * the client's job; this route is the write. The image is read back through
+     * `readImage` rather than trusted from the request, so only something already
+     * in the gallery can become a card.
+     */
+    app.post('/api/images/portrait', async (request) => {
+        const body = portraitRequestSchema.parse(request.body ?? {});
+        assertSafeId(body.characterId);
+
+        const character = await getCharacter(body.characterId);
+        if (!character) {
+            throw notFound('Character not found');
+        }
+
+        const folder = characterFolder(character);
+        const { data, contentType } = await readImage(folder, body.file);
+        if (contentType !== 'image/png') {
+            // A card stores its data inside the picture as a PNG `tEXt` chunk, so
+            // a JPEG or WebP cannot become one. Saying which file failed and why
+            // is better than converting it with a library this build does not ship.
+            throw badRequest(
+                'A portrait has to be a PNG: the card data is embedded inside the file. Regenerate with a PNG output.',
+                'IMAGE_PORTRAIT_FORMAT',
+            );
+        }
+
+        const result = await setCharacterPortrait(character.id, new Uint8Array(data));
+        if (result.status === 'missing') {
+            throw notFound('Character not found');
+        }
+        if (result.status === 'unreadable') {
+            throw internal('The card could not be read back after writing', 'CHARACTER_READ_FAILED');
+        }
+
+        return { character: result.character };
     });
 
     /** List one gallery, resolved from the character or group. */

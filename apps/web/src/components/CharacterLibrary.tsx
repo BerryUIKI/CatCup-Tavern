@@ -11,6 +11,7 @@ import {
     StarOff,
     Tag,
     Trash2,
+    UserRound,
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -86,6 +87,11 @@ interface CharacterLibraryProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEdit: (id: string) => void;
+    /**
+     * Make a persona from this card, so the card can be played rather than
+     * talked to. Omitted when the surface has no persona store to write to.
+     */
+    onPlayAs?: (character: CharacterSummary) => void;
     onToggleFavorite: (character: CharacterSummary) => void;
     onBulkFavorite: (ids: string[], favorite: boolean) => void;
     onBulkTag: (ids: string[], mode: TagAction, tag: string) => void;
@@ -112,6 +118,7 @@ export function CharacterLibrary({
     selectedCharacterId,
     onSelect,
     onEdit,
+    onPlayAs,
     onToggleFavorite,
     onBulkFavorite,
     onBulkTag,
@@ -644,6 +651,18 @@ export function CharacterLibrary({
                                                 className="icon-btn size-7 shrink-0 text-muted hover:text-parchment disabled:opacity-40"
                                             >
                                                 <Globe size={13} />
+                                            </button>
+                                        ) : null}
+                                        {onPlayAs ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onPlayAs(character)}
+                                                aria-label={`Play as ${character.name}`}
+                                                title="Play as this character"
+                                                disabled={busy}
+                                                className="icon-btn size-7 shrink-0 text-muted hover:text-parchment disabled:opacity-40"
+                                            >
+                                                <UserRound size={13} />
                                             </button>
                                         ) : null}
                                         <button

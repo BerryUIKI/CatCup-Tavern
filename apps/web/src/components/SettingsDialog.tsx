@@ -511,8 +511,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const renderPromptsPanel = () => (
         <div className="space-y-5 p-5">
             <p className="text-sm leading-relaxed text-muted">
-                An imported SillyTavern OpenAI preset supplies the prompt list, its order, the assembly formats and the
-                sampling parameters. With no preset selected, the built-in SillyTavern defaults are used.
+                An imported OpenAI preset supplies the prompt list, its order, the assembly formats and the sampling
+                parameters. With no preset selected, the built-in defaults are used.
             </p>
 
             <div>
@@ -639,9 +639,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             {worlds.length === 0 ? (
-                <p className="text-sm text-muted">
-                    No books yet. Import a SillyTavern world info JSON file to get started.
-                </p>
+                <p className="text-sm text-muted">No books yet. Import a world info JSON file to get started.</p>
             ) : (
                 <ul className="space-y-2">
                     {worlds.map((world) => (

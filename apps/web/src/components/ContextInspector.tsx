@@ -287,7 +287,7 @@ function BudgetTab({ context }: { context: ContextPreview }) {
                 {context.budget.counterSource === 'estimate'
                     ? 'No tokenizer matches the active model, so the counts are a character-based estimate.'
                     : context.budget.counterSource === 'claude'
-                      ? "Counts use Anthropic's Claude vocabulary, the same one SillyTavern ships."
+                      ? "Counts use Anthropic's Claude vocabulary, the same one the reference client ships."
                       : 'Counts use the exact tiktoken encoding for the active model, plus four tokens per message.'}
             </p>
         </div>

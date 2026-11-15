@@ -15,6 +15,7 @@ import {
     useGroups,
     useImportCharacters,
     useLogout,
+    usePersonaFromCard,
     useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
@@ -30,10 +31,10 @@ import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { GroupChatView } from './GroupChatView';
 import { GroupEditor } from './GroupEditor';
+import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
-import { SillyTavernImport } from './SillyTavernImport';
 import { ToastViewport } from './Toast';
 
 const EMPTY_CHARACTERS: CharacterSummary[] = [];
@@ -86,7 +87,7 @@ export function MainApp() {
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
-    const [stImportOpen, setStImportOpen] = useState(false);
+    const [importFromInstallOpen, setImportFromInstallOpen] = useState(false);
     const [distillOpen, setDistillOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
@@ -123,6 +124,7 @@ export function MainApp() {
     const createChatMutation = useCreateChat(selectedCharacterId);
     const createGroupChatMutation = useCreateGroupChat(selectedGroupId);
     const setGreetingMutation = useSetChatGreeting(selectedCharacterId, selectedChatId);
+    const personaFromCard = usePersonaFromCard();
 
     useEffect(() => {
         // A selected group owns the main pane; do not pull a character back in.
@@ -357,6 +359,26 @@ export function MainApp() {
         );
     };
 
+    /**
+     * Make a persona out of a card, so the card can be played.
+     *
+     * The persona is a copy: the card keeps its own chats, and editing the
+     * persona later never changes what other people see when they talk to it.
+     */
+    const handlePlayAs = (character: CharacterSummary) => {
+        personaFromCard.mutate(
+            { characterId: character.id, scope: 'profile' },
+            {
+                onSuccess: (result) =>
+                    pushToast(
+                        `${result.persona.name} is now a persona. Pick it from a chat header, or make it the default in Settings → Personas.`,
+                        'success',
+                    ),
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
     const handleToggleFavorite = (character: CharacterSummary) => {
         favoriteMutation.mutate(
             { id: character.id, favorite: !character.fav },
@@ -543,6 +565,7 @@ export function MainApp() {
                 selectedCharacterId={selectedCharacterId}
                 onSelect={selectCharacter}
                 onEditCharacter={(id) => setEditingCharacterId(id)}
+                onPlayAsCharacter={handlePlayAs}
                 onToggleFavorite={handleToggleFavorite}
                 onBulkFavorite={handleBulkFavorite}
                 onBulkTag={handleBulkTag}
@@ -556,7 +579,7 @@ export function MainApp() {
                 onSelectGroup={selectGroup}
                 onNewGroup={() => setGroupEditor({ mode: 'create' })}
                 onEditGroup={(id) => setGroupEditor({ mode: 'edit', id })}
-                onImportSillyTavern={() => setStImportOpen(true)}
+                onImportFromInstall={() => setImportFromInstallOpen(true)}
                 onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
@@ -618,7 +641,7 @@ export function MainApp() {
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-            <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
+            <ImportFromInstall open={importFromInstallOpen} onClose={() => setImportFromInstallOpen(false)} />
 
             <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 

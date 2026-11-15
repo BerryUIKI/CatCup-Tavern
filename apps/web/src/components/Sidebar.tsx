@@ -17,6 +17,8 @@ interface SidebarProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
+    /** Create a persona from a card, so it can be played rather than talked to. */
+    onPlayAsCharacter: (character: CharacterSummary) => void;
     onToggleFavorite: (character: CharacterSummary) => void;
     onBulkFavorite: (ids: string[], favorite: boolean) => void;
     onBulkTag: (ids: string[], mode: 'add' | 'remove', tag: string) => void;
@@ -30,7 +32,7 @@ interface SidebarProps {
     onSelectGroup: (id: string) => void;
     onNewGroup: () => void;
     onEditGroup: (id: string) => void;
-    onImportSillyTavern: () => void;
+    onImportFromInstall: () => void;
     onDistillBook: () => void;
     onAddSample: () => void;
     addingSample: boolean;
@@ -67,6 +69,7 @@ export function Sidebar({
     selectedCharacterId,
     onSelect,
     onEditCharacter,
+    onPlayAsCharacter,
     onToggleFavorite,
     onBulkFavorite,
     onBulkTag,
@@ -80,7 +83,7 @@ export function Sidebar({
     onSelectGroup,
     onNewGroup,
     onEditGroup,
-    onImportSillyTavern,
+    onImportFromInstall,
     onDistillBook,
     onAddSample,
     addingSample,
@@ -208,10 +211,10 @@ export function Sidebar({
                     <button
                         type="button"
                         className="mt-2 flex w-full items-center justify-center gap-2 text-xs text-muted transition hover:text-parchment"
-                        onClick={onImportSillyTavern}
+                        onClick={onImportFromInstall}
                     >
                         <FolderInput size={14} />
-                        Import from SillyTavern
+                        Import from another app
                     </button>
                     <button
                         type="button"
@@ -247,6 +250,7 @@ export function Sidebar({
                         selectedCharacterId={selectedCharacterId}
                         onSelect={onSelect}
                         onEdit={onEditCharacter}
+                        onPlayAs={onPlayAsCharacter}
                         onToggleFavorite={onToggleFavorite}
                         onBulkFavorite={onBulkFavorite}
                         onBulkTag={onBulkTag}

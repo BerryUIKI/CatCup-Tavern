@@ -256,8 +256,8 @@ export interface ImportWorldRequest {
     book: unknown;
 }
 
-/** How much of a SillyTavern installation an import move touches. */
-export interface SillyTavernImportCounts {
+/** How much of another installation an import move touches. */
+export interface ExistingInstallCounts {
     characters: number;
     chats: number;
     worlds: number;
@@ -265,14 +265,14 @@ export interface SillyTavernImportCounts {
 }
 
 /** What a dry run found. */
-export interface SillyTavernImportPlan extends SillyTavernImportCounts {
+export interface ExistingInstallPlan extends ExistingInstallCounts {
     /** Directories that contributed files. */
     sources: string[];
     errors: string[];
 }
 
-export interface SillyTavernImportResult {
-    imported: SillyTavernImportCounts;
+export interface ExistingInstallResult {
+    imported: ExistingInstallCounts;
     errors: string[];
     /** Chats whose character was not found in the same import. */
     skippedChats: string[];

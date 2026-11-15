@@ -58,7 +58,7 @@ The `shared/` folder is the exception on purpose: an item a profile marks **reus
 
 **The profile's copy wins.** When both scopes hold the same id, the profile's item is the one a lookup resolves to — so a chat, a group membership or an `extensions.world` link keeps pointing at the card the person can see. The shared original stays on disk untouched and is not listed a second time; the library labels the winning row instead, and a **Scope** filter in the character library can hide shared items entirely.
 
-Regex and personas are the two kinds that are not a file per item. Regex is one ordered list per scope (`regex.json` in each), and the profile's list runs before the shared one. Personas are a list inside `settings.json` for the profile and `shared/personas.json` for the shared scope; the settings API returns the merged list, and only the profile's own entries are ever written to `settings.json`. A shared character's CharX assets live in `shared/character-assets/<id>/`, so a profile card of the same id keeps its own rather than inheriting them.
+Regex and personas are the two kinds that are not a file per item. Regex is one ordered list per scope (`regex.json` in each), and the profile's list runs before the shared one. Personas are a list inside `settings.json` for the profile and `shared/personas.json` for the shared scope; the settings API returns the merged list, and only the profile's own entries are ever written to `settings.json`. A persona may also carry `personality`, `scenario` and `mesExample` — the fields that let a card's voice become a persona's own; all three are optional and absent unless set, so a file written without them reads back unchanged. A shared character's CharX assets live in `shared/character-assets/<id>/`, so a profile card of the same id keeps its own rather than inheriting them.
 
 A `data/` folder written before profiles existed — one tree and one `settings.json` — is migrated on first start into `profiles/default/`, with the old file kept as `settings.json.v1-backup`. `CATCUP_MIGRATE_DRY_RUN=1` prints the plan without moving anything. See [RFC 0001](RFC/0001-profiles.md) for the reasoning.
 
@@ -682,10 +682,6 @@ Each profile's own configuration is `data/profiles/<id>/settings.json`, and it n
     "personas": [{ "id": "default", "name": "You", "description": "" }],
     "activePersonaId": "default",
     "quickReplies": { "enabled": false, "setList": [] },
-    "generation": { "temperature": 1, "topP": 1, "maxTokens": 2048, "contextSize": 32768, "stream": true },
-    "personas": [{ "id": "default", "name": "You", "description": "" }],
-    "activePersonaId": "default",
-    "quickReplies": { "enabled": false, "setList": [] },
     "tts": {
         "enabled": false,
         "backend": "system",
@@ -746,7 +742,7 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 ## Migrating from SillyTavern
 
-**Import from SillyTavern**, in the character library, copies an installation in one step. Point it at the ST user folder — the one containing `characters/`, `chats/` and `worlds/`. A scan runs first and shows what was found; nothing is written until you confirm.
+**Import from another app**, in the character library, copies an installation in one step. Point it at the other client's user folder — the one containing `characters/`, `chats/` and `worlds/`. A scan runs first and shows what was found; nothing is written until you confirm.
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.

@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises';
-
 import type { FastifyInstance } from 'fastify';
+import { strFromU8, unzipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
@@ -135,5 +135,37 @@ describe('run records', () => {
     it('404s a run that does not exist', async () => {
         expect((await call('GET', '/api/distill/runs/nothing')).statusCode).toBe(404);
         expect((await call('DELETE', '/api/distill/runs/nothing')).statusCode).toBe(404);
+    });
+});
+
+describe('skill export', () => {
+    it('downloads a ZIP and needs no provider, model or uploaded book', async () => {
+        const response = await call('GET', '/api/distill/skill');
+        expect(response.statusCode).toBe(200);
+        expect(response.headers['content-type']).toContain('application/zip');
+        expect(String(response.headers['content-disposition'])).toContain('book-distill.zip');
+
+        const archive = unzipSync(new Uint8Array(response.rawPayload));
+        expect(Object.keys(archive).sort()).toEqual(
+            [
+                'book-distill/SKILL.md',
+                'book-distill/reference/analysis.schema.json',
+                'book-distill/reference/cards.md',
+                'book-distill/reference/draft.schema.json',
+                'book-distill/reference/prompts.md',
+                'book-distill/reference/world-info.md',
+            ].sort(),
+        );
+
+        const skill = strFromU8(archive['book-distill/SKILL.md'] as Uint8Array);
+        expect(skill.startsWith('---\nname: book-distill\n')).toBe(true);
+    });
+
+    it('carries the prompt the runtime actually sends', async () => {
+        const response = await call('GET', '/api/distill/skill');
+        const archive = unzipSync(new Uint8Array(response.rawPayload));
+        const reference = strFromU8(archive['book-distill/reference/prompts.md'] as Uint8Array);
+        const { ANALYSIS_SYSTEM_PROMPT } = await import('../distill/prompts.js');
+        expect(reference).toContain(ANALYSIS_SYSTEM_PROMPT);
     });
 });

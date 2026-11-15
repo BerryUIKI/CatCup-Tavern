@@ -233,7 +233,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                         <div className="max-h-64 overflow-y-auto rounded-xl border border-line bg-ink-soft/60">
                             {members.length === 0 ? (
                                 <p className="px-3 py-6 text-center text-xs leading-relaxed text-muted">
-                                    Add at least one character. SillyTavern groups usually have two or three.
+                                    Add at least one character. Groups usually have two or three.
                                 </p>
                             ) : (
                                 <ul className="divide-y divide-line-soft">

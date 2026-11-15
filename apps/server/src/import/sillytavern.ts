@@ -145,7 +145,7 @@ export async function scanSillyTavern(root: string): Promise<ImportPlan> {
 
     if (characters.length === 0 && chats === 0 && worlds.length === 0 && presets === 0) {
         throw new Error(
-            'No SillyTavern data found there. Point at the user folder that contains characters/, chats/ and worlds/.',
+            'No importable data found there. Point at the user folder that contains characters/, chats/ and worlds/.',
         );
     }
 

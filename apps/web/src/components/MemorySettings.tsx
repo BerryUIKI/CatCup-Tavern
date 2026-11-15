@@ -70,9 +70,9 @@ export function MemorySettings() {
     return (
         <div className="space-y-5 p-5">
             <p className="text-sm leading-relaxed text-muted">
-                The summary is stored in the chat file on the message it covers, the way SillyTavern&apos;s Memory
-                extension stores it. Automatic updates run after a reply when the update interval is reached; you can
-                always summarize or edit the summary from the Memory button in a chat.
+                The summary is stored in the chat file on the message it covers, so it travels with the chat. Automatic
+                updates run after a reply when the update interval is reached; you can always summarize or edit the
+                summary from the Memory button in a chat.
             </p>
 
             <label className="flex items-center gap-2 text-sm text-parchment-dim">

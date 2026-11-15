@@ -551,6 +551,22 @@ export function ImageSettings() {
                 </p>
             </div>
 
+            <div>
+                <label className="label-text" htmlFor="image-portrait-template">
+                    Portrait instruction
+                </label>
+                <textarea
+                    id="image-portrait-template"
+                    className="input-shell min-h-32 w-full resize-y"
+                    value={form.portraitPromptTemplate}
+                    onChange={(event) => set('portraitPromptTemplate', event.target.value)}
+                />
+                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    Sent when you draft a portrait from a character card — the card's description and personality, with
+                    no chat involved. It should ask for appearance and bearing, not a scene.
+                </p>
+            </div>
+
             <NumberField
                 id="image-context"
                 label="Context messages"

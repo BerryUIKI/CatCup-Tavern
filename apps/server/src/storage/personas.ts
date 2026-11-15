@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { type Persona, type PersonaView, personaEntrySchema } from '@catcup/shared';
+import { type Persona, type PersonaSettings, type PersonaView, personaEntrySchema } from '@catcup/shared';
 
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
@@ -86,8 +86,19 @@ export type PersonaScopeResult =
  * caller that read settings before this write would otherwise keep serving the
  * old list until something else invalidated it.
  */
-export async function addSharedPersona(name: string, description: string): Promise<PersonaView> {
-    const persona: Persona = { id: randomUUID(), name, description };
+/**
+ * Add a persona to the shared list.
+ *
+ * `id` is minted here so two profiles that share the same name never collide on
+ * identity; a chat pin and `activePersonaId` still address one persona. Adding
+ * to a profile is a settings patch, because that is where the list lives.
+ *
+ * The settings cache is dropped because it holds the merged persona list: a
+ * caller that read settings before this write would otherwise keep serving the
+ * old list until something else invalidated it.
+ */
+export async function addSharedPersona(input: PersonaSettings): Promise<PersonaView> {
+    const persona: Persona = { id: randomUUID(), ...input };
     await withFileLock(paths.sharedPersonas, async () => {
         const shared = await listSharedPersonas();
         await writeSharedPersonas([...shared, persona]);

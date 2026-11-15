@@ -18,10 +18,10 @@ import { paragraphsOf, type Section } from './sections.js';
 export const RESPONSE_ALLOWANCE = 4000;
 
 /** Slack for the instructions, which are the same size for every chunk. */
-const MARGIN = 2000;
+export const MARGIN = 2000;
 
 /** Below this the instructions and a paragraph would not fit together. */
-const MIN_BUDGET = 1500;
+export const MIN_BUDGET = 1500;
 
 export interface Chunk {
     index: number;

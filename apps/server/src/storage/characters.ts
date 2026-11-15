@@ -335,6 +335,59 @@ export async function updateCharacter(id: string, patch: CharacterPatch): Promis
     return withFileLock(found.filePath, () => writeCardFile(found, buildCardPayload(found.detail.rawCard, patch)));
 }
 
+/**
+ * Make a generated image the card's picture.
+ *
+ * The avatar *is* the card file: a PNG card carries its image and its data in
+ * one artifact, so replacing the picture means writing a new PNG with the same
+ * card data embedded. `withTextChunks` does exactly that and leaves every other
+ * chunk alone.
+ *
+ * A JSON card has no image at all. It is converted to PNG in the same step,
+ * because the alternative — refusing — would leave the one feature that needs
+ * a picture unavailable on exactly the cards that have none. The PNG is written
+ * beside the JSON as the same id and then the JSON is removed: `locateItem`
+ * prefers `.png`, so keeping both would leave two files claiming one id, and
+ * the delete is what keeps the card count honest.
+ *
+ * `image` must be PNG bytes: the card parser reads `tEXt`, and a JPEG or WebP
+ * cannot hold it. The caller converts or refuses before calling this.
+ */
+export async function setCharacterPortrait(id: string, image: Uint8Array): Promise<CharacterMutationResult> {
+    const found = await getCharacterFile(id);
+    if (!found) {
+        return { status: 'missing' };
+    }
+
+    return withFileLock(found.filePath, async () => {
+        // Re-read inside the lock, as every other write does, so a concurrent
+        // editor save is not clobbered by a card read before it landed.
+        const fresh = await loadCharacterFile(found.filePath, found.detail.fileName, found.detail.scope);
+        if (!fresh) {
+            return { status: 'unreadable' };
+        }
+
+        const payload = buildCardPayload(fresh.rawCard, {});
+        const next = Buffer.from(writePngCard(image, payload));
+
+        if (fresh.format === 'png') {
+            await writeFileAtomic(found.filePath, next, { mode: 0o644 });
+            cache.delete(cacheKey(fresh.scope, fresh.fileName));
+            const detail = await loadCharacterFile(found.filePath, fresh.fileName, fresh.scope);
+            return detail ? { status: 'ok', character: detail } : { status: 'unreadable' };
+        }
+
+        // A JSON card becomes a PNG card: same directory, same id.
+        const pngPath = resolveInside(path.dirname(found.filePath), `${fresh.id}.png`);
+        await writeFileAtomic(pngPath, next, { mode: 0o644 });
+        await unlink(found.filePath);
+        cache.delete(cacheKey(fresh.scope, fresh.fileName));
+
+        const detail = await loadCharacterFile(pngPath, `${fresh.id}.png`, fresh.scope);
+        return detail ? { status: 'ok', character: detail } : { status: 'unreadable' };
+    });
+}
+
 /** A card write that distinguishes a missing card from an unreadable result. */
 export type CharacterMutationResult =
     | { status: 'ok'; character: CharacterDetail }

@@ -147,7 +147,7 @@ export const distillRunRequestSchema = z.object({
     model: z.string().trim().max(200).optional(),
 });
 
-const entryDraftSchema = z.object({
+export const entryDraftSchema = z.object({
     key: z.array(z.string()).default([]),
     keysecondary: z.array(z.string()).default([]),
     comment: z.string().default(''),
@@ -161,7 +161,7 @@ const entryDraftSchema = z.object({
     accepted: z.boolean().default(true),
 });
 
-const characterDraftSchema = z.object({
+export const characterDraftSchema = z.object({
     name: z.string().trim().min(1).max(200),
     aliases: z.array(z.string()).default([]),
     description: z.string().default(''),

@@ -300,7 +300,7 @@ export function RegexSettings() {
 
             {scripts.length === 0 ? (
                 <p className="text-sm text-muted">
-                    No scripts yet. Import a SillyTavern regex export or create one here.
+                    No scripts yet. Import a regex script JSON file or create one here.
                 </p>
             ) : (
                 <ul className="space-y-1.5">
