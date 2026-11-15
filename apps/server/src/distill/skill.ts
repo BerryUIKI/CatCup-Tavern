@@ -5,11 +5,7 @@ import { z } from 'zod';
 import { MARGIN, MIN_BUDGET, RESPONSE_ALLOWANCE } from './chunk.js';
 import { DISTINCTIVE_TOKEN_MIN_LENGTH, NEAR_MISS_MAX_DISTANCE } from './merge.js';
 import { OUTLINE_THRESHOLD } from './outline.js';
-import {
-    ANALYSIS_REPAIR_USER_TEMPLATE,
-    ANALYSIS_SAMPLING,
-    DISTILL_PROMPTS,
-} from './prompts.js';
+import { ANALYSIS_REPAIR_USER_TEMPLATE, ANALYSIS_SAMPLING, DISTILL_PROMPTS } from './prompts.js';
 
 /**
  * The distillation pipeline as a portable Claude Skill.
@@ -121,8 +117,8 @@ function promptsDocument(): string {
         '## Repairing a reply',
         '',
         'When a reply does not parse or does not validate, resend the same conversation with the bad reply as the',
-        "assistant turn, followed by this user turn — with `{{problem}}` replaced by what was actually wrong (the",
-        'validator\'s message):',
+        'assistant turn, followed by this user turn — with `{{problem}}` replaced by what was actually wrong (the',
+        "validator's message):",
         '',
         '```text',
         ANALYSIS_REPAIR_USER_TEMPLATE,

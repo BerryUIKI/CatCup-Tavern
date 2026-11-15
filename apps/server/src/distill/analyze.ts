@@ -2,7 +2,7 @@ import { type DistillAnalysis, distillAnalysisSchema, errorMessage, type Provide
 
 import { getAdapter } from '../providers/index.js';
 import type { PromptMessage } from '../providers/types.js';
-import { ANALYSIS_SAMPLING, analysisMessages, renderPrompt, ANALYSIS_REPAIR_USER_TEMPLATE } from './prompts.js';
+import { ANALYSIS_REPAIR_USER_TEMPLATE, ANALYSIS_SAMPLING, analysisMessages, renderPrompt } from './prompts.js';
 
 /**
  * One analysis request over one chunk.
