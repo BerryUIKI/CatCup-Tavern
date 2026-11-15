@@ -55,8 +55,9 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 
 **Providers**
 
-- Add, duplicate and delete providers, including any OpenAI-compatible endpoint.
+- Add, duplicate and delete providers, including any OpenAI-compatible endpoint. A **Custom provider** entry starts one from nothing: pick the request protocol and type the endpoint.
 - Switch the active provider from the library footer without opening settings; one click, and the model it uses is shown in the list.
+- Two request protocols and a native one: OpenAI Chat Completions (which covers OpenAI, OpenRouter, DeepSeek, LM Studio, vLLM and most gateways), Anthropic Messages and native Ollama. Google Gemini, the OpenAI Responses API, KoboldAI and the other SillyTavern-specific backends are not implemented.
 
 ## What does not work yet
 

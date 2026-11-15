@@ -13,6 +13,7 @@ import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 interface Draft {
@@ -303,27 +304,23 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                     />
 
                     <div>
-                        <label className="label-text" htmlFor="character-model">
-                            Model
-                        </label>
-                        <select
+                        <Select
                             id="character-model"
-                            className="input-shell"
+                            label="Model"
                             value={draft.model}
-                            onChange={(event) => update('model', event.target.value)}
-                        >
-                            <option value="">
-                                Default{activeProvider?.defaultModel ? ` (${activeProvider.defaultModel})` : ''}
-                            </option>
-                            {providerModels.map((model) => (
-                                <option key={model} value={model}>
-                                    {model}
-                                </option>
-                            ))}
-                            {draft.model && !providerModels.includes(draft.model) ? (
-                                <option value={draft.model}>{draft.model} — not on this provider</option>
-                            ) : null}
-                        </select>
+                            options={[
+                                {
+                                    value: '',
+                                    label: `Default${activeProvider?.defaultModel ? ` (${activeProvider.defaultModel})` : ''}`,
+                                    description: 'Follow the provider default.',
+                                },
+                                ...providerModels.map((model) => ({ value: model, label: model })),
+                                ...(draft.model && !providerModels.includes(draft.model)
+                                    ? [{ value: draft.model, label: `${draft.model} — not on this provider` }]
+                                    : []),
+                            ]}
+                            onChange={(model) => update('model', model)}
+                        />
                         <p className="field-hint">
                             {activeProvider
                                 ? `From ${activeProvider.name}. A model this provider does not serve falls back to its default, and the chat header says so.`

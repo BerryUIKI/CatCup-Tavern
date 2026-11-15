@@ -2,6 +2,24 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation.
 
+## Unreleased
+
+### Added
+
+- **Add provider** opens a picker whose first entry is **Custom provider** — "choose its protocol, enter the request URL and API key yourself" — with the four service templates below it under **Or start from a service**. The custom entry starts with an empty base URL, so the endpoint is typed rather than inherited from a vendor, and the templates stay one-click prefills of name, kind and default URL.
+- The provider form asks for a **request protocol** instead of a vendor. `openai`, `openrouter` and `custom` are one protocol — OpenAI Chat Completions — with different defaults, and the label now says so: **OpenAI Chat Completions** (`/chat/completions`, SSE), **Anthropic Messages** (`/messages`, SSE) and **Ollama native** (`/api/chat`, NDJSON), each with a line naming what it covers. Changing the protocol keeps a hand-typed base URL, and a provider still matching its template keeps that template's kind when the protocol it speaks is chosen again. The stored `kind` values are unchanged, so no provider needs a migration. New exports in the shared schema: `PROTOCOL_LABELS`, `PROTOCOL_HINTS`, `PROVIDER_PROTOCOLS`, `protocolFor`, `PROVIDER_TEMPLATES`, `providerInitials`, `providerSummary`, `expectsKey`.
+- Every dropdown in the app is now a CatCup control rather than the operating system's. A native `<select>` and a `<datalist>` draw their own popup, which on Windows arrived as a white system list in the middle of the dark panel and could not be styled. **`Select`** replaces the select: the same `.input-shell` trigger, a portalled `role="listbox"` in `surface` with `line` borders, an amber mark on the selected row, arrow keys, Home/End, type-ahead, Escape that closes the list without closing the dialog under it, and three sizes (`md` form field, `sm` compact row, `xs` header chip). **`Combobox`** replaces the datalist: a free-text field with filtered suggestions that still accepts a value the list does not carry, for model ids, TTS voices, image samplers and bulk tags. Both are documented in `docs/DESIGN.md`.
+
+### Changed
+
+- A provider row in the library footer and the Providers list names its service and default model through one helper, so a custom provider reads as its protocol rather than as a vendor it does not have.
+
+### Fixed
+
+- **The desktop app opened a console window at startup.** The bundled `catcup-node` is a console-subsystem executable, and Windows allocates a console window for one started by a GUI process; it stayed on screen until Quit. The shell now passes `CREATE_NO_WINDOW` on Windows, so the child gets a hidden console and nothing is drawn. Its stderr used to be inherited from a console that did not exist, so server errors were lost: both streams now append to `shell.log` in the data directory, rotated to `shell.log.1` at launch past 4 MB, which is where to look when the installed app will not start.
+- **The Add button beside the model field closed the Providers panel.** The panel is one form, and the row that adds a model id was a second `<form>` nested inside it — invalid HTML, whose submit reached the panel's save handler and could run a native submission that reloaded the app. The row is a `div` now, with a `type="button"` Add and an Enter handler; it adds the id and touches nothing else. `docs/DESIGN.md` records the rule.
+- **Sign out was offered when no password was set.** An open desktop session has nothing to end, and the action led to a login screen that could only answer "Setup required". The library footer hides it there, `POST /api/auth/logout` answers `409 NO_PASSWORD` for that install so a stale tab cannot reach the dead end, and the client refetches the real status instead of writing a guessed one into its cache.
+
 ## 0.3.1 — 2026-11-15
 
 ### Added

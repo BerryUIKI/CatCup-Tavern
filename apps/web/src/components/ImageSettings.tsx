@@ -5,6 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useSettings, useUpdateSettings } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { Combobox } from './Combobox';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 const BACKEND_DEFAULTS: Record<ImageBackend, string> = {
@@ -310,19 +312,17 @@ export function ImageSettings() {
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="label-text" htmlFor="image-backend">
-                        Backend
-                    </label>
-                    <select
+                    <Select<ImageBackend>
                         id="image-backend"
-                        className="input-shell"
+                        label="Backend"
                         value={form.backend}
-                        onChange={(event) => changeBackend(event.target.value as ImageBackend)}
-                    >
-                        <option value="automatic1111">Automatic1111 / Forge (local)</option>
-                        <option value="comfyui">ComfyUI (local workflow)</option>
-                        <option value="openai-compatible">OpenAI-compatible endpoint</option>
-                    </select>
+                        onChange={changeBackend}
+                        options={[
+                            { value: 'automatic1111', label: 'Automatic1111 / Forge (local)' },
+                            { value: 'comfyui', label: 'ComfyUI (local workflow)' },
+                            { value: 'openai-compatible', label: 'OpenAI-compatible endpoint' },
+                        ]}
+                    />
                 </div>
 
                 <div>
@@ -448,39 +448,25 @@ export function ImageSettings() {
                         onChange={(value) => set('cfgScale', value)}
                     />
                     <div>
-                        <label className="label-text" htmlFor="image-sampler">
-                            Sampler
-                        </label>
-                        <input
+                        <span className="label-text">Sampler</span>
+                        <Combobox
                             id="image-sampler"
-                            className="input-shell"
-                            list="image-samplers"
                             value={form.sampler}
-                            onChange={(event) => set('sampler', event.target.value)}
+                            onChange={(value) => set('sampler', value)}
+                            options={(isComfy ? COMFY_SAMPLERS : SAMPLERS).map((sampler) => ({ value: sampler }))}
+                            emptyHint="A sampler the backend does not list can still be typed."
                         />
-                        <datalist id="image-samplers">
-                            {(isComfy ? COMFY_SAMPLERS : SAMPLERS).map((sampler) => (
-                                <option key={sampler} value={sampler} />
-                            ))}
-                        </datalist>
                     </div>
                     {isComfy ? (
                         <div>
-                            <label className="label-text" htmlFor="image-scheduler">
-                                Scheduler
-                            </label>
-                            <input
+                            <span className="label-text">Scheduler</span>
+                            <Combobox
                                 id="image-scheduler"
-                                className="input-shell"
-                                list="image-schedulers"
                                 value={form.scheduler}
-                                onChange={(event) => set('scheduler', event.target.value)}
+                                onChange={(value) => set('scheduler', value)}
+                                options={SCHEDULERS.map((scheduler) => ({ value: scheduler }))}
+                                emptyHint="A scheduler the backend does not list can still be typed."
                             />
-                            <datalist id="image-schedulers">
-                                {SCHEDULERS.map((scheduler) => (
-                                    <option key={scheduler} value={scheduler} />
-                                ))}
-                            </datalist>
                         </div>
                     ) : null}
                     <NumberField

@@ -20,6 +20,7 @@ import {
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
@@ -410,21 +411,21 @@ export function RegexSettings() {
                             />
                         </div>
                         <div>
-                            <span className="label-text">Macros in the pattern</span>
-                            <select
-                                className="input-shell text-xs"
-                                value={draft.substituteRegex}
-                                onChange={(event) =>
+                            <Select<string>
+                                label="Macros in the pattern"
+                                value={String(draft.substituteRegex)}
+                                onChange={(value) =>
                                     setDraft((current) => ({
                                         ...current,
-                                        substituteRegex: Number(event.target.value),
+                                        substituteRegex: Number(value),
                                     }))
                                 }
-                            >
-                                <option value={SUBSTITUTE_REGEX.NONE}>Leave them alone</option>
-                                <option value={SUBSTITUTE_REGEX.RAW}>Substitute as pattern</option>
-                                <option value={SUBSTITUTE_REGEX.ESCAPED}>Substitute and escape</option>
-                            </select>
+                                options={[
+                                    { value: String(SUBSTITUTE_REGEX.NONE), label: 'Leave them alone' },
+                                    { value: String(SUBSTITUTE_REGEX.RAW), label: 'Substitute as pattern' },
+                                    { value: String(SUBSTITUTE_REGEX.ESCAPED), label: 'Substitute and escape' },
+                                ]}
+                            />
                         </div>
                     </div>
 

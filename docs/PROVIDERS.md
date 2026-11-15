@@ -2,15 +2,25 @@
 
 CatCup Tavern speaks to four chat provider families through a small adapter interface, and to text-to-speech and image generation endpoints through separate adapters. All chat provider calls happen on the server, so API keys never reach the browser. The browser speech-synthesis TTS backend is the one exception: it runs locally and needs no key.
 
-## Provider kinds
+## Protocols and services
 
-| Kind         | Default base URL               | Protocol                                  | Key required |
-| ------------ | ------------------------------ | ----------------------------------------- | ------------ |
-| `openai`     | `https://api.openai.com/v1`    | OpenAI Chat Completions                   | Usually      |
-| `openrouter` | `https://openrouter.ai/api/v1` | OpenAI-compatible + attribution headers   | Yes          |
-| `anthropic`  | `https://api.anthropic.com/v1` | Anthropic Messages API                    | Yes          |
-| `ollama`     | `http://127.0.0.1:11434`       | Native Ollama NDJSON                      | No           |
-| `custom`     | user supplied                  | Any OpenAI-compatible `/chat/completions` | Depends      |
+A provider is identified by two things: the **request protocol** it speaks, and the **service template** it was started from. The protocol decides how a request is encoded and streamed; the template is a prefill of a name, a kind and a default base URL, and nothing more.
+
+| Protocol (UI label)     | Stored `kind` values                    | Requests                                            | Key expected |
+| ----------------------- | --------------------------------------- | --------------------------------------------------- | ------------ |
+| OpenAI Chat Completions | `openai`, `openrouter`, `custom`        | `POST /chat/completions`, SSE                       | Usually      |
+| Anthropic Messages      | `anthropic`                             | `POST /messages`, `x-api-key`, SSE                  | Yes          |
+| Ollama native           | `ollama`                                | `POST /api/chat`, NDJSON                            | No           |
+
+`openai`, `openrouter` and `custom` are three stored kinds speaking **one** protocol: all three are served by the same adapter (`apps/server/src/providers/index.ts`), and differ only in their default base URL and the `HTTP-Referer` / `X-Title` attribution headers `openrouter` adds. They stay separate values because a `kind` written by 0.3.x must keep loading unchanged — the UI calls the field a protocol, the file keeps the value.
+
+| Kind         | Default base URL               | What it is                                      |
+| ------------ | ------------------------------ | ----------------------------------------------- |
+| `openai`     | `https://api.openai.com/v1`    | The OpenAI template                             |
+| `openrouter` | `https://openrouter.ai/api/v1` | The OpenRouter template                         |
+| `anthropic`  | `https://api.anthropic.com/v1` | The Anthropic template                          |
+| `ollama`     | `http://127.0.0.1:11434`       | The Ollama template                             |
+| `custom`     | none                           | Any endpoint that speaks the chosen protocol    |
 
 A provider serves **one or more models**. One is marked its default; a character may name another, and a chat falls back along an explicit rule rather than failing when its model is unavailable.
 
@@ -35,7 +45,7 @@ Providers are stored in `data/settings.json` as public configuration:
 
 `headers` can add provider-specific HTTP headers (for example an organization header or a custom gateway token). API keys are stored separately in `data/secrets.json`, keyed by provider ID, plus a fixed `tts` entry for text to speech. The API returns `hasKey` only; it never returns the key.
 
-The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. Adding a provider starts from a type template (OpenAI, Anthropic, OpenRouter, Ollama or Custom), which fills the default base URL; the name stays editable. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
+The Settings UI can add, edit, duplicate and delete providers, and the library footer switches the active one from a list without opening settings. Settings → Providers is a master–detail list. **Add provider** opens a picker with **Custom provider** first — "choose its protocol, enter the request URL and API key yourself" — and the four service templates below it under **Or start from a service**; a template is a prefill of name, kind and default base URL, not a constraint. The form asks for the **request protocol** rather than a vendor: changing it keeps a hand-typed base URL, and a provider still matching its template keeps that template's kind when the protocol it speaks is chosen again. **Fetch models** tests the unsaved form and fills the model suggestions, **Test connection** tests the unsaved form without saving, and **Save changes** persists it. The model field accepts any id, so a gateway that does not implement `/models` still works; its suggestions come from a CatCup-styled list rather than the browser's own datalist popup. **Use provider** makes a saved, enabled provider active. **Advanced** exposes custom request headers. Clearing a saved API key is staged and applied when the provider is saved; typing a new key replaces it on save, and the browser only ever receives `hasKey`.
 
 The model list also loads on its own: once the form holds a base URL that parses and either a stored key or a typed one, the panel asks the endpoint for its model list after 600 ms without further typing. A failed background fetch stays silent — an endpoint that is not running yet must not paint an error nobody asked for — and **Fetch models** remains the explicit retry that reports failures. The background fetch never replaces the connection test; the test is still a separate action.
 
@@ -57,7 +67,7 @@ The model is read when a request is built, so switching a character's model affe
 
 Duplicating a provider copies its configuration but not its API key, since the key belongs to the original provider's entry in `data/secrets.json`.
 
-## OpenAI-compatible (`openai`, `openrouter`, `custom`)
+## OpenAI Chat Completions protocol (`openai`, `openrouter`, `custom`)
 
 **Streaming request**
 
@@ -86,7 +96,6 @@ Content-Type: application/json
 - `data: [DONE]` as end of stream.
 
 `openrouter` adds `HTTP-Referer` and `X-Title` headers unless the user overrides them. `custom` is the escape hatch for Ollama's OpenAI-compatible endpoint, LM Studio, vLLM, gateways and other `/chat/completions` servers.
-
 **Model list:** `GET <baseUrl>/models`. Some compatible servers do not implement it; in that case **Test connection** fails even though chat may work. Type the model ID manually and use the provider anyway.
 
 ## Anthropic
@@ -179,13 +188,13 @@ The server converts these to SSE events `token`, `reasoning` and `done` (with us
 
 ## Adding a provider adapter
 
-1. Add a `kind` to `providerKindSchema`, the default base URL map and `PROVIDER_KIND_LABELS` in `packages/shared/src/schemas/provider.ts`.
+1. Add a `kind` to `providerKindSchema` and to `DEFAULT_BASE_URLS` in `packages/shared/src/schemas/provider.ts`. If the kind speaks a protocol CatCup already implements, add it to `protocolFor` so the UI groups it correctly. A genuinely new protocol also needs an entry in `PROVIDER_PROTOCOLS`, `PROTOCOL_LABELS` and `PROTOCOL_HINTS`.
 2. Implement `ProviderAdapter` in `apps/server/src/providers/<name>.ts`:
    - `streamChat(config, apiKey, request)`;
    - `listModels(config, apiKey)`;
    - `test(config, apiKey)`.
-3. Register it in `apps/server/src/providers/index.ts`.
-4. Add the kind to `KIND_ORDER`, `KIND_HINTS` and `KIND_INITIALS` in `apps/web/src/components/ProviderSettings.tsx`; add custom form fields only if the adapter needs them, since most use the generic form.
+3. Register it in `apps/server/src/providers/index.ts`, keyed by protocol rather than by vendor.
+4. If the kind is a new service a person would start from, add a `PROVIDER_TEMPLATES` entry; a kind that is only reachable by choosing a protocol and typing a URL needs nothing in `ProviderSettings.tsx`, because the form is generic over the protocol. Add custom form fields only if the adapter needs them.
 5. Add tests with a mocked fetch/stream where practical.
 6. Update this page, [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) and `CHANGELOG.md`.
 7. If the adapter is derived from ST or RisuAI, update `NOTICE` and [REUSE.md](REUSE.md).

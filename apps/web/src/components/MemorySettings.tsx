@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useSettings, useUpdateSettings } from '../hooks/data';
 import { useAppStore } from '../store/app';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 const POSITIONS = [
@@ -197,21 +198,16 @@ export function MemorySettings() {
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label className="label-text" htmlFor="memory-position">
-                            Injection position
-                        </label>
-                        <select
+                        <Select<string>
                             id="memory-position"
-                            className="input-shell"
-                            value={form.position}
-                            onChange={(event) => set('position', Number(event.target.value))}
-                        >
-                            {POSITIONS.map((position) => (
-                                <option key={position.value} value={position.value}>
-                                    {position.label}
-                                </option>
-                            ))}
-                        </select>
+                            label="Injection position"
+                            value={String(form.position)}
+                            onChange={(value) => set('position', Number(value))}
+                            options={POSITIONS.map((position) => ({
+                                value: String(position.value),
+                                label: position.label,
+                            }))}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         {form.position === 1 ? (
@@ -231,21 +227,16 @@ export function MemorySettings() {
                             </div>
                         ) : null}
                         <div>
-                            <label className="label-text" htmlFor="memory-role">
-                                Role
-                            </label>
-                            <select
+                            <Select<string>
                                 id="memory-role"
-                                className="input-shell"
-                                value={form.role}
-                                onChange={(event) => set('role', Number(event.target.value))}
-                            >
-                                {ROLES.map((role) => (
-                                    <option key={role.value} value={role.value}>
-                                        {role.label}
-                                    </option>
-                                ))}
-                            </select>
+                                label="Role"
+                                value={String(form.role)}
+                                onChange={(value) => set('role', Number(value))}
+                                options={ROLES.map((role) => ({
+                                    value: String(role.value),
+                                    label: role.label,
+                                }))}
+                            />
                         </div>
                     </div>
                 </div>

@@ -101,8 +101,42 @@ describe('desktop open session', () => {
         expect(status.json()).toMatchObject({ needsSetup: false, authenticated: true, openSession: true });
     });
 
-    it('requires the current password to change an existing one', async () => {
+    it('refuses to sign out of an open session', async () => {
         const booted = await boot(true);
+        app = booted.app;
+        root = booted.root;
+
+        const logout = await app.inject({ method: 'POST', url: '/api/auth/logout' });
+        expect(logout.statusCode).toBe(409);
+        expect(logout.json()).toMatchObject({ code: 'NO_PASSWORD' });
+
+        // The refusal is not a half-done sign-out: the API still answers.
+        const settings = await app.inject({ method: 'GET', url: '/api/settings' });
+        expect(settings.statusCode).toBe(200);
+    });
+
+    it('signs out of an install that has a password', async () => {
+        const booted = await boot(true);
+        app = booted.app;
+        root = booted.root;
+
+        const set = await app.inject({
+            method: 'PUT',
+            url: '/api/auth/password',
+            payload: { password: 'a long enough password' },
+        });
+        const cookie = String(set.headers['set-cookie'] ?? '').split(';')[0] ?? '';
+
+        const logout = await app.inject({ method: 'POST', url: '/api/auth/logout', headers: { cookie } });
+        expect(logout.statusCode).toBe(200);
+        expect(logout.json()).toEqual({ ok: true });
+        expect(String(logout.headers['set-cookie'] ?? '')).toContain('catcup_session=;');
+
+        const after = await app.inject({ method: 'GET', url: '/api/settings' });
+        expect(after.statusCode).toBe(401);
+    });
+
+    it('requires the current password to change an existing one', async () => {        const booted = await boot(true);
         app = booted.app;
         root = booted.root;
 

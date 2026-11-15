@@ -14,6 +14,7 @@ import { streamDistill } from '../lib/sse';
 import { useAppStore } from '../store/app';
 import { ReviewSheet, type ReviewState } from './DistillReview';
 import { Modal } from './Modal';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 /**
@@ -411,23 +412,17 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
 
                         {mode === 'model' ? (
                             <div>
-                                <label className="label-text" htmlFor="distill-model">
-                                    Model
-                                </label>
-                                <select
-                                    className="input-shell py-2 text-sm"
-                                    disabled={!ready || models.length === 0}
+                                <Select<string>
                                     id="distill-model"
-                                    onChange={(event) => setModel(event.target.value)}
+                                    label="Model"
+                                    disabled={!ready || models.length === 0}
                                     value={model}
-                                >
-                                    <option value="">Provider default</option>
-                                    {models.map((item) => (
-                                        <option key={item} value={item}>
-                                            {item}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={setModel}
+                                    options={[
+                                        { value: '', label: 'Provider default' },
+                                        ...models.map((item) => ({ value: item, label: item })),
+                                    ]}
+                                />
                                 {!ready || models.length === 0 ? (
                                     <p className="field-hint text-wine">
                                         The model draft needs an enabled provider with at least one model. Configure one

@@ -411,4 +411,36 @@ describe('provider model lists', () => {
         expect(provider?.models).toEqual(['old-model']);
         expect(provider?.defaultModel).toBe('old-model');
     });
+
+    it('round-trips every stored kind without changing it', async () => {
+        // The UI now calls the field a request protocol, but the stored value is
+        // the same discriminator 0.3.x wrote. Each kind must survive a create
+        // and a patch untouched, so no provider needs a migration.
+        for (const kind of ['openai', 'openrouter', 'anthropic', 'ollama', 'custom'] as const) {
+            const created = await call('POST', '/api/providers', {
+                kind,
+                name: `Round trip ${kind}`,
+                baseUrl: stubBase,
+                models: ['stub-model'],
+                defaultModel: 'stub-model',
+                enabled: true,
+                headers: {},
+            });
+            expect(created.statusCode).toBe(200);
+            const provider = created.json().provider as { id: string; kind: string };
+            expect(provider.kind).toBe(kind);
+
+            const patched = await call('PATCH', `/api/providers/${provider.id}`, {
+                kind,
+                name: `Round trip ${kind}`,
+                baseUrl: stubBase,
+                models: ['stub-model', 'second-model'],
+                defaultModel: 'stub-model',
+                enabled: true,
+                headers: {},
+            });
+            expect(patched.statusCode).toBe(200);
+            expect(patched.json().provider).toMatchObject({ kind, models: ['stub-model', 'second-model'] });
+        }
+    });
 });

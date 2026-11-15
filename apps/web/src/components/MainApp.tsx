@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     useActivateProfile,
     useAddSampleCharacter,
+    useAuthStatus,
     useBulkCharacters,
     useCharacter,
     useCharacters,
@@ -21,6 +22,7 @@ import {
     useShareItem,
     useUpdateSettings,
 } from '../hooks/data';
+import { ApiError } from '../lib/api';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
 import { BookDistillDialog } from './BookDistillDialog';
@@ -58,6 +60,12 @@ export function MainApp() {
     const sidebarOpen = useAppStore((state) => state.sidebarOpen);
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
     const pushToast = useAppStore((state) => state.pushToast);
+
+    const authStatus = useAuthStatus();
+    // An open desktop session has no password, so there is nothing to sign out
+    // of; the library footer hides the action rather than leading to a login
+    // screen that cannot accept a password that does not exist.
+    const openSession = authStatus.data?.openSession ?? false;
 
     const charactersQuery = useCharacters();
     const groupsQuery = useGroups();
@@ -507,6 +515,13 @@ export function MainApp() {
         try {
             await logoutMutation.mutateAsync();
         } catch (error) {
+            // An open desktop install has nothing to sign out of. The button is
+            // hidden there, so this is the stale-tab path; say what happened
+            // rather than reporting a failure that leaves the app unchanged.
+            if (error instanceof ApiError && error.code === 'NO_PASSWORD') {
+                pushToast('This install has no password, so there is no session to sign out of.', 'info');
+                return;
+            }
             pushToast(error instanceof Error ? error.message : 'Sign out failed.', 'error');
         }
     };
@@ -559,7 +574,7 @@ export function MainApp() {
                 onSwitchProfile={(id) => void handleSwitchProfile(id)}
                 onManageProfiles={() => openSettings('profiles')}
                 onOpenSettings={() => openSettings()}
-                onLogout={() => void handleLogout()}
+                onLogout={openSession ? null : () => void handleLogout()}
                 loggingOut={logoutMutation.isPending}
                 open={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
