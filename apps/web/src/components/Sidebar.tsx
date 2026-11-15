@@ -30,6 +30,7 @@ interface SidebarProps {
     onNewGroup: () => void;
     onEditGroup: (id: string) => void;
     onImportSillyTavern: () => void;
+    onDistillBook: () => void;
     onAddSample: () => void;
     addingSample: boolean;
     onImport: (files: File[]) => void;
@@ -74,6 +75,7 @@ export function Sidebar({
     onNewGroup,
     onEditGroup,
     onImportSillyTavern,
+    onDistillBook,
     onAddSample,
     addingSample,
     onImport,
@@ -204,6 +206,14 @@ export function Sidebar({
                     >
                         <FolderInput size={14} />
                         Import from SillyTavern
+                    </button>
+                    <button
+                        type="button"
+                        className="mt-1 flex w-full items-center justify-center gap-2 text-xs text-muted transition hover:text-parchment"
+                        onClick={onDistillBook}
+                    >
+                        <BookOpen size={14} />
+                        Distil from a book
                     </button>
                 </div>
             ) : (

@@ -55,6 +55,9 @@ Common codes:
 | `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text                |
 | `DISTILL_FORMAT`        | 400       | A book file CatCup cannot read, or an unsupported extension   |
 | `DISTILL_EPUB`          | 400       | An EPUB CatCup refuses — DRM, or no readable package document |
+| `DISTILL_UNSUPPORTED`   | 400       | Model distillation was requested before the pipeline exists   |
+| `DISTILL_FINISHED`      | 409       | Attach was asked for a run that has already finished          |
+| `DISTILL_RUNNING`       | 409       | Accept was asked for while the run is still going             |
 | `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                              |
 | `PROVIDER_DISABLED`     | 400       | The active provider reference is disabled                     |
 | `PROVIDER_KEY_REUSE`    | 400       | A draft test changed the endpoint without a key               |
@@ -749,6 +752,64 @@ Errors: `400 DISTILL_FORMAT` for a file CatCup cannot read or an unsupported ext
 ### `DELETE /api/distill/books/:id`
 
 Removes the folder and the source file. Returns `{ "ok": true }`, `404` when it did not exist.
+
+### `POST /api/distill/runs`
+
+Start a run and stream its progress. The response **is** the event stream, so the dialog that started the run is also the one watching it.
+
+```json
+{ "bookId": "novel", "mode": "sections" }
+```
+
+`mode` is `sections` today: every chapter becomes one world info entry whose body is that chapter, with no model call. `model` is the pipeline that follows and answers `400 DISTILL_UNSUPPORTED` until it exists, rather than quietly producing a sections draft under a model's name. A `model` field may be sent; it names the model a later run would use and is not persisted.
+
+The events are the ones in `packages/shared/src/schemas/distill.ts`:
+
+| Event      | Meaning                                                       |
+| ---------- | ------------------------------------------------------------- |
+| `start`    | `{ runId, model, chunks }` — the full row list, sent first    |
+| `chunk`    | one row changed state, with a running count of what was found |
+| `progress` | `{ done, total }`                                             |
+| `done`     | the finished run record, including the draft                  |
+| `error`    | a message                                                     |
+
+**Closing the stream does not stop the run.** A book takes minutes; a closed tab must not throw it away. Only `POST /api/distill/runs/:id/stop` cancels it, and the record on disk is written after every chunk, so a reattach reads real progress.
+
+### `POST /api/distill/runs/:id/attach`
+
+Reattach to a run **still in progress**. The current row list is replayed as the opening `start` event, so an attach mid-run draws the rows that already finished. `404` when the id is unknown, `409 DISTILL_FINISHED` when the run has finished — a finished run is read with `GET`, not streamed.
+
+### `POST /api/distill/runs/:id/stop`
+
+`{ "ok": true }` when a run was stopped, `{ "ok": false }` when it was not running. The record is kept with `status: "stopped"` and nothing is written to the library.
+
+### `POST /api/distill/runs/:id/accept`
+
+Write an accepted draft. The client owns the inline edits, so the body is the draft to keep:
+
+```json
+{
+    "entries": [{ "key": ["mira"], "comment": "Chapter 1", "content": "…", "chapter": "Chapter 1", "accepted": true }],
+    "characters": [{ "name": "Mira", "description": "…", "accepted": true }],
+    "world": { "id": "the-inn", "scope": "profile" },
+    "characterScope": "profile",
+    "linkWorld": true
+}
+```
+
+- Only rows with `accepted: true` are written. An unticked row is excluded, not merely hidden.
+- Entries are written through the same path as `POST /api/worlds/import`, starting from SillyTavern's entry template, so the book opens in SillyTavern and in the world info editor.
+- Characters are written through the same path as a card import, as V2 cards, and carry `extensions.world` when `linkWorld` is set.
+- `scope` and `characterScope` accept `profile` or `shared`; a shared book and its cards are then visible in every profile.
+- Returns `{ "run": …, "worldId", "scope", "characterIds" }`. `409 DISTILL_RUNNING` while the run is still going.
+
+### `GET /api/distill/runs` · `GET /api/distill/runs/:id`
+
+`{ "runs": [ ... ] }` newest first, or `{ "run": ... }`. A run record holds the chunk map, the model, the draft and what was accepted — not the book text.
+
+### `DELETE /api/distill/runs/:id`
+
+Discards a run record. The book and anything already accepted are untouched.
 
 ## Settings
 

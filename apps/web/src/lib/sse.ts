@@ -1,5 +1,6 @@
 import type {
     ChatMessage,
+    DistillEvent,
     GenerateRequest,
     GenerationEvent,
     GenerationSpeaker,
@@ -9,67 +10,14 @@ import type {
 
 import { ApiError } from './api';
 
-export interface GenerationHandlers {
-    onStart?: (generationId: string, speaker?: GenerationSpeaker, model?: string) => void;
-    onToken?: (text: string) => void;
-    onReasoning?: (text: string) => void;
-    onDone?: (message: ChatMessage, usage?: UsageInfo) => void;
-    onError?: (message: string) => void;
-}
-
-function dispatchBlock(block: string, handlers: GenerationHandlers): void {
-    const dataLines: string[] = [];
-    for (const line of block.split('\n')) {
-        if (line.startsWith('data:')) {
-            dataLines.push(line.slice(5).replace(/^ /, ''));
-        }
-    }
-    if (dataLines.length === 0) {
-        return;
-    }
-
-    let event: GenerationEvent;
-    try {
-        event = JSON.parse(dataLines.join('\n')) as GenerationEvent;
-    } catch {
-        return;
-    }
-
-    switch (event.type) {
-        case 'start':
-            handlers.onStart?.(event.generationId, event.speaker, event.model);
-            break;
-        case 'token':
-            handlers.onToken?.(event.text);
-            break;
-        case 'reasoning':
-            handlers.onReasoning?.(event.text);
-            break;
-        case 'done':
-            handlers.onDone?.(event.message, event.usage);
-            break;
-        case 'error':
-            handlers.onError?.(event.message);
-            break;
-    }
-}
-
-export async function streamGeneration(
-    path: string,
-    body: GenerateRequest | GroupGenerateRequest,
-    handlers: GenerationHandlers,
-    signal?: AbortSignal,
-): Promise<void> {
-    const response = await fetch(path, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-        signal,
-    });
-
+/**
+ * Two streams share one wire format: generation (which a person is reading) and
+ * distillation (which a person is waiting on). The reader below is the same for
+ * both, so an event shape change cannot make them disagree about framing.
+ */
+async function readEvents<T>(response: Response, failMessage: string, onEvent: (event: T) => void): Promise<void> {
     if (!response.ok) {
-        let message = 'Generation failed';
+        let message = failMessage;
         try {
             const payload = (await response.json()) as { error?: string };
             if (payload.error) {
@@ -82,7 +30,7 @@ export async function streamGeneration(
     }
 
     if (!response.body) {
-        throw new Error('The generation stream is unavailable');
+        throw new Error('The stream is unavailable');
     }
 
     const reader = response.body.getReader();
@@ -102,16 +50,106 @@ export async function streamGeneration(
             while (boundary >= 0) {
                 const block = buffer.slice(0, boundary);
                 buffer = buffer.slice(boundary + 2);
-                dispatchBlock(block, handlers);
+                dispatch(block, onEvent);
                 boundary = buffer.indexOf('\n\n');
             }
         }
 
         const tail = buffer.trim();
         if (tail) {
-            dispatchBlock(tail, handlers);
+            dispatch(tail, onEvent);
         }
     } finally {
         reader.releaseLock();
     }
+}
+
+function dispatch<T>(block: string, onEvent: (event: T) => void): void {
+    const dataLines: string[] = [];
+    for (const line of block.split('\n')) {
+        if (line.startsWith('data:')) {
+            dataLines.push(line.slice(5).replace(/^ /, ''));
+        }
+    }
+    if (dataLines.length === 0) {
+        return;
+    }
+
+    try {
+        onEvent(JSON.parse(dataLines.join('\n')) as T);
+    } catch {
+        // A malformed block is dropped; the stream continues.
+    }
+}
+
+export interface GenerationHandlers {
+    onStart?: (generationId: string, speaker?: GenerationSpeaker, model?: string) => void;
+    onToken?: (text: string) => void;
+    onReasoning?: (text: string) => void;
+    onDone?: (message: ChatMessage, usage?: UsageInfo) => void;
+    onError?: (message: string) => void;
+}
+
+function generationHandlers(handlers: GenerationHandlers): (event: GenerationEvent) => void {
+    return (event) => {
+        switch (event.type) {
+            case 'start':
+                handlers.onStart?.(event.generationId, event.speaker, event.model);
+                break;
+            case 'token':
+                handlers.onToken?.(event.text);
+                break;
+            case 'reasoning':
+                handlers.onReasoning?.(event.text);
+                break;
+            case 'done':
+                handlers.onDone?.(event.message, event.usage);
+                break;
+            case 'error':
+                handlers.onError?.(event.message);
+                break;
+        }
+    };
+}
+
+export async function streamGeneration(
+    path: string,
+    body: GenerateRequest | GroupGenerateRequest,
+    handlers: GenerationHandlers,
+    signal?: AbortSignal,
+): Promise<void> {
+    const response = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+    });
+
+    await readEvents<GenerationEvent>(response, 'Generation failed', generationHandlers(handlers));
+}
+
+/** The events a distillation run sends, by type. */
+export type DistillHandlers = {
+    [K in DistillEvent['type']]?: (event: Extract<DistillEvent, { type: K }>) => void;
+};
+
+export async function streamDistill(
+    path: string,
+    body: Record<string, unknown>,
+    handlers: DistillHandlers,
+    signal?: AbortSignal,
+): Promise<void> {
+    const response = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+    });
+
+    await readEvents<DistillEvent>(response, 'The run could not be started', (event) => {
+        const handler = handlers[event.type] as ((value: DistillEvent) => void) | undefined;
+        handler?.(event);
+    });
 }

@@ -12,6 +12,11 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    DistillAccepted,
+    DistillAcceptInput,
+    DistillBookEstimate,
+    DistilledBook,
+    DistillRun,
     DraftImagePromptRequest,
     GeneratedImage,
     GenerateImageRequest,
@@ -290,6 +295,47 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ path, dryRun }),
         }),
+    distill: {
+        books: {
+            list: async () => {
+                const data = await request<{ books: DistilledBook[] }>('/distill/books');
+                return data.books;
+            },
+            get: async (id: string) => {
+                const data = await request<{ book: DistilledBook }>(`/distill/books/${encodeURIComponent(id)}`);
+                return data.book;
+            },
+            upload: (file: File) => {
+                const form = new FormData();
+                form.append('file', file, file.name);
+                return request<{ book: DistilledBook; estimate: DistillBookEstimate }>('/distill/books', {
+                    method: 'POST',
+                    body: form,
+                });
+            },
+            remove: (id: string) =>
+                request<{ ok: true }>(`/distill/books/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        },
+        runs: {
+            list: async () => {
+                const data = await request<{ runs: DistillRun[] }>('/distill/runs');
+                return data.runs;
+            },
+            get: async (id: string) => {
+                const data = await request<{ run: DistillRun }>(`/distill/runs/${encodeURIComponent(id)}`);
+                return data.run;
+            },
+            stop: (id: string) =>
+                request<{ ok: boolean }>(`/distill/runs/${encodeURIComponent(id)}/stop`, { method: 'POST' }),
+            accept: (id: string, input: DistillAcceptInput) =>
+                request<{ run: DistillRun } & DistillAccepted>(`/distill/runs/${encodeURIComponent(id)}/accept`, {
+                    method: 'POST',
+                    body: JSON.stringify(input),
+                }),
+            discard: (id: string) =>
+                request<{ ok: true }>(`/distill/runs/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+        },
+    },
     auth: {
         status: () => request<AuthStatus>('/auth/status'),
         setup: (password: string) =>

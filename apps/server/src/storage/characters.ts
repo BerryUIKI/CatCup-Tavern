@@ -15,6 +15,7 @@ import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 import {
     copyItemIntoScope,
+    findItemInScope,
     listMergedItems,
     locateItem,
     moveItemBetweenScopes,
@@ -199,6 +200,29 @@ export async function getCharacter(id: string): Promise<CharacterDetail | null> 
         return null;
     }
     return loadCharacterFile(found.filePath, found.fileName, found.scope);
+}
+
+/**
+ * The stored file for one id in one scope, ignoring the other scope.
+ *
+ * A lookup that resolves profile-first is right for reading — that is the
+ * rule the shared layer established — but wrong for writing to a card that was
+ * just created in the other scope, where the profile may already hold the same
+ * id.
+ */
+export async function getCharacterFileInScope(
+    id: string,
+    scope: ItemScope,
+): Promise<{ filePath: string; detail: CharacterDetail } | null> {
+    const cleanId = normalizeCharacterId(id);
+    assertSimpleName(cleanId);
+
+    const found = await findItemInScope('characters', cleanId, scope, CARD_EXTENSIONS);
+    if (!found) {
+        return null;
+    }
+    const detail = await loadCharacterFile(found.filePath, found.fileName, found.scope);
+    return detail ? { filePath: found.filePath, detail } : null;
 }
 
 export async function getCharacterFile(id: string): Promise<{ filePath: string; detail: CharacterDetail } | null> {
@@ -431,9 +455,18 @@ export async function updateCharacterTags(
  * This is the field SillyTavern uses to bind a card to a lorebook, so the link
  * travels with the exported card and the scanner reads it without the book
  * having to be enabled globally.
+ *
+ * `scope` addresses a card in the other scope. Without it the profile's copy
+ * wins, which is right for a card the person selected, and wrong for one that
+ * was created moments ago in the shared folder while the profile holds the
+ * same id.
  */
-export async function setCharacterWorld(id: string, worldName: string): Promise<CharacterDetail | null> {
-    const found = await getCharacterFile(id);
+export async function setCharacterWorld(
+    id: string,
+    worldName: string,
+    scope?: ItemScope,
+): Promise<CharacterDetail | null> {
+    const found = scope ? await getCharacterFileInScope(id, scope) : await getCharacterFile(id);
     if (!found) {
         return null;
     }

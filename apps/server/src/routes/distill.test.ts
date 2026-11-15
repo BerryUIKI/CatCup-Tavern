@@ -130,3 +130,10 @@ describe('book listing', () => {
         expect(stored).toBe(true);
     });
 });
+
+describe('run records', () => {
+    it('404s a run that does not exist', async () => {
+        expect((await call('GET', '/api/distill/runs/nothing')).statusCode).toBe(404);
+        expect((await call('DELETE', '/api/distill/runs/nothing')).statusCode).toBe(404);
+    });
+});

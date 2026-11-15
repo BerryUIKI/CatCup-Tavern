@@ -154,6 +154,31 @@ describe('profile routes', () => {
         }
     });
 
+    it('refuses to switch while a distillation run is in flight', async () => {
+        // A run resolves its scope when it starts and writes into that profile
+        // when it finishes, so the same guard has to cover it.
+        const { createRun, releaseRun } = await import('../distill/registry.js');
+        createRun({
+            id: 'distill-route-test',
+            bookId: 'novel',
+            bookName: 'novel',
+            mode: 'sections',
+            model: '',
+            status: 'running',
+            startedAt: 0,
+            finishedAt: null,
+            chunks: [],
+            draft: null,
+        });
+        try {
+            const response = await call('PUT', '/api/profiles/active', { id: 'default' });
+            expect(response.statusCode).toBe(409);
+            expect((response.json() as { code?: string }).code).toBe('PROFILE_BUSY');
+        } finally {
+            releaseRun('distill-route-test');
+        }
+    });
+
     it('archives a profile, then restores it with its name intact', async () => {
         const created = await call('POST', '/api/profiles', { name: 'Archive me' });
         const profile = (created.json() as { profile: { id: string } }).profile;

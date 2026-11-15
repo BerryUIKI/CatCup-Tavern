@@ -205,6 +205,28 @@ Bulk actions report per-card errors and leave the other cards updated. A missing
 
 Bulk and single delete remove the card file and `data/character-assets/<id>/` but keep chat files on disk, as single delete always did. The chats are no longer reachable from the library; back up or remove the folders under `data/chats/` by hand.
 
+## Book distillation
+
+**An EPUB is refused, but it opens in a reader**
+
+The refusal names the reason. `That EPUB is encrypted with DRM` means a document in the book's spine is itself encrypted — the text is locked and no parser can help. Font obfuscation is **not** that, and it is accepted: almost every commercial EPUB lists its fonts in `META-INF/encryption.xml`, so CatCup only refuses when a spine document is the encrypted one. `has no package document` means the archive is missing `META-INF/container.xml` or its OPF, which some tools that pack HTML into a ZIP produce; open it in an EPUB editor and save it again.
+
+**A chapter count looks wrong**
+
+Sections are cut at chapter headings — `Chapter N`, `Part N`, `Prologue`, `第N章`, `序章` — and a file with no heading anywhere is cut into runs of paragraphs instead. `Chapter twelve was the one where everything changed` is prose, not a heading: a heading must be a line of its own under 60 characters. The section list on the upload step is the place to check; a wrong split there is a wrong split in the book.
+
+**A distilled entry never comes up in chat**
+
+Its keys came from its chapter title. `Chapter 3` has no useful word in it, so the entry carries no keys and only its comment names it — enable it, then add keys in the world info editor. This is what the model pass will do by itself; until then it is a two-minute edit per entry.
+
+**The run is still going after the dialog closed**
+
+That is on purpose. A run over a long book is minutes of work, so it is not tied to the dialog or the tab; closing either leaves it running. Reopen **Distil from a book** and use **Reattach to a running book** to watch the rest. **Stop** is the only thing that cancels it, and a stopped run writes nothing.
+
+**Switching profiles is refused while a run is going**
+
+`PROFILE_BUSY` means a generation or a distillation run is in flight. Both resolve their scope when they start and would write into the wrong profile if it moved underneath them. Wait for the run or stop it, then switch.
+
 ## Chat and messages
 
 **The user message appears but the reply fails**
