@@ -104,6 +104,16 @@ jobs:
             - name: Build the SPA
               run: pnpm --filter @catcup/web build
 
+            - name: Check the signing key
+              shell: bash
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+              # Length only. Printing even a prefix of the key would put it in the
+              # run log, and a value this step reports as empty means the release
+              # silently ships without updater artifacts.
+              run: |
+                  echo "TAURI_SIGNING_PRIVATE_KEY length: ${#TAURI_SIGNING_PRIVATE_KEY}" >> "$GITHUB_STEP_SUMMARY"
+
             - name: Build the installer
               shell: bash
               env:
