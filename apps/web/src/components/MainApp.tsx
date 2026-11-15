@@ -23,6 +23,7 @@ import {
 } from '../hooks/data';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
+import { BookDistillDialog } from './BookDistillDialog';
 import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { GroupChatView } from './GroupChatView';
@@ -78,6 +79,7 @@ export function MainApp() {
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
     const [stImportOpen, setStImportOpen] = useState(false);
+    const [distillOpen, setDistillOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
     const groups = groupsQuery.data ?? [];
@@ -540,6 +542,7 @@ export function MainApp() {
                 onNewGroup={() => setGroupEditor({ mode: 'create' })}
                 onEditGroup={(id) => setGroupEditor({ mode: 'edit', id })}
                 onImportSillyTavern={() => setStImportOpen(true)}
+                onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
                 onImport={(files) => void handleImport(files)}
@@ -601,6 +604,8 @@ export function MainApp() {
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
             <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
+
+            <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 
             <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
 

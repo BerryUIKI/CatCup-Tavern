@@ -2,6 +2,7 @@ import { profileCreateSchema, profileRenameSchema, type SettingsResponse } from 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
+import { runningCount } from '../distill/registry.js';
 import { activeGenerations } from '../generation/registry.js';
 import { badRequest, conflict, notFound } from '../http/errors.js';
 import { withFileLock } from '../storage/mutex.js';
@@ -68,15 +69,15 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
     /**
      * Switch the profile the server serves.
      *
-     * Refused while a generation is running: a reply resolves its provider and
-     * preset when the request starts, so letting the scope move underneath it
-     * would write the finished message into a different profile's chat file.
-     * The answer is a 409 the client turns into "finish or stop the reply".
+     * Refused while a generation or a distillation run is in flight: both
+     * resolve their scope when they start, so letting the scope move underneath
+     * one would write its output into a different profile's files. The answer is
+     * a 409 the client turns into "finish or stop the work in progress".
      */
     app.put('/api/profiles/active', async (request) => {
         const { id } = activateSchema.parse(request.body ?? {});
-        if (activeGenerations.size > 0) {
-            throw conflict('Finish or stop the current reply before switching profiles.', 'PROFILE_BUSY');
+        if (activeGenerations.size > 0 || runningCount() > 0) {
+            throw conflict('Finish or stop what is running before switching profiles.', 'PROFILE_BUSY');
         }
 
         return withFileLock(paths.globalSettings, async () => {

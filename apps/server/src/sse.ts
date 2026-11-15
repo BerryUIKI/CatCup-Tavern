@@ -1,4 +1,3 @@
-import type { GenerationEvent } from '@catcup/shared';
 import type { FastifyReply } from 'fastify';
 
 /** Take over the raw response and start an SSE stream. */
@@ -13,7 +12,7 @@ export function initSse(reply: FastifyReply): void {
     reply.raw.flushHeaders?.();
 }
 
-export function writeSse(reply: FastifyReply, event: GenerationEvent): void {
+export function writeSse<T extends { type: string }>(reply: FastifyReply, event: T): void {
     if (reply.raw.writableEnded || reply.raw.destroyed) {
         return;
     }

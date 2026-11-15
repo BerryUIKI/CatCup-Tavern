@@ -6,6 +6,7 @@ import type {
     CharacterSummary,
     ChatDetail,
     ChatSummary,
+    DistillAcceptInput,
     GroupChatDetail,
     GroupCreate,
     GroupPatch,
@@ -47,6 +48,9 @@ export const queryKeys = {
     regex: ['regex'] as const,
     quickReplies: ['quickReplies'] as const,
     images: (folder: string) => ['images', folder] as const,
+    distillBooks: ['distillBooks'] as const,
+    distillRuns: ['distillRuns'] as const,
+    distillRun: (id: string | null) => ['distillRun', id] as const,
 };
 
 export function useAuthStatus() {
@@ -1215,6 +1219,73 @@ export function useDeletePersona() {
         mutationFn: (id: string) => api.personas.remove(id),
         onSuccess: (data) => {
             queryClient.setQueryData(queryKeys.settings, data.settings);
+        },
+    });
+}
+
+export function useDistillBooks() {
+    return useQuery({ queryKey: queryKeys.distillBooks, queryFn: api.distill.books.list });
+}
+
+export function useUploadBook() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (file: File) => api.distill.books.upload(file),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillBooks });
+        },
+    });
+}
+
+export function useDeleteBook() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.distill.books.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillBooks });
+        },
+    });
+}
+
+export function useDistillRuns() {
+    return useQuery({ queryKey: queryKeys.distillRuns, queryFn: api.distill.runs.list });
+}
+
+export function useDistillRun(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.distillRun(id),
+        queryFn: () => api.distill.runs.get(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+export function useDiscardDistillRun() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.distill.runs.discard(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRuns });
+        },
+    });
+}
+
+/**
+ * Write an accepted draft.
+ *
+ * The run writes a new world info book and its cards, so everything a scoped
+ * store holds may now be stale — characters, worlds, and the character queries
+ * that key on an id which did not exist a moment ago.
+ */
+export function useAcceptDistill(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: DistillAcceptInput) => api.distill.runs.accept(id as string, input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worlds });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRuns });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.distillRun(id) });
         },
     });
 }

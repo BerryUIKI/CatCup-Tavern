@@ -645,7 +645,17 @@ A book uploaded for distillation lives in its own folder under the profile that 
 
 The file name gives the folder id — `novel.txt` becomes `books/novel/` — and a second book of the same name gets `novel (2)`. The folder belongs to one profile, so a book uploaded in one campaign is invisible in another; marking the distilled world info book reusable is how its _output_ crosses over, and that is the ordinary shared-layer move.
 
-A run record in `distill/<runId>.json` holds the chunk map, the model, what was found, and what was accepted. It is a record, not state a run depends on: deleting it loses the review sheet, not the book.
+A run record in `distill/<runId>.json` holds the chunk map, the model, what was found, and what was accepted. It is a record, not state a run depends on: deleting it loses the review sheet, not the book. It is rewritten after every chunk, so a reattach after a tab close reads real progress rather than a blank list, and a crash mid-run leaves a record that says how far it got.
+
+### Accepted output
+
+A distill run writes nothing until the review sheet is accepted, and then writes through the paths the library already uses, so its output is ordinary data rather than a format of its own:
+
+- the world info book is an ordinary `worlds/<id>.json`, built from SillyTavern's entry template — a field the review sheet does not show (probability, recursion flags, `displayIndex`) still has ST's default;
+- each accepted character is an ordinary V2 card in `characters/`, with `extensions.world` naming the book when the run linked them, and `extensions.catcup_distill` recording the aliases, mention count and confidence it came from;
+- the scope chosen in the sheet decides whether they land in the profile or in `shared/`, so a distilled book can be marked reusable without a second step.
+
+An unticked row is not written at all — it is an exclusion, not a hidden flag.
 
 ## Internal files (not SillyTavern formats)
 

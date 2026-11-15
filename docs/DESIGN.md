@@ -197,6 +197,23 @@ for both the favicon and the in-app logo. The README banner ships in dark and li
 - A three-way leave guard protects unsaved provider and Generation edits: **Save and continue**,
   **Discard changes**, **Keep editing** (focused by default).
 
+### Review sheets
+
+A review sheet is the surface between a long job and the library: the person sees what the job
+found and decides what to keep. Three rules carry it.
+
+- **Group by the unit the person remembers.** A distilled book groups its rows by chapter, not by
+  the order the run happened to find them.
+- **Edit in place.** A row expands to its own fields — the same three the world info editor shows
+  (`comment`, `keys`, `content`) — because the moment to fix a bad key is while the source quote is
+  on the same row. No second screen, no separate "edit" mode.
+- **Unticked means excluded.** The checkbox is the promise: an unticked row is not written. Say so
+  in one line at the foot, and show the kept count next to the total.
+
+A merge control belongs on the sheet when the job can split one thing into two — clustering a
+character under two names, say. Select rows, merge into the first; contents concatenate, keys
+union, and the strongest confidence survives.
+
 ### Dialogs
 
 - `Modal` traps focus, focuses the dialog container on open, restores focus on close, and closes on
