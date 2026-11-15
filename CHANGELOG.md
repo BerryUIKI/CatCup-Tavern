@@ -2,6 +2,12 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation.
 
+## Unreleased
+
+### Changed
+
+- Interface copy names what the app does rather than the client its formats came from. The import entry is now **Import from another app**, its dialog asks for a data folder, and its error, the About tab, the Settings, Memory, Quick Replies and Regex hints, the empty group editor, the Quick Replies format check and the `index.html` / `package.json` descriptions no longer name SillyTavern. Attribution stays where it must: `NOTICE`, `docs/REUSE.md`, the per-file `Derived from` headers and the compatibility pages are unchanged, and the data-format and API pages still describe the formats in the ecosystem's terms.
+
 ## 0.3.1 — 2026-11-15
 
 ### Added

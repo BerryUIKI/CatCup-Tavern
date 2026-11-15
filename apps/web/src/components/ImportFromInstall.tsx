@@ -1,4 +1,4 @@
-import type { SillyTavernImportPlan, SillyTavernImportResult } from '@catcup/shared';
+import type { ExistingInstallPlan, ExistingInstallResult } from '@catcup/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { FolderInput, Import } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -29,16 +29,16 @@ function Counts({ counts }: { counts: { characters: number; chats: number; world
 }
 
 /**
- * Copy an existing SillyTavern installation in one go.
+ * Copy an existing installation in one go.
  *
  * The server does the reading, so the path is a path on the machine running
  * CatCup. A scan comes first: nothing is written until the user has seen what
  * was found.
  */
-export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: () => void }) {
     const [path, setPath] = useState('');
-    const [plan, setPlan] = useState<SillyTavernImportPlan | null>(null);
-    const [result, setResult] = useState<SillyTavernImportResult | null>(null);
+    const [plan, setPlan] = useState<ExistingInstallPlan | null>(null);
+    const [result, setResult] = useState<ExistingInstallResult | null>(null);
     const [busy, setBusy] = useState(false);
     const queryClient = useQueryClient();
     const pushToast = useAppStore((state) => state.pushToast);
@@ -60,7 +60,7 @@ export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: (
         }
         setBusy(true);
         try {
-            const data = await api.importFromSillyTavern(path.trim(), true);
+            const data = await api.importFromInstall(path.trim(), true);
             if ('plan' in data) {
                 setPlan(data.plan);
                 setResult(null);
@@ -75,7 +75,7 @@ export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: (
     const run = async () => {
         setBusy(true);
         try {
-            const data = await api.importFromSillyTavern(path.trim(), false);
+            const data = await api.importFromInstall(path.trim(), false);
             if ('result' in data) {
                 setResult(data.result);
                 setPlan(null);
@@ -96,24 +96,24 @@ export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: (
     };
 
     return (
-        <Modal open={open} onClose={onClose} title="Import from SillyTavern" widthClassName="max-w-2xl">
+        <Modal open={open} onClose={onClose} title="Import from another app" widthClassName="max-w-2xl">
             <div className="space-y-4 p-5">
                 <p className="text-sm leading-relaxed text-muted">
-                    Point at the SillyTavern user folder — the one that holds{' '}
+                    Point at a user folder from another roleplay client — the one that holds{' '}
                     <code className="text-parchment-dim">characters</code>,{' '}
                     <code className="text-parchment-dim">chats</code> and{' '}
                     <code className="text-parchment-dim">worlds</code>. Nothing is copied until you confirm the scan.
                 </p>
 
                 <div>
-                    <label className="label-text" htmlFor="st-path">
-                        SillyTavern data folder
+                    <label className="label-text" htmlFor="import-path">
+                        Data folder
                     </label>
                     <div className="flex gap-2">
                         <input
-                            id="st-path"
+                            id="import-path"
                             className="input-shell font-mono text-xs"
-                            placeholder="C:\SillyTavern\data\default-user"
+                            placeholder="C:\roleplay\data\default-user"
                             value={path}
                             onChange={(event) => setPath(event.target.value)}
                         />
@@ -128,7 +128,7 @@ export function SillyTavernImport({ open, onClose }: { open: boolean; onClose: (
                         </button>
                     </div>
                     <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
-                        Group chats, backgrounds, themes and SillyTavern&apos;s own settings are not imported.
+                        Group chats, backgrounds, themes and the other app&apos;s own settings are not imported.
                     </p>
                 </div>
 

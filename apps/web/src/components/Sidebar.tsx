@@ -29,7 +29,7 @@ interface SidebarProps {
     onSelectGroup: (id: string) => void;
     onNewGroup: () => void;
     onEditGroup: (id: string) => void;
-    onImportSillyTavern: () => void;
+    onImportFromInstall: () => void;
     onDistillBook: () => void;
     onAddSample: () => void;
     addingSample: boolean;
@@ -74,7 +74,7 @@ export function Sidebar({
     onSelectGroup,
     onNewGroup,
     onEditGroup,
-    onImportSillyTavern,
+    onImportFromInstall,
     onDistillBook,
     onAddSample,
     addingSample,
@@ -202,10 +202,10 @@ export function Sidebar({
                     <button
                         type="button"
                         className="mt-2 flex w-full items-center justify-center gap-2 text-xs text-muted transition hover:text-parchment"
-                        onClick={onImportSillyTavern}
+                        onClick={onImportFromInstall}
                     >
                         <FolderInput size={14} />
-                        Import from SillyTavern
+                        Import from another app
                     </button>
                     <button
                         type="button"
