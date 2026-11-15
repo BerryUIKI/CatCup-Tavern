@@ -8,7 +8,7 @@
 
 CatCup can hold a conversation. It cannot run a story.
 
-Everything the app knows how to do with a reply is "the model writes a message, the person writes one back". A distilled novel (RFC 0002) arrives as a cast of cards and a world info book — the raw material for playing *inside* a book — and the library can already turn a card into a persona (#101) so the person speaks as someone from it. What is missing is the part that makes it a story rather than a chat:
+Everything the app knows how to do with a reply is "the model writes a message, the person writes one back". A distilled novel (RFC 0002) arrives as a cast of cards and a world info book — the raw material for playing _inside_ a book — and the library can already turn a card into a persona (#101) so the person speaks as someone from it. What is missing is the part that makes it a story rather than a chat:
 
 1. **Nobody decides who is on screen.** A single chat has one speaking character. A group picks a speaker by a rule (`selection.ts`) and generates exactly one reply. Neither can say "the scene opens in the stairwell, only Mira is there, and the father is still upstairs".
 2. **There is no way to offer the person a choice.** The composer is free text only. A guided story asks "what do you do?", which is a question with answers.
@@ -72,7 +72,7 @@ The person picks who they play. That character's card:
 - **is never written by the model** — its file name goes into `disabled_members` in a group, which already means "present but does not reply" (`groups.ts:189`);
 - **is never offered a persona slot of its own**; the person's persona is still the account persona, and the played member is injected as a second identity block.
 
-In a single chat this is the ordinary case: the one card is the played member, and the model's job is to write everyone *else*. Because a single chat has exactly one card, `playedMembers` there is really "the person plays this card, so the model narrates around it" — see "Open questions" on whether the single-chat path should require a group.
+In a single chat this is the ordinary case: the one card is the played member, and the model's job is to write everyone _else_. Because a single chat has exactly one card, `playedMembers` there is really "the person plays this card, so the model narrates around it" — see "Open questions" on whether the single-chat path should require a group.
 
 **A single chat refuses to play its own card.** The card block in the prompt says "you are `{{char}}`" (`assemble.ts`, the `CHAR_DESCRIPTION` literal), so a chat that both speaks as its character and forbids writing them contradicts itself. This is validated, not warned about:
 
@@ -80,7 +80,6 @@ In a single chat this is the ordinary case: the one card is the played member, a
 - Naming the chat's own character is a `400`, with a message pointing at two ways forward: put the cast in a group, or keep this card as the narrator and play somebody the world book describes.
 
 A group has no such collision: the speaking member is chosen per turn, and a played member is muted for the whole chat.
-
 
 New prompt identifier: `directorRules`, placed after `personaDescription` and before `charDescription`, so the director's standing instructions sit with the other system material and not in the dialogue. Its content is `DirectorConfig.rules` plus a generated cast block:
 
@@ -100,7 +99,7 @@ A reply can carry a list of options:
 
 ```ts
 interface DirectorChoices {
-    options: Array<{ id: string; label: string; /** Optional long form, shown on hover. */ detail?: string }>;
+    options: Array<{ id: string; label: string /** Optional long form, shown on hover. */; detail?: string }>;
 }
 ```
 
@@ -141,10 +140,10 @@ Story mode does not use any of this: its options come from the graph's `choices`
 
 `speakerMode` extends the existing strategies rather than replacing them:
 
-| Mode | Behaviour |
-| --- | --- |
-| `auto` | Today's group `activation_strategy`, unchanged. |
-| `rotate` | List order, skipping played members. |
+| Mode       | Behaviour                                                                                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `auto`     | Today's group `activation_strategy`, unchanged.                                                                                                                                |
+| `rotate`   | List order, skipping played members.                                                                                                                                           |
 | `director` | The model was asked, in the same call that produced the last reply, for a one-line `next` field naming the next speaker; a name not in the cast is ignored and `auto` applies. |
 
 Played members are excluded from every mode. `POST .../generate`'s existing `speaker` field still forces a specific member and wins over all three.
@@ -166,8 +165,8 @@ A narrator message is already a first-class thing: `MessageBubble.tsx` treats `e
 ```ts
 interface StoryNode {
     id: string;
-    title: string;          // "菜场小巷"
-    act: string;            // "第一幕"
+    title: string; // "菜场小巷"
+    act: string; // "第一幕"
     /** Prose the director may use to open the scene. */
     beats: string[];
     /** Who is expected on stage. */
@@ -200,7 +199,7 @@ It is not designed here. Scope, contract and cost belong in its own RFC, and sto
 ## Open questions
 
 1. **Does a single chat need the played-member mechanism at all?** A single chat has one card. If the person plays it, the prompt both asserts "you are this character" and forbids writing them. **Settled: playable members are allowed in a single chat, but never the chat's own character** — that is a `400`, and the message offers a group or a narrator card instead. A narrator card whose job is the world, with the person playing someone the world book describes, is the single-chat shape that works, and it needs no second card.
-2. **Where does `rules` live for a shared profile?** A director config is chat-level, so it is not affected by RFC 0001's scoping — but a *story graph* is library content and would be. `stories/` should follow the same profile/shared split as characters, and the graph id is referenced from `chat_metadata`, which does not travel across profiles either.
+2. **Where does `rules` live for a shared profile?** A director config is chat-level, so it is not affected by RFC 0001's scoping — but a _story graph_ is library content and would be. `stories/` should follow the same profile/shared split as characters, and the graph id is referenced from `chat_metadata`, which does not travel across profiles either.
 3. **Is the choices block reliable across providers?** Settled by construction rather than by a spike: a line-oriented sentinel block that degrades to "fewer options" instead of to unparseable output, Anthropic prefill where the adapter has it, one follow-up request only on failure, and no options at all as the last resort. The residual risk is a model that ignores the instruction entirely, which costs the fallback request and nothing else.
 4. **Do choices belong on the assistant's message or on a narrator message?** Putting them on the assistant's reply keeps one message per turn; putting them on their own narrator message keeps the reply text clean and makes "the director speaks" visually separate. Leaning toward the assistant's message with a distinct border.
 5. **How much story state does the director need in the prompt?** A node's `beats` and `state` are small; `visited` grows. The prompt should get the current node and a compressed note of what was visited, not the whole list.
