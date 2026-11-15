@@ -51,6 +51,7 @@ Common codes:
 | `IMAGE_SCOPE`           | 400       | Neither a character nor a group was provided                  |
 | `IMAGE_FAILED`          | 502       | The image provider request failed                             |
 | `IMAGE_PROMPT_FAILED`   | 400 / 502 | The chat model could not draft an image prompt                |
+| `IMAGE_PORTRAIT_FORMAT` | 400       | A portrait must be PNG: the card data is embedded in the file |
 | `CHARACTER_READ_FAILED` | 500       | A card write succeeded but the card could not be read back    |
 | `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text                |
 | `DISTILL_FORMAT`        | 400       | A book file CatCup cannot read, or an unsupported extension   |
@@ -752,6 +753,28 @@ Errors: `400 DISTILL_FORMAT` for a file CatCup cannot read or an unsupported ext
 
 Removes the folder and the source file. Returns `{ "ok": true }`, `404` when it did not exist.
 
+### `GET /api/distill/skill`
+
+Downloads the distillation pipeline as a portable **Claude Skill**, as a ZIP.
+
+The archive holds one folder, `book-distill/`, that a person drops into a skills directory:
+
+| File                             | Contents                                                         |
+| -------------------------------- | ---------------------------------------------------------------- |
+| `SKILL.md`                       | The four stages, the review-sheet rule and the output contract   |
+| `reference/prompts.md`           | Every prompt the pipeline sends, verbatim, with its placeholders |
+| `reference/analysis.schema.json` | JSON Schema for the per-chunk analysis reply                     |
+| `reference/draft.schema.json`    | JSON Schema for an entry draft and a character draft             |
+| `reference/world-info.md`        | SillyTavern's entry shape and what each field means              |
+| `reference/cards.md`             | Character Card V2 and where each field goes                      |
+
+- **Prompt-only**: there are no scripts. The chunking rule, the merge and the outline threshold are described in prose, because a second implementation would drift from the server's.
+- **Generated from the running constants.** The prompts come from `apps/server/src/distill/prompts.ts`, the same strings a run sends, so an edit changes both the server and the export in one move. `skill.test.ts` fails if a bundle ever carries a prompt the runtime no longer sends.
+- **Needs nothing**: no provider, no model, no uploaded book. Nothing in it is a run.
+- Contains no book text, API key, chat content or secret.
+
+The ZIP's top-level folder is `book-distill/`; its `SKILL.md` carries `name` and `description` frontmatter.
+
 ### `POST /api/distill/runs`
 
 Start a run and stream its progress. The response **is** the event stream, so the dialog that started the run is also the one watching it.
@@ -999,11 +1022,16 @@ A create or an import reaches the shared scope through the same routes that alre
 
 **Personas** are a list inside `settings.json` rather than a file per item, so they have their own routes and `GET /api/settings` returns the merged list, each entry carrying `scope`. A write to the profile's file always starts from the profile's own entries, never from the merged list, so a shared persona never ends up copied into a profile.
 
-| Method | Path                | Purpose                                                                     |
-| ------ | ------------------- | --------------------------------------------------------------------------- |
-| POST   | `/api/personas`     | `{ name, description?, scope }` — `shared` writes `shared/personas.json`    |
-| PATCH  | `/api/personas/:id` | `{ name?, description? }`; lands in whichever file holds the persona        |
-| DELETE | `/api/personas/:id` | Removes it from whichever file holds it, and returns the refreshed settings |
+| Method | Path                      | Purpose                                                                     |
+| ------ | ------------------------- | --------------------------------------------------------------------------- |
+| POST   | `/api/personas`           | `{ name, description?, personality?, scenario?, mesExample?, scope }`       |
+| POST   | `/api/personas/from-card` | `{ characterId, scope? }` — build a persona from a character card           |
+| PATCH  | `/api/personas/:id`       | `{ name?, description?, personality?, scenario?, mesExample? }`             |
+| DELETE | `/api/personas/:id`       | Removes it from whichever file holds it, and returns the refreshed settings |
+
+A persona carries `name` and `description`, plus three optional fields that let it take on a character card's voice: `personality`, `scenario` and `mesExample`. Every optional field defaults to absent, so a `settings.json` written before they existed reads back unchanged and produces exactly the prompt it always did. In the prompt, `description`, `personality` and `scenario` are joined into the one `personaDescription` slot as labelled paragraphs, and `mesExample` is parsed into **example-user** turns — the persona's own lines are never placed in the assistant's seat.
+
+`POST /api/personas/from-card` is how "play as this character" works. It resolves the card profile-first and then shared, and copies `description`, `personality`, `scenario` and `mes_example` into a new persona. `first_mes` is deliberately **not** copied: it is the assistant's opening line, and a persona that carried it would make the model greet itself. The persona is a copy — editing it later never touches the card. Returns `201` with `{ persona, card }`, or `404` when the card does not exist.
 
 ### `GET /api/providers`
 
@@ -1461,7 +1489,21 @@ Asks the active chat provider for an image prompt from the recent conversation.
 
 `characterId` and `groupId` are mutually exclusive; `chatId` is required. `messageIndex` includes history up to and including that message; without it the whole chat is used. Response: `{ "prompt": "a moonlit tavern, two travelers, warm light" }`. The result is cleaned to a comma-separated tag list; the request is limited to `imageGeneration.contextMessages` messages.
 
-Errors: `400 IMAGE_DISABLED`, `400 IMAGE_PROMPT_EMPTY` when there are no messages, and `502 IMAGE_PROMPT_FAILED` when the chat provider fails or returns nothing usable.
+**Drafting does not require an image backend.** It is a chat-model call, so `imageGeneration.enabled` is not checked: a person with no A1111, ComfyUI or OpenAI image endpoint can still get a prompt to copy into an image tool elsewhere. Only `/generate` and `/portrait` need a backend.
+
+Errors: `400 IMAGE_PROMPT_EMPTY` when there are no messages, and `502 IMAGE_PROMPT_FAILED` when the chat provider fails or returns nothing usable.
+
+### `POST /api/images/draft-portrait`
+
+Asks the active chat provider for a portrait prompt built from a character card. No chat is involved, so this works for a card that has never been spoken to.
+
+```json
+{ "characterId": "Mira" }
+```
+
+The card's `description` and `personality` are sent inside a `<character>` block; the instruction comes from `imageGeneration.portraitPromptTemplate`. Response: `{ "prompt": "grey eyes, dark braid, mended apron, calm face" }`. Like `/draft`, it needs no image backend.
+
+Errors: `404` for an unknown card; `400 IMAGE_PROMPT_FAILED` when no chat provider is available; `502 IMAGE_PROMPT_FAILED` when the provider fails.
 
 ### `POST /api/images/generate`
 
@@ -1504,6 +1546,22 @@ Posts a generated image into the chat as a SillyTavern media message.
 ```
 
 The new message has `mes` `[<name> sends a picture that contains: <prompt>].` and `extra.media` with `{ url: "user/images/<folder>/<file>", type: "image", title, negative, generation_type: -1, source: "generated" }`, plus `media_index: 0`, `media_display: "gallery"` and `inline_image: false`. The group route appends to the group chat file. Response: `{ "message": ChatMessage }`.
+
+### `POST /api/images/portrait`
+
+Makes a gallery image the character's picture.
+
+```json
+{ "characterId": "Mira", "file": "image-….png" }
+```
+
+The image is read back from the character's gallery folder rather than trusted from the request, so only something already generated can become a card. The file must be **PNG**: a card stores its data inside the picture as a PNG `tEXt` chunk, so a JPEG or WebP cannot be one — that is `400 IMAGE_PORTRAIT_FORMAT`, and the message says why.
+
+- A **PNG card** is rewritten in place with the same card data embedded in the new image.
+- A **JSON card** is converted: a PNG card of the same id is written beside it and the JSON is removed. `locateItem` prefers `.png`, so keeping both would leave two files claiming one id.
+- The previous picture is **not kept**, and there is no undo. The client confirms before calling this.
+
+Response: `{ "character": CharacterDetail }`. The card's text fields are untouched. Errors: `404` for an unknown character or an image not in that character's gallery; `500 CHARACTER_READ_FAILED` when the card cannot be read back after writing.
 
 ### `POST /api/images/test`
 
