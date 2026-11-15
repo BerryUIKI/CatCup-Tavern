@@ -11,14 +11,17 @@ import {
     StarOff,
     Tag,
     Trash2,
+    UserRound,
     X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '../lib/cn';
 import { CharacterAvatar } from './CharacterAvatar';
+import { Combobox } from './Combobox';
 import { Modal } from './Modal';
 import { matchesScopeFilter, ScopeFilterRow } from './ScopeFilter';
+import { Select } from './Select';
 import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 
@@ -84,6 +87,11 @@ interface CharacterLibraryProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEdit: (id: string) => void;
+    /**
+     * Make a persona from this card, so the card can be played rather than
+     * talked to. Omitted when the surface has no persona store to write to.
+     */
+    onPlayAs?: (character: CharacterSummary) => void;
     onToggleFavorite: (character: CharacterSummary) => void;
     onBulkFavorite: (ids: string[], favorite: boolean) => void;
     onBulkTag: (ids: string[], mode: TagAction, tag: string) => void;
@@ -110,6 +118,7 @@ export function CharacterLibrary({
     selectedCharacterId,
     onSelect,
     onEdit,
+    onPlayAs,
     onToggleFavorite,
     onBulkFavorite,
     onBulkTag,
@@ -133,13 +142,6 @@ export function CharacterLibrary({
     const [tagAction, setTagAction] = useState<TagAction>('add');
     const [tagDialogOpen, setTagDialogOpen] = useState(false);
     const [tagDraft, setTagDraft] = useState('');
-    const tagInputRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        if (tagDialogOpen) {
-            tagInputRef.current?.focus();
-        }
-    }, [tagDialogOpen]);
 
     useEffect(() => {
         if (selectedIds.size === 0 && tagDialogOpen) {
@@ -361,25 +363,16 @@ export function CharacterLibrary({
         <div>
             <div className="sticky top-0 z-10 -mx-1 mb-1 bg-ink-soft/95 px-1 pb-1 backdrop-blur">
                 <div className="flex items-center gap-1">
-                    <div className="relative min-w-0 flex-1">
-                        <ArrowUpDown
-                            size={12}
-                            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
-                            aria-hidden="true"
-                        />
-                        <select
-                            aria-label="Sort characters"
-                            value={sort}
-                            onChange={(event) => setSort(event.target.value as SortKey)}
-                            className="input-shell w-full py-1.5 pl-7 pr-1 text-xs"
-                        >
-                            {SORT_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <Select<SortKey>
+                        label="Sort characters"
+                        hideLabel
+                        size="sm"
+                        className="min-w-0 flex-1"
+                        value={sort}
+                        options={SORT_OPTIONS}
+                        onChange={setSort}
+                        leadingIcon={<ArrowUpDown size={12} />}
+                    />
                     <button
                         type="button"
                         onClick={() => setFavoritesOnly((current) => !current)}
@@ -660,6 +653,18 @@ export function CharacterLibrary({
                                                 <Globe size={13} />
                                             </button>
                                         ) : null}
+                                        {onPlayAs ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => onPlayAs(character)}
+                                                aria-label={`Play as ${character.name}`}
+                                                title="Play as this character"
+                                                disabled={busy}
+                                                className="icon-btn size-7 shrink-0 text-muted hover:text-parchment disabled:opacity-40"
+                                            >
+                                                <UserRound size={13} />
+                                            </button>
+                                        ) : null}
                                         <button
                                             type="button"
                                             onClick={() => onEdit(character.id)}
@@ -688,35 +693,23 @@ export function CharacterLibrary({
                         {selectedIds.size === 1 ? 'selected character' : 'selected characters'}.
                     </p>
                     <div>
-                        <label className="label-text" htmlFor="library-bulk-tag">
-                            Tag
-                        </label>
-                        <input
+                        <span className="label-text">Tag</span>
+                        <Combobox
                             id="library-bulk-tag"
-                            ref={tagInputRef}
-                            className="input-shell"
                             value={tagDraft}
-                            onChange={(event) => setTagDraft(event.target.value)}
-                            list="library-bulk-tag-options"
+                            onChange={setTagDraft}
+                            onEnter={submitTag}
+                            autoFocus
+                            options={allTags.map((tag) => ({ value: tag.label }))}
                             placeholder="e.g. fantasy"
                             maxLength={200}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Enter') {
-                                    event.preventDefault();
-                                    submitTag();
-                                }
-                            }}
+                            emptyHint="No tag matches. Press Enter to add it as typed."
                         />
                         <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
                             {tagInvalid
                                 ? 'Tags cannot contain commas.'
                                 : 'Case-insensitive; the spelling already on a card is kept.'}
                         </p>
-                        <datalist id="library-bulk-tag-options">
-                            {allTags.map((tag) => (
-                                <option key={tag.key} value={tag.label} />
-                            ))}
-                        </datalist>
                     </div>
                     <div className="flex justify-end gap-2">
                         <button type="button" className="btn-ghost" onClick={() => setTagDialogOpen(false)}>

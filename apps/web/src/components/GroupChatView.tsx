@@ -17,6 +17,7 @@ import {
 } from '@catcup/shared';
 import {
     Brain,
+    ChevronDown,
     ImagePlus,
     Images,
     Menu,
@@ -57,6 +58,7 @@ import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { QuickReplyBar } from './QuickReplyBar';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 import { ToolsMenu, type ToolsMenuItem } from './ToolsMenu';
 
@@ -669,39 +671,42 @@ export function GroupChatView({
             </div>
 
             <div className="flex min-w-0 items-center justify-end gap-1.5">
-                <select
+                <Select<string>
+                    label="Select group chat"
+                    hideLabel
+                    size="xs"
+                    className="max-w-[150px] sm:max-w-[190px]"
                     value={selectedChatId ?? ''}
-                    onChange={(event) => handleSelectChat(event.target.value)}
+                    onChange={handleSelectChat}
                     disabled={chats.length === 0 || chatsLoading}
-                    className="max-w-[150px] truncate rounded-lg border border-line bg-surface px-2.5 py-1.5 pr-7 text-xs text-parchment-dim outline-none transition focus:border-amber/50 disabled:opacity-60 sm:max-w-[190px]"
-                    aria-label="Select group chat"
-                >
-                    {chats.length === 0 ? <option value="">No chats</option> : null}
-                    {chats.map((chat) => (
-                        <option key={chat.id} value={chat.id}>
-                            {chat.title}
-                        </option>
-                    ))}
-                </select>
+                    options={chats.map((chat) => ({ value: chat.id, label: chat.title }))}
+                    emptyLabel="No chats"
+                    trailingSlot={
+                        chatsLoading ? (
+                            <Spinner size={12} className="shrink-0 text-muted" />
+                        ) : (
+                            <ChevronDown size={12} className="shrink-0 text-muted" aria-hidden="true" />
+                        )
+                    }
+                />
 
                 {personas.length > 1 ? (
-                    <select
-                        className="hidden max-w-[140px] rounded-lg border border-line bg-ink px-2 py-1.5 text-xs text-parchment-dim sm:block"
+                    <Select<string>
+                        label="Persona for this chat"
+                        hideLabel
+                        size="xs"
+                        className="hidden max-w-[140px] sm:block"
                         value={pinnedPersonaId ?? ''}
-                        onChange={(event) => handlePersonaChange(event.target.value || null)}
+                        onChange={(id) => handlePersonaChange(id || null)}
                         disabled={!selectedChatId || setPersona.isPending}
-                        title="Persona for this chat"
-                        aria-label="Persona for this chat"
-                    >
-                        <option value="">
-                            Default ({personas.find((item) => item.id === activePersonaId)?.name ?? personas[0]?.name})
-                        </option>
-                        {personas.map((item) => (
-                            <option key={item.id} value={item.id}>
-                                {item.name}
-                            </option>
-                        ))}
-                    </select>
+                        options={[
+                            {
+                                value: '',
+                                label: `Default (${personas.find((item) => item.id === activePersonaId)?.name ?? personas[0]?.name})`,
+                            },
+                            ...personas.map((item) => ({ value: item.id, label: item.name })),
+                        ]}
+                    />
                 ) : null}
 
                 <button
@@ -927,19 +932,18 @@ export function GroupChatView({
                         {group.activation_strategy === 2 ? (
                             <>
                                 <span>Reply as</span>
-                                <select
-                                    className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
+                                <Select<string>
+                                    label="Who replies next"
+                                    hideLabel
+                                    size="xs"
                                     value={manualSpeaker}
-                                    onChange={(event) => setManualSpeaker(event.target.value)}
+                                    onChange={setManualSpeaker}
                                     disabled={enabledMembers.length === 0}
-                                    aria-label="Who replies next"
-                                >
-                                    {enabledMembers.map((member) => (
-                                        <option key={member.fileName} value={member.fileName}>
-                                            {member.name}
-                                        </option>
-                                    ))}
-                                </select>
+                                    options={enabledMembers.map((member) => ({
+                                        value: member.fileName,
+                                        label: member.name,
+                                    }))}
+                                />
                                 <span className="hidden text-muted sm:inline">
                                     Manual group: you choose who answers.
                                 </span>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
     useActivateProfile,
     useAddSampleCharacter,
+    useAuthStatus,
     useBulkCharacters,
     useCharacter,
     useCharacters,
@@ -14,6 +15,7 @@ import {
     useGroups,
     useImportCharacters,
     useLogout,
+    usePersonaFromCard,
     useProfiles,
     useSetCharacterFavorite,
     useSetChatGreeting,
@@ -21,6 +23,7 @@ import {
     useShareItem,
     useUpdateSettings,
 } from '../hooks/data';
+import { ApiError } from '../lib/api';
 import { pluralize } from '../lib/format';
 import { useAppStore } from '../store/app';
 import { BookDistillDialog } from './BookDistillDialog';
@@ -28,10 +31,10 @@ import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { GroupChatView } from './GroupChatView';
 import { GroupEditor } from './GroupEditor';
+import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
-import { SillyTavernImport } from './SillyTavernImport';
 import { ToastViewport } from './Toast';
 
 const EMPTY_CHARACTERS: CharacterSummary[] = [];
@@ -59,6 +62,12 @@ export function MainApp() {
     const setSidebarOpen = useAppStore((state) => state.setSidebarOpen);
     const pushToast = useAppStore((state) => state.pushToast);
 
+    const authStatus = useAuthStatus();
+    // An open desktop session has no password, so there is nothing to sign out
+    // of; the library footer hides the action rather than leading to a login
+    // screen that cannot accept a password that does not exist.
+    const openSession = authStatus.data?.openSession ?? false;
+
     const charactersQuery = useCharacters();
     const groupsQuery = useGroups();
     const settingsQuery = useSettings();
@@ -78,7 +87,7 @@ export function MainApp() {
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
-    const [stImportOpen, setStImportOpen] = useState(false);
+    const [importFromInstallOpen, setImportFromInstallOpen] = useState(false);
     const [distillOpen, setDistillOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
@@ -115,6 +124,7 @@ export function MainApp() {
     const createChatMutation = useCreateChat(selectedCharacterId);
     const createGroupChatMutation = useCreateGroupChat(selectedGroupId);
     const setGreetingMutation = useSetChatGreeting(selectedCharacterId, selectedChatId);
+    const personaFromCard = usePersonaFromCard();
 
     useEffect(() => {
         // A selected group owns the main pane; do not pull a character back in.
@@ -349,6 +359,26 @@ export function MainApp() {
         );
     };
 
+    /**
+     * Make a persona out of a card, so the card can be played.
+     *
+     * The persona is a copy: the card keeps its own chats, and editing the
+     * persona later never changes what other people see when they talk to it.
+     */
+    const handlePlayAs = (character: CharacterSummary) => {
+        personaFromCard.mutate(
+            { characterId: character.id, scope: 'profile' },
+            {
+                onSuccess: (result) =>
+                    pushToast(
+                        `${result.persona.name} is now a persona. Pick it from a chat header, or make it the default in Settings → Personas.`,
+                        'success',
+                    ),
+                onError: (error) => pushToast(error.message, 'error'),
+            },
+        );
+    };
+
     const handleToggleFavorite = (character: CharacterSummary) => {
         favoriteMutation.mutate(
             { id: character.id, favorite: !character.fav },
@@ -507,6 +537,13 @@ export function MainApp() {
         try {
             await logoutMutation.mutateAsync();
         } catch (error) {
+            // An open desktop install has nothing to sign out of. The button is
+            // hidden there, so this is the stale-tab path; say what happened
+            // rather than reporting a failure that leaves the app unchanged.
+            if (error instanceof ApiError && error.code === 'NO_PASSWORD') {
+                pushToast('This install has no password, so there is no session to sign out of.', 'info');
+                return;
+            }
             pushToast(error instanceof Error ? error.message : 'Sign out failed.', 'error');
         }
     };
@@ -528,6 +565,7 @@ export function MainApp() {
                 selectedCharacterId={selectedCharacterId}
                 onSelect={selectCharacter}
                 onEditCharacter={(id) => setEditingCharacterId(id)}
+                onPlayAsCharacter={handlePlayAs}
                 onToggleFavorite={handleToggleFavorite}
                 onBulkFavorite={handleBulkFavorite}
                 onBulkTag={handleBulkTag}
@@ -541,7 +579,7 @@ export function MainApp() {
                 onSelectGroup={selectGroup}
                 onNewGroup={() => setGroupEditor({ mode: 'create' })}
                 onEditGroup={(id) => setGroupEditor({ mode: 'edit', id })}
-                onImportSillyTavern={() => setStImportOpen(true)}
+                onImportFromInstall={() => setImportFromInstallOpen(true)}
                 onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
@@ -559,7 +597,7 @@ export function MainApp() {
                 onSwitchProfile={(id) => void handleSwitchProfile(id)}
                 onManageProfiles={() => openSettings('profiles')}
                 onOpenSettings={() => openSettings()}
-                onLogout={() => void handleLogout()}
+                onLogout={openSession ? null : () => void handleLogout()}
                 loggingOut={logoutMutation.isPending}
                 open={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
@@ -603,7 +641,7 @@ export function MainApp() {
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-            <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
+            <ImportFromInstall open={importFromInstallOpen} onClose={() => setImportFromInstallOpen(false)} />
 
             <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 

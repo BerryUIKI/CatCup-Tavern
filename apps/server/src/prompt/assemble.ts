@@ -153,6 +153,32 @@ function exampleToMessage(example: ExampleMessage): CompletionMessage {
     };
 }
 
+/**
+ * A persona's text for the `personaDescription` slot.
+ *
+ * The description comes first and alone when it is all there is. The optional
+ * fields follow it as labelled paragraphs, because an unlabelled block would
+ * read as more description and the model would not know which part is a way of
+ * speaking and which part is a place.
+ *
+ * Returns `''` when the persona has no text at all, so the slot is not inserted.
+ */
+export function personaPromptText(persona: PersonaSettings): string {
+    const description = persona.description.trim();
+    const parts: string[] = [];
+    if (description) {
+        parts.push(description);
+    }
+    if (persona.personality?.trim()) {
+        parts.push(`Personality: ${persona.personality.trim()}`);
+    }
+    if (persona.scenario?.trim()) {
+        parts.push(`Scenario: ${persona.scenario.trim()}`);
+    }
+
+    return parts.join('\n\n');
+}
+
 /** Group injections at one depth into the order SillyTavern ends up emitting. */
 function buildDepthMessages(injections: readonly Injection[]): CompletionMessage[] {
     const orders = [...new Set(injections.map((injection) => injection.order))].sort((a, b) => a - b);
@@ -249,11 +275,17 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         },
     ];
 
-    if (input.persona.description.trim()) {
+    // The persona's own text, in one slot so the prompt order keeps treating it
+    // as one thing. The optional fields are appended in a fixed order and only
+    // when they carry something: a persona with a name and a description — the
+    // shape every settings file had before the fields existed — produces exactly
+    // the description it always did.
+    const personaText = personaPromptText(input.persona);
+    if (personaText) {
         literals.push({
             identifier: IDENTIFIER.PERSONA_DESCRIPTION,
             role: 'system',
-            content: input.persona.description,
+            content: personaText,
         });
     }
 
@@ -676,15 +708,38 @@ function buildExampleBlocks(
     // so the speaker prefixes are the real names. In a group, every member's
     // name is a speaker, and each turn keeps its prefix so the examples read
     // as three people rather than one.
+    const exampleOptions = input.group
+        ? { otherNames: input.group.members.filter((name) => name !== input.persona.name), appendNames: true }
+        : {};
+    const cardName = card.name || input.character.name;
+
     const cardBlocks = parseExampleBlocks(
         substitute(card.mes_example ?? ''),
-        card.name || input.character.name,
+        cardName,
         input.persona.name,
-        input.group
-            ? { otherNames: input.group.members.filter((name) => name !== input.persona.name), appendNames: true }
-            : {},
+        exampleOptions,
     );
     blocks.push(...cardBlocks.map((block) => block.map(exampleToMessage)));
+
+    // A persona made from a card carries that card's exchanges. They are parsed
+    // with the same seating: the persona's lines are the `example_user` turns
+    // and the character's are `example_assistant`, because an example written
+    // the other way round would teach the model to speak the persona's lines
+    // from the assistant's seat.
+    //
+    // The `<START>` is prepended rather than relied on, so a persona text
+    // written without one still parses; it is skipped entirely when empty,
+    // which leaves a persona that has no examples producing exactly the blocks
+    // it always did.
+    if (input.persona.mesExample?.trim()) {
+        const personaBlocks = parseExampleBlocks(
+            `<START>\n${substitute(input.persona.mesExample)}`,
+            cardName,
+            input.persona.name,
+            exampleOptions,
+        );
+        blocks.push(...personaBlocks.map((block) => block.map(exampleToMessage)));
+    }
 
     for (const example of worldInfo?.worldInfoExamples ?? []) {
         if (example.position !== 1 || !example.content) {

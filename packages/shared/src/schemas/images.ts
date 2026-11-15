@@ -95,6 +95,15 @@ export const DEFAULT_IMAGE_NEGATIVE_PROMPT =
  */
 export const DEFAULT_IMAGE_PROMPT_TEMPLATE = `Ignore previous instructions. Reply with a single comma-separated list of visual keywords that describe the last chat message. Start with the location, then the number of characters and their relative positions, then each character's visible appearance and actions. Use pronouns or neutral nouns instead of names. Do not include thoughts, feelings, dialogue, or anything that would not be visible in a still image. Do not write in full sentences.`;
 
+/**
+ * Instruction for drafting a character portrait from a card.
+ *
+ * The difference from the chat template is the source: a portrait has no scene
+ * to describe, only a person's appearance and bearing, and it must read as a
+ * stand-alone character sheet image rather than as a moment from a story.
+ */
+export const DEFAULT_PORTRAIT_PROMPT_TEMPLATE = `Ignore previous instructions. You are given a character card: a description and a personality. Reply with a single comma-separated list of visual keywords that would make a portrait of this character. Describe only what is visible: apparent age, build, face, hair, clothing and defining features first, then expression and pose. Use the character's own name only if it appears in the description; otherwise use pronouns. Do not include thoughts, feelings, dialogue, scenery or other characters. Do not write in full sentences.`;
+
 export const imageGenerationSettingsSchema = z.object({
     enabled: z.boolean().default(false),
     backend: z.enum(IMAGE_BACKENDS).default('automatic1111'),
@@ -131,6 +140,8 @@ export const imageGenerationSettingsSchema = z.object({
     negativePrompt: z.string().max(4000).default(DEFAULT_IMAGE_NEGATIVE_PROMPT),
     /** Instruction for "Draft from chat"; sent to the active text provider. */
     promptTemplate: z.string().max(10000).default(DEFAULT_IMAGE_PROMPT_TEMPLATE),
+    /** Instruction for "Generate portrait", which reads the card instead of the chat. */
+    portraitPromptTemplate: z.string().max(10000).default(DEFAULT_PORTRAIT_PROMPT_TEMPLATE),
     contextMessages: z.number().int().min(1).max(50).default(10),
 });
 export type ImageGenerationSettings = z.infer<typeof imageGenerationSettingsSchema>;
@@ -151,6 +162,7 @@ export const DEFAULT_IMAGE_GENERATION_SETTINGS: ImageGenerationSettings = {
     promptPrefix: DEFAULT_IMAGE_PROMPT_PREFIX,
     negativePrompt: DEFAULT_IMAGE_NEGATIVE_PROMPT,
     promptTemplate: DEFAULT_IMAGE_PROMPT_TEMPLATE,
+    portraitPromptTemplate: DEFAULT_PORTRAIT_PROMPT_TEMPLATE,
     contextMessages: 10,
 };
 
@@ -182,6 +194,7 @@ export const imageGenerationPatchSchema = z.object({
     promptPrefix: z.string().max(2000).optional(),
     negativePrompt: z.string().max(4000).optional(),
     promptTemplate: z.string().max(10000).optional(),
+    portraitPromptTemplate: z.string().max(10000).optional(),
     contextMessages: z.number().int().min(1).max(50).optional(),
 });
 export type ImageGenerationPatch = z.infer<typeof imageGenerationPatchSchema>;
@@ -238,6 +251,18 @@ export const draftImagePromptRequestSchema = z
     })
     .refine(hasOneScope, targetRefinement);
 export type DraftImagePromptRequest = z.infer<typeof draftImagePromptRequestSchema>;
+
+/**
+ * Draft a portrait prompt from a card.
+ *
+ * Only a character id: a portrait is about the character, not about a chat, so
+ * there is no `chatId` and no message index. The card is enough, and that is the
+ * point — a freshly distilled cast member has no chat to read from.
+ */
+export const draftPortraitPromptRequestSchema = z.object({
+    characterId: z.string().trim().min(1).max(200),
+});
+export type DraftPortraitPromptRequest = z.infer<typeof draftPortraitPromptRequestSchema>;
 
 export const generateImageRequestSchema = z
     .object({

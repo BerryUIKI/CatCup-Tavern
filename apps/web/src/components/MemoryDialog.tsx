@@ -167,8 +167,8 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                 <div>
                     <h3 className="font-display text-lg text-parchment">{title}</h3>
                     <p className="mt-1 text-sm leading-relaxed text-muted">
-                        A rolling summary of this chat, injected into the prompt and stored in the chat file as
-                        SillyTavern&apos;s Memory extension does.
+                        A rolling summary of this chat, injected into the prompt and stored in the chat file on the
+                        message it covers.
                     </p>
                 </div>
 

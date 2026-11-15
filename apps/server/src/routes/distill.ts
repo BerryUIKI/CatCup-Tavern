@@ -6,6 +6,7 @@ import { estimateBook } from '../distill/estimate.js';
 import { BookParseError } from '../distill/parse.js';
 import { findRun, stopRun, subscribe } from '../distill/registry.js';
 import { acceptDraft, startModelRun, startSectionsRun } from '../distill/run.js';
+import { buildSkillArchive, SKILL_NAME } from '../distill/skill.js';
 import { badRequest, HttpError, notFound } from '../http/errors.js';
 import { endSse, initSse, writeSse } from '../sse.js';
 import { createBook, deleteBook, listBooks, readBook } from '../storage/books.js';
@@ -126,6 +127,22 @@ export async function registerDistillRoutes(app: FastifyInstance): Promise<void>
         }
         return { ok: true };
     });
+
+    /**
+     * The distillation pipeline as a portable Claude Skill, as a ZIP.
+     *
+     * Prompt-only: the instructions and the output contracts travel, a second
+     * implementation of the chunker does not. The archive is generated from the
+     * same constants a run sends, so it cannot describe prompts the server has
+     * stopped using — and it needs no provider, no model and no uploaded book,
+     * because nothing in it is a run.
+     */
+    app.get('/api/distill/skill', async (_request, reply) =>
+        reply
+            .header('Content-Type', 'application/zip')
+            .header('Content-Disposition', `attachment; filename="${SKILL_NAME}.zip"`)
+            .send(buildSkillArchive()),
+    );
 
     // --- runs --------------------------------------------------------------
 

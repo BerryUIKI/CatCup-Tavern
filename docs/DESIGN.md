@@ -83,10 +83,10 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
 
 - Settings is a modal `max-w-5xl`, with a fixed height of `min(78dvh, 760px)`.
 - The left nav is grouped: **Model**, **Prompt**, **Chat**, **Media**, **About**. Below 768 px it
-  becomes a native select with the same groups.
+  becomes a `Select` with the same groups, each option carrying its group as a second line.
 - Every section has a fixed header (icon, title, one-sentence description) and a scrolling body.
 - The Providers panel is master–detail: the provider list appears at 1024 px and wider; below that a
-  provider select sits above the form.
+  provider `Select` sits above the form, each row naming the provider's service and default model.
 - Panels that save with a button keep a sticky footer. Panels that apply immediately (toggles) say so
   through their layout, not a fake save bar.
 
@@ -186,7 +186,30 @@ for both the favicon and the in-app logo. The README banner ships in dark and li
 - Errors appear in a `role="alert"` strip that stays visible above the footer, and inline where a
   single field is at fault. Never rely on a toast for a validation failure.
 - Password-like values (API keys) are never prefilled; only the provider key gets a show/hide button.
-- Use a real `<form>`; Enter submits, and destructive buttons are `type="button"`.
+- Use a real `<form>`; Enter submits, and destructive buttons are `type="button"`. **Never nest a
+  form inside another form** — the inner submit reaches the outer handler, and the browser may run a
+  native submission that reloads the app.
+- A row-level action inside a form (adding a model id, a header, a tag) is a `type="button"` with an
+  `onKeyDown` Enter handler, never a second form.
+
+### Selects and suggestions
+
+A native `<select>` and a `<datalist>` both draw their popup themselves, past where CSS can reach:
+on Windows they arrive as a white system list in the middle of a dark panel. CatCup uses two
+components instead.
+
+- **`Select`** — one option from a list. Trigger styled with `.input-shell` (or the compact `sm` /
+  header `xs` sizes), a `role="listbox"` popover in `surface` with `line` borders and `rounded-xl`,
+  the selected row marked in `amber`. Portalled, so a scrolling panel cannot clip it. Keyboard:
+  Enter/Space/ArrowDown open on the current row; Arrow keys, Home, End and type-ahead move; Escape
+  closes and returns focus to the trigger; Tab leaves. It registers as a focus layer, so Escape
+  closes the list and not the dialog underneath.
+- **`Combobox`** — a free-text field with suggestions, for anything that accepts a value the list
+  does not carry: a model id from a gateway without `/models`, a sampler, a tag. Typing filters;
+  Enter accepts the highlighted row or hands the typed text to `onEnter`; a "no match" row says the
+  typed value can still be used.
+- Sizes: `md` for a form field, `sm` for a compact settings row, `xs` for a control beside a title.
+- Neither replaces a plain text input. A field with no candidates is an `<input>`.
 
 ### Settings section
 
@@ -213,6 +236,22 @@ found and decides what to keep. Three rules carry it.
 A merge control belongs on the sheet when the job can split one thing into two — clustering a
 character under two names, say. Select rows, merge into the first; contents concatenate, keys
 union, and the strongest confidence survives.
+
+### Degrade, do not disable
+
+A control whose work does not need the missing piece stays enabled. **Draft from chat** and **Draft
+from card** are chat-model calls, so they keep working when no image backend is configured; the
+dialog explains what is missing in one line and offers **Copy**, rather than greying out the only
+part that works. The rule is one sentence: a feature that can do half its job without the setup
+should do that half and say what the other half needs.
+
+### Destructive writes name what is lost
+
+**Use as portrait** replaces a character's picture permanently, because a card's image and its data
+are one file and there is no previous version to restore. The confirmation names the character and
+says in the body — not a footnote — that the previous picture is not kept, and that the text fields
+are untouched. The same shape applies to any write that cannot be undone by reading the old value
+back first.
 
 ### Dialogs
 

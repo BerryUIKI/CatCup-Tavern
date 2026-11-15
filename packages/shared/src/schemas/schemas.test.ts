@@ -3,7 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { characterBulkRequestSchema, characterCardDataSchema, characterFavoriteRequestSchema } from './character.js';
 import { groupSchema } from './group.js';
 import { DEFAULT_IMAGE_GENERATION_SETTINGS } from './images.js';
-import { providerDraftTestSchema } from './provider.js';
+import {
+    DEFAULT_BASE_URLS,
+    expectsKey,
+    PROTOCOL_LABELS,
+    PROVIDER_TEMPLATES,
+    protocolFor,
+    providerConfigSchema,
+    providerDraftTestSchema,
+    providerInitials,
+    providerSummary,
+} from './provider.js';
 import { appSettingsSchema, DEFAULT_MEMORY_SETTINGS, DEFAULT_UI_SETTINGS, settingsPatchSchema } from './settings.js';
 import { DEFAULT_TTS_SETTINGS } from './tts.js';
 
@@ -133,5 +143,73 @@ describe('character library schemas', () => {
         });
         expect(parsed.ids).toEqual(['Aria']);
         expect(parsed.tags).toEqual(['fantasy']);
+    });
+});
+
+describe('provider protocol and templates', () => {
+    it('resolves the three OpenAI-shaped kinds to one protocol', () => {
+        expect(protocolFor('openai')).toBe('openai');
+        expect(protocolFor('openrouter')).toBe('openai');
+        expect(protocolFor('custom')).toBe('openai');
+        expect(protocolFor('anthropic')).toBe('anthropic');
+        expect(protocolFor('ollama')).toBe('ollama');
+    });
+
+    it('describes each protocol, not each vendor', () => {
+        // The label is the wire format; the vendor name lives on the template.
+        expect(PROTOCOL_LABELS.openai).toBe('OpenAI Chat Completions');
+        expect(PROTOCOL_LABELS.anthropic).toBe('Anthropic Messages');
+        expect(PROTOCOL_LABELS.ollama).toBe('Ollama native');
+    });
+
+    it('offers one template per service, each naming a kind and a real default URL', () => {
+        expect(PROVIDER_TEMPLATES.map((template) => template.id)).toEqual([
+            'openai',
+            'anthropic',
+            'openrouter',
+            'ollama',
+        ]);
+        for (const template of PROVIDER_TEMPLATES) {
+            expect(template.kind).toBe(template.id);
+            expect(DEFAULT_BASE_URLS[template.kind]).not.toBe('');
+            expect(template.initials).toHaveLength(2);
+        }
+        // A custom provider is the absence of a template, so it has no default.
+        expect(DEFAULT_BASE_URLS.custom).toBe('');
+    });
+
+    it('marks a custom provider with no vendor initials', () => {
+        expect(providerInitials('openai')).toBe('OA');
+        expect(providerInitials('openrouter')).toBe('OR');
+        expect(providerInitials('custom')).toBe('CP');
+    });
+
+    it('summarises a row by its service, or by its protocol when it has none', () => {
+        expect(providerSummary('openrouter', 'glm-5.3')).toBe('OpenRouter · glm-5.3');
+        expect(providerSummary('openrouter', '')).toBe('OpenRouter');
+        // A custom provider names no vendor: the protocol is the only fact stored.
+        expect(providerSummary('custom', 'llama3')).toBe('OpenAI Chat Completions · llama3');
+    });
+
+    it('expects a key only from the hosted kinds', () => {
+        expect(expectsKey('openai')).toBe(true);
+        expect(expectsKey('openrouter')).toBe(true);
+        expect(expectsKey('anthropic')).toBe(true);
+        expect(expectsKey('ollama')).toBe(false);
+        expect(expectsKey('custom')).toBe(false);
+    });
+
+    it('keeps a stored kind exactly as it was written', () => {
+        // The stored discriminator did not change with the protocol naming, so a
+        // file from 0.3.x loads without a migration and without a request change.
+        const parsed = providerConfigSchema.parse({
+            id: 'p1',
+            kind: 'custom',
+            name: 'Local',
+            baseUrl: 'http://127.0.0.1:8080/v1',
+            models: ['a-model'],
+        });
+        expect(parsed.kind).toBe('custom');
+        expect(parsed.defaultModel).toBe('a-model');
     });
 });

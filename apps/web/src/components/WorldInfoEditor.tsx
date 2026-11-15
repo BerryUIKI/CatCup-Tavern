@@ -20,6 +20,7 @@ import {
 } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 const POSITION_LABELS: Record<number, string> = {
@@ -552,17 +553,16 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                             {section === 'matching' ? (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <Field label="Secondary key logic">
-                                        <select
-                                            className="input-shell text-xs"
-                                            value={draft.selectiveLogic}
-                                            onChange={(event) => update('selectiveLogic', Number(event.target.value))}
-                                        >
-                                            {Object.entries(LOGIC_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>
-                                                    {label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select<string>
+                                            label="Secondary key logic"
+                                            hideLabel
+                                            value={String(draft.selectiveLogic)}
+                                            onChange={(value) => update('selectiveLogic', Number(value))}
+                                            options={Object.entries(LOGIC_LABELS).map(([value, label]) => ({
+                                                value,
+                                                label,
+                                            }))}
+                                        />
                                     </Field>
                                     <Field
                                         label="Scan depth"
@@ -668,17 +668,16 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                             {section === 'placement' ? (
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <Field label="Position">
-                                        <select
-                                            className="input-shell text-xs"
-                                            value={draft.position}
-                                            onChange={(event) => update('position', Number(event.target.value))}
-                                        >
-                                            {Object.entries(POSITION_LABELS).map(([value, label]) => (
-                                                <option key={value} value={value}>
-                                                    {label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <Select<string>
+                                            label="Position"
+                                            hideLabel
+                                            value={String(draft.position)}
+                                            onChange={(value) => update('position', Number(value))}
+                                            options={Object.entries(POSITION_LABELS).map(([value, label]) => ({
+                                                value,
+                                                label,
+                                            }))}
+                                        />
                                     </Field>
                                     <Field
                                         label="Insertion order"
@@ -703,15 +702,17 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                                 />
                                             </Field>
                                             <Field label="Role">
-                                                <select
-                                                    className="input-shell text-xs"
-                                                    value={draft.role ?? PROMPT_ROLE.SYSTEM}
-                                                    onChange={(event) => update('role', Number(event.target.value))}
-                                                >
-                                                    <option value={PROMPT_ROLE.SYSTEM}>System</option>
-                                                    <option value={PROMPT_ROLE.USER}>User</option>
-                                                    <option value={PROMPT_ROLE.ASSISTANT}>Assistant</option>
-                                                </select>
+                                                <Select<string>
+                                                    label="Role"
+                                                    hideLabel
+                                                    value={String(draft.role ?? PROMPT_ROLE.SYSTEM)}
+                                                    onChange={(value) => update('role', Number(value))}
+                                                    options={[
+                                                        { value: String(PROMPT_ROLE.SYSTEM), label: 'System' },
+                                                        { value: String(PROMPT_ROLE.USER), label: 'User' },
+                                                        { value: String(PROMPT_ROLE.ASSISTANT), label: 'Assistant' },
+                                                    ]}
+                                                />
                                             </Field>
                                         </>
                                     ) : null}
@@ -892,18 +893,17 @@ function TriState({
 }) {
     return (
         <Field label={label}>
-            <select
-                className="input-shell text-xs"
+            <Select<string>
+                label={label}
+                hideLabel
                 value={value === null ? 'inherit' : value ? 'on' : 'off'}
-                onChange={(event) => {
-                    const next = event.target.value;
-                    onChange(next === 'inherit' ? null : next === 'on');
-                }}
-            >
-                <option value="inherit">Use global setting</option>
-                <option value="on">On</option>
-                <option value="off">Off</option>
-            </select>
+                onChange={(next) => onChange(next === 'inherit' ? null : next === 'on')}
+                options={[
+                    { value: 'inherit', label: 'Use global setting' },
+                    { value: 'on', label: 'On' },
+                    { value: 'off', label: 'Off' },
+                ]}
+            />
         </Field>
     );
 }

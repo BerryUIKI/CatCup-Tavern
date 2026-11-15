@@ -19,6 +19,7 @@ import {
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
@@ -432,19 +433,18 @@ export function QuickReplySettings() {
                 </div>
 
                 <div className="mt-2 flex items-center gap-2">
-                    <select
-                        className="input-shell h-9 flex-1 py-1 text-xs"
-                        value={addSetName}
-                        onChange={(event) => setAddSetName(event.target.value)}
-                        aria-label="Set to add to the bar"
-                    >
-                        <option value="">Add a set…</option>
-                        {available.map((set) => (
-                            <option key={set.id} value={set.name}>
-                                {set.name}
-                            </option>
-                        ))}
-                    </select>
+                    <Select<string>
+                        label="Set to add to the bar"
+                        hideLabel
+                        size="sm"
+                        className="flex-1"
+                        value={addSetName ? addSetName : ''}
+                        onChange={setAddSetName}
+                        options={[
+                            { value: '', label: 'Add a set…' },
+                            ...available.map((set) => ({ value: set.name, label: set.name })),
+                        ]}
+                    />
                     <button
                         type="button"
                         className="btn-ghost h-9 px-3 text-xs"
@@ -557,7 +557,7 @@ export function QuickReplySettings() {
                                         onChange={(event) => patchDraft({ name: event.target.value })}
                                     />
                                     <p className="mt-1 text-[11px] text-muted">
-                                        Renaming moves the set's file, as SillyTavern names the file after the set.
+                                        Renaming moves the set's file, because the file is named after the set.
                                     </p>
                                 </div>
                                 <a

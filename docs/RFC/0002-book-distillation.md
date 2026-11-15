@@ -119,7 +119,7 @@ Cost is shown before the run starts: `chunks × estimated prompt tokens`, from t
 
 ## Interface
 
-Entry point: **Import → From a book** in the library, next to **Import from SillyTavern**.
+Entry point: **Import → From a book** in the library, next to **Import from another app**.
 
 The flow is three steps in one dialog:
 

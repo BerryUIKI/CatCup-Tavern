@@ -365,7 +365,7 @@ export async function importQuickReplySet(
 ): Promise<QuickReplySetWriteResult> {
     const imported = extractQuickReplySet(data);
     if (!imported) {
-        return { status: 'invalid', message: 'The file is not a SillyTavern quick reply set (version 2).' };
+        return { status: 'invalid', message: 'The file is not a version 2 quick reply set.' };
     }
     if (name?.trim()) {
         imported.name = name.trim();

@@ -42,7 +42,7 @@ The server is bundled into a single file so there is no `node_modules` to instal
 Four things had to change to make the packaged layout behave like the development one:
 
 - **A real `require` in the bundle.** The dependencies are CommonJS and call `require` internally, which an ESM bundle cannot satisfy. The bundle build prepends a `createRequire` shim, and also defines `__filename` and `__dirname` from `import.meta.url`. Without them `write-file-atomic` — which every settings and data write goes through — throws `ReferenceError: __filename is not defined` and the write fails, so the packaged app could not save a single setting.
-- **Pretty logs only on a terminal.** The packaged server's stdout is piped into the shell, so `pino-pretty` — which is not installed there — is skipped whenever stdout is not a TTY.
+- **Pretty logs only on a terminal.** The packaged server's stdout is piped into the shell, so `pino-pretty` — which is not installed there — is skipped whenever stdout is not a TTY. The piped output goes to `shell.log`; see the readiness contract below.
 - **Verbatim paths.** Tauri hands back resource paths with the `\\?\` prefix on Windows, and Node cannot resolve a main module given that prefix; the shell strips it before spawning.
 - **The sidecar is named `catcup-node`, not `node`.** On Windows either name works, but a deb or rpm install puts external binaries in `/usr/bin`, where a binary called `node` would replace the distribution's nodejs package. The shell looks for `catcup-node` next to its own executable and falls back to `CATCUP_NODE` or whatever `node` is on `PATH`.
 - **The sidecar name carries the target triple.** `scripts/fetch-node.mjs` derives it from the running Node (`TAURI_ENV_TARGET_TRIPLE` is only set for `beforeBuildCommand` hooks, and this project has none), so a macOS or Linux build does not quietly ship a Windows executable.
@@ -64,7 +64,9 @@ Once listening, the server writes exactly one line to stdout:
 CATCUP_READY <port>
 ```
 
-The shell reads stdout until that line, with a 30 second timeout, then opens `http://127.0.0.1:<port>`. Everything else the server prints is forwarded to the shell's console.
+The shell reads stdout until that line, with a 30 second timeout, then opens `http://127.0.0.1:<port>`. Everything else the server prints — stdout and stderr alike — is appended to `shell.log` in the data directory, beside the chats and settings. That is where to look when the app will not start or an API call fails: a release build has no console to print to. The file is rotated to `shell.log.1` at launch once it passes 4 MB, so it keeps one previous launch rather than growing without limit.
+
+The sidecar is started with `CREATE_NO_WINDOW` on Windows. It is a console-subsystem executable, and Windows allocates a console window for one started by a GUI process — without the flag, launching the app opened a black box that stayed on screen until Quit. The flag gives the child a hidden console: its standard handles still work, so the ready line, the log and the pipes behave exactly as before.
 
 `CATCUP_PORT=0` is deliberate. Probing for a free port and then binding to it leaves a window where another process takes it; asking the OS to pick removes the race.
 
@@ -84,6 +86,8 @@ Two things to know before doing that:
 - **The password travels with the folder.** If `auth.json` exists, the desktop app asks for that password like any other install; only a folder with no `auth.json` opens straight into the app.
 
 Pointing at a copy is the safer way to try a migration: copy `data/`, point the app at the copy, and keep the original untouched until the desktop build has been used for a while.
+
+The shell's log — `shell.log`, described under the readiness contract — lives in this directory too, so it follows `CATCUP_DATA_DIR`. When the data directory cannot be opened for writing the app still starts; its log is simply empty, and the pipes are still drained so the server is never blocked.
 
 ## Lifecycle
 

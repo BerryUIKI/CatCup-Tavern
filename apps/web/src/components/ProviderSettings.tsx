@@ -1,12 +1,21 @@
 import {
     DEFAULT_BASE_URLS,
+    expectsKey,
     type ModelInfo,
-    PROVIDER_KIND_LABELS,
+    PROTOCOL_HINTS,
+    PROTOCOL_LABELS,
+    PROVIDER_PROTOCOLS,
+    PROVIDER_TEMPLATES,
     type ProviderDraftTestInput,
     type ProviderInput,
     type ProviderKind,
+    type ProviderProtocol,
     type ProviderPublic,
+    type ProviderTemplate,
     type ProviderTestResult,
+    protocolFor,
+    providerInitials,
+    providerSummary,
     type SettingsResponse,
 } from '@catcup/shared';
 import {
@@ -35,7 +44,9 @@ import {
 } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { Combobox } from './Combobox';
 import { ConfirmDialog } from './ConfirmDialog';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 export interface ProviderSettingsHandle {
@@ -72,29 +83,13 @@ interface ProviderSettingsProps {
     handleRef?: RefObject<ProviderSettingsHandle | null>;
 }
 
-const KIND_ORDER: ProviderKind[] = ['openai', 'anthropic', 'openrouter', 'ollama', 'custom'];
-
-const KIND_HINTS: Record<ProviderKind, string> = {
-    openai: 'OpenAI, Azure OpenAI and compatible gateways.',
-    anthropic: "Anthropic's Messages API.",
-    openrouter: 'One key for many hosted models.',
-    ollama: 'A local Ollama server; usually no key.',
-    custom: 'Any OpenAI-compatible endpoint, local or hosted.',
-};
-
-const KIND_INITIALS: Record<ProviderKind, string> = {
-    openai: 'OA',
-    anthropic: 'AN',
-    openrouter: 'OR',
-    ollama: 'OL',
-    custom: 'CP',
-};
-
-const KEY_REQUIRED: ProviderKind[] = ['openai', 'openrouter', 'anthropic'];
-
-function requiresKey(kind: ProviderKind): boolean {
-    return KEY_REQUIRED.includes(kind);
-}
+/**
+ * The sentinel the narrow-screen provider list uses for "not saved yet".
+ *
+ * A real provider id cannot collide with it, which is what lets one Select
+ * carry both the list and the pending new provider.
+ */
+const NEW_PROVIDER_OPTION = '__new-provider__';
 
 function errorMessage(error: unknown, fallback: string): string {
     return error instanceof Error ? error.message : fallback;
@@ -183,7 +178,7 @@ function validateForm(form: ProviderForm): string | null {
             return 'Enter a complete base URL.';
         }
     } else if (!DEFAULT_BASE_URLS[form.kind]) {
-        return 'This provider type needs a base URL.';
+        return 'This provider needs a base URL.';
     }
     return null;
 }
@@ -200,8 +195,26 @@ function uniqueName(base: string, providers: ProviderPublic[]): string {
     return `${base} ${suffix}`;
 }
 
+/** The name a new provider starts with: its template's, or a plain custom one. */
 function defaultName(kind: ProviderKind): string {
-    return kind === 'custom' ? 'Custom provider' : PROVIDER_KIND_LABELS[kind];
+    return PROVIDER_TEMPLATES.find((template) => template.id === kind)?.label ?? 'Custom provider';
+}
+
+/**
+ * The kind to store when the protocol changes.
+ *
+ * A provider that still belongs to a service template keeps that template when
+ * the protocol matches it, so switching between OpenAI protocol and Anthropic
+ * protocol and back does not quietly turn an OpenRouter provider into a plain
+ * OpenAI one. Anything else becomes the protocol's default kind — `custom` for
+ * the OpenAI protocol, because a hand-configured endpoint is exactly that.
+ */
+function kindForProtocol(protocol: ProviderProtocol, current: ProviderKind): ProviderKind {
+    const template = PROVIDER_TEMPLATES.find((candidate) => candidate.id === current);
+    if (template && protocolFor(template.kind) === protocol) {
+        return template.kind;
+    }
+    return protocol === 'openai' ? 'custom' : protocol;
 }
 
 function FormSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
@@ -333,11 +346,21 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         }
     };
 
-    const changeKind = (kind: ProviderKind) => {
+    /**
+     * Switch the wire protocol.
+     *
+     * The stored `kind` follows: a provider that still belongs to a template
+     * keeps it when the template speaks the chosen protocol, so an OpenRouter
+     * provider switched to Anthropic and back does not lose its attribution
+     * headers. The base URL is replaced only when it was empty or still the
+     * old kind's default, so a hand-typed endpoint survives.
+     */
+    const changeProtocol = (protocol: ProviderProtocol) => {
         setForm((current) => {
             if (!current) {
                 return current;
             }
+            const kind = kindForProtocol(protocol, current.kind);
             const previousDefault = DEFAULT_BASE_URLS[current.kind];
             const shouldReplace = !current.baseUrl.trim() || current.baseUrl === previousDefault;
             return {
@@ -384,11 +407,19 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         selectionRef.current = { mode: 'new', selectedId: null };
     };
 
-    const chooseKind = (kind: ProviderKind) => {
+    /**
+     * Start a provider from a template card, or from nothing.
+     *
+     * A template prefills name, kind and base URL; `null` is the custom entry,
+     * which starts with an empty endpoint so the person types their own rather
+     * than inheriting a vendor's.
+     */
+    const chooseTemplate = (template: ProviderTemplate | null) => {
+        const kind: ProviderKind = template?.kind ?? 'custom';
         setForm({
             name: uniqueName(defaultName(kind), settings.providers),
             kind,
-            baseUrl: DEFAULT_BASE_URLS[kind],
+            baseUrl: template ? DEFAULT_BASE_URLS[kind] : '',
             models: [],
             defaultModel: '',
             enabled: true,
@@ -712,6 +743,25 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         }
     };
 
+    /**
+     * Append the id typed into the model field.
+     *
+     * Reachable from the Add button and from Enter in the field, and from
+     * nowhere else: the field must not submit the panel's form, because that is
+     * what used to save a half-filled provider.
+     */
+    const addModel = () => {
+        const value = newModel.trim();
+        if (!value || !form) {
+            return;
+        }
+        patchForm({
+            models: form.models.includes(value) ? form.models : [...form.models, value],
+            defaultModel: form.defaultModel || value,
+        });
+        setNewModel('');
+    };
+
     const removeProvider = async () => {
         if (!selectedId) {
             return;
@@ -762,7 +812,6 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
         discard,
     }));
 
-    const modelListId = `${idPrefix}-models`;
     const formId = `${idPrefix}-provider-form`;
     const keyId = `${idPrefix}-provider-key`;
     const switchId = `${idPrefix}-provider-enabled`;
@@ -786,27 +835,51 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                 </span>
                 <div className="min-w-0 flex-1">
                     <h4 className="truncate text-sm font-medium text-parchment">Add provider</h4>
-                    <p className="truncate text-[11px] text-muted">Choose the service this provider talks to.</p>
+                    <p className="truncate text-[11px] text-muted">
+                        Start from nothing, or from a service that fills in its endpoint.
+                    </p>
                 </div>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-5">
+                <p className="mb-2 text-[10px] uppercase tracking-[0.14em] text-muted">Start from scratch</p>
+                <button
+                    type="button"
+                    onClick={() => chooseTemplate(null)}
+                    className="flex w-full items-start gap-3 rounded-xl border border-amber/30 bg-amber/5 p-4 text-left transition hover:border-amber/60 hover:bg-amber/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+                >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-amber/40 bg-amber/10 text-amber">
+                        <Plus size={16} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-parchment">Custom provider</span>
+                        <span className="mt-1 block text-xs leading-relaxed text-muted">
+                            Choose its protocol, enter the request URL and API key yourself. A private gateway, a
+                            self-hosted server, or a reseller.
+                        </span>
+                        <span className="mt-2 block truncate font-mono text-[11px] text-parchment-dim">
+                            https://your-endpoint.example/v1
+                        </span>
+                    </span>
+                </button>
+
+                <p className="mb-2 mt-5 text-[10px] uppercase tracking-[0.14em] text-muted">Or start from a service</p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                    {KIND_ORDER.map((kind) => (
+                    {PROVIDER_TEMPLATES.map((template) => (
                         <button
-                            key={kind}
+                            key={template.id}
                             type="button"
-                            onClick={() => chooseKind(kind)}
+                            onClick={() => chooseTemplate(template)}
                             className="rounded-xl border border-line bg-surface/50 p-4 text-left transition hover:border-amber/50 hover:bg-surface-2/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                         >
                             <span className="flex items-center gap-2">
                                 <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-[10px] font-semibold tracking-wide text-parchment-dim">
-                                    {KIND_INITIALS[kind]}
+                                    {template.initials}
                                 </span>
-                                <span className="text-sm font-medium text-parchment">{PROVIDER_KIND_LABELS[kind]}</span>
+                                <span className="text-sm font-medium text-parchment">{template.label}</span>
                             </span>
-                            <span className="mt-2 block text-xs leading-relaxed text-muted">{KIND_HINTS[kind]}</span>
+                            <span className="mt-2 block text-xs leading-relaxed text-muted">{template.hint}</span>
                             <span className="mt-2 block truncate font-mono text-[11px] text-parchment-dim">
-                                {DEFAULT_BASE_URLS[kind] || 'Custom base URL'}
+                                {DEFAULT_BASE_URLS[template.kind]}
                             </span>
                         </button>
                     ))}
@@ -841,7 +914,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                             <ul className="space-y-1">
                                 {settings.providers.map((provider) => {
                                     const active = provider.id === settings.activeProviderId;
-                                    const keyMissing = requiresKey(provider.kind) && !provider.hasKey;
+                                    const keyMissing = expectsKey(provider.kind) && !provider.hasKey;
                                     const selected = mode === 'existing' && provider.id === selectedId;
                                     return (
                                         <li key={provider.id}>
@@ -849,7 +922,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 type="button"
                                                 onClick={() => requestSelect(provider.id)}
                                                 aria-current={selected ? 'true' : undefined}
-                                                aria-label={`${provider.name}, ${PROVIDER_KIND_LABELS[provider.kind]}${
+                                                aria-label={`${provider.name}, ${providerSummary(provider.kind, '')}${
                                                     active ? ', active' : ''
                                                 }${!provider.enabled ? ', disabled' : ''}${
                                                     keyMissing ? ', no API key saved' : ''
@@ -865,7 +938,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                     <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-amber" />
                                                 ) : null}
                                                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-[10px] font-semibold tracking-wide text-parchment-dim">
-                                                    {KIND_INITIALS[provider.kind]}
+                                                    {providerInitials(provider.kind)}
                                                 </span>
                                                 <span className="min-w-0 flex-1">
                                                     <span className="flex items-center gap-1.5">
@@ -884,8 +957,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                         ) : null}
                                                     </span>
                                                     <span className="block truncate text-[11px] text-muted">
-                                                        {PROVIDER_KIND_LABELS[provider.kind]}
-                                                        {provider.defaultModel ? ` · ${provider.defaultModel}` : ''}
+                                                        {providerSummary(provider.kind, provider.defaultModel)}
                                                     </span>
                                                 </span>
                                                 <span className="flex shrink-0 items-center gap-1">
@@ -931,33 +1003,33 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
 
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                     <div className="shrink-0 border-b border-line-soft p-3 lg:hidden">
-                        <label className="label-text" htmlFor={`${idPrefix}-provider-select`}>
-                            Provider
-                        </label>
-                        <div className="flex items-center gap-2">
-                            <select
+                        <div className="flex items-end gap-2">
+                            <Select
                                 id={`${idPrefix}-provider-select`}
-                                className="input-shell min-w-0 flex-1"
-                                value={mode === 'new' ? '' : (selectedId ?? '')}
-                                onChange={(event) => {
-                                    if (event.target.value) {
-                                        requestSelect(event.target.value);
+                                label="Provider"
+                                className="min-w-0 flex-1"
+                                value={mode === 'new' ? NEW_PROVIDER_OPTION : (selectedId ?? '')}
+                                options={[
+                                    ...(mode === 'new' ? [{ value: NEW_PROVIDER_OPTION, label: 'New provider…' }] : []),
+                                    ...settings.providers.map((provider) => ({
+                                        value: provider.id,
+                                        label: `${provider.name}${
+                                            provider.id === settings.activeProviderId ? ' (active)' : ''
+                                        }${!provider.enabled ? ' (disabled)' : ''}${
+                                            expectsKey(provider.kind) && !provider.hasKey ? ' (no key)' : ''
+                                        }`,
+                                        description: providerSummary(provider.kind, provider.defaultModel),
+                                    })),
+                                ]}
+                                onChange={(id) => {
+                                    if (id !== NEW_PROVIDER_OPTION) {
+                                        requestSelect(id);
                                     }
                                 }}
-                            >
-                                {mode === 'new' ? <option value="">New provider…</option> : null}
-                                {settings.providers.map((provider) => (
-                                    <option key={provider.id} value={provider.id}>
-                                        {provider.name}
-                                        {provider.id === settings.activeProviderId ? ' (active)' : ''}
-                                        {!provider.enabled ? ' (disabled)' : ''}
-                                        {requiresKey(provider.kind) && !provider.hasKey ? ' (no key)' : ''}
-                                    </option>
-                                ))}
-                            </select>
+                            />
                             <button
                                 type="button"
-                                className="btn-ghost shrink-0"
+                                className="btn-ghost mb-0.5 shrink-0"
                                 onClick={requestCreate}
                                 disabled={mode === 'new'}
                                 aria-label="Add provider"
@@ -987,15 +1059,14 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                         >
                             <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-4 py-3 md:px-5">
                                 <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-line bg-ink-soft/70 text-[11px] font-semibold tracking-wide text-parchment-dim">
-                                    {KIND_INITIALS[form.kind]}
+                                    {providerInitials(form.kind)}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                     <h4 className="truncate text-sm font-medium text-parchment">
                                         {form.name.trim() || 'New provider'}
                                     </h4>
                                     <p className="truncate text-[11px] text-muted">
-                                        {PROVIDER_KIND_LABELS[form.kind]}
-                                        {form.defaultModel ? ` · ${form.defaultModel}` : ''}
+                                        {providerSummary(form.kind, form.defaultModel)}
                                         {form.models.length > 1 ? ` (+${form.models.length - 1})` : ''}
                                         {!form.enabled ? ' · Disabled' : ''}
                                         {isActive ? ' · Active' : ''}
@@ -1054,21 +1125,17 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 />
                                             </div>
                                             <div>
-                                                <label className="label-text" htmlFor={`${idPrefix}-provider-kind`}>
-                                                    Type
-                                                </label>
-                                                <select
-                                                    id={`${idPrefix}-provider-kind`}
-                                                    className="input-shell"
-                                                    value={form.kind}
-                                                    onChange={(event) => changeKind(event.target.value as ProviderKind)}
-                                                >
-                                                    {KIND_ORDER.map((kind) => (
-                                                        <option key={kind} value={kind}>
-                                                            {PROVIDER_KIND_LABELS[kind]}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                                <Select<ProviderProtocol>
+                                                    id={`${idPrefix}-provider-protocol`}
+                                                    label="Request protocol"
+                                                    value={protocolFor(form.kind)}
+                                                    options={PROVIDER_PROTOCOLS.map((protocol) => ({
+                                                        value: protocol,
+                                                        label: PROTOCOL_LABELS[protocol],
+                                                        description: PROTOCOL_HINTS[protocol],
+                                                    }))}
+                                                    onChange={changeProtocol}
+                                                />
                                             </div>
                                         </div>
 
@@ -1191,49 +1258,41 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 </ul>
                                             )}
 
-                                            <form
-                                                className="mt-2 flex gap-2"
-                                                onSubmit={(event) => {
-                                                    event.preventDefault();
-                                                    const value = newModel.trim();
-                                                    if (!value) {
-                                                        return;
-                                                    }
-                                                    patchForm({
-                                                        models: form.models.includes(value)
-                                                            ? form.models
-                                                            : [...form.models, value],
-                                                        defaultModel: form.defaultModel || value,
-                                                    });
-                                                    setNewModel('');
-                                                }}
-                                            >
-                                                <input
-                                                    id={`${idPrefix}-provider-new-model`}
-                                                    className="input-shell"
-                                                    list={currentModels.length > 0 ? modelListId : undefined}
-                                                    value={newModel}
-                                                    maxLength={200}
-                                                    spellCheck={false}
-                                                    placeholder="Add a model id, e.g. gpt-5"
-                                                    onChange={(event) => setNewModel(event.target.value)}
-                                                />
+                                            {/*
+                                                A `div`, not a nested `form`. The panel is
+                                                already one form, so a second one is invalid
+                                                HTML: its submit bubbled into the panel's
+                                                `save()`, and the browser was free to run a
+                                                native submission that reloaded the SPA and
+                                                looked exactly like the dialog closing.
+                                                Enter still adds, through the Combobox.
+                                            */}
+                                            <div className="mt-2 flex gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <Combobox
+                                                        id={`${idPrefix}-provider-new-model`}
+                                                        value={newModel}
+                                                        onChange={setNewModel}
+                                                        onEnter={addModel}
+                                                        options={currentModels.map((model) => ({
+                                                            value: model.id,
+                                                            label: model.name,
+                                                        }))}
+                                                        maxLength={200}
+                                                        placeholder="Add a model id, e.g. gpt-5"
+                                                        emptyHint="No suggestion matches. Press Enter or Add to use this id as typed."
+                                                    />
+                                                </div>
                                                 <button
-                                                    type="submit"
-                                                    className="btn-ghost shrink-0"
+                                                    type="button"
+                                                    className="btn-ghost shrink-0 self-start"
                                                     disabled={!newModel.trim()}
+                                                    onClick={addModel}
                                                 >
                                                     <Plus size={15} />
                                                     Add
                                                 </button>
-                                            </form>
-                                            <datalist id={modelListId}>
-                                                {currentModels.map((model) => (
-                                                    <option key={model.id} value={model.id}>
-                                                        {model.name ?? model.id}
-                                                    </option>
-                                                ))}
-                                            </datalist>
+                                            </div>
                                             <p className="field-hint">
                                                 A character may ask for any listed model; one it asks for that is not
                                                 listed falls back to the default.

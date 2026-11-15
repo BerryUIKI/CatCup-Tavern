@@ -1,5 +1,5 @@
 import type { GeneratedImage } from '@catcup/shared';
-import { Download, ImagePlus, Send, Sparkles, WandSparkles } from 'lucide-react';
+import { Copy, Download, ImagePlus, Send, Sparkles, UserRound, WandSparkles } from 'lucide-react';
 import { useState } from 'react';
 
 import { useSettings } from '../hooks/data';
@@ -9,9 +9,11 @@ import {
     useAttachImage,
     useDraftImagePrompt,
     useGenerateImage,
+    useSetPortrait,
 } from '../hooks/useImages';
 import { galleryImageUrl } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { ConfirmDialog } from './ConfirmDialog';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
@@ -38,12 +40,17 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
     const draftPrompt = useDraftImagePrompt();
     const generateImage = useGenerateImage();
     const attachImage = useAttachImage(target);
+    const setPortrait = useSetPortrait();
 
     const [prompt, setPrompt] = useState('');
     const [image, setImage] = useState<GeneratedImage | null>(null);
+    const [confirmPortrait, setConfirmPortrait] = useState(false);
 
     const enabled = settings?.imageGeneration.enabled ?? false;
-    const busy = draftPrompt.isPending || generateImage.isPending || attachImage.isPending;
+    const busy = draftPrompt.isPending || generateImage.isPending || attachImage.isPending || setPortrait.isPending;
+
+    // A portrait is a property of the character, not of a group chat.
+    const canSetPortrait = target.kind === 'character';
 
     const scope = imageScope(target);
 
@@ -91,12 +98,38 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
         }
     };
 
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(prompt.trim());
+            pushToast('Prompt copied.', 'success');
+        } catch {
+            // Clipboard access is denied over plain-HTTP LAN, which is not a
+            // reason to lose the prompt: it is selected and visible already.
+            pushToast('Could not copy. Select the text and copy it yourself.', 'error');
+        }
+    };
+
+    const handlePortrait = async () => {
+        if (!image || target.kind !== 'character') {
+            return;
+        }
+        try {
+            await setPortrait.mutateAsync({ characterId: target.id, file: image.file });
+            pushToast(`${target.name} has a new portrait.`, 'success');
+            setConfirmPortrait(false);
+            onClose();
+        } catch (error) {
+            pushToast(errorMessage(error, 'Could not set the portrait.'), 'error');
+        }
+    };
+
     return (
         <Modal open onClose={onClose} title={`Illustrate ${target.name}`} widthClassName="max-w-2xl">
             <div className="space-y-5 p-5">
                 {!enabled ? (
                     <p className="rounded-lg border border-amber/30 bg-amber/10 px-3 py-2 text-sm text-parchment-dim">
-                        Image generation is disabled. Enable it in Settings → Images first.
+                        No image backend is set up. Drafting a prompt still works — copy it into your own image tool, or
+                        enable one in Settings → Images to generate here.
                     </p>
                 ) : null}
 
@@ -105,16 +138,30 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
                         <label className="label-text" htmlFor="image-prompt">
                             Prompt
                         </label>
-                        <button
-                            type="button"
-                            className="btn-ghost px-2 py-1 text-xs"
-                            onClick={() => void handleDraft()}
-                            disabled={!enabled || busy}
-                            title="Ask the active chat model for a prompt from the recent messages"
-                        >
-                            {draftPrompt.isPending ? <Spinner size={13} /> : <Sparkles size={13} />}
-                            Draft from chat
-                        </button>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                className="btn-ghost px-2 py-1 text-xs"
+                                onClick={() => void handleDraft()}
+                                // Drafting is a chat-model call, so it does not
+                                // depend on the image backend.
+                                disabled={busy}
+                                title="Ask the active chat model for a prompt from the recent messages"
+                            >
+                                {draftPrompt.isPending ? <Spinner size={13} /> : <Sparkles size={13} />}
+                                Draft from chat
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-ghost px-2 py-1 text-xs"
+                                onClick={() => void handleCopy()}
+                                disabled={!prompt.trim()}
+                                title="Copy the prompt to use in another image tool"
+                            >
+                                <Copy size={13} />
+                                Copy
+                            </button>
+                        </div>
                     </div>
                     <textarea
                         id="image-prompt"
@@ -157,6 +204,18 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
                                 {generateImage.isPending ? <Spinner size={14} /> : <WandSparkles size={14} />}
                                 Regenerate
                             </button>
+                            {canSetPortrait ? (
+                                <button
+                                    type="button"
+                                    className="btn-ghost"
+                                    onClick={() => setConfirmPortrait(true)}
+                                    disabled={busy}
+                                    title={`Make this image ${target.name}'s portrait`}
+                                >
+                                    <UserRound size={14} />
+                                    Use as portrait
+                                </button>
+                            ) : null}
                             <button
                                 type="button"
                                 className="btn-primary"
@@ -184,6 +243,23 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
                     Generated images stay in the gallery even when you close this window without inserting them.
                 </p>
             </div>
+
+            <ConfirmDialog
+                open={confirmPortrait}
+                title={`Make this ${target.name}'s portrait?`}
+                description={
+                    <span>
+                        The image becomes the character&apos;s picture, so it appears in the library and every chat.
+                        <strong className="mt-1 block text-parchment">The previous picture is not kept.</strong>A card's
+                        picture and its data are one file, so this rewrites the card — the text fields are untouched.
+                    </span>
+                }
+                confirmLabel="Use as portrait"
+                tone="danger"
+                busy={setPortrait.isPending}
+                onConfirm={() => void handlePortrait()}
+                onCancel={() => setConfirmPortrait(false)}
+            />
         </Modal>
     );
 }

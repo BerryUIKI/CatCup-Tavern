@@ -8,6 +8,7 @@ import { CharacterAvatar } from './CharacterAvatar';
 import { CharacterLibrary } from './CharacterLibrary';
 import { Logo } from './Logo';
 import { ProfileSwitcher } from './ProfileSwitcher';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 interface SidebarProps {
@@ -16,6 +17,8 @@ interface SidebarProps {
     selectedCharacterId: string | null;
     onSelect: (id: string) => void;
     onEditCharacter: (id: string) => void;
+    /** Create a persona from a card, so it can be played rather than talked to. */
+    onPlayAsCharacter: (character: CharacterSummary) => void;
     onToggleFavorite: (character: CharacterSummary) => void;
     onBulkFavorite: (ids: string[], favorite: boolean) => void;
     onBulkTag: (ids: string[], mode: 'add' | 'remove', tag: string) => void;
@@ -29,7 +32,7 @@ interface SidebarProps {
     onSelectGroup: (id: string) => void;
     onNewGroup: () => void;
     onEditGroup: (id: string) => void;
-    onImportSillyTavern: () => void;
+    onImportFromInstall: () => void;
     onDistillBook: () => void;
     onAddSample: () => void;
     addingSample: boolean;
@@ -47,7 +50,12 @@ interface SidebarProps {
     activeProviderName: string | null;
     activeProviderReady: boolean;
     onOpenSettings: () => void;
-    onLogout: () => void;
+    /**
+     * Omitted when the install has no password: an open desktop session has
+     * nothing to sign out of, and offering the action led to a login screen
+     * that could not accept a password that does not exist.
+     */
+    onLogout: (() => void) | null;
     loggingOut: boolean;
     open: boolean;
     onClose: () => void;
@@ -61,6 +69,7 @@ export function Sidebar({
     selectedCharacterId,
     onSelect,
     onEditCharacter,
+    onPlayAsCharacter,
     onToggleFavorite,
     onBulkFavorite,
     onBulkTag,
@@ -74,7 +83,7 @@ export function Sidebar({
     onSelectGroup,
     onNewGroup,
     onEditGroup,
-    onImportSillyTavern,
+    onImportFromInstall,
     onDistillBook,
     onAddSample,
     addingSample,
@@ -202,10 +211,10 @@ export function Sidebar({
                     <button
                         type="button"
                         className="mt-2 flex w-full items-center justify-center gap-2 text-xs text-muted transition hover:text-parchment"
-                        onClick={onImportSillyTavern}
+                        onClick={onImportFromInstall}
                     >
                         <FolderInput size={14} />
-                        Import from SillyTavern
+                        Import from another app
                     </button>
                     <button
                         type="button"
@@ -241,6 +250,7 @@ export function Sidebar({
                         selectedCharacterId={selectedCharacterId}
                         onSelect={onSelect}
                         onEdit={onEditCharacter}
+                        onPlayAs={onPlayAsCharacter}
                         onToggleFavorite={onToggleFavorite}
                         onBulkFavorite={onBulkFavorite}
                         onBulkTag={onBulkTag}
@@ -349,19 +359,18 @@ export function Sidebar({
                         />
                     </div>
                     {switchableProviders.length > 1 ? (
-                        <select
-                            className="mt-1 w-full rounded border border-line bg-ink px-1.5 py-1 text-xs text-parchment-dim"
+                        <Select
+                            label="Active provider"
+                            hideLabel
+                            size="sm"
+                            className="mt-1"
                             value={activeProviderId ?? ''}
-                            onChange={(event) => onSwitchProvider(event.target.value)}
-                            aria-label="Active provider"
-                        >
-                            {switchableProviders.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.name}
-                                    {provider.defaultModel ? ` — ${provider.defaultModel}` : ''}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={onSwitchProvider}
+                            options={switchableProviders.map((provider) => ({
+                                value: provider.id,
+                                label: `${provider.name}${provider.defaultModel ? ` — ${provider.defaultModel}` : ''}`,
+                            }))}
+                        />
                     ) : (
                         <p className="truncate text-xs text-parchment-dim">{activeProviderName ?? 'Not configured'}</p>
                     )}
@@ -372,16 +381,18 @@ export function Sidebar({
                         <Settings2 size={16} />
                         Settings
                     </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={onLogout}
-                        disabled={loggingOut}
-                        title="Sign out"
-                        aria-label="Sign out"
-                    >
-                        {loggingOut ? <Spinner size={16} /> : <LogOut size={17} />}
-                    </button>
+                    {onLogout ? (
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={onLogout}
+                            disabled={loggingOut}
+                            title="Sign out"
+                            aria-label="Sign out"
+                        >
+                            {loggingOut ? <Spinner size={16} /> : <LogOut size={17} />}
+                        </button>
+                    ) : null}
                 </div>
             </div>
         </aside>

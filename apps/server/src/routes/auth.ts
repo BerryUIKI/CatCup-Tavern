@@ -127,7 +127,19 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         },
     );
 
+    /**
+     * End the session on this device.
+     *
+     * An open session has nothing to end: there is no password, so the request
+     * would clear a cookie no one checked and the next call would be served
+     * anyway. Answering `409 NO_PASSWORD` keeps a client from painting a login
+     * screen for a password that cannot exist — the desktop app hides the
+     * action, but a stale tab must not be able to reach the dead end.
+     */
     app.post('/api/auth/logout', async (_request, reply) => {
+        if (await isOpenSession()) {
+            throw new HttpError(409, 'This install has no password to sign out of', 'NO_PASSWORD');
+        }
         reply.clearCookie(SESSION_COOKIE, { path: '/' });
         return { ok: true };
     });

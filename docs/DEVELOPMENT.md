@@ -175,6 +175,33 @@ Run the same gates locally before pushing — CI is a backstop, not a substitute
 pnpm typecheck && pnpm lint && pnpm test && pnpm build
 ```
 
+## Skills
+
+`.claude/skills/` holds Claude Code skills checked into the repository, so the same instructions are
+available in every checkout and to anyone who clones it. Each skill is a folder with a `SKILL.md`
+whose YAML frontmatter carries `name` and a `description` — the description is what decides when the
+skill is loaded, so write it as "use this when…" and name the situations concretely. Anything longer
+goes in `references/`, and anything runnable in `scripts/`. Scripts must not import from `apps/` or
+`packages/`: a skill is usable before the app is built or even running.
+
+Current skills:
+
+| Skill             | What it does                                                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `novel-to-catcup` | Distils a novel or any long text into importable cards, a world info book, persona text and portrait prompts, then validates the pack. |
+
+A skill is only as good as its fidelity to the app. Two rules keep it honest:
+
+- **Field names and routes are copied from the code, not from memory.** A skill that tells the user to
+  call a route with the wrong body shape fails silently at the worst moment — after the model has
+  written a hundred entries.
+- **When a route changes, the skill changes in the same pull request.** The `novel-to-catcup`
+  references describe `/api/characters/import`, `/api/worlds/import` and `/api/settings`; a change to
+  any of those makes part of it stale.
+
+`biome check` covers `.claude/skills/**/*.mjs` because the repository-wide `includes` does not exclude
+it, so skill scripts are formatted and linted like the rest of the repo.
+
 ## Related docs
 
 - [Architecture](ARCHITECTURE.md)

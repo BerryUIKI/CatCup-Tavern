@@ -34,6 +34,26 @@ export function useDraftImagePrompt() {
     });
 }
 
+/** Draft a portrait prompt from a card. Needs no image backend. */
+export function useDraftPortraitPrompt() {
+    return useMutation({
+        mutationFn: (characterId: string) => api.images.draftPortrait({ characterId }),
+    });
+}
+
+/** Promote a gallery image to the card's picture, and refresh the card. */
+export function useSetPortrait() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { characterId: string; file: string }) =>
+            api.images.portrait(input.characterId, input.file),
+        onSuccess: (character) => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.character(character.id) });
+        },
+    });
+}
+
 export function useGenerateImage() {
     return useMutation({
         mutationFn: (input: GenerateImageRequest) => api.images.generate(input),

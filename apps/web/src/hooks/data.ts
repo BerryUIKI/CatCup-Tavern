@@ -92,20 +92,25 @@ export function useLogin() {
     });
 }
 
+/**
+ * End this device's session.
+ *
+ * The status is refetched rather than guessed: an open desktop install has no
+ * password to sign out of, and writing `authenticated: false` into the cache
+ * there paints a login screen the server will not honour. The server answers
+ * `409 NO_PASSWORD` for that case, which the caller should present as "nothing
+ * to sign out of", not as a failure.
+ */
 export function useLogout() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: () => api.auth.logout(),
-        onSuccess: () => {
-            queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
-                needsSetup: false,
-                authenticated: false,
-                openSession: false,
-            });
-            queryClient.removeQueries({
-                predicate: (query) => query.queryKey[0] !== 'auth',
-            });
-        },
+        onSuccess: () =>
+            queryClient.invalidateQueries({ queryKey: queryKeys.auth }).then(() =>
+                queryClient.removeQueries({
+                    predicate: (query) => query.queryKey[0] !== 'auth',
+                }),
+            ),
     });
 }
 
@@ -1194,8 +1199,27 @@ export function useShareItem() {
 export function useCreatePersona() {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (variables: { name: string; description: string; scope: ItemScope }) =>
-            api.personas.create({ name: variables.name, description: variables.description }, variables.scope),
+        mutationFn: (variables: Omit<Persona, 'id'> & { scope: ItemScope }) => {
+            const { scope, ...draft } = variables;
+            return api.personas.create(draft, scope);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
+        },
+    });
+}
+
+/**
+ * Create a persona from a character card.
+ *
+ * The card stays where it is; the persona is a copy, so editing it later never
+ * changes what other chats see of the card.
+ */
+export function usePersonaFromCard() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { characterId: string; scope: ItemScope }) =>
+            api.personas.fromCard(variables.characterId, variables.scope),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
         },

@@ -28,6 +28,7 @@ flowchart TB
 - Open http://localhost:5173, not the API port, during development.
 - Check that Vite is running and that `/api` requests proxy to `:8000`.
 - Look at the browser console and the Vite terminal.
+- **The desktop app shows nothing at launch.** Read `shell.log` in the app data directory (`%APPDATA%\dev.catcup.tavern\shell.log` on Windows, or the folder `CATCUP_DATA_DIR` names). The shell appends everything the packaged server prints there, including why it refused to start. A launch that fails leaves no other trace, because the installed build has no console.
 
 **Production page is 404**
 
@@ -75,6 +76,10 @@ First-run setup is accepted only from loopback. Open the app on the machine runn
 If you know the current password, change it in Settings → About: every other device is signed out and this one stays in. That is the only route that does not touch files.
 
 If the password is lost, stop the server, back up `data/`, delete `data/auth.json`, start the server and set a new password. This logs out every device. Do not delete `data/settings.json` unless you also want to reset providers.
+
+**Sign out is missing**
+
+The desktop app with no password set does not offer **Sign out**: there is no session to end, and the login screen it used to lead to could not accept a password that does not exist. Set a password in Settings → About and the button returns. Web and LAN installs always have a password, so the button is always there.
 
 ## Providers
 

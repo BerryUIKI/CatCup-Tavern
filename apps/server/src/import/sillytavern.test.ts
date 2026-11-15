@@ -54,7 +54,7 @@ describe('SillyTavern scan', () => {
 
     it('rejects a directory that holds nothing it recognises', async () => {
         const dir = await makeTree();
-        await expect(scanSillyTavern(dir)).rejects.toThrow(/No SillyTavern data/);
+        await expect(scanSillyTavern(dir)).rejects.toThrow(/No importable data/);
     });
 
     it('rejects a missing path and a relative one', async () => {

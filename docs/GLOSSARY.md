@@ -84,9 +84,13 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 ## Runtime and infrastructure
 
-**Provider** — A model backend: OpenAI-compatible, OpenRouter, Anthropic, Ollama or a custom endpoint.
+**Provider** — A configured model backend: an endpoint, a protocol, a model list and (usually) a key.
 
-**OpenAI-compatible** — A server implementing `/chat/completions` and usually `/models` with OpenAI's request/response shape.
+**Protocol** — How a provider's requests are encoded and streamed. CatCup implements three: OpenAI Chat Completions (`/chat/completions`, SSE), Anthropic Messages (`/messages`, SSE) and native Ollama (`/api/chat`, NDJSON). The Settings form calls the stored `kind` field a protocol.
+
+**Service template** — A prefill in **Add provider** that supplies a name, a kind and a default base URL for a known service (OpenAI, Anthropic, OpenRouter, Ollama). It does not constrain the provider afterwards.
+
+**OpenAI-compatible** — A server implementing `/chat/completions` and usually `/models` with OpenAI's request/response shape. In CatCup the stored kind for one is `custom`.
 
 **SSE (Server-Sent Events)** — The one-way streaming protocol used for generation events (`start`, `token`, `reasoning`, `done`, `error`).
 

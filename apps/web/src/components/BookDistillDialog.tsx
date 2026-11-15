@@ -1,5 +1,5 @@
 import type { DistillBookEstimate, DistilledBook, DistillMode, DistillRun, ItemScope } from '@catcup/shared';
-import { BookOpen, FileText, Play, RotateCw, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Download, FileText, Play, RotateCw, Square, Trash2, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     useAcceptDistill,
@@ -9,11 +9,13 @@ import {
     useSettings,
     useUploadBook,
 } from '../hooks/data';
+import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { streamDistill } from '../lib/sse';
 import { useAppStore } from '../store/app';
 import { ReviewSheet, type ReviewState } from './DistillReview';
 import { Modal } from './Modal';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 /**
@@ -356,6 +358,27 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                 </ul>
                             </section>
                         ) : null}
+
+                        <section className="rounded-xl border border-line-soft bg-surface/40 px-3 py-2.5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-parchment-dim">Distil somewhere else</p>
+                                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                                        Download this pipeline as a Claude Skill: the same prompts and output contract,
+                                        for a book distilled in Claude Code with no server run.
+                                    </p>
+                                </div>
+                                <a
+                                    className="btn-ghost shrink-0 px-2 py-1 text-xs"
+                                    download="book-distill.zip"
+                                    href={api.distill.skillUrl()}
+                                    title="Download the prompts and output contract as a Claude Skill"
+                                >
+                                    <Download size={13} />
+                                    Skill
+                                </a>
+                            </div>
+                        </section>
                     </div>
                 ) : null}
 
@@ -411,23 +434,17 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
 
                         {mode === 'model' ? (
                             <div>
-                                <label className="label-text" htmlFor="distill-model">
-                                    Model
-                                </label>
-                                <select
-                                    className="input-shell py-2 text-sm"
-                                    disabled={!ready || models.length === 0}
+                                <Select<string>
                                     id="distill-model"
-                                    onChange={(event) => setModel(event.target.value)}
+                                    label="Model"
+                                    disabled={!ready || models.length === 0}
                                     value={model}
-                                >
-                                    <option value="">Provider default</option>
-                                    {models.map((item) => (
-                                        <option key={item} value={item}>
-                                            {item}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={setModel}
+                                    options={[
+                                        { value: '', label: 'Provider default' },
+                                        ...models.map((item) => ({ value: item, label: item })),
+                                    ]}
+                                />
                                 {!ready || models.length === 0 ? (
                                     <p className="field-hint text-wine">
                                         The model draft needs an enabled provider with at least one model. Configure one

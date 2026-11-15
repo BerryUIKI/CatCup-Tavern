@@ -6,6 +6,7 @@ import { useCreateGroup, useDeleteGroup, useUpdateGroup } from '../hooks/data';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 interface MemberDraft {
@@ -232,7 +233,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                         <div className="max-h-64 overflow-y-auto rounded-xl border border-line bg-ink-soft/60">
                             {members.length === 0 ? (
                                 <p className="px-3 py-6 text-center text-xs leading-relaxed text-muted">
-                                    Add at least one character. SillyTavern groups usually have two or three.
+                                    Add at least one character. Groups usually have two or three.
                                 </p>
                             ) : (
                                 <ul className="divide-y divide-line-soft">
@@ -353,21 +354,16 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                        <label className="label-text" htmlFor="group-activation">
-                            Reply order
-                        </label>
-                        <select
+                        <Select<string>
                             id="group-activation"
-                            className="input-shell"
-                            value={activationStrategy}
-                            onChange={(event) => setActivationStrategy(Number(event.target.value))}
-                        >
-                            {ACTIVATION_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
+                            label="Reply order"
+                            value={String(activationStrategy)}
+                            onChange={(value) => setActivationStrategy(Number(value))}
+                            options={ACTIVATION_OPTIONS.map((option) => ({
+                                value: String(option.value),
+                                label: option.label,
+                            }))}
+                        />
                     </div>
                     <div className="flex flex-col justify-end">
                         <label className="flex items-center gap-2 text-xs text-parchment-dim">
@@ -386,21 +382,17 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                 </div>
 
                 <div>
-                    <label className="label-text" htmlFor="group-generation-mode">
-                        Card handling
-                    </label>
-                    <select
+                    <Select<string>
                         id="group-generation-mode"
-                        className="input-shell"
-                        value={generationMode}
-                        onChange={(event) => setGenerationMode(Number(event.target.value))}
-                    >
-                        {GENERATION_MODE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        label="Card handling"
+                        value={String(generationMode)}
+                        onChange={(value) => setGenerationMode(Number(value))}
+                        options={GENERATION_MODE_OPTIONS.map((option) => ({
+                            value: String(option.value),
+                            label: option.label,
+                            description: option.hint,
+                        }))}
+                    />
                     <p className="mt-1 text-[11px] leading-relaxed text-muted">
                         {GENERATION_MODE_OPTIONS.find((option) => option.value === generationMode)?.hint}
                     </p>

@@ -213,7 +213,7 @@ describe('personas across scopes', () => {
         await useDataFolder();
         const { addSharedPersona, listAllPersonas } = await import('../storage/personas.js');
 
-        const shared = await addSharedPersona('Alex', 'A reusable persona');
+        const shared = await addSharedPersona({ name: 'Alex', description: 'A reusable persona' });
         const merged = await listAllPersonas([{ id: shared.id, name: 'Own Alex', description: '' }]);
 
         // One entry per id: the profile's version is what a pin resolves to.
@@ -226,7 +226,7 @@ describe('personas across scopes', () => {
         const { addSharedPersona } = await import('../storage/personas.js');
         const settings = await import('../storage/settings.js');
 
-        await addSharedPersona('Alex', 'shared');
+        await addSharedPersona({ name: 'Alex', description: 'shared' });
         // Writing settings must not persist the shared persona into the profile.
         await settings.updateSettings({ generation: { temperature: 0.9 } });
 
@@ -246,7 +246,7 @@ describe('personas across scopes', () => {
         const { addSharedPersona } = await import('../storage/personas.js');
         const { getSettingsResponse, updateSettings } = await import('../storage/settings.js');
 
-        await addSharedPersona('Alex', 'shared');
+        await addSharedPersona({ name: 'Alex', description: 'shared' });
         // A second save is where a merge-then-write bug would show: the merged
         // list would be persisted and come back as a profile entry as well.
         await updateSettings({ generation: { temperature: 0.5 } });

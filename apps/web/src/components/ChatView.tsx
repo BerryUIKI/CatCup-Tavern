@@ -17,6 +17,7 @@ import {
 } from '@catcup/shared';
 import {
     Brain,
+    ChevronDown,
     Eye,
     ImagePlus,
     Images,
@@ -59,6 +60,7 @@ import { MemoryDialog } from './MemoryDialog';
 import { MessageBubble, StreamingBubble } from './MessageBubble';
 import { Modal } from './Modal';
 import { QuickReplyBar } from './QuickReplyBar';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 import { ToolsMenu, type ToolsMenuItem } from './ToolsMenu';
 
@@ -592,46 +594,43 @@ export function ChatView({
 
             {character ? (
                 <div className="flex items-center gap-1.5">
-                    <div className="relative hidden sm:block">
-                        <select
+                    <div className="hidden sm:block">
+                        <Select<string>
+                            label="Select chat"
+                            hideLabel
+                            size="xs"
+                            className="max-w-[190px]"
                             value={selectedChatId ?? ''}
-                            onChange={(event) => onSelectChat(event.target.value)}
+                            onChange={onSelectChat}
                             disabled={chats.length === 0 || chatsLoading}
-                            className="max-w-[190px] truncate rounded-lg border border-line bg-surface px-2.5 py-1.5 pr-7 text-xs text-parchment-dim outline-none transition focus:border-amber/50 disabled:opacity-60"
-                            aria-label="Select chat"
-                        >
-                            {chats.length === 0 ? <option value="">No chats</option> : null}
-                            {chats.map((chat) => (
-                                <option key={chat.id} value={chat.id}>
-                                    {chat.title}
-                                </option>
-                            ))}
-                        </select>
-                        {chatsLoading ? (
-                            <span className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2">
-                                <Spinner size={12} className="text-muted" />
-                            </span>
-                        ) : null}
+                            options={chats.map((chat) => ({ value: chat.id, label: chat.title }))}
+                            emptyLabel="No chats"
+                            trailingSlot={
+                                chatsLoading ? (
+                                    <Spinner size={12} className="shrink-0 text-muted" />
+                                ) : (
+                                    <ChevronDown size={12} className="shrink-0 text-muted" aria-hidden="true" />
+                                )
+                            }
+                        />
                     </div>
                     {personas.length > 1 ? (
-                        <select
-                            className="hidden max-w-[140px] rounded-lg border border-line bg-ink px-2 py-1.5 text-xs text-parchment-dim sm:block"
+                        <Select<string>
+                            label="Persona for this chat"
+                            hideLabel
+                            size="xs"
+                            className="hidden max-w-[140px] sm:block"
                             value={pinnedPersonaId ?? ''}
-                            onChange={(event) => handlePersonaChange(event.target.value || null)}
+                            onChange={(id) => handlePersonaChange(id || null)}
                             disabled={!selectedChatId || setPersona.isPending}
-                            title="Persona for this chat"
-                            aria-label="Persona for this chat"
-                        >
-                            <option value="">
-                                Default (
-                                {personas.find((item) => item.id === activePersonaId)?.name ?? personas[0]?.name})
-                            </option>
-                            {personas.map((item) => (
-                                <option key={item.id} value={item.id}>
-                                    {item.name}
-                                </option>
-                            ))}
-                        </select>
+                            options={[
+                                {
+                                    value: '',
+                                    label: `Default (${personas.find((item) => item.id === activePersonaId)?.name ?? personas[0]?.name})`,
+                                },
+                                ...personas.map((item) => ({ value: item.id, label: item.name })),
+                            ]}
+                        />
                     ) : null}
                     <button
                         type="button"

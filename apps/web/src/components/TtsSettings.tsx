@@ -6,6 +6,8 @@ import { useCharacters, useSettings, useUpdateSettings } from '../hooks/data';
 import { useSystemVoices } from '../hooks/useTts';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { Combobox } from './Combobox';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 const OPENAI_VOICES = ['alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
@@ -200,11 +202,20 @@ export function TtsSettings() {
     const hasKey = settings?.ttsHasKey ?? false;
     const systemVoices = form.backend === 'system';
     const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window;
-    /** A saved voice from the other backend, kept visible instead of silently showing Default. */
-    const unknownVoiceOption = (value: string) =>
-        value && !voices.some((voice) => voice.id === value) ? (
-            <option value={value}>{value} (not in this browser)</option>
-        ) : null;
+
+    /**
+     * The voice rows, with a saved voice this browser does not list kept visible.
+     *
+     * Without it, a voice stored by another browser would silently read as
+     * "Default" and be overwritten on the next save.
+     */
+    const voiceOptions = (value: string, emptyLabel: string) => [
+        { value: '', label: emptyLabel },
+        ...(value && !voices.some((voice) => voice.id === value)
+            ? [{ value, label: `${value} (not in this browser)` }]
+            : []),
+        ...voices.map((voice) => ({ value: voice.id, label: `${voice.name} (${voice.lang})` })),
+    ];
 
     return (
         <div className="space-y-5 p-5">
@@ -226,18 +237,16 @@ export function TtsSettings() {
 
             <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="label-text" htmlFor="tts-backend">
-                        Backend
-                    </label>
-                    <select
+                    <Select<string>
                         id="tts-backend"
-                        className="input-shell"
+                        label="Backend"
                         value={form.backend}
-                        onChange={(event) => set('backend', event.target.value as TtsSettingsValue['backend'])}
-                    >
-                        <option value="system">Browser voices (local)</option>
-                        <option value="openai-compatible">OpenAI-compatible endpoint</option>
-                    </select>
+                        onChange={(value) => set('backend', value as TtsSettingsValue['backend'])}
+                        options={[
+                            { value: 'system', label: 'Browser voices (local)' },
+                            { value: 'openai-compatible', label: 'OpenAI-compatible endpoint' },
+                        ]}
+                    />
                 </div>
                 <div>
                     <label className="label-text" htmlFor="tts-autoplay">
@@ -269,20 +278,13 @@ export function TtsSettings() {
                         <label className="label-text" htmlFor="tts-system-voice">
                             Default voice
                         </label>
-                        <select
+                        <Select<string>
                             id="tts-system-voice"
-                            className="input-shell"
+                            label="Default voice"
                             value={form.voice}
-                            onChange={(event) => set('voice', event.target.value)}
-                        >
-                            <option value="">Browser default</option>
-                            {unknownVoiceOption(form.voice)}
-                            {voices.map((voice) => (
-                                <option key={voice.id} value={voice.id}>
-                                    {voice.name} ({voice.lang})
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(value) => set('voice', value)}
+                            options={voiceOptions(form.voice, 'Browser default')}
+                        />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -351,37 +353,27 @@ export function TtsSettings() {
                             <label className="label-text" htmlFor="tts-voice">
                                 Default voice
                             </label>
-                            <input
+                            <Combobox
                                 id="tts-voice"
-                                className="input-shell"
-                                list="tts-voice-options"
                                 value={form.voice}
+                                onChange={(value) => set('voice', value)}
                                 maxLength={200}
                                 placeholder="Default (alloy)"
-                                onChange={(event) => set('voice', event.target.value)}
+                                options={OPENAI_VOICES.map((voice) => ({ value: voice }))}
+                                emptyHint="A voice name the list does not carry can still be typed."
                             />
-                            <datalist id="tts-voice-options">
-                                {OPENAI_VOICES.map((voice) => (
-                                    <option key={voice} value={voice} />
-                                ))}
-                            </datalist>
                         </div>
                         <div>
                             <label className="label-text" htmlFor="tts-format">
                                 Audio format
                             </label>
-                            <select
+                            <Select<string>
                                 id="tts-format"
-                                className="input-shell"
+                                label="Audio format"
                                 value={form.format}
-                                onChange={(event) => set('format', event.target.value as TtsSettingsValue['format'])}
-                            >
-                                {FORMATS.map((format) => (
-                                    <option key={format} value={format}>
-                                        {format}
-                                    </option>
-                                ))}
-                            </select>
+                                onChange={(value) => set('format', value as TtsSettingsValue['format'])}
+                                options={FORMATS.map((format) => ({ value: format, label: format }))}
+                            />
                         </div>
                         <div>
                             <label className="label-text" htmlFor="tts-speed">
@@ -461,33 +453,23 @@ export function TtsSettings() {
             )}
 
             <div className="border-t border-line-soft pt-4">
-                <label className="label-text" htmlFor="tts-narrator-voice">
-                    Narrator voice
-                </label>
                 {systemVoices ? (
-                    <select
+                    <Select<string>
                         id="tts-narrator-voice"
-                        className="input-shell"
+                        label="Narrator voice"
                         value={form.narratorVoice}
-                        onChange={(event) => set('narratorVoice', event.target.value)}
-                    >
-                        <option value="">Use the default voice</option>
-                        {unknownVoiceOption(form.narratorVoice)}
-                        {voices.map((voice) => (
-                            <option key={voice.id} value={voice.id}>
-                                {voice.name} ({voice.lang})
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(value) => set('narratorVoice', value)}
+                        options={voiceOptions(form.narratorVoice, 'Use the default voice')}
+                    />
                 ) : (
-                    <input
+                    <Combobox
                         id="tts-narrator-voice"
-                        className="input-shell"
-                        list="tts-voice-options"
                         value={form.narratorVoice}
+                        onChange={(value) => set('narratorVoice', value)}
                         maxLength={200}
                         placeholder="Default voice"
-                        onChange={(event) => set('narratorVoice', event.target.value)}
+                        options={OPENAI_VOICES.map((voice) => ({ value: voice }))}
+                        emptyHint="A voice name the list does not carry can still be typed."
                     />
                 )}
                 <p className="mt-1 text-[11px] text-muted">Used for narrator notes from a quick reply.</p>
@@ -506,30 +488,26 @@ export function TtsSettings() {
                         <div key={character.id} className="flex items-center gap-2">
                             <span className="min-w-0 flex-1 truncate text-sm text-parchment-dim">{character.name}</span>
                             {systemVoices ? (
-                                <select
-                                    className="input-shell h-8 w-56 py-1 text-xs"
+                                <Select<string>
+                                    label={`Voice for ${character.name}`}
+                                    hideLabel
+                                    size="sm"
+                                    className="w-56"
                                     value={form.characterVoices[character.id] ?? ''}
-                                    onChange={(event) => setCharacterVoice(character.id, event.target.value)}
-                                    aria-label={`Voice for ${character.name}`}
-                                >
-                                    <option value="">Default voice</option>
-                                    {unknownVoiceOption(form.characterVoices[character.id] ?? '')}
-                                    {voices.map((voice) => (
-                                        <option key={voice.id} value={voice.id}>
-                                            {voice.name} ({voice.lang})
-                                        </option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <input
-                                    className="input-shell h-8 w-56 py-1 text-xs"
-                                    list="tts-voice-options"
-                                    value={form.characterVoices[character.id] ?? ''}
-                                    maxLength={200}
-                                    placeholder={form.voice ? `Default (${form.voice})` : 'Default (alloy)'}
-                                    onChange={(event) => setCharacterVoice(character.id, event.target.value)}
-                                    aria-label={`Voice for ${character.name}`}
+                                    onChange={(value) => setCharacterVoice(character.id, value)}
+                                    options={voiceOptions(form.characterVoices[character.id] ?? '', 'Default voice')}
                                 />
+                            ) : (
+                                <div className="w-56">
+                                    <Combobox
+                                        value={form.characterVoices[character.id] ?? ''}
+                                        onChange={(value) => setCharacterVoice(character.id, value)}
+                                        maxLength={200}
+                                        placeholder={form.voice ? `Default (${form.voice})` : 'Default (alloy)'}
+                                        options={OPENAI_VOICES.map((voice) => ({ value: voice }))}
+                                        emptyHint="A voice name the list does not carry can still be typed."
+                                    />
+                                </div>
                             )}
                         </div>
                     ))}

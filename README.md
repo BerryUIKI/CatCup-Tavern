@@ -12,9 +12,9 @@
   <img src="https://img.shields.io/badge/platforms-Windows%20%C2%B7%20Web%20%C2%B7%20LAN-lightgrey" alt="Platforms: Windows, web and LAN" />
 </p>
 
-A **SillyTavern-compatible AI roleplay client** with a modern interface, a server-owned generation pipeline and a desktop build that carries its own runtime.
+A **local-first AI roleplay client** with a modern interface, a server-owned generation pipeline and a desktop build that carries its own runtime.
 
-Point it at your SillyTavern data and keep roleplaying — one character or a whole group, with lorebooks, presets, rolling memory, speech and images. Character cards (PNG/JSON V2/V3), chat JSONL, world info and OpenAI presets are read and written in SillyTavern's own formats, so you can move either way without exporting anything.
+Point it at the data you already have and keep roleplaying — one character or a whole group, with lorebooks, presets, rolling memory, speech and images. Character cards (PNG/JSON V2/V3), chat JSONL, world info and OpenAI presets are read and written in SillyTavern's formats, so you can move either way without exporting anything.
 
 > **Status: early access.** `0.3.0` is the latest published build. `dev` carries the next release — self-update, a tray icon, `.catcup` character packages, impersonation and drag-and-drop import are marked **next** below until they ship.
 

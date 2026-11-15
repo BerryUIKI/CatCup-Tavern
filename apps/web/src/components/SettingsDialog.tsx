@@ -48,6 +48,7 @@ import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
+import { Select } from './Select';
 import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
 import { TtsSettings } from './TtsSettings';
@@ -510,28 +511,25 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const renderPromptsPanel = () => (
         <div className="space-y-5 p-5">
             <p className="text-sm leading-relaxed text-muted">
-                An imported SillyTavern OpenAI preset supplies the prompt list, its order, the assembly formats and the
-                sampling parameters. With no preset selected, the built-in SillyTavern defaults are used.
+                An imported OpenAI preset supplies the prompt list, its order, the assembly formats and the sampling
+                parameters. With no preset selected, the built-in defaults are used.
             </p>
 
             <div>
-                <label className="label-text" htmlFor="active-preset">
-                    Active preset
-                </label>
-                <select
+                <Select<string>
                     id="active-preset"
-                    className="input-shell"
+                    label="Active preset"
                     value={settings?.activePresetId ?? ''}
                     disabled={updateSettings.isPending}
-                    onChange={(event) => void handleSelectPreset(event.target.value || null)}
-                >
-                    <option value="">Built-in defaults</option>
-                    {presets.map((preset) => (
-                        <option key={preset.id} value={preset.id}>
-                            {preset.id} ({preset.promptCount} prompts){preset.scope === 'shared' ? ' — Shared' : ''}
-                        </option>
-                    ))}
-                </select>
+                    options={[
+                        { value: '', label: 'Built-in defaults' },
+                        ...presets.map((preset) => ({
+                            value: preset.id,
+                            label: `${preset.id} (${preset.promptCount} prompts)${preset.scope === 'shared' ? ' — Shared' : ''}`,
+                        })),
+                    ]}
+                    onChange={(id) => void handleSelectPreset(id || null)}
+                />
                 <p className="mt-1 text-xs text-parchment-dim">
                     {settings?.activePresetId
                         ? `Active: ${settings.activePresetId}`
@@ -641,9 +639,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             </div>
 
             {worlds.length === 0 ? (
-                <p className="text-sm text-muted">
-                    No books yet. Import a SillyTavern world info JSON file to get started.
-                </p>
+                <p className="text-sm text-muted">No books yet. Import a world info JSON file to get started.</p>
             ) : (
                 <ul className="space-y-2">
                     {worlds.map((world) => (
@@ -789,25 +785,17 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             >
                 <div className="flex h-[min(78dvh,760px)] flex-col md:flex-row">
                     <div className="shrink-0 border-b border-line-soft p-3 md:hidden">
-                        <label className="label-text" htmlFor="settings-section-select">
-                            Settings section
-                        </label>
-                        <select
+                        <Select<SettingsSectionId>
                             id="settings-section-select"
-                            className="input-shell"
+                            label="Settings section"
                             value={section}
-                            onChange={(event) => requestSection(event.target.value as SettingsSectionId)}
-                        >
-                            {GROUPS.map((group) => (
-                                <optgroup key={group} label={group}>
-                                    {SECTIONS.filter((item) => item.group === group).map((item) => (
-                                        <option key={item.id} value={item.id}>
-                                            {item.label}
-                                        </option>
-                                    ))}
-                                </optgroup>
-                            ))}
-                        </select>
+                            options={SECTIONS.map((item) => ({
+                                value: item.id,
+                                label: item.label,
+                                description: item.group,
+                            }))}
+                            onChange={requestSection}
+                        />
                     </div>
 
                     <nav
