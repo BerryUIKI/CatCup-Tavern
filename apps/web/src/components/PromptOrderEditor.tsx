@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { usePreset, useUpdatePreset } from '../hooks/data';
 import { useAppStore } from '../store/app';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 interface Draft {
@@ -167,20 +168,22 @@ export function PromptOrderEditor({ presetId }: { presetId: string }) {
                                     </p>
                                 </div>
 
-                                <select
-                                    className="rounded-lg border border-line bg-ink px-2 py-1 text-xs text-parchment-dim"
+                                <Select<string>
+                                    label={`Injection position for ${entry.identifier}`}
+                                    hideLabel
+                                    size="sm"
                                     value={absolute ? '1' : '0'}
                                     disabled={!prompt}
-                                    onChange={(event) =>
+                                    onChange={(value) =>
                                         patchPrompt(entry.identifier, {
-                                            injection_position: Number(event.target.value),
+                                            injection_position: Number(value),
                                         })
                                     }
-                                    aria-label={`Injection position for ${entry.identifier}`}
-                                >
-                                    <option value="0">Relative</option>
-                                    <option value="1">At depth</option>
-                                </select>
+                                    options={[
+                                        { value: '0', label: 'Relative' },
+                                        { value: '1', label: 'At depth' },
+                                    ]}
+                                />
                             </div>
 
                             {absolute && prompt ? (
@@ -215,22 +218,25 @@ export function PromptOrderEditor({ presetId }: { presetId: string }) {
                                             }
                                         />
                                     </label>
-                                    <label className="flex items-center gap-1">
+                                    <span className="flex items-center gap-1">
                                         Role
-                                        <select
-                                            className="rounded border border-line bg-ink px-1.5 py-0.5 text-parchment-dim"
+                                        <Select<string>
+                                            label={`Role for ${entry.identifier}`}
+                                            hideLabel
+                                            size="sm"
                                             value={prompt.role ?? 'system'}
-                                            onChange={(event) =>
+                                            onChange={(value) =>
                                                 patchPrompt(entry.identifier, {
-                                                    role: event.target.value as PromptEntry['role'],
+                                                    role: value as PromptEntry['role'],
                                                 })
                                             }
-                                        >
-                                            <option value="system">System</option>
-                                            <option value="user">User</option>
-                                            <option value="assistant">Assistant</option>
-                                        </select>
-                                    </label>
+                                            options={[
+                                                { value: 'system', label: 'System' },
+                                                { value: 'user', label: 'User' },
+                                                { value: 'assistant', label: 'Assistant' },
+                                            ]}
+                                        />
+                                    </span>
                                 </div>
                             ) : null}
                         </li>

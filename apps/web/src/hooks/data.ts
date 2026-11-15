@@ -92,20 +92,25 @@ export function useLogin() {
     });
 }
 
+/**
+ * End this device's session.
+ *
+ * The status is refetched rather than guessed: an open desktop install has no
+ * password to sign out of, and writing `authenticated: false` into the cache
+ * there paints a login screen the server will not honour. The server answers
+ * `409 NO_PASSWORD` for that case, which the caller should present as "nothing
+ * to sign out of", not as a failure.
+ */
 export function useLogout() {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: () => api.auth.logout(),
-        onSuccess: () => {
-            queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
-                needsSetup: false,
-                authenticated: false,
-                openSession: false,
-            });
-            queryClient.removeQueries({
-                predicate: (query) => query.queryKey[0] !== 'auth',
-            });
-        },
+        onSuccess: () =>
+            queryClient.invalidateQueries({ queryKey: queryKeys.auth }).then(() =>
+                queryClient.removeQueries({
+                    predicate: (query) => query.queryKey[0] !== 'auth',
+                }),
+            ),
     });
 }
 

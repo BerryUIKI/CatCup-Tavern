@@ -34,6 +34,7 @@ Common codes:
 | `UNAUTHORIZED`          | 401       | Missing or expired session                                    |
 | `INVALID_PASSWORD`      | 401       | Wrong login password                                          |
 | `NEEDS_SETUP`           | 401 / 409 | No password has been configured yet                           |
+| `NO_PASSWORD`           | 409       | Sign-out requested on an install that has no password         |
 | `FORBIDDEN`             | 403       | Origin mismatch or remote first-run setup                     |
 | `NOT_FOUND`             | 404       | Character, chat, message, provider or avatar not found        |
 | `CONFLICT`              | 409       | A quick reply set name is already taken                       |
@@ -116,6 +117,8 @@ Response: `{ "ok": true }` and a session cookie. Rate limit: 10 attempts per min
 ### `POST /api/auth/logout`
 
 Clears the cookie. Response: `{ "ok": true }`.
+
+A desktop install running without a password has no session to end, and the request would clear a cookie nothing checks. It answers `409 NO_PASSWORD` instead, and nothing changes. The client hides the action there; this is the guard for a stale tab.
 
 ### `PUT /api/auth/password`
 
@@ -1070,7 +1073,7 @@ A persona carries `name` and `description`, plus three optional fields that let 
 }
 ```
 
-`kind` is one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. If `baseUrl` is empty, the kind's default is used. `defaultModel` must be one of `models` when `models` is non-empty; a provider with no `defaultModel` resolves to the first entry in `models`. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
+`kind` is the stored **request protocol** discriminator, one of `openai`, `openrouter`, `anthropic`, `ollama`, `custom`. `openai`, `openrouter` and `custom` all speak OpenAI Chat Completions and are served by one adapter; they stay separate values so a provider written by 0.3.x loads unchanged. The UI presents the field as a protocol and keeps the kind an implementation detail. If `baseUrl` is empty, the kind's default is used — which is empty for `custom`, so a custom provider must supply one. `defaultModel` must be one of `models` when `models` is non-empty; a provider with no `defaultModel` resolves to the first entry in `models`. Response: `{ "provider": ProviderPublic }`. A supplied `apiKey` is stored in `data/secrets.json`; it is never returned.
 
 ### `PATCH /api/providers/:id`
 

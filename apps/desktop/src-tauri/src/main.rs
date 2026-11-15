@@ -5,8 +5,9 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::fs::{File, OpenOptions};
+use std::io::{BufRead, BufReader, Write};
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Mutex};
@@ -26,6 +27,57 @@ struct Sidecar {
     /// including when it is killed without a chance to clean up.
     #[cfg(windows)]
     _job: Mutex<Option<job::KillOnClose>>,
+}
+
+/// Where the server's own output goes now that it does not reach a console.
+///
+/// A packaged build has no console at all, so stderr used to be lost: the one
+/// place a startup failure or a server-side error surfaced was a window that
+/// already existed. Both pipes now share one append-only file beside the data
+/// directory, and a mutex keeps the two reader threads from interleaving half a
+/// line. A cloneable handle, because each pipe is drained by its own thread.
+#[derive(Clone, Default)]
+struct ShellLog(std::sync::Arc<Mutex<Option<File>>>);
+
+impl ShellLog {
+    /// The log in `data_dir`, or a sink that counts to nothing if it cannot be opened.
+    ///
+    /// A read-only data directory must not cost the app its server: an
+    /// unopenable log drops every line instead of failing the launch.
+    fn open(data_dir: &Path) -> Self {
+        Self(std::sync::Arc::new(Mutex::new(open_log_file(data_dir))))
+    }
+
+    fn write(&self, line: &str) {
+        let Ok(mut guard) = self.0.lock() else {
+            return;
+        };
+        if let Some(file) = guard.as_mut() {
+            let _ = writeln!(file, "{line}");
+        }
+    }
+}
+
+/// The log file, after rotating one that has grown past its cap.
+fn open_log_file(data_dir: &Path) -> Option<File> {
+    let path = data_dir.join("shell.log");
+    rotate_log(&path);
+    OpenOptions::new().create(true).append(true).open(&path).ok()
+}
+
+/// Keep the log from growing across launches.
+///
+/// One previous generation is enough to diagnose a crash loop, and a 4 MB cap
+/// means a chatty launch cannot fill the disk.
+fn rotate_log(path: &Path) {
+    const LIMIT: u64 = 4 * 1024 * 1024;
+    let too_big = std::fs::metadata(path).map(|meta| meta.len() > LIMIT).unwrap_or(false);
+    if !too_big {
+        return;
+    }
+    let previous = path.with_extension("log.1");
+    let _ = std::fs::remove_file(&previous);
+    let _ = std::fs::rename(path, previous);
 }
 
 /// Drop the `\\?\` verbatim prefix Windows APIs hand back.
@@ -97,10 +149,10 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
 
     let node = node_binary();
     let entry = server_entry(app);
-    println!("[shell] node: {}", node.display());
-    println!("[shell] server: {}", entry.display());
+    let log = ShellLog::open(&data_dir);
 
-    let mut child = Command::new(&node)
+    let mut command = Command::new(&node);
+    command
         .arg(&entry)
         .env("CATCUP_HOST", "127.0.0.1")
         .env("CATCUP_PORT", "0")
@@ -109,27 +161,57 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
         // with no password opens straight into the app instead of a setup screen.
         .env("CATCUP_DESKTOP", "1")
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
+        .stderr(Stdio::piped());
+
+    // The sidecar is a console-subsystem executable, so a GUI process that
+    // starts it gets a console window allocated for it: a black box on the
+    // desktop, from launch until Quit. CREATE_NO_WINDOW gives the child a
+    // hidden console instead — its standard handles still work, nothing is
+    // drawn. This is why stdout can be piped and stderr read at all.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let mut child = command
         .spawn()
         .map_err(|e| format!("could not start `{}`: {e}", node.display()))?;
 
+    log.write(&format!(
+        "--- CatCup Tavern {}: node {} running {}",
+        env!("CARGO_PKG_VERSION"),
+        node.display(),
+        entry.display()
+    ));
+
     let stdout = child.stdout.take().ok_or("the server has no stdout")?;
+    let stderr = child.stderr.take().ok_or("the server has no stderr")?;
     let (tx, rx) = mpsc::channel::<Result<u16, String>>();
 
+    let ready_log = log.clone();
     thread::spawn(move || {
         let mut announced = false;
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+            ready_log.write(&line);
             if !announced {
                 if let Some(rest) = line.trim().strip_prefix("CATCUP_READY ") {
                     announced = true;
                     let _ = tx.send(rest.trim().parse::<u16>().map_err(|e| e.to_string()));
-                    continue;
                 }
             }
-            println!("[server] {line}");
         }
         if !announced {
             let _ = tx.send(Err("the server exited before signalling ready".to_string()));
+        }
+    });
+
+    // Drained unconditionally: a pipe nobody reads fills its buffer and blocks
+    // the server mid-reply, whether or not the log could be opened.
+    thread::spawn(move || {
+        for line in BufReader::new(stderr).lines().map_while(Result::ok) {
+            log.write(&line);
         }
     });
 

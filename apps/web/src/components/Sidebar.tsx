@@ -8,6 +8,7 @@ import { CharacterAvatar } from './CharacterAvatar';
 import { CharacterLibrary } from './CharacterLibrary';
 import { Logo } from './Logo';
 import { ProfileSwitcher } from './ProfileSwitcher';
+import { Select } from './Select';
 import { Spinner } from './Spinner';
 
 interface SidebarProps {
@@ -49,7 +50,12 @@ interface SidebarProps {
     activeProviderName: string | null;
     activeProviderReady: boolean;
     onOpenSettings: () => void;
-    onLogout: () => void;
+    /**
+     * Omitted when the install has no password: an open desktop session has
+     * nothing to sign out of, and offering the action led to a login screen
+     * that could not accept a password that does not exist.
+     */
+    onLogout: (() => void) | null;
     loggingOut: boolean;
     open: boolean;
     onClose: () => void;
@@ -353,19 +359,18 @@ export function Sidebar({
                         />
                     </div>
                     {switchableProviders.length > 1 ? (
-                        <select
-                            className="mt-1 w-full rounded border border-line bg-ink px-1.5 py-1 text-xs text-parchment-dim"
+                        <Select
+                            label="Active provider"
+                            hideLabel
+                            size="sm"
+                            className="mt-1"
                             value={activeProviderId ?? ''}
-                            onChange={(event) => onSwitchProvider(event.target.value)}
-                            aria-label="Active provider"
-                        >
-                            {switchableProviders.map((provider) => (
-                                <option key={provider.id} value={provider.id}>
-                                    {provider.name}
-                                    {provider.defaultModel ? ` — ${provider.defaultModel}` : ''}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={onSwitchProvider}
+                            options={switchableProviders.map((provider) => ({
+                                value: provider.id,
+                                label: `${provider.name}${provider.defaultModel ? ` — ${provider.defaultModel}` : ''}`,
+                            }))}
+                        />
                     ) : (
                         <p className="truncate text-xs text-parchment-dim">{activeProviderName ?? 'Not configured'}</p>
                     )}
@@ -376,16 +381,18 @@ export function Sidebar({
                         <Settings2 size={16} />
                         Settings
                     </button>
-                    <button
-                        type="button"
-                        className="icon-btn"
-                        onClick={onLogout}
-                        disabled={loggingOut}
-                        title="Sign out"
-                        aria-label="Sign out"
-                    >
-                        {loggingOut ? <Spinner size={16} /> : <LogOut size={17} />}
-                    </button>
+                    {onLogout ? (
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={onLogout}
+                            disabled={loggingOut}
+                            title="Sign out"
+                            aria-label="Sign out"
+                        >
+                            {loggingOut ? <Spinner size={16} /> : <LogOut size={17} />}
+                        </button>
+                    ) : null}
                 </div>
             </div>
         </aside>

@@ -3,6 +3,7 @@ import { BookOpen, Check, ChevronDown, Merge, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { cn } from '../lib/cn';
+import { Select } from './Select';
 
 /**
  * The review sheet: what a run found, before any of it is written.
@@ -320,18 +321,16 @@ export function ReviewSheet({
                     />
                 </div>
                 <div>
-                    <label className="label-text" htmlFor="distill-scope">
-                        Write to
-                    </label>
-                    <select
-                        className="input-shell py-2 text-sm"
+                    <Select<ItemScope>
                         id="distill-scope"
-                        onChange={(event) => onScopeChange(event.target.value as ItemScope)}
+                        label="Write to"
                         value={scope}
-                    >
-                        <option value="profile">This profile</option>
-                        <option value="shared">Shared — every profile</option>
-                    </select>
+                        onChange={onScopeChange}
+                        options={[
+                            { value: 'profile', label: 'This profile' },
+                            { value: 'shared', label: 'Shared — every profile' },
+                        ]}
+                    />
                 </div>
             </div>
 
