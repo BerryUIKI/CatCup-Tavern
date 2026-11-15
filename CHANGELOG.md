@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation.
+All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation; `0.3.2` asks providers for a request protocol, adds a first-class custom-provider entry and replaces every native dropdown with a CatCup control, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out appearing with no password.
 
-## Unreleased
+## 0.3.2 — 2026-11-16
 
 ### Added
 

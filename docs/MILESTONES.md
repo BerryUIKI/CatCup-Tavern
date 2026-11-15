@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1, M2 and M4's shell are complete**, released as `0.3.1` on 2026-11-15; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch and `0.3.0` the M2 feature release. M4's remaining acceptance criteria are open; M3 and M5 are planned.
+> Current status: **M0, M1, M2 and M4's shell are complete**, most recently released as `0.3.2` on 2026-11-16; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch, `0.3.0` the M2 feature release and `0.3.1` profiles and book distillation. M4's remaining acceptance criteria are open; M3 and M5 are planned.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -24,6 +24,7 @@ timeline
                    : 0.2.1 - compatibility patch
         2026-11-13 : 0.3.0 - groups, memory, quick replies, TTS, images, CharX
         2026-11-15 : 0.3.1 - profiles and the shared layer, multi-model, book distillation
+        2026-11-16 : 0.3.2 - request protocols, custom provider, styled dropdowns, desktop fixes
     section In progress
         UX stages C-E : message experience, editors, accessibility
     section Planned
