@@ -201,8 +201,9 @@ Two consequences for this workflow:
 1. Always write the portrait prompts yourself, into `portraits/prompts.md`. If the app is new enough
    to have `draft-portrait`, mention it as a per-card alternative; do not send the user to
    "Draft from chat" for a card that has no history.
-2. Ask the user whether they have an image backend before assuming generation. If they don't, the
-   prompt list _is_ the deliverable — they can paste it into anything.
+2. Ask the user whether they have an image backend before assuming generation. Both draft routes work
+   without one — drafting is a chat-model call, so a prompt is always obtainable. If they have no
+   backend, the prompt list _is_ the deliverable; they can paste it into anything.
 
 Write prompts in this shape, one block per card:
 
@@ -232,13 +233,15 @@ See [references/catcup-import.md](references/catcup-import.md) for every route a
 
 ### If they do have a backend
 
-The pipeline in CatCup is: **generate → save to gallery → attach to a message**. There is no
-"generate an avatar" endpoint. Avatars come from PNG cards.
+The pipeline in CatCup is: **generate → save to gallery → promote or attach**. There is no
+"generate an avatar" call — the picture and the card data are one file, so a portrait has to be a PNG.
 
 - `POST /api/images/generate` with `{ "characterId": "…", "prompt": "…" }` writes to the gallery and
   returns `{ image: { file, url, … } }`.
-- On a build with `POST /api/images/portrait`, `{ "characterId", "file" }` promotes that gallery PNG
-  to the card's picture — a JSON card becomes a PNG card, and the previous picture is not kept.
+- On a build with `POST /api/images/portrait`, `{ "characterId", "file" }` promotes that gallery
+  image to the card's picture. A non-PNG is refused (`IMAGE_PORTRAIT_FORMAT`) — **generate PNG
+  output**; a JSON card becomes a PNG card and the JSON file is deleted; a previous picture is not
+  kept.
 - Without that route, `GET /api/characters/:id/avatar` serves the card file itself, so a **JSON card
   has no avatar**, and `PATCH /api/characters/:id` has no image field either.
 
@@ -317,9 +320,11 @@ A persona is how the model refers to the player. What it can carry depends on th
 - **Older builds:** `name` and `description` only — no personality, no lorebook, no avatar.
 - **Newer builds:** `personality`, `scenario` and `mesExample` as well, joined into the one persona
   slot as labelled paragraphs, with the examples read as _the player's_ turns. Those builds also
-  have a **Play as this character** button in the library that copies a card into a persona, leaving
-  `first_mes` behind on purpose — a card's opening line belongs to the assistant, and a persona
-  carrying it makes the model greet itself.
+  have `POST /api/personas/from-card` (`{ characterId, scope? }`) behind a **Play as this
+  character** button in the library, which copies a card into a persona — `description`,
+  `personality`, `scenario` and example messages — leaving `first_mes` behind on purpose, because a
+  card's opening line belongs to the assistant and a persona carrying it makes the model greet
+  itself. The persona is a copy; editing it never touches the card.
 
 Either way, write `persona-<Name>.md` by hand. The button is a per-card convenience that copies the
 card's own third-person description; a pack wants a persona in the character's **first person** voice,
@@ -349,6 +354,8 @@ Settings → Persona → New persona
 
 - The description is sent every turn — keep it short.
 - No avatars, no attached lorebook.
+- If this build's personas carry `mesExample`, those lines are read as **my** turns: write `{{user}}:`
+  as what I say, never as the character's reply.
 - CatCup has no "reply as me" (impersonation), so the user types their own turns.
 ```
 
