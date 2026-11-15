@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { buildCard, buildWorldBook, keysFromTitle, sectionsDraft } from '../distill/run.js';
-import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
+import { createProfileDataDir } from '../testHelpers/profile.js';
 
 let root: string;
 let app: FastifyInstance;
@@ -20,7 +20,7 @@ const novel = [
     'Bram arrived late, soaked through.',
 ].join('\n');
 
-async function call(method: 'GET' | 'POST' | 'DELETE', url: string, payload?: Record<string, unknown>) {
+async function call(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: Record<string, unknown>) {
     return app.inject({ method, url, payload, headers: { cookie } });
 }
 
@@ -93,13 +93,18 @@ beforeAll(async () => {
     expect(setup.statusCode).toBe(200);
     cookie = String(setup.headers['set-cookie'] ?? '').split(';')[0] ?? '';
 
-    await call('POST', '/api/providers', {
+    const created = await call('POST', '/api/providers', {
         kind: 'openai',
         name: 'Unused',
         baseUrl: `http://127.0.0.1:${port}/v1`,
         models: ['stub-model'],
         defaultModel: 'stub-model',
         enabled: true,
+    });
+    // Making it active matters: without this the run would resolve the seeded
+    // default provider and reach the real internet from a test.
+    await call('PATCH', '/api/settings', {
+        activeProviderId: (created.json() as { provider: { id: string } }).provider.id,
     });
 });
 
@@ -150,13 +155,30 @@ describe('sections mode', () => {
         expect(run.draft.entries[0]?.content).toContain('Mira lit the lamp');
     });
 
-    it('refuses model mode until the pipeline exists', async () => {
+    it('marks a chapter incomplete when the provider fails, rather than failing the run', async () => {
         const uploaded = await upload('later.txt', Buffer.from(novel, 'utf8'));
         const bookId = (uploaded.json() as { book: { id: string } }).book.id;
 
-        const response = await call('POST', '/api/distill/runs', { bookId, mode: 'model' });
-        expect(response.statusCode).toBe(400);
-        expect((response.json() as { code: string }).code).toBe('DISTILL_UNSUPPORTED');
+        // The fixture's provider answers 500 to everything.
+        const started = await fetch(`${baseUrl}/api/distill/runs`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', cookie },
+            body: JSON.stringify({ bookId, mode: 'model' }),
+        });
+        expect(started.status).toBe(200);
+
+        const events = (await started.text())
+            .split('\n\n')
+            .map((block) => block.split('\n').find((line) => line.startsWith('data:')))
+            .filter((line): line is string => Boolean(line))
+            .map((line) => JSON.parse(line.slice(5).trim()) as { type: string; run?: Record<string, unknown> });
+
+        const done = events.find((event) => event.type === 'done');
+        // One unreadable chapter costs that chapter, not the book.
+        const run = done?.run as { status: string; chunks: { state: string }[]; draft: { entries: unknown[] } };
+        expect(run.status).toBe('done');
+        expect(run.chunks.every((chunk) => chunk.state === 'incomplete')).toBe(true);
+        expect(run.draft.entries).toEqual([]);
     });
 
     it('404s a run for a book that does not exist', async () => {

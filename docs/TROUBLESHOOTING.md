@@ -217,9 +217,17 @@ Sections are cut at chapter headings — `Chapter N`, `Part N`, `Prologue`, `第
 
 **A distilled entry never comes up in chat**
 
-Its keys came from its chapter title. `Chapter 3` has no useful word in it, so the entry carries no keys and only its comment names it — enable it, then add keys in the world info editor. This is what the model pass will do by itself; until then it is a two-minute edit per entry.
+In **sections only** a run, its keys come from its chapter title. `Chapter 3` has no useful word in it, so the entry carries no keys and only its comment names it — enable it, then add keys in the world info editor, or use **Model draft**, which chooses keys from how the book talks about the thing.
 
-**The run is still going after the dialog closed**
+**A model draft found little, or nothing**
+
+Two causes, both visible in the run. A chapter marked **incomplete** means the provider's reply could not be read twice — usually a model too small to follow the JSON contract, or a request cut off by `maxTokens`. And entities need to be mentioned to be written up: one mention gets a thin row, two or more get their own request. If almost everything is thin, the model is summarising rather than extracting; try a larger one.
+
+**A model draft costs more than expected**
+
+The estimate counts the analysis requests only. A run also spends one request per entity mentioned twice or more, plus at most one batched request to settle near-identical names, and none at all on characters mentioned once. A long book with a large cast therefore costs more than `chunks × 1`. Stop the run at any point and nothing is written.
+
+**A run is still going after the dialog closed**
 
 That is on purpose. A run over a long book is minutes of work, so it is not tied to the dialog or the tab; closing either leaves it running. Reopen **Distil from a book** and use **Reattach to a running book** to watch the rest. **Stop** is the only thing that cancels it, and a stopped run writes nothing.
 

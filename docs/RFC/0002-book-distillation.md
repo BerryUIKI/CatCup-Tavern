@@ -173,7 +173,7 @@ Three PR slices, each independently reviewable and CI-green:
 
 1. **Parse and store** — `packages/shared/src/schemas/distill.ts`, `apps/server/src/distill/{sections,parse,chunk,estimate}.ts`, `apps/server/src/storage/books.ts`, `apps/server/src/routes/distill.ts`. A book can be uploaded, listed, read back and deleted. `books/` and `distill/` join `SCOPED_DIRECTORIES`, so they are created, migrated and archived with the profile for free.
 2. **Sections mode** — the run engine without a model call, its SSE events, the dialog and the review sheet, and the accept path. This is the slice that makes the feature usable end to end. **Landed 2026-11-15.**
-3. **Model mode** — analyze, merge, outline, chunk progress, manual merge.
+3. **Model mode** — analyze, merge, outline, chunk progress, manual merge. **Landed 2026-11-15.**
 
 Progress and cancellation reuse the shapes already in the server: the SSE writer in `apps/server/src/sse.ts`, and a registry beside `activeGenerations`. A distill run is deliberately **not** aborted when its socket closes — minutes of work must survive a tab close — so it is stopped only through its endpoint, and the profile switch guard (`PROFILE_BUSY`) covers a run in flight.
 

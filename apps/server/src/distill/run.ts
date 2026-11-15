@@ -1,12 +1,30 @@
 import { randomUUID } from 'node:crypto';
 
-import type { DistillAcceptInput, DistillChunk, DistillEntryDraft, DistillRun, ItemScope } from '@catcup/shared';
+import {
+    type DistillAcceptInput,
+    type DistillChunk,
+    type DistillDraft,
+    type DistillEntryDraft,
+    type DistillEvent,
+    type DistillRun,
+    errorMessage,
+    type ItemScope,
+    resolveModel,
+} from '@catcup/shared';
+
+import { createTokenCounter } from '../prompt/tokenizer.js';
 import { readBook, readBookSections } from '../storage/books.js';
 import { importCharacter, setCharacterWorld } from '../storage/characters.js';
 import { saveRun } from '../storage/distillRuns.js';
+import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
 import { createWorld } from '../storage/worlds.js';
 import { NEW_ENTRY_DEFAULTS } from '../worldinfo/entries.js';
-import { createRun, emit, type RunState, releaseRun } from './registry.js';
+import { analyzeChunk } from './analyze.js';
+import { chunkBook, chunkBudget } from './chunk.js';
+import { mergeAnalyses } from './merge.js';
+import { outlineClusters } from './outline.js';
+import { createRun, emit, type RunState, releaseRun, subscribe } from './registry.js';
+import type { Section } from './sections.js';
 
 /**
  * The run engine.
@@ -17,9 +35,9 @@ import { createRun, emit, type RunState, releaseRun } from './registry.js';
  * progress events and the same accept path as the model mode — it is the test
  * bed the review sheet is built against.
  *
- * Model mode plugs into the same three functions later: `planRun` decides the
- * chunk list, the executor fills in the draft, and accept does not care which
- * of them produced it.
+ * Model mode adds three stages on top: one analysis request per chunk, a merge
+ * that clusters what the requests found, and one outline request per entity
+ * worth writing up. Accept does not know which of them produced the draft.
  */
 
 /** A title's words are the keys a person would type in play, minus the filler. */
@@ -108,6 +126,57 @@ export function sectionChunks(sections: readonly { title: string }[]): DistillCh
     }));
 }
 
+/** One row per request a model run will make, so the list is the real cost. */
+export function modelChunks(chunks: readonly { label: string }[]): DistillChunk[] {
+    return chunks.map((chunk, index) => ({
+        index,
+        stage: 'analyze' as const,
+        label: chunk.label,
+        state: 'pending' as const,
+    }));
+}
+
+/** Everything a model run needs, resolved once at the start. */
+interface ModelContext {
+    provider: NonNullable<Awaited<ReturnType<typeof getActiveProvider>>>;
+    apiKey: string | undefined;
+    model: string;
+    /** Sections, so a chunk's chapter label can be recovered from its section ids. */
+    sections: readonly Section[];
+    chunks: ReturnType<typeof chunkBook>;
+}
+
+/** Resolve the provider, key, model and chunk plan a model run will use. */
+async function modelContext(bookId: string, wanted: string | undefined): Promise<ModelContext> {
+    const [provider, settings, sections] = await Promise.all([
+        getActiveProvider(),
+        getSettings(),
+        readBookSections(bookId),
+    ]);
+    if (!provider) {
+        throw new Error('No provider is available. Configure one in Settings first.');
+    }
+
+    const resolved = resolveModel(provider, wanted ?? '', settings.profilePreferredModel);
+    if (!resolved.model) {
+        throw new Error('The active provider has no model selected');
+    }
+
+    const counter = createTokenCounter(provider.kind, resolved.model);
+    return {
+        provider,
+        apiKey: await getProviderSecret(provider.id),
+        model: resolved.model,
+        sections,
+        chunks: chunkBook(sections, counter.count, chunkBudget(settings.generation.contextSize)),
+    };
+}
+
+/** The section title a chunk starts in, for its row and for the draft's chapter. */
+function chapterOf(sections: readonly Section[], chunk: { sections: number[] }): string {
+    return sections[chunk.sections[0] ?? 0]?.title ?? 'Unfiled';
+}
+
 /**
  * Start a sections run.
  *
@@ -115,8 +184,12 @@ export function sectionChunks(sections: readonly { title: string }[]): DistillCh
  * was uploaded. A run over a large book yields immediately to the event loop
  * between chapters, which is what lets the progress rows arrive one at a time
  * instead of all at once when the loop finishes.
+ *
+ * `onEvent` is subscribed **before** the engine runs, so even a run that fails
+ * on its very first step reports it. Passing a listener here rather than after
+ * the call is what closes that gap.
  */
-export async function startSectionsRun(bookId: string): Promise<RunState> {
+export async function startSectionsRun(bookId: string, onEvent?: (event: DistillEvent) => void): Promise<RunState> {
     const book = await readBook(bookId);
     if (!book) {
         throw new Error('Book not found');
@@ -138,13 +211,53 @@ export async function startSectionsRun(bookId: string): Promise<RunState> {
     await saveRun(run);
 
     const state = createRun(run);
-    // The caller registers its listener before this resolves, so the first
-    // `start` event cannot race ahead of the dialog that is watching for it.
-    void execute(state, sections);
+    if (onEvent) {
+        subscribe(run.id, onEvent);
+    }
+    void executeSections(state, sections);
     return state;
 }
 
-async function execute(state: RunState, sections: readonly { title: string; text: string }[]): Promise<void> {
+/**
+ * Start a model run.
+ *
+ * The plan is resolved before the registry entry exists, so a missing provider
+ * is a failed request rather than a run that fails a second later.
+ */
+export async function startModelRun(
+    bookId: string,
+    wanted: string | undefined,
+    onEvent?: (event: DistillEvent) => void,
+): Promise<RunState> {
+    const book = await readBook(bookId);
+    if (!book) {
+        throw new Error('Book not found');
+    }
+
+    const context = await modelContext(bookId, wanted);
+    const run: DistillRun = {
+        id: randomUUID(),
+        bookId,
+        bookName: book.name,
+        mode: 'model',
+        model: context.model,
+        status: 'running',
+        startedAt: Date.now(),
+        finishedAt: null,
+        chunks: modelChunks(context.chunks),
+        draft: null,
+    };
+    await saveRun(run);
+
+    const state = createRun(run);
+    if (onEvent) {
+        subscribe(run.id, onEvent);
+    }
+    void executeModel(state, context);
+    return state;
+}
+
+async function executeSections(state: RunState, sections: readonly { title: string; text: string }[]): Promise<void> {
     const { run, controller } = state;
     emit(state, { type: 'start', runId: run.id, model: '', chunks: run.chunks });
 
@@ -178,31 +291,152 @@ async function execute(state: RunState, sections: readonly { title: string; text
             await new Promise((resolve) => setImmediate(resolve));
         }
 
-        const finished: DistillRun = {
-            ...run,
-            status: 'done',
-            finishedAt: Date.now(),
-            draft: { entries, characters: [] },
-        };
-        await saveRun(finished);
-        emit(state, { type: 'done', run: finished });
+        await finishRun(state, 'done', { entries, characters: [] });
     } catch (error) {
-        const stopped = controller.signal.aborted;
-        const finished: DistillRun = {
-            ...run,
-            status: stopped ? 'stopped' : 'failed',
-            finishedAt: Date.now(),
-            message: stopped
-                ? 'Stopped before it finished. Nothing was written.'
-                : error instanceof Error
-                  ? error.message
-                  : 'The run failed',
-        };
-        await saveRun(finished);
-        emit(state, { type: 'done', run: finished });
-    } finally {
-        releaseRun(run.id);
+        await failRun(state, error);
     }
+}
+
+/**
+ * Run the model pipeline: analyse, merge, outline.
+ *
+ * Each stage waits for the one before it — a merge cannot start until every
+ * chunk has been read — so the progress rows fill in three waves. A chunk whose
+ * reply could not be used is marked incomplete and the run carries on; the
+ * finished record says which chapters were skipped.
+ */
+async function executeModel(state: RunState, context: ModelContext): Promise<void> {
+    const { run, controller } = state;
+    emit(state, { type: 'start', runId: run.id, model: run.model, chunks: run.chunks });
+
+    try {
+        const analyses: Awaited<ReturnType<typeof analyzeChunk>>[] = [];
+        const chapters: string[] = [];
+
+        for (const [index, chunk] of context.chunks.entries()) {
+            if (controller.signal.aborted) {
+                throw new Error('stopped');
+            }
+
+            const chapter = chapterOf(context.sections, chunk);
+            chapters.push(chapter);
+
+            const row = run.chunks[index];
+            if (row) {
+                row.state = 'running';
+                emit(state, { type: 'chunk', chunk: row, found: { entries: 0, characters: 0 } });
+            }
+
+            const analysis = await analyzeChunk({
+                provider: context.provider,
+                apiKey: context.apiKey,
+                model: context.model,
+                text: chunk.text,
+                chapter,
+                signal: controller.signal,
+            });
+            analyses.push(analysis);
+
+            if (row) {
+                row.state = analysis ? 'done' : 'incomplete';
+                if (!analysis) {
+                    row.message = 'The model’s reply could not be read; this chapter was skipped.';
+                }
+                emit(state, {
+                    type: 'chunk',
+                    chunk: row,
+                    found: {
+                        entries: analyses.reduce((sum, item) => sum + (item?.facts.length ?? 0), 0),
+                        characters: analyses.reduce((sum, item) => sum + (item?.characters.length ?? 0), 0),
+                    },
+                });
+            }
+            emit(state, { type: 'progress', done: index + 1, total: context.chunks.length });
+
+            // A stop during a model request must not take the run down with it.
+            await new Promise((resolve) => setImmediate(resolve));
+        }
+
+        const skipped = run.chunks.filter((row) => row.state === 'incomplete').length;
+        if (skipped > 0) {
+            run.message = `${skipped} chapter${skipped === 1 ? '' : 's'} could not be read and were skipped.`;
+        }
+
+        const clusters = await mergeAnalyses({
+            analyses,
+            chapters,
+            provider: context.provider,
+            apiKey: context.apiKey,
+            model: context.model,
+            signal: controller.signal,
+        });
+
+        // The outline stage gets its own rows, appended after the analysis ones,
+        // so the progress list tells a person what the time is being spent on.
+        const outlineRows: DistillChunk[] = clusters.map((cluster, index) => ({
+            index: context.chunks.length + index,
+            stage: 'outline' as const,
+            label: cluster.name,
+            state: 'pending' as const,
+        }));
+        run.chunks.push(...outlineRows);
+        emit(state, { type: 'progress', done: context.chunks.length, total: run.chunks.length });
+
+        const draft = await outlineClusters(
+            clusters,
+            {
+                provider: context.provider,
+                apiKey: context.apiKey,
+                model: context.model,
+                signal: controller.signal,
+            },
+            (done, total) => {
+                for (const row of outlineRows.slice(0, done)) {
+                    row.state = 'done';
+                }
+                emit(state, {
+                    type: 'progress',
+                    done: context.chunks.length + done,
+                    total: context.chunks.length + total,
+                });
+                const latest = outlineRows[done - 1];
+                if (latest) {
+                    emit(state, { type: 'chunk', chunk: latest, found: { entries: 0, characters: 0 } });
+                }
+            },
+        );
+
+        await finishRun(state, 'done', draft);
+    } catch (error) {
+        await failRun(state, error);
+    }
+}
+
+/** Persist a finished run and tell everyone watching. */
+async function finishRun(state: RunState, status: 'done', draft: DistillDraft): Promise<void> {
+    const finished: DistillRun = {
+        ...state.run,
+        status,
+        finishedAt: Date.now(),
+        draft,
+    };
+    await saveRun(finished);
+    emit(state, { type: 'done', run: finished });
+    releaseRun(state.run.id);
+}
+
+/** Record why a run stopped or failed, and tell everyone watching. */
+async function failRun(state: RunState, error: unknown): Promise<void> {
+    const stopped = state.controller.signal.aborted;
+    const finished: DistillRun = {
+        ...state.run,
+        status: stopped ? 'stopped' : 'failed',
+        finishedAt: Date.now(),
+        message: stopped ? 'Stopped before it finished. Nothing was written.' : errorMessage(error) || 'The run failed',
+    };
+    await saveRun(finished);
+    emit(state, { type: 'done', run: finished });
+    releaseRun(state.run.id);
 }
 
 /** Assemble a stored world info book from accepted entry drafts. */

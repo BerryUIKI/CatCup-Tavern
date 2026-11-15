@@ -1,7 +1,14 @@
-import type { DistillBookEstimate, DistilledBook, DistillRun, ItemScope } from '@catcup/shared';
+import type { DistillBookEstimate, DistilledBook, DistillMode, DistillRun, ItemScope } from '@catcup/shared';
 import { BookOpen, FileText, Play, RotateCw, Square, Trash2, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAcceptDistill, useDeleteBook, useDistillBooks, useDistillRuns, useUploadBook } from '../hooks/data';
+import {
+    useAcceptDistill,
+    useDeleteBook,
+    useDistillBooks,
+    useDistillRuns,
+    useSettings,
+    useUploadBook,
+} from '../hooks/data';
 import { cn } from '../lib/cn';
 import { streamDistill } from '../lib/sse';
 import { useAppStore } from '../store/app';
@@ -66,6 +73,8 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
     const [draft, setDraft] = useState<ReviewState | null>(null);
     const [worldName, setWorldName] = useState('');
     const [scope, setScope] = useState<ItemScope>('profile');
+    const [mode, setMode] = useState<DistillMode>('sections');
+    const [model, setModel] = useState('');
     const [busy, setBusy] = useState(false);
     const [runningId, setRunningId] = useState<string | null>(null);
     const [dropping, setDropping] = useState(false);
@@ -74,12 +83,19 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
 
     const { data: books = [] } = useDistillBooks();
     const { data: runs = [] } = useDistillRuns();
+    const { data: settings } = useSettings();
     const upload = useUploadBook();
     const removeBook = useDeleteBook();
     const accept = useAcceptDistill(run?.id ?? null);
     const pushToast = useAppStore((state) => state.pushToast);
 
     const liveRun = runs.find((candidate) => candidate.status === 'running') ?? null;
+
+    /** The models the active provider serves, which is what `resolveModel` picks from. */
+    const provider =
+        settings?.providers.find((item) => item.id === settings.activeProviderId) ?? settings?.providers[0];
+    const models = provider?.models ?? [];
+    const ready = provider?.enabled ?? false;
 
     const reset = useCallback(() => {
         streamRef.current?.abort();
@@ -122,7 +138,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                           id: event.runId,
                                           bookId: book?.id ?? '',
                                           bookName: book?.name ?? '',
-                                          mode: 'sections',
+                                          mode,
                                           model: event.model,
                                           status: 'running',
                                           startedAt: Date.now(),
@@ -170,14 +186,18 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                 setRunningId(null);
             }
         },
-        [book?.id, book?.name, pushToast],
+        [book?.id, book?.name, mode, pushToast],
     );
 
     const start = () => {
         if (!book) {
             return;
         }
-        void follow('/api/distill/runs', { bookId: book.id, mode: 'sections' });
+        void follow('/api/distill/runs', {
+            bookId: book.id,
+            mode,
+            ...(mode === 'model' && model ? { model } : {}),
+        });
     };
 
     const reattach = () => {
@@ -350,11 +370,74 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                     : ''}
                             </p>
                             <p className="mt-2 text-xs leading-relaxed text-muted">
-                                <strong className="text-parchment-dim">Sections only</strong> writes one world info
-                                entry per chapter, straight from the text, with no model call. It costs nothing and
-                                finishes immediately; edit the result in the world info editor afterwards.
+                                {mode === 'sections'
+                                    ? 'Sections only writes one world info entry per chapter, straight from the text, with no model call. It costs nothing and finishes immediately.'
+                                    : 'A model draft reads every chapter, merges what it finds and writes each recurring character up as a card. It costs one request per chapter plus one per recurring entity.'}
                             </p>
                         </div>
+
+                        <fieldset className="space-y-2">
+                            <legend className="label-text">Mode</legend>
+                            {(
+                                [
+                                    ['sections', 'Sections only', 'Free, instant, one entry per chapter'],
+                                    ['model', 'Model draft', 'Reads the book and writes up what it finds'],
+                                ] as const
+                            ).map(([value, label, hint]) => (
+                                <label
+                                    className={cn(
+                                        'flex cursor-pointer items-start gap-2 rounded-lg border px-3 py-2 transition',
+                                        mode === value
+                                            ? 'border-amber/50 bg-amber/10'
+                                            : 'border-line-soft hover:border-line',
+                                    )}
+                                    key={value}
+                                >
+                                    <input
+                                        checked={mode === value}
+                                        className="mt-0.5 size-3.5 accent-amber"
+                                        name="distill-mode"
+                                        onChange={() => setMode(value)}
+                                        type="radio"
+                                        value={value}
+                                    />
+                                    <span className="min-w-0">
+                                        <span className="block text-sm text-parchment">{label}</span>
+                                        <span className="block text-[11px] text-muted">{hint}</span>
+                                    </span>
+                                </label>
+                            ))}
+                        </fieldset>
+
+                        {mode === 'model' ? (
+                            <div>
+                                <label className="label-text" htmlFor="distill-model">
+                                    Model
+                                </label>
+                                <select
+                                    className="input-shell py-2 text-sm"
+                                    disabled={!ready || models.length === 0}
+                                    id="distill-model"
+                                    onChange={(event) => setModel(event.target.value)}
+                                    value={model}
+                                >
+                                    <option value="">Provider default</option>
+                                    {models.map((item) => (
+                                        <option key={item} value={item}>
+                                            {item}
+                                        </option>
+                                    ))}
+                                </select>
+                                {!ready || models.length === 0 ? (
+                                    <p className="field-hint text-wine">
+                                        The model draft needs an enabled provider with at least one model. Configure one
+                                        in Settings → Providers.
+                                    </p>
+                                ) : (
+                                    <p className="field-hint">The choice applies to this run only; it is not saved.</p>
+                                )}
+                            </div>
+                        ) : null}
 
                         {run ? (
                             <div className="max-h-64 space-y-1 overflow-y-auto rounded-xl border border-line-soft p-3">
@@ -388,7 +471,12 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                     Stop
                                 </button>
                             ) : (
-                                <button className="btn-primary" disabled={busy} onClick={start} type="button">
+                                <button
+                                    className="btn-primary"
+                                    disabled={busy || (mode === 'model' && (!ready || models.length === 0))}
+                                    onClick={start}
+                                    type="button"
+                                >
                                     <Play className="size-4" />
                                     Start
                                 </button>
