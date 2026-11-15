@@ -55,7 +55,6 @@ Common codes:
 | `SUMMARY_FAILED`        | 502       | The summary request failed or returned no text                |
 | `DISTILL_FORMAT`        | 400       | A book file CatCup cannot read, or an unsupported extension   |
 | `DISTILL_EPUB`          | 400       | An EPUB CatCup refuses — DRM, or no readable package document |
-| `DISTILL_UNSUPPORTED`   | 400       | Model distillation was requested before the pipeline exists   |
 | `DISTILL_FINISHED`      | 409       | Attach was asked for a run that has already finished          |
 | `DISTILL_RUNNING`       | 409       | Accept was asked for while the run is still going             |
 | `PAYLOAD_TOO_LARGE`     | 413       | Upload or request body too large                              |
@@ -761,7 +760,14 @@ Start a run and stream its progress. The response **is** the event stream, so th
 { "bookId": "novel", "mode": "sections" }
 ```
 
-`mode` is `sections` today: every chapter becomes one world info entry whose body is that chapter, with no model call. `model` is the pipeline that follows and answers `400 DISTILL_UNSUPPORTED` until it exists, rather than quietly producing a sections draft under a model's name. A `model` field may be sent; it names the model a later run would use and is not persisted.
+`mode` is `sections` or `model`.
+
+- **`sections`** needs no model: every chapter becomes one world info entry whose body is that chapter. Free, instant, deterministic.
+- **`model`** reads the book once per chunk, merges what it found, and writes each entity up. It costs one request per chunk, plus one per entity that recurs (mentioned twice or more), plus at most one batched request to settle near-identical names. A passing mention is written from the merge with no request, marked low confidence and left unticked.
+
+`model` may name a model the active provider serves; without one the profile's preferred model applies, then the provider default. The choice is **not** persisted — there is no second model setting to keep in step. With no enabled provider the request is a `400`.
+
+A chunk whose reply cannot be read is retried once and then marked **incomplete**; the run carries on and its record says which chapters were skipped. One unreadable chapter never fails a book.
 
 The events are the ones in `packages/shared/src/schemas/distill.ts`:
 
@@ -772,6 +778,8 @@ The events are the ones in `packages/shared/src/schemas/distill.ts`:
 | `progress` | `{ done, total }`                                             |
 | `done`     | the finished run record, including the draft                  |
 | `error`    | a message                                                     |
+
+A model run appends its `outline` rows to the analysis rows once the merge finishes, so `progress` totals grow when the second stage starts. That is how the dialog says what the time is being spent on.
 
 **Closing the stream does not stop the run.** A book takes minutes; a closed tab must not throw it away. Only `POST /api/distill/runs/:id/stop` cancels it, and the record on disk is written after every chunk, so a reattach reads real progress.
 

@@ -35,11 +35,12 @@ export function runningCount(): number {
 }
 
 /**
- * Watch a run's events. Starting a run registers the caller before the engine
- * begins, so no chunk event can be emitted before anyone is listening.
+ * Watch a run's events.
  *
- * A late subscriber is replayed the current state first — the chunk list as it
- * stands — so an attach that arrives mid-run draws the rows that already
+ * The caller subscribes **before** the engine starts, so no event — not the
+ * opening one, not a `done` from a run that fails on its first request — can be
+ * emitted into an empty room. A late subscriber is replayed the chunk list as it
+ * stands, so an attach that arrives mid-run draws the rows that already
  * finished instead of an empty list.
  */
 export function subscribe(id: string, listener: (event: DistillEvent) => void): () => void {

@@ -1,12 +1,12 @@
-import { distillAcceptSchema, distillRunRequestSchema } from '@catcup/shared';
+import { type DistillEvent, distillAcceptSchema, distillRunRequestSchema } from '@catcup/shared';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { estimateBook } from '../distill/estimate.js';
 import { BookParseError } from '../distill/parse.js';
 import { findRun, stopRun, subscribe } from '../distill/registry.js';
-import { acceptDraft, startSectionsRun } from '../distill/run.js';
-import { HttpError, notFound } from '../http/errors.js';
+import { acceptDraft, startModelRun, startSectionsRun } from '../distill/run.js';
+import { badRequest, HttpError, notFound } from '../http/errors.js';
 import { endSse, initSse, writeSse } from '../sse.js';
 import { createBook, deleteBook, listBooks, readBook } from '../storage/books.js';
 import { deleteRun, listRuns, readRun, saveRun } from '../storage/distillRuns.js';
@@ -23,14 +23,49 @@ const idParams = z.object({ id: z.string().min(1).max(200) });
  */
 function streamRun(reply: FastifyReply, runId: string): void {
     initSse(reply);
-    const unsubscribe = subscribe(runId, (event) => {
+    const write = openStream(reply);
+    const unsubscribe = subscribe(runId, write);
+    reply.raw.on('close', unsubscribe);
+}
+
+/** An event writer for an already-initialized stream; ends it on the terminal event. */
+function openStream(reply: FastifyReply): (event: DistillEvent) => void {
+    return (event) => {
         writeSse(reply, event);
         if (event.type === 'done') {
-            unsubscribe();
             endSse(reply);
         }
-    });
-    reply.raw.on('close', unsubscribe);
+    };
+}
+
+/**
+ * A listener that holds events until the stream is ready.
+ *
+ * Starting a run can fail — no provider, no model — and that failure has to be
+ * a JSON error, which means the response cannot be hijacked yet. But the engine
+ * begins before the route returns, so an event can arrive in between. Buffering
+ * closes both gaps: nothing is lost, and an error is still a normal response.
+ */
+function bufferEvents(): { send: (event: DistillEvent) => void; flush: (reply: FastifyReply) => void } {
+    const pending: DistillEvent[] = [];
+    let write: ((event: DistillEvent) => void) | null = null;
+
+    return {
+        send: (event) => {
+            if (write) {
+                write(event);
+            } else {
+                pending.push(event);
+            }
+        },
+        flush: (reply) => {
+            initSse(reply);
+            write = openStream(reply);
+            for (const event of pending.splice(0)) {
+                write(event);
+            }
+        },
+    };
 }
 
 export async function registerDistillRoutes(app: FastifyInstance): Promise<void> {
@@ -109,23 +144,40 @@ export async function registerDistillRoutes(app: FastifyInstance): Promise<void>
      * Start a run and stream its progress.
      *
      * The response is the event stream itself, so the dialog that started the
-     * run is also the one watching it. `sections` needs no model; `model` is the
-     * pipeline in a later slice and answers `400` until it exists, rather than
-     * silently producing a sections draft under a model's name.
+     * run is also the one watching it. `sections` needs no model; `model` reads
+     * the book once per chunk and writes up what it found.
+     *
+     * The listener is registered through the start call rather than after it:
+     * the engine is not awaited, so a run that fails on its first request would
+     * otherwise finish before anything was listening, and the stream would never
+     * see its own terminal event.
      */
     app.post('/api/distill/runs', async (request, reply) => {
         const body = distillRunRequestSchema.parse(request.body ?? {});
-        if (body.mode === 'model') {
-            throw new HttpError(400, 'Model distillation is not available yet', 'DISTILL_UNSUPPORTED');
-        }
 
         const book = await readBook(body.bookId);
         if (!book) {
             throw notFound('Book not found');
         }
 
-        const state = await startSectionsRun(body.bookId);
-        streamRun(reply, state.run.id);
+        // The start can fail before the engine exists — no provider, no model —
+        // and that has to be a JSON error, so the stream is opened only after
+        // it succeeds. Events emitted in between wait in the buffer.
+        const buffered = bufferEvents();
+
+        try {
+            if (body.mode === 'model') {
+                await startModelRun(body.bookId, body.model, buffered.send);
+            } else {
+                await startSectionsRun(body.bookId, buffered.send);
+            }
+            buffered.flush(reply);
+        } catch (error) {
+            if (error instanceof Error && /provider|model selected/i.test(error.message)) {
+                throw badRequest(error.message);
+            }
+            throw error;
+        }
     });
 
     /** Reattach to a run that is still going. A finished one is read, not streamed. */
