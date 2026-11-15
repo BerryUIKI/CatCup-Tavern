@@ -557,7 +557,7 @@ export function QuickReplySettings() {
                                         onChange={(event) => patchDraft({ name: event.target.value })}
                                     />
                                     <p className="mt-1 text-[11px] text-muted">
-                                        Renaming moves the set's file, as SillyTavern names the file after the set.
+                                        Renaming moves the set's file, because the file is named after the set.
                                     </p>
                                 </div>
                                 <a

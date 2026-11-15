@@ -28,10 +28,10 @@ import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
 import { GroupChatView } from './GroupChatView';
 import { GroupEditor } from './GroupEditor';
+import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
-import { SillyTavernImport } from './SillyTavernImport';
 import { ToastViewport } from './Toast';
 
 const EMPTY_CHARACTERS: CharacterSummary[] = [];
@@ -78,7 +78,7 @@ export function MainApp() {
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
-    const [stImportOpen, setStImportOpen] = useState(false);
+    const [importFromInstallOpen, setImportFromInstallOpen] = useState(false);
     const [distillOpen, setDistillOpen] = useState(false);
 
     const characters = charactersQuery.data ?? EMPTY_CHARACTERS;
@@ -541,7 +541,7 @@ export function MainApp() {
                 onSelectGroup={selectGroup}
                 onNewGroup={() => setGroupEditor({ mode: 'create' })}
                 onEditGroup={(id) => setGroupEditor({ mode: 'edit', id })}
-                onImportSillyTavern={() => setStImportOpen(true)}
+                onImportFromInstall={() => setImportFromInstallOpen(true)}
                 onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
@@ -603,7 +603,7 @@ export function MainApp() {
 
             <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-            <SillyTavernImport open={stImportOpen} onClose={() => setStImportOpen(false)} />
+            <ImportFromInstall open={importFromInstallOpen} onClose={() => setImportFromInstallOpen(false)} />
 
             <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 
