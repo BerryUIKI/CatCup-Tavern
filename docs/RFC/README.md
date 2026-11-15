@@ -6,6 +6,7 @@ Proposals for features that are large enough to need agreement before code. An R
 | --------------------------------- | -------------------------------------------- | ----------------------------------------------------------- | -------- |
 | [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer    | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78) | Accepted |
 | [0002](0002-book-distillation.md) | Distil world info and characters from a book | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77) | Accepted |
+| [0003](0003-guided-roleplay.md)   | Guided roleplay: a director layer, story mode on top | [#104](https://github.com/BerryUIKI/CatCup-Tavern/issues/104) | Proposed |
 
 ## How an RFC moves
 
