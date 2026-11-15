@@ -19,6 +19,8 @@ import type {
     DistillRun,
     DraftImagePromptRequest,
     DraftPortraitPromptRequest,
+    ExistingInstallPlan,
+    ExistingInstallResult,
     GeneratedImage,
     GenerateImageRequest,
     GroupChatDetail,
@@ -50,8 +52,6 @@ import type {
     SettingsResponse,
     SharedItemActionResult,
     SharedItemKind,
-    SillyTavernImportPlan,
-    SillyTavernImportResult,
     SummarizeResponse,
     SummaryRecord,
     WorldDetail,
@@ -304,8 +304,8 @@ export const api = {
         remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,
     },
-    importFromSillyTavern: (path: string, dryRun: boolean) =>
-        request<{ plan: SillyTavernImportPlan } | { result: SillyTavernImportResult }>('/import/sillytavern', {
+    importFromInstall: (path: string, dryRun: boolean) =>
+        request<{ plan: ExistingInstallPlan } | { result: ExistingInstallResult }>('/import/sillytavern', {
             method: 'POST',
             body: JSON.stringify({ path, dryRun }),
         }),

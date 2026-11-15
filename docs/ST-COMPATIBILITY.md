@@ -95,7 +95,7 @@ See [PROVIDERS.md](PROVIDERS.md) for adapter details.
 
 ## Importing SillyTavern content
 
-**Import from SillyTavern**, in the character library, reads a SillyTavern user folder and copies characters, chats, world info and OpenAI presets in one step, after showing what it found. Group chats, backgrounds, themes and SillyTavern's own settings — its personas, regex scripts and UI preferences — are not imported. The sections below describe where each file lands and what is preserved.
+**Import from another app**, in the character library, reads a SillyTavern user folder and copies characters, chats, world info and OpenAI presets in one step, after showing what it found. Group chats, backgrounds, themes and SillyTavern's own settings — its personas, regex scripts and UI preferences — are not imported. The sections below describe where each file lands and what is preserved.
 
 ### Cards
 

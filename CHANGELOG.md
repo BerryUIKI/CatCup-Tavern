@@ -4,6 +4,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Changed
+
+- Interface copy names what the app does rather than the client its formats came from. The import entry is now **Import from another app**, its dialog asks for a data folder, and its error, the About tab, the Settings, Memory, Quick Replies and Regex hints, the empty group editor, the Quick Replies format check and the `index.html` / `package.json` descriptions no longer name SillyTavern. Attribution stays where it must: `NOTICE`, `docs/REUSE.md`, the per-file `Derived from` headers and the compatibility pages are unchanged, and the data-format and API pages still describe the formats in the ecosystem's terms.
+
 ### Added
 
 - **The distillation pipeline can leave the app.** **Distil somewhere else → Skill** in the book dialog — and `GET /api/distill/skill` — downloads a Claude Skill as a ZIP: the four stages, every prompt verbatim, the JSON Schema for the analysis reply and the draft rows, and a description of SillyTavern's world info and Character Card V2 shapes. It is prompt-only and generated from the same constants a run sends, so a prompt edit changes both the server and the export; a test fails if a bundle ever carries a prompt the runtime no longer uses. It needs no provider, model or uploaded book, and carries no book text, key or secret.

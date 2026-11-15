@@ -31,7 +31,7 @@ jobs:
             ref: ${{ steps.version.outputs.ref }}
         steps:
             - name: Check out the repository
-              uses: actions/checkout@v5
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
@@ -71,16 +71,16 @@ jobs:
         timeout-minutes: 60
         steps:
             - name: Check out the release commit
-              uses: actions/checkout@v5
+              uses: actions/checkout@v7
               with:
                   ref: ${{ needs.prepare.outputs.ref }}
                   fetch-depth: 0
 
             - name: Set up pnpm
-              uses: pnpm/action-setup@v4
+              uses: pnpm/action-setup@v6
 
             - name: Set up Node
-              uses: actions/setup-node@v5
+              uses: actions/setup-node@v7
               with:
                   node-version: 24
                   cache: pnpm
@@ -135,7 +135,7 @@ jobs:
                       found { print }
                   ' CHANGELOG.md > "$RUNNER_TEMP/section.md"
                   {
-                      printf 'Early-access release. Moves your SillyTavern data in and handles single-character and group roleplay end to end. '
+                      printf 'Early-access release. Moves your existing data in and handles single-character and group roleplay end to end. '
                       printf 'The Windows installer is unsigned, and [what works and what does not](https://github.com/%s/blob/main/docs/LIMITATIONS.md) says exactly where the line is.\n\n' "$GITHUB_REPOSITORY"
                       cat "$RUNNER_TEMP/section.md"
                   } > "$RUNNER_TEMP/release-notes.md"

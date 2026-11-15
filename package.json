@@ -2,7 +2,7 @@
     "name": "catcup-tavern",
     "private": true,
     "version": "0.3.1",
-    "description": "CatCup Tavern — a SillyTavern-compatible AI roleplay client for web, LAN and desktop.",
+    "description": "CatCup Tavern — a local-first AI roleplay client for web, LAN and desktop.",
     "license": "AGPL-3.0-only",
     "type": "module",
     "packageManager": "pnpm@11.18.0",
@@ -21,8 +21,8 @@
         "icons": "node scripts/export-icons.mjs"
     },
     "devDependencies": {
-        "@biomejs/biome": "^2.6.6",
+        "@biomejs/biome": "^2.6.7",
         "concurrently": "^10.0.7",
-        "typescript": "^5.9.3"
+        "typescript": "^7.0.2"
     }
 }

@@ -742,7 +742,7 @@ Contains the password hash, a session-signing secret and a creation timestamp. T
 
 ## Migrating from SillyTavern
 
-**Import from SillyTavern**, in the character library, copies an installation in one step. Point it at the ST user folder — the one containing `characters/`, `chats/` and `worlds/`. A scan runs first and shows what was found; nothing is written until you confirm.
+**Import from another app**, in the character library, copies an installation in one step. Point it at the other client's user folder — the one containing `characters/`, `chats/` and `worlds/`. A scan runs first and shows what was found; nothing is written until you confirm.
 
 - **Imported:** character cards, chats, world info books and OpenAI presets.
 - **Matched by name:** a chat folder is attached to the character whose card name or id matches it. A chat whose character is not in the same import is reported and skipped rather than attached to the wrong person.
