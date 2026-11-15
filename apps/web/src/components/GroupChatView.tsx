@@ -1,11 +1,12 @@
 import {
     applyRegexScripts,
     type ChatMessage,
-    type ChatSummary,
     chatPersonaId,
+    type ChatSummary,
+    expectsKey,
+    getLatestSummary,
     type GroupMember,
     type GroupView,
-    getLatestSummary,
     type Persona,
     prepareSpeechText,
     type QuickReplyAction,
@@ -73,6 +74,8 @@ interface GroupChatViewProps {
     onSelectChat: (id: string) => void;
     onNewChat: () => void;
     onOpenSidebar: () => void;
+    /** Height of the desktop shell's title bar, which floats over this header. */
+    titleBarHeight: number;
     /** Opens Settings; `providers` deep-links to the panel the header's pill names. */
     onOpenSettings: (section?: 'providers') => void;
     onEditGroup: () => void;
@@ -111,6 +114,7 @@ export function GroupChatView({
     onSelectChat,
     onNewChat,
     onOpenSidebar,
+    titleBarHeight,
     onOpenSettings,
     onEditGroup,
 }: GroupChatViewProps) {
@@ -583,7 +587,7 @@ export function GroupChatView({
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
     const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
-    const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    const providerReady = provider ? !expectsKey(provider.kind) || provider.hasKey : false;
     // The model this chat will use: the character's own choice when the
     // provider serves it, otherwise the provider default. The streaming start
     // event reports the same value once a request is under way.
@@ -648,7 +652,10 @@ export function GroupChatView({
     ];
 
     const header = (
-        <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
+        <header
+            className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6"
+            style={titleBarHeight > 0 ? { paddingTop: titleBarHeight + 12 } : undefined}
+        >
             <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>

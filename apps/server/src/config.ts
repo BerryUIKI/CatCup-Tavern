@@ -30,6 +30,13 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
     return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 }
 
+/// A positive finite number, or the fallback. Used for pixel geometry the page
+/// lays itself out from, so a malformed value must not become NaN there.
+function parseNumber(value: string | undefined, fallback: number): number {
+    const parsed = Number.parseFloat(value ?? '');
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
 const dataDirValue = process.env.CATCUP_DATA_DIR?.trim();
 
 export const config = {
@@ -51,6 +58,18 @@ export const config = {
      * to start with a non-loopback host while no password exists.
      */
     desktop: parseBoolean(process.env.CATCUP_DESKTOP, false),
+    /**
+     * The title bar the desktop shell hit-tests, handed on to the page so it
+     * draws the same strip. The shell passes these; a web install has none.
+     */
+    titleBar: {
+        height: parseNumber(process.env.CATCUP_TITLE_BAR_HEIGHT, 0),
+        buttonWidth: parseNumber(process.env.CATCUP_TITLE_BAR_BUTTON_WIDTH, 0),
+        buttonOrder: (process.env.CATCUP_TITLE_BAR_BUTTON_ORDER ?? '')
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean),
+    },
     isProduction: process.env.NODE_ENV === 'production',
 } as const;
 

@@ -65,6 +65,30 @@ This page is the reference for UI work. The full-app UX overhaul is delivered in
   separated at the bottom in wine behind a confirmation. A disabled row says why in a hint line
   rather than leaving the reader to guess.
 
+#### Window controls, desktop only
+
+`TitleBar.tsx` draws the window buttons for the desktop shell, which removes the native frame on
+Windows. It is **an overlay, not a bar**: the three buttons sit in the top-right 138 × 32 px and
+everything else is transparent, so the rail and the chat header keep their own backgrounds to the
+window edge. Those two headers add the bar's height to their top padding (`titleBarHeight`, which
+`MainApp` reads from `/api/auth/status`), and the brand stays in the library rail rather than being
+repeated in a strip of its own. A browser gets `titleBar: null` and draws none of it.
+
+Three rules hold here:
+
+- **They are ordinary buttons.** They are real `<button>`s with `aria-label`, a visible focus ring
+  and the actions the labels promise (Minimize, Maximize/Restore, Close). The glyph and the name
+  flip to Restore while the window is maximised. A window control the keyboard cannot reach would
+  be a regression against the "keyboard and touch have parity" principle above.
+- **Their order is the shell's.** `buttonOrder` comes from the shell, so the page never decides
+  where a platform puts its close button.
+- **Wine is not the close colour here.** Close uses Windows' own `#c42b1c` hover, because a window
+  button that does not look like one reads as a mis-drawn app. Wine stays for destructive actions
+  inside the page.
+
+The strip to their left is the drag surface (`data-tauri-drag-region`); it is not a control, so it
+carries no focus and is `aria-hidden`.
+
 ### Settings
 
 ```

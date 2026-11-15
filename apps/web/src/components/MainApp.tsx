@@ -1,4 +1,4 @@
-import { type CharacterSummary, type ChatSummary, resolvePersona, substituteMacros } from '@catcup/shared';
+import { type CharacterSummary, type ChatSummary, expectsKey, resolvePersona, substituteMacros } from '@catcup/shared';
 import { useEffect, useRef, useState } from 'react';
 
 import {
@@ -35,6 +35,7 @@ import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
+import { TitleBar } from './TitleBar';
 import { ToastViewport } from './Toast';
 
 const EMPTY_CHARACTERS: CharacterSummary[] = [];
@@ -67,6 +68,9 @@ export function MainApp() {
     // of; the library footer hides the action rather than leading to a login
     // screen that cannot accept a password that does not exist.
     const openSession = authStatus.data?.openSession ?? false;
+    // The shell's title bar floats over the rail and the chat header, so those
+    // two reserve room for it instead of being covered by it. `0` in a browser.
+    const titleBarHeight = authStatus.data?.titleBar?.height ?? 0;
 
     const charactersQuery = useCharacters();
     const groupsQuery = useGroups();
@@ -119,7 +123,7 @@ export function MainApp() {
         settings?.providers.find((provider) => provider.id === settings.activeProviderId) ??
         settings?.providers.find((provider) => provider.enabled) ??
         null;
-    const activeProviderReady = activeProvider ? activeProvider.kind === 'ollama' || activeProvider.hasKey : false;
+    const activeProviderReady = activeProvider ? !expectsKey(activeProvider.kind) || activeProvider.hasKey : false;
 
     const createChatMutation = useCreateChat(selectedCharacterId);
     const createGroupChatMutation = useCreateGroupChat(selectedGroupId);
@@ -550,6 +554,11 @@ export function MainApp() {
 
     return (
         <div className="flex h-dvh overflow-hidden">
+            {/* The shell removes the native frame, so the page carries the bar.
+                It floats over the two headers rather than taking a row of its
+                own; a browser gets `null` and keeps the browser's chrome. */}
+            {authStatus.data?.titleBar ? <TitleBar geometry={authStatus.data.titleBar} /> : null}
+
             {sidebarOpen ? (
                 <button
                     type="button"
@@ -601,6 +610,7 @@ export function MainApp() {
                 loggingOut={logoutMutation.isPending}
                 open={sidebarOpen}
                 onClose={() => setSidebarOpen(false)}
+                titleBarHeight={titleBarHeight}
             />
 
             <main className="flex min-w-0 flex-1 flex-col">
@@ -618,6 +628,7 @@ export function MainApp() {
                         onOpenSidebar={() => setSidebarOpen(true)}
                         onOpenSettings={(section) => openSettings(section)}
                         onEditGroup={() => setGroupEditor({ mode: 'edit', id: selectedGroup.id })}
+                        titleBarHeight={titleBarHeight}
                     />
                 ) : (
                     <ChatView
@@ -635,6 +646,7 @@ export function MainApp() {
                         onOpenSettings={(section) => openSettings(section)}
                         onOpenSidebar={() => setSidebarOpen(true)}
                         onOpenLibrary={() => setSidebarOpen(true)}
+                        titleBarHeight={titleBarHeight}
                     />
                 )}
             </main>
