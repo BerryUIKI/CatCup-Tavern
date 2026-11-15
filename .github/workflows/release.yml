@@ -108,11 +108,16 @@ jobs:
               shell: bash
               env:
                   TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-              # Length only. Printing even a prefix of the key would put it in the
-              # run log, and a value this step reports as empty means the release
-              # silently ships without updater artifacts.
+              # A length is not a secret; a prefix, a suffix or the body is. If this
+              # prints 0 the release below takes its unsigned branch and ships
+              # without updater artifacts, which is what happened to 0.3.0 and
+              # 0.3.1. A mask that shows as `***` says only that the name exists.
               run: |
-                  echo "TAURI_SIGNING_PRIVATE_KEY length: ${#TAURI_SIGNING_PRIVATE_KEY}" >> "$GITHUB_STEP_SUMMARY"
+                  length=${#TAURI_SIGNING_PRIVATE_KEY}
+                  echo "TAURI_SIGNING_PRIVATE_KEY length: ${length}"
+                  if [ "${length}" -eq 0 ]; then
+                      echo "::warning::The signing key secret is empty, so no updater artifacts will be produced."
+                  fi
 
             - name: Build the installer
               shell: bash
