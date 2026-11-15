@@ -154,7 +154,9 @@ Keeping it out of the checked-in config means a local `tauri build` still works 
 - `TAURI_SIGNING_PRIVATE_KEY` — the contents of the key file from `tauri signer generate`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — only when the key was generated with a password
 
-Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the run uploads the installer, the `.nsis.zip` archive, its `.sig`, and a `latest.json` manifest naming the archive by URL and carrying the signature. `releases/latest/download/latest.json` then resolves that manifest for every installed app.
+Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the signed artifact and a `latest.json` manifest are published: the manifest names the artifact by URL and carries the contents of its `.sig`, and `releases/latest/download/latest.json` resolves that manifest for every installed app.
+
+What gets signed depends on the bundler version. Current Tauri signs the NSIS installer itself and leaves `<installer>.exe.sig` beside it — there is no separate archive — while older bundlers produced a `*.nsis.zip` to sign. The publish step prefers the archive when one exists and otherwise uses the signed installer, publishing the installer once either way, plus its `.sig` and `latest.json`. A release that lists only an `.exe` and no `latest.json` was built without a key, whatever the secret list says.
 
 Two details decide whether the workflow takes the signed path, and both have gone wrong before:
 
