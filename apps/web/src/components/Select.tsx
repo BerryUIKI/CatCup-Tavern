@@ -1,12 +1,5 @@
 import { Check, ChevronDown } from 'lucide-react';
-import {
-    type KeyboardEvent as ReactKeyboardEvent,
-    type ReactNode,
-    useEffect,
-    useId,
-    useRef,
-    useState,
-} from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../lib/cn';
@@ -352,7 +345,11 @@ export function Select<T extends string>({
                 {trailingSlot ?? (
                     <ChevronDown
                         size={15}
-                        className={cn('shrink-0 text-muted transition', size !== 'md' && 'size-3.5', open && 'rotate-180')}
+                        className={cn(
+                            'shrink-0 text-muted transition',
+                            size !== 'md' && 'size-3.5',
+                            open && 'rotate-180',
+                        )}
                         aria-hidden="true"
                     />
                 )}

@@ -1,11 +1,4 @@
-import {
-    type KeyboardEvent as ReactKeyboardEvent,
-    type ReactNode,
-    useEffect,
-    useId,
-    useRef,
-    useState,
-} from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { cn } from '../lib/cn';
@@ -93,8 +86,7 @@ export function Combobox({
     const matches = trimmed
         ? options.filter(
               (option) =>
-                  option.value.toLowerCase().includes(trimmed) ||
-                  (option.label ?? '').toLowerCase().includes(trimmed),
+                  option.value.toLowerCase().includes(trimmed) || (option.label ?? '').toLowerCase().includes(trimmed),
           )
         : options;
 

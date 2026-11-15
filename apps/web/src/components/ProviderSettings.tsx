@@ -1010,9 +1010,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                 className="min-w-0 flex-1"
                                 value={mode === 'new' ? NEW_PROVIDER_OPTION : (selectedId ?? '')}
                                 options={[
-                                    ...(mode === 'new'
-                                        ? [{ value: NEW_PROVIDER_OPTION, label: 'New provider…' }]
-                                        : []),
+                                    ...(mode === 'new' ? [{ value: NEW_PROVIDER_OPTION, label: 'New provider…' }] : []),
                                     ...settings.providers.map((provider) => ({
                                         value: provider.id,
                                         label: `${provider.name}${

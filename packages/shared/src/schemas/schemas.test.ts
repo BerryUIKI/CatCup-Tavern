@@ -13,7 +13,8 @@ import {
     providerDraftTestSchema,
     providerInitials,
     providerSummary,
-} from './provider.js';import { appSettingsSchema, DEFAULT_MEMORY_SETTINGS, DEFAULT_UI_SETTINGS, settingsPatchSchema } from './settings.js';
+} from './provider.js';
+import { appSettingsSchema, DEFAULT_MEMORY_SETTINGS, DEFAULT_UI_SETTINGS, settingsPatchSchema } from './settings.js';
 import { DEFAULT_TTS_SETTINGS } from './tts.js';
 
 describe('shared schemas', () => {

@@ -136,7 +136,8 @@ describe('desktop open session', () => {
         expect(after.statusCode).toBe(401);
     });
 
-    it('requires the current password to change an existing one', async () => {        const booted = await boot(true);
+    it('requires the current password to change an existing one', async () => {
+        const booted = await boot(true);
         app = booted.app;
         root = booted.root;
 

@@ -54,26 +54,26 @@ flowchart LR
 
 ## Documentation map
 
-| Document                                   | Purpose                                                                           |
-| ------------------------------------------ | --------------------------------------------------------------------------------- |
-| [MILESTONES.md](MILESTONES.md)             | Scope, sequencing, acceptance criteria and current status                         |
-| [RFC/](RFC/README.md)                      | Proposals for large features, with the open questions still awaiting an answer    |
-| [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers              |
-| [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility   |
-| [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes             |
-| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible cards, chats, groups, world info, presets, regex and internal files |
+| Document                                   | Purpose                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| [MILESTONES.md](MILESTONES.md)             | Scope, sequencing, acceptance criteria and current status                                    |
+| [RFC/](RFC/README.md)                      | Proposals for large features, with the open questions still awaiting an answer               |
+| [ARCHITECTURE.md](ARCHITECTURE.md)         | Runtime topology, stack decisions, data flow and compatibility tiers                         |
+| [DESIGN.md](DESIGN.md)                     | Interface principles, layout, tokens, components, interaction and accessibility              |
+| [API.md](API.md)                           | REST endpoints, request/response shapes, SSE protocol and error codes                        |
+| [DATA-FORMATS.md](DATA-FORMATS.md)         | ST-compatible cards, chats, groups, world info, presets, regex and internal files            |
 | [PROVIDERS.md](PROVIDERS.md)               | Protocols and service templates, endpoint mapping, streaming normalization and adapter guide |
-| [LIMITATIONS.md](LIMITATIONS.md)           | User-facing: what this release does and does not do                               |
-| [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) | Feature-by-feature compatibility matrix and known deviations                      |
-| [DEVELOPMENT.md](DEVELOPMENT.md)           | Setup, commands, project layout, testing and extension workflows                  |
-| [DEPLOYMENT.md](DEPLOYMENT.md)             | Production build, LAN access, reverse proxy, backup and upgrades                  |
-| [DESKTOP.md](DESKTOP.md)                   | Tauri shell, server sidecar, readiness contract and packaging status              |
-| [SECURITY.md](SECURITY.md)                 | Threat model, auth, secrets, LAN guidance and hardening backlog                   |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   | Common failures and diagnostic steps                                              |
-| [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                |
-| [REUSE.md](REUSE.md)                       | Licensing and code reuse assessment                                               |
-| [../CHANGELOG.md](../CHANGELOG.md)         | Release history and unreleased changes                                            |
-| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, releases, branch protection and quality gates                            |
+| [LIMITATIONS.md](LIMITATIONS.md)           | User-facing: what this release does and does not do                                          |
+| [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) | Feature-by-feature compatibility matrix and known deviations                                 |
+| [DEVELOPMENT.md](DEVELOPMENT.md)           | Setup, commands, project layout, testing and extension workflows                             |
+| [DEPLOYMENT.md](DEPLOYMENT.md)             | Production build, LAN access, reverse proxy, backup and upgrades                             |
+| [DESKTOP.md](DESKTOP.md)                   | Tauri shell, server sidecar, readiness contract and packaging status                         |
+| [SECURITY.md](SECURITY.md)                 | Threat model, auth, secrets, LAN guidance and hardening backlog                              |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   | Common failures and diagnostic steps                                                         |
+| [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                           |
+| [REUSE.md](REUSE.md)                       | Licensing and code reuse assessment                                                          |
+| [../CHANGELOG.md](../CHANGELOG.md)         | Release history and unreleased changes                                                       |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, releases, branch protection and quality gates                                       |
 
 ## Documentation conventions
 

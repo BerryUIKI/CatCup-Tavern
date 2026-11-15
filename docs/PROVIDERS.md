@@ -6,21 +6,21 @@ CatCup Tavern speaks to four chat provider families through a small adapter inte
 
 A provider is identified by two things: the **request protocol** it speaks, and the **service template** it was started from. The protocol decides how a request is encoded and streamed; the template is a prefill of a name, a kind and a default base URL, and nothing more.
 
-| Protocol (UI label)     | Stored `kind` values                    | Requests                                            | Key expected |
-| ----------------------- | --------------------------------------- | --------------------------------------------------- | ------------ |
-| OpenAI Chat Completions | `openai`, `openrouter`, `custom`        | `POST /chat/completions`, SSE                       | Usually      |
-| Anthropic Messages      | `anthropic`                             | `POST /messages`, `x-api-key`, SSE                  | Yes          |
-| Ollama native           | `ollama`                                | `POST /api/chat`, NDJSON                            | No           |
+| Protocol (UI label)     | Stored `kind` values             | Requests                           | Key expected |
+| ----------------------- | -------------------------------- | ---------------------------------- | ------------ |
+| OpenAI Chat Completions | `openai`, `openrouter`, `custom` | `POST /chat/completions`, SSE      | Usually      |
+| Anthropic Messages      | `anthropic`                      | `POST /messages`, `x-api-key`, SSE | Yes          |
+| Ollama native           | `ollama`                         | `POST /api/chat`, NDJSON           | No           |
 
 `openai`, `openrouter` and `custom` are three stored kinds speaking **one** protocol: all three are served by the same adapter (`apps/server/src/providers/index.ts`), and differ only in their default base URL and the `HTTP-Referer` / `X-Title` attribution headers `openrouter` adds. They stay separate values because a `kind` written by 0.3.x must keep loading unchanged — the UI calls the field a protocol, the file keeps the value.
 
-| Kind         | Default base URL               | What it is                                      |
-| ------------ | ------------------------------ | ----------------------------------------------- |
-| `openai`     | `https://api.openai.com/v1`    | The OpenAI template                             |
-| `openrouter` | `https://openrouter.ai/api/v1` | The OpenRouter template                         |
-| `anthropic`  | `https://api.anthropic.com/v1` | The Anthropic template                          |
-| `ollama`     | `http://127.0.0.1:11434`       | The Ollama template                             |
-| `custom`     | none                           | Any endpoint that speaks the chosen protocol    |
+| Kind         | Default base URL               | What it is                                   |
+| ------------ | ------------------------------ | -------------------------------------------- |
+| `openai`     | `https://api.openai.com/v1`    | The OpenAI template                          |
+| `openrouter` | `https://openrouter.ai/api/v1` | The OpenRouter template                      |
+| `anthropic`  | `https://api.anthropic.com/v1` | The Anthropic template                       |
+| `ollama`     | `http://127.0.0.1:11434`       | The Ollama template                          |
+| `custom`     | none                           | Any endpoint that speaks the chosen protocol |
 
 A provider serves **one or more models**. One is marked its default; a character may name another, and a chat falls back along an explicit rule rather than failing when its model is unavailable.
 
