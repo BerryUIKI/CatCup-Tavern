@@ -191,13 +191,15 @@ context every turn.
 
 ## 4. Portraits: prompts first, generation second
 
-CatCup's image pipeline drafts prompts **from chat history**, not from a card — see
-`apps/server/src/images/prompt.ts`, where `draftImagePrompt` is given `messages`, `characterName` and
-`userName` and never the card's description. So a fresh card with no chat has nothing to draft from.
+CatCup can draft an image prompt from a chat (`POST /api/images/draft`) and, on newer builds, from the
+card itself (`POST /api/images/draft-portrait`, which reads `description` and `personality` and needs
+no chat and no image backend). Neither is the point of this step: a _pack_ wants one consistent set of
+prompts across the whole cast, in one file the user can edit, not one dialog at a time.
 
 Two consequences for this workflow:
 
-1. Always write the portrait prompts yourself, into `portraits/prompts.md`. Do not send the user to
+1. Always write the portrait prompts yourself, into `portraits/prompts.md`. If the app is new enough
+   to have `draft-portrait`, mention it as a per-card alternative; do not send the user to
    "Draft from chat" for a card that has no history.
 2. Ask the user whether they have an image backend before assuming generation. If they don't, the
    prompt list _is_ the deliverable — they can paste it into anything.
@@ -235,10 +237,13 @@ The pipeline in CatCup is: **generate → save to gallery → attach to a messag
 
 - `POST /api/images/generate` with `{ "characterId": "…", "prompt": "…" }` writes to the gallery and
   returns `{ image: { file, url, … } }`.
-- The avatar route `GET /api/characters/:id/avatar` serves the card file itself, and a **JSON card
-  has no avatar**. `PATCH /api/characters/:id` has no image field either.
+- On a build with `POST /api/images/portrait`, `{ "characterId", "file" }` promotes that gallery PNG
+  to the card's picture — a JSON card becomes a PNG card, and the previous picture is not kept.
+- Without that route, `GET /api/characters/:id/avatar` serves the card file itself, so a **JSON card
+  has no avatar**, and `PATCH /api/characters/:id` has no image field either.
 
-So a generated image becomes a card portrait only by being **embedded into a PNG card**:
+So on a build without the portrait route, a generated image becomes a card portrait only by being
+**embedded into a PNG card**:
 
 ```bash
 node .claude/skills/novel-to-catcup/scripts/embed-portrait.mjs card.json portrait.png out-card.png
@@ -307,10 +312,18 @@ the browser.
 
 ## 6. If the user wants to play someone
 
-Personas have **`name` and `description` only** — no avatar, no lorebook, no per-persona prompt
-settings (`packages/shared/src/schemas/settings.ts`, and `docs/LIMITATIONS.md` in the CatCup repo). So a
-card's `first_mes` and `mes_example` cannot be reused as a persona; you compress the character into one
-or two paragraphs, first person, in the character's voice.
+A persona is how the model refers to the player. What it can carry depends on the build:
+
+- **Older builds:** `name` and `description` only — no personality, no lorebook, no avatar.
+- **Newer builds:** `personality`, `scenario` and `mesExample` as well, joined into the one persona
+  slot as labelled paragraphs, with the examples read as _the player's_ turns. Those builds also
+  have a **Play as this character** button in the library that copies a card into a persona, leaving
+  `first_mes` behind on purpose — a card's opening line belongs to the assistant, and a persona
+  carrying it makes the model greet itself.
+
+Either way, write `persona-<Name>.md` by hand. The button is a per-card convenience that copies the
+card's own third-person description; a pack wants a persona in the character's **first person** voice,
+which is what a player actually needs. Mention the button when the app has it, then hand over the file.
 
 Write `persona-<Name>.md`:
 
@@ -370,14 +383,21 @@ Do not claim the files were imported — you wrote files, the user imports them.
 - [references/card-writing.md](references/card-writing.md) — voice, register, and what to leave out.
 - [references/catcup-import.md](references/catcup-import.md) — every import route and its field rules.
 - [references/content-policy.md](references/content-policy.md) — the age and explicitness lines.
-- CatCup's own distillation pipeline (RFC 0002, `apps/server/src/distill/`) automates step 1 and 2
-  _inside the app_, against a configured model, with a review sheet. This skill is the
-  out-of-band version: no server, no API key, usable before the app is running. If the user has the
-  app up and a provider configured, mention that path too — with the trade-off stated plainly: the
-  in-app run is faster but produces what a model extracts, while this workflow is what produces
-  cards with a voice, portrait prompts and a persona.
 - Canonical formats live in the CatCup repo's `docs/DATA-FORMATS.md`; the import contracts in
   `docs/API.md`. Where this skill and those pages disagree, the route code wins — say so if the user
   hits a mismatch rather than silently working around it.
-- Canonical formats live in the CatCup repo's `docs/DATA-FORMATS.md`; the import contracts in
-  `docs/API.md`.
+
+## Three ways to get a pack, and when each is right
+
+They are complementary, not alternative implementations. If the user already has one, do not talk
+them into another.
+
+| Path                               | What it is                                                                                                                                | When it fits                                                                            |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **This skill**                     | Static files in the repo plus three scripts. Runs in any checkout, needs no server, no provider and no build.                             | The user has the source, or wants portraits, personas and a validated pack in one pass. |
+| **`GET /api/distill/skill`**       | The app serves a generated, **prompt-only** skill as a ZIP, built from the runtime's own prompt constants, with a drift test. No scripts. | The user runs CatCup and wants the current prompts to hand to an assistant elsewhere.   |
+| **In-app distillation** (RFC 0002) | **Distil from a book** in the app, against a configured model, with a review sheet.                                                       | The user wants it done inside CatCup, fast, and is happy with what a model extracts.    |
+
+All three end in the same thing: ordinary V2 cards and an ordinary world info book. Say which one you
+used, and do not describe them as equivalents — the prompt-only export and this skill drift
+independently, and the in-app run produces what a model extracts rather than what a writer shapes.

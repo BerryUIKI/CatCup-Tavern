@@ -6,7 +6,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
-- A checked-in Claude Code skill, `novel-to-catcup`, that turns a novel or any long text into a pack CatCup imports as-is: one V2 character card per character, one ST-shaped world info book, persona text for a character the user wants to play, and portrait prompts for every card. It carries a pack validator and a PNG card writer that stamps `chara`/`ccv3` metadata into a generated portrait so the image becomes the card avatar — the app has no avatar endpoint, so this is the supported route from a generated image to a card image. The validator and the PNG writer are documented in `docs/DEVELOPMENT.md#skills`.
+- A checked-in Claude Code skill, `novel-to-catcup`, that turns a novel or any long text into a pack CatCup imports as-is: one V2 character card per character, one ST-shaped world info book, persona text for a character the user wants to play, and portrait prompts for every card. It carries a pack validator and an offline PNG card writer that stamps `chara`/`ccv3` metadata into a chosen portrait, plus a script that compares its output with the server's own writer. This is the static, script-backed variant for people working in a checkout; it is distinct from the generated, prompt-only export served at `GET /api/distill/skill`, which carries no scripts. See `docs/DEVELOPMENT.md#skills`.
 
 ### Changed
 

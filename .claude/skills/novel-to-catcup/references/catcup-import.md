@@ -78,28 +78,38 @@ book: it would duplicate the entries into every card.
 
 ## Images
 
-CatCup's pipeline is **generate → gallery → attach to a message**. There is no avatar endpoint.
+CatCup's pipeline is **generate → gallery → attach to a message**, plus a portrait promotion that
+writes a gallery image back into the card. A card's picture and its data are one file, so a portrait
+has to be a PNG.
 
-| Route                           | Purpose                                                                       |
-| ------------------------------- | ----------------------------------------------------------------------------- |
-| `POST /api/images/test`         | Probe the configured backend                                                  |
-| `POST /api/images/draft`        | Ask the chat model for a prompt from recent messages                          |
-| `POST /api/images/generate`     | Generate into the gallery: `{ characterId, prompt }` or `{ groupId, prompt }` |
-| `POST /api/images/attach`       | Append an image to a chat as an ST media message                              |
-| `GET /api/images?characterId=…` | List the gallery                                                              |
-| `GET /api/images/:folder/:file` | Serve one                                                                     |
+| Route                             | Purpose                                                                       |
+| --------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /api/images/test`           | Probe the configured backend                                                  |
+| `POST /api/images/draft`          | Ask the chat model for a prompt from recent messages                          |
+| `POST /api/images/draft-portrait` | Ask the chat model for a prompt from a **card**, no chat needed               |
+| `POST /api/images/generate`       | Generate into the gallery: `{ characterId, prompt }` or `{ groupId, prompt }` |
+| `POST /api/images/portrait`       | Promote a gallery PNG to the character's picture                              |
+| `POST /api/images/attach`         | Append an image to a chat as an ST media message                              |
+| `GET /api/images?characterId=…`   | List the gallery                                                              |
+| `GET /api/images/:folder/:file`   | Serve one                                                                     |
 
-`draft` reads **chat history**, never the card's `description`
-(`apps/server/src/images/prompt.ts`). A new card has no history, so write portrait prompts yourself.
+Both draft routes are chat-model calls and need **no image backend**; only `generate` does, and with
+it disabled that route answers `400 IMAGE_DISABLED`. If the app version you are talking to has only
+`/draft`, that one reads chat history and never the card, so a fresh card has nothing to draft from —
+write the prompt yourself in that case.
 
-When the backend is disabled, `generate` returns `400 IMAGE_DISABLED`. There is no prompt-only
-fallback in the API — the prompt list is the fallback.
+### From generated image to card portrait
 
-### From generated image to card avatar
+Two routes, depending on what the app offers:
 
-`scripts/embed-portrait.mjs` writes the card into the PNG's `chara` and `ccv3` chunks. CatCup then
-stores it as a PNG card, and the image _is_ the avatar. Keep the source `card.json` around; the PNG
-carries the same metadata and can be exported back to JSON.
+1. `POST /api/images/portrait` with `{ characterId, file }` promotes a gallery PNG directly. A JSON
+   card becomes a PNG card in the process, and the previous picture is **not** kept.
+2. On an app without that route, `scripts/embed-portrait.mjs` does the same thing offline: it writes
+   the card into the PNG's `chara` and `ccv3` chunks, so the result imports as a PNG card with its
+   metadata and its image in one file. This also works in a checkout with no server running.
+
+Either way, keep the source `card.json` around; the PNG carries the same metadata and can be exported
+back to JSON.
 
 ## Settings that matter to a pack
 
