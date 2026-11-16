@@ -168,6 +168,7 @@ describe('provider protocol and templates', () => {
             'anthropic',
             'openrouter',
             'ollama',
+            'gemini',
         ]);
         for (const template of PROVIDER_TEMPLATES) {
             expect(template.kind).toBe(template.id);

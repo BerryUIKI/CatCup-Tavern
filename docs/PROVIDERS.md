@@ -6,21 +6,25 @@ CatCup Tavern speaks to four chat provider families through a small adapter inte
 
 A provider is identified by two things: the **request protocol** it speaks, and the **service template** it was started from. The protocol decides how a request is encoded and streamed; the template is a prefill of a name, a kind and a default base URL, and nothing more.
 
-| Protocol (UI label)     | Stored `kind` values             | Requests                           | Key expected |
-| ----------------------- | -------------------------------- | ---------------------------------- | ------------ |
-| OpenAI Chat Completions | `openai`, `openrouter`, `custom` | `POST /chat/completions`, SSE      | Usually      |
-| Anthropic Messages      | `anthropic`                      | `POST /messages`, `x-api-key`, SSE | Yes          |
-| Ollama native           | `ollama`                         | `POST /api/chat`, NDJSON           | No           |
+| Protocol (UI label)     | Stored `kind` values             | Requests                                          | Key expected |
+| ----------------------- | -------------------------------- | ------------------------------------------------- | ------------ |
+| OpenAI Chat Completions | `openai`, `openrouter`, `custom` | `POST /chat/completions`, SSE                     | Usually      |
+| OpenAI Responses        | `openai-responses`               | `POST /responses`, SSE, typed events              | Yes          |
+| Anthropic Messages      | `anthropic`                      | `POST /messages`, `x-api-key`, SSE                | Yes          |
+| Gemini native           | `gemini`                         | `POST /models/{model}:streamGenerateContent`, SSE | Yes          |
+| Ollama native           | `ollama`                         | `POST /api/chat`, NDJSON                          | No           |
 
 `openai`, `openrouter` and `custom` are three stored kinds speaking **one** protocol: all three are served by the same adapter (`apps/server/src/providers/index.ts`), and differ only in their default base URL and the `HTTP-Referer` / `X-Title` attribution headers `openrouter` adds. They stay separate values because a `kind` written by 0.3.x must keep loading unchanged — the UI calls the field a protocol, the file keeps the value.
 
-| Kind         | Default base URL               | What it is                                   |
-| ------------ | ------------------------------ | -------------------------------------------- |
-| `openai`     | `https://api.openai.com/v1`    | The OpenAI template                          |
-| `openrouter` | `https://openrouter.ai/api/v1` | The OpenRouter template                      |
-| `anthropic`  | `https://api.anthropic.com/v1` | The Anthropic template                       |
-| `ollama`     | `http://127.0.0.1:11434`       | The Ollama template                          |
-| `custom`     | none                           | Any endpoint that speaks the chosen protocol |
+| Kind               | Default base URL                                   | What it is                                   |
+| ------------------ | -------------------------------------------------- | -------------------------------------------- |
+| `openai`           | `https://api.openai.com/v1`                        | The OpenAI template                          |
+| `openrouter`       | `https://openrouter.ai/api/v1`                     | The OpenRouter template                      |
+| `anthropic`        | `https://api.anthropic.com/v1`                     | The Anthropic template                       |
+| `ollama`           | `http://127.0.0.1:11434`                           | The Ollama template                          |
+| `gemini`           | `https://generativelanguage.googleapis.com/v1beta` | The Google Gemini template                   |
+| `openai-responses` | `https://api.openai.com/v1`                        | Reachable by choosing the protocol           |
+| `custom`           | none                                               | Any endpoint that speaks the chosen protocol |
 
 A provider serves **one or more models**. One is marked its default; a character may name another, and a chat falls back along an explicit rule rather than failing when its model is unavailable.
 
@@ -139,6 +143,104 @@ CatCup converts the flat prompt into Anthropic's shape:
 
 **Model list:** `GET <baseUrl>/models?limit=1000`.
 
+## OpenAI Responses (`openai-responses`)
+
+OpenAI's newer interface. It is **not** Chat Completions under another path: the
+body takes `input` rather than `messages`, streaming arrives as typed events
+rather than `choices[].delta`, and the reply is a list of output items. It has
+its own adapter, `apps/server/src/providers/openaiResponses.ts`.
+
+**Streaming request**
+
+```http
+POST <baseUrl>/responses
+Authorization: Bearer <key>
+```
+
+```json
+{
+    "model": "gpt-5",
+    "instructions": "the system text, joined",
+    "input": [{ "role": "user", "content": "…" }],
+    "stream": true,
+    "store": false,
+    "temperature": 1,
+    "top_p": 1,
+    "max_output_tokens": 1024
+}
+```
+
+- **System turns** become the top-level `instructions` field; the API has no
+  system role inside `input`.
+- **`store` is always `false`.** Every other adapter here is stateless — the
+  conversation lives in CatCup's chat log — and this keeps the Responses API
+  from keeping its own copy.
+- **`max_tokens` is `max_output_tokens`.** Sending the Chat Completions name
+  here is rejected.
+- **An assistant prefill** is a trailing `{ "role": "assistant" }` item.
+
+**Streaming events**
+
+| Event                                   | Becomes                                 |
+| --------------------------------------- | --------------------------------------- |
+| `response.output_text.delta`            | text                                    |
+| `response.reasoning_summary_text.delta` | reasoning                               |
+| `response.reasoning_text.delta`         | reasoning                               |
+| `response.completed`                    | usage (`input_tokens`, `output_tokens`) |
+| `response.failed`                       | a thrown error                          |
+
+Every other event — `response.created`, `response.in_progress`, the content-part
+events — is ignored. An `error` object in any event is thrown, because the HTTP
+status has already gone out by the time these arrive.
+
+**Model list:** `GET <baseUrl>/models`. Not every OpenAI-compatible gateway
+implements `/responses`; one that does not answers `404`, which is what **Test
+connection** reports.
+
+## Gemini native (`gemini`)
+
+Google's own API, not an OpenAI-compatible one. Adapter:
+`apps/server/src/providers/gemini.ts`.
+
+**Streaming request**
+
+```http
+POST <baseUrl>/models/<model>:streamGenerateContent?alt=sse
+x-goog-api-key: <key>
+```
+
+The model is **in the path**, not the body, and `alt=sse` is always sent —
+without it the endpoint returns one JSON array after the generation is finished
+instead of a stream.
+
+```json
+{
+    "contents": [{ "role": "user", "parts": [{ "text": "…" }] }, { "role": "model", "parts": [{ "text": "…" }] }],
+    "systemInstruction": { "parts": [{ "text": "the system text, joined" }] },
+    "generationConfig": { "maxOutputTokens": 1024, "temperature": 1, "topP": 1 }
+}
+```
+
+- **`assistant` becomes `model`**, and system turns are hoisted into
+  `systemInstruction`; the API has no system role.
+- **A conversation must open with a user turn.** Leading `model` turns are
+  dropped, which a prefilled or oddly branched chat can otherwise produce.
+- **The key is a header (`x-goog-api-key`), not a query parameter**, so it does
+  not end up in a URL that a proxy might log.
+
+**Streaming chunks**
+
+Each SSE `data` is one `GenerateContentResponse`:
+
+- `candidates[0].content.parts[].text` → text, unless `part.thought` is `true`,
+  in which case it is reasoning;
+- `usageMetadata.promptTokenCount` / `candidatesTokenCount` → usage;
+- `promptFeedback.blockReason` → a thrown error, which otherwise looks like an
+  empty answer.
+
+**Model list:** `GET <baseUrl>/models`. Names arrive as `models/gemini-2.5-pro`
+and the `models/` prefix is stripped, because the request path adds it.
+
 ## Ollama
 
 **Streaming request**
@@ -222,7 +324,8 @@ Generated images are stored in `data/user/images/<character or group>/` with a m
 
 ## Current limitations
 
-- Text chat, speech output and image output only: no vision/image inputs, tool calling, embeddings or the OpenAI Responses API. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
+- Text chat, speech output and image output only: no vision/image inputs, tool calling, embeddings or hosted tools. The Responses API is implemented for text and reasoning; its server-side conversation state, `previous_response_id` chaining, built-in tools and structured outputs are not used. TTS is a separate `/audio/speech` adapter, not part of the chat adapters.
+- The Responses and Gemini adapters map text, reasoning and token usage. Attachments, function calling, JSON-schema output and Gemini's files API are not implemented.
 - Text-to-speech supports only the two backends above; SillyTavern's other TTS provider extensions are not implemented.
 - Image generation supports Automatic1111/Forge, ComfyUI API workflows and OpenAI-compatible endpoints in this release. Stability, NovelAI and the other ST image sources are not implemented. The ComfyUI adapter has no workflow file manager or model/sampler pickers from `/object_info`; the workflow is edited as JSON in Settings.
 - There is one image generation configuration at a time; per-character backends, image-to-image, inpainting, upscaling, image upload and automatic per-message generation are not available.

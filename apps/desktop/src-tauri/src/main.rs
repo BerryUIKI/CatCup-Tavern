@@ -5,6 +5,8 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod chrome;
+
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -160,6 +162,11 @@ fn start_server(app: &tauri::App) -> Result<(Child, u16), String> {
         // Tells the server this is the single-user desktop shape, so an install
         // with no password opens straight into the app instead of a setup screen.
         .env("CATCUP_DESKTOP", "1")
+        // The page draws the title bar, and the shell hit-tests it. Both read
+        // these numbers, so they are passed rather than duplicated.
+        .env("CATCUP_TITLE_BAR_HEIGHT", chrome::TITLE_BAR_HEIGHT.to_string())
+        .env("CATCUP_TITLE_BAR_BUTTON_WIDTH", chrome::BUTTON_WIDTH.to_string())
+        .env("CATCUP_TITLE_BAR_BUTTON_ORDER", chrome::BUTTON_ORDER)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
@@ -499,6 +506,8 @@ fn flush_open_files<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+/// The bar geometry the SPA draws from, so its numbers and the hit-testing
+/// numbers cannot drift apart.
 fn main() {
     // Arguments for this launch. A card the user double-clicked is one of them.
     let startup_args: Vec<String> = std::env::args().skip(1).collect();
@@ -557,7 +566,7 @@ fn main() {
             });
 
             let url = format!("http://127.0.0.1:{port}");
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url.parse()?))
+            let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(url.parse()?))
                 .title("CatCup Tavern")
                 .inner_size(1280.0, 820.0)
                 .min_inner_size(900.0, 620.0)
@@ -577,6 +586,12 @@ fn main() {
                     }
                 })
                 .build()?;
+
+            // The SPA draws the bar on Windows and drives the window through the
+            // window API; elsewhere the native decoration stays and the page
+            // draws nothing.
+            chrome::install(&window)?;
+            drop(window);
 
             install_tray(app)?;
             Ok(())

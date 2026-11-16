@@ -91,10 +91,24 @@ sequenceDiagram
 ### `GET /api/auth/status`
 
 ```json
-{ "needsSetup": false, "authenticated": true, "openSession": false }
+{
+    "needsSetup": false,
+    "authenticated": true,
+    "openSession": false,
+    "desktop": false,
+    "titleBar": null
+}
 ```
 
 `openSession` is true only in a desktop install with no password: the API answers without a session and `needsSetup` stays false so the SPA opens directly.
+
+`desktop` says the shell, not the user, is showing the page. `titleBar` is the custom title bar the shell wants drawn, or `null` when there is none:
+
+```json
+{ "height": 32, "buttonWidth": 46, "buttonOrder": ["minimize", "maximize", "close"] }
+```
+
+The shell passes these numbers to the server as `CATCUP_TITLE_BAR_HEIGHT`, `CATCUP_TITLE_BAR_BUTTON_WIDTH` and `CATCUP_TITLE_BAR_BUTTON_ORDER`, and the server hands them on unchanged, so the strip the SPA draws and the strip the shell hit-tests are the same. A web or LAN install has no shell and gets `null`. See `docs/DESKTOP.md#custom-title-bar`.
 
 ### `POST /api/auth/setup`
 

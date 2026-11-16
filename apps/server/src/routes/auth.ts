@@ -85,6 +85,12 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
             needsSetup: !auth && !config.desktop,
             authenticated: open || (auth ? Boolean(token && verifySessionToken(token, auth.sessionSecret)) : false),
             openSession: open,
+            // The SPA uses this to draw the custom title bar: the shell removes
+            // the native one, and the same page served to a browser must not
+            // grow a second one. The geometry comes from the shell, so the bar
+            // the page draws and the strip the shell hit-tests are the same.
+            desktop: config.desktop,
+            titleBar: config.desktop && config.titleBar.height > 0 ? config.titleBar : null,
         };
     });
 

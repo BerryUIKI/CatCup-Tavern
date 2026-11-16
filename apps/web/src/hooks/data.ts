@@ -65,10 +65,15 @@ export function useAuthStatus() {
 function useAuthenticated() {
     const queryClient = useQueryClient();
     return () => {
+        // `desktop` describes the shell, not the session, so it is carried over
+        // from the status this response replaces rather than guessed here.
+        const previous = queryClient.getQueryData<AuthStatus>(queryKeys.auth);
         queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
             needsSetup: false,
             authenticated: true,
             openSession: false,
+            desktop: previous?.desktop ?? false,
+            titleBar: previous?.titleBar ?? null,
         });
         queryClient.removeQueries({
             predicate: (query) => query.queryKey[0] !== 'auth',
@@ -126,10 +131,15 @@ export function useSetPassword() {
         mutationFn: ({ password, currentPassword }: { password: string; currentPassword?: string }) =>
             api.auth.setPassword(password, currentPassword),
         onSuccess: (result) => {
+            // Changing the password does not change which shape is running, so
+            // `desktop` is carried over instead of being reset to false.
+            const previous = queryClient.getQueryData<AuthStatus>(queryKeys.auth);
             queryClient.setQueryData<AuthStatus>(queryKeys.auth, {
                 needsSetup: false,
                 authenticated: true,
                 openSession: result.openSession,
+                desktop: previous?.desktop ?? false,
+                titleBar: previous?.titleBar ?? null,
             });
         },
     });
