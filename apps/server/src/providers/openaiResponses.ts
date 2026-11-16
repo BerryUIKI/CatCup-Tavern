@@ -14,7 +14,7 @@
 import { isRecord, type ModelInfo, type ProviderConfig, type ProviderTestResult } from '@catcup/shared';
 
 import { ensureOk, joinUrl, numberOrUndefined, parseSse } from './http.js';
-import type { ProviderAdapter, PromptMessage, ProviderRequest, StreamChunk } from './types.js';
+import type { PromptMessage, ProviderAdapter, ProviderRequest, StreamChunk } from './types.js';
 
 function headersFor(config: ProviderConfig, apiKey: string | undefined): Record<string, string> {
     const headers: Record<string, string> = {

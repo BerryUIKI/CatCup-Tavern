@@ -17,7 +17,7 @@
 import { isRecord, type ModelInfo, type ProviderConfig, type ProviderTestResult } from '@catcup/shared';
 
 import { ensureOk, joinUrl, numberOrUndefined, parseSse } from './http.js';
-import type { ProviderAdapter, PromptMessage, ProviderRequest, StreamChunk } from './types.js';
+import type { PromptMessage, ProviderAdapter, ProviderRequest, StreamChunk } from './types.js';
 
 /**
  * The key travels in the `x-goog-api-key` header rather than the `?key=`
