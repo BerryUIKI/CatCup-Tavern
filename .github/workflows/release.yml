@@ -104,6 +104,20 @@ jobs:
             - name: Build the SPA
               run: pnpm --filter @catcup/web build
 
+            - name: Check the signing key
+              shell: bash
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+              # A length is not a secret. A zero means the release below ships
+              # without updater artifacts, which is silent otherwise: the
+              # installer publishes fine and simply never updates.
+              run: |
+                  length=${#TAURI_SIGNING_PRIVATE_KEY}
+                  echo "TAURI_SIGNING_PRIVATE_KEY length: ${length}"
+                  if [ "${length}" -eq 0 ]; then
+                      echo "::warning::The signing key secret is empty, so no updater artifacts will be produced."
+                  fi
+
             - name: Build the installer
               shell: bash
               env:
@@ -174,11 +188,24 @@ jobs:
                   fi
                   assets=("${installers[0]}")
 
-                  # `latest.json` is what an installed app polls. It has to name
-                  # the signed archive by URL, so it is only written when the
-                  # build was signed.
+                  # Which artifact the updater downloads depends on the Tauri
+                  # version. Older bundlers write a separate `*.nsis.zip` archive;
+                  # current ones sign the installer itself, leaving only
+                  # `<installer>.exe.sig`. Both are updatable — the plugin only
+                  # needs a URL and a signature — so prefer the archive when
+                  # there is one and fall back to the signed installer.
+                  signed=""
                   if [ ${#archives[@]} -gt 0 ] && [ -f "${archives[0]}.sig" ]; then
-                      archive="${archives[0]}"
+                      signed="${archives[0]}"
+                  elif [ -f "${installers[0]}.sig" ]; then
+                      signed="${installers[0]}"
+                  fi
+
+                  # `latest.json` is what an installed app polls. It has to name
+                  # the signed artifact by URL, so it is only written when the
+                  # build was signed.
+                  if [ -n "$signed" ]; then
+                      archive="$signed"
                       encoded=$(node -p 'encodeURIComponent(process.argv[1])' "$(basename "$archive")")
                       VERSION="$version" \
                       URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${encoded}" \
@@ -203,9 +230,15 @@ jobs:
                           };
                           fs.writeFileSync(process.env.LATEST_JSON, `${JSON.stringify(manifest, null, 2)}\n`);
                       '
-                      assets+=("$archive" "${archive}.sig" "$RUNNER_TEMP/latest.json")
+                      # The installer is already in `assets` when it is the thing
+                      # that was signed; adding it again makes `gh release
+                      # upload` fail on a duplicate asset name.
+                      if [ "$archive" != "${installers[0]}" ]; then
+                          assets+=("$archive")
+                      fi
+                      assets+=("${archive}.sig" "$RUNNER_TEMP/latest.json")
                   else
-                      echo "No signed updater archive was produced, so latest.json was not written and this release will not be offered as an update." >> "$GITHUB_STEP_SUMMARY"
+                      echo "No signed updater artifact was produced, so latest.json was not written and this release will not be offered as an update." >> "$GITHUB_STEP_SUMMARY"
                   fi
 
                   if gh release view "$tag" >/dev/null 2>&1; then

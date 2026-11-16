@@ -175,7 +175,16 @@ Keeping it out of the checked-in config means a local `tauri build` still works 
 - `TAURI_SIGNING_PRIVATE_KEY` — the contents of the key file from `tauri signer generate`
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — only when the key was generated with a password
 
-Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the run uploads the installer, the `.nsis.zip` archive, its `.sig`, and a `latest.json` manifest naming the archive by URL and carrying the signature. `releases/latest/download/latest.json` then resolves that manifest for every installed app.
+Without the key the workflow still builds and publishes the plain installer and says so in the run summary; that release just cannot be offered as an update. With it, the signed artifact and a `latest.json` manifest are published: the manifest names the artifact by URL and carries the contents of its `.sig`, and `releases/latest/download/latest.json` resolves that manifest for every installed app.
+
+What gets signed depends on the bundler version. Current Tauri signs the NSIS installer itself and leaves `<installer>.exe.sig` beside it — there is no separate archive — while older bundlers produced a `*.nsis.zip` to sign. The publish step prefers the archive when one exists and otherwise uses the signed installer, publishing the installer once either way, plus its `.sig` and `latest.json`. A release that lists only an `.exe` and no `latest.json` was built without a key, whatever the secret list says.
+
+Two details decide whether the workflow takes the signed path, and both have gone wrong before:
+
+- **The secret must hold the key's content, not a path.** `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/catcup.key` uploads the file; setting it to the path string produces a non-empty secret that cannot sign, and the build fails rather than skipping.
+- **The stored public key must be the one that pairs with that private key.** A mismatch is silent until an update is attempted: the app downloads the archive, rejects the signature and reports the failure to the user. 0.3.0 and 0.3.1 both shipped without updater artifacts because the secret existed but carried no key, so neither could sign; the pinned key has to be replaced in the same change that re-uploads the secret.
+
+The key currently deployed was generated without a password, so `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is deliberately absent. Adding a password later means re-generating the keypair and replacing both, because a mismatched pair cannot verify.
 
 Losing the private key means every installed app has to be updated by hand once: the public key pinned in `tauri.conf.json` no longer matches anything the workflow can sign.
 
