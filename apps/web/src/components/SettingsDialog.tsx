@@ -1,5 +1,5 @@
 // biome-ignore-all lint/a11y/noNoninteractiveTabindex: a tabpanel must be focusable when it contains no controls (e.g. About)
-import type { GenerationSettings } from '@catcup/shared';
+import type { GenerationSettings, WorldInfoConfig } from '@catcup/shared';
 import {
     BookOpen,
     Brain,
@@ -48,6 +48,7 @@ import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
+import { RetrievalSettings } from './RetrievalSettings';
 import { Select } from './Select';
 import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
@@ -359,6 +360,20 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             await updateSettings.mutateAsync({ worldInfo: { globalBooks: next } });
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not update the world info books.', 'error');
+        }
+    };
+
+    /**
+     * Save one or more retrieval settings.
+     *
+     * A `PATCH` carries only the fields that changed — the settings patch is a
+     * true partial, so a value the panel does not send keeps its stored one.
+     */
+    const handleRetrievalChange = async (patch: Partial<WorldInfoConfig>) => {
+        try {
+            await updateSettings.mutateAsync({ worldInfo: patch });
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not update the retrieval settings.', 'error');
         }
     };
 
@@ -704,6 +719,16 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     ))}
                 </ul>
             )}
+
+            {settings ? (
+                <div className="border-t border-line-soft pt-5">
+                    <RetrievalSettings
+                        config={settings.worldInfo}
+                        onChange={(patch) => void handleRetrievalChange(patch)}
+                        busy={updateSettings.isPending}
+                    />
+                </div>
+            ) : null}
         </div>
     );
 
