@@ -41,6 +41,9 @@ const NON_DEFAULT_WORLD_INFO = {
     minActivations: 5,
     minActivationsDepthMax: 12,
     maxRecursionSteps: 4,
+    lexicalMatch: true,
+    lexicalThreshold: 0.2,
+    lexicalLimit: 40,
 };
 
 beforeAll(async () => {
@@ -121,6 +124,37 @@ describe('PATCH /api/settings world info', () => {
     it('rejects an out-of-range value instead of clamping it', async () => {
         const response = await call('PATCH', '/api/settings', { worldInfo: { depth: -1 } });
         expect(response.statusCode).toBe(400);
+    });
+
+    it('saves one lexical setting without disturbing the others', async () => {
+        // The lexical fields are the newest on this block and the ones the
+        // Retrieval panel sends one at a time. A patch carrying only
+        // `lexicalLimit` must leave `lexicalThreshold` alone, and must not
+        // touch the scan settings either.
+        await call('PATCH', '/api/settings', { worldInfo: NON_DEFAULT_WORLD_INFO });
+
+        const patched = await call('PATCH', '/api/settings', { worldInfo: { lexicalLimit: 5 } });
+        expect(patched.statusCode).toBe(200);
+
+        expect(await worldInfo()).toMatchObject({
+            ...NON_DEFAULT_WORLD_INFO,
+            lexicalLimit: 5,
+        });
+    });
+
+    it('accepts the lexical fields with their own bounds', async () => {
+        // `lexicalThreshold` is 0..1 because it is a fraction, not a score, and
+        // `lexicalLimit` is 1..50. A value outside either is a client bug, not
+        // something to clamp.
+        const tooStrict = await call('PATCH', '/api/settings', { worldInfo: { lexicalThreshold: 1.5 } });
+        expect(tooStrict.statusCode).toBe(400);
+        const noEntries = await call('PATCH', '/api/settings', { worldInfo: { lexicalLimit: 0 } });
+        expect(noEntries.statusCode).toBe(400);
+
+        // And `false` survives as a value rather than reading as absent.
+        await call('PATCH', '/api/settings', { worldInfo: { lexicalMatch: true } });
+        await call('PATCH', '/api/settings', { worldInfo: { lexicalMatch: false } });
+        expect((await worldInfo()).lexicalMatch).toBe(false);
     });
 });
 

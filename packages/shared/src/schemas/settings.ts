@@ -119,6 +119,20 @@ export const worldInfoConfigSchema = z.object({
     minActivations: z.number().int().min(0).max(100).default(0),
     minActivationsDepthMax: z.number().int().min(0).max(100).default(0),
     maxRecursionSteps: z.number().int().min(0).max(10).default(0),
+    /**
+     * Let a BM25 pass add entries the keyword keys missed.
+     *
+     * Off by default. It is a deliberate divergence from SillyTavern, which
+     * matches on literal substrings only, so a book that behaves one way there
+     * can surface more entries here. It only ever adds: nothing a keyword
+     * matched is removed, which is the same contract ST's Vector Storage
+     * extension keeps with `WORLDINFO_FORCE_ACTIVATE`.
+     */
+    lexicalMatch: z.boolean().default(false),
+    /** Minimum BM25 score, as a fraction of this scan's best hit. */
+    lexicalThreshold: z.number().min(0).max(1).default(0.35),
+    /** Cap on entries one lexical pass may add. */
+    lexicalLimit: z.number().int().min(1).max(50).default(10),
 });
 export type WorldInfoConfig = z.infer<typeof worldInfoConfigSchema>;
 
@@ -134,6 +148,9 @@ export const DEFAULT_WORLD_INFO_CONFIG: WorldInfoConfig = {
     minActivations: 0,
     minActivationsDepthMax: 0,
     maxRecursionSteps: 0,
+    lexicalMatch: false,
+    lexicalThreshold: 0.35,
+    lexicalLimit: 10,
 };
 
 /**
@@ -157,6 +174,9 @@ export const worldInfoConfigPatchSchema = z.object({
     minActivations: z.number().int().min(0).max(100).optional(),
     minActivationsDepthMax: z.number().int().min(0).max(100).optional(),
     maxRecursionSteps: z.number().int().min(0).max(10).optional(),
+    lexicalMatch: z.boolean().optional(),
+    lexicalThreshold: z.number().min(0).max(1).optional(),
+    lexicalLimit: z.number().int().min(1).max(50).optional(),
 });
 export type WorldInfoConfigPatch = z.infer<typeof worldInfoConfigPatchSchema>;
 

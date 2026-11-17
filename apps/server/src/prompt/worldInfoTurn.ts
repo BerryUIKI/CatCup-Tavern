@@ -158,6 +158,9 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
             minActivations: input.config.minActivations,
             minActivationsDepthMax: input.config.minActivationsDepthMax,
             maxRecursionSteps: input.config.maxRecursionSteps,
+            lexicalMatch: input.config.lexicalMatch,
+            lexicalThreshold: input.config.lexicalThreshold,
+            lexicalLimit: input.config.lexicalLimit,
         },
         globalScanData: {
             trigger: input.trigger,

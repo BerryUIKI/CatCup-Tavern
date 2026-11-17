@@ -8,7 +8,10 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 - **LAN**: the same server bound to `0.0.0.0`, single user + access password
 - **Desktop**: a Windows app that runs the same server as a child process and wraps it in a Tauri 2 window
 
-Hard constraint: **high compatibility with SillyTavern's data formats and interaction semantics**. Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must interoperate.
+Compatibility is **two rules, not one**:
+
+- **Data formats are a hard constraint.** Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must import, export and round-trip without loss, and every file we write must stay readable by SillyTavern. Field names, the JSONL header shape and unknown-field preservation are not negotiable.
+- **Runtime semantics are a default, not a mandate.** How world info is matched, how memory is stored and how a reply is assembled follows SillyTavern unless a divergence measurably improves the experience. A divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. Porting ST's _algorithms_ stays valuable; reproducing its _limitations_ does not.
 
 Current status: **0.3.2 released (2026-11-16)**; `dev` carries the next batch, not yet released. 0.3.2 turns the provider form's Type list into a request protocol with a first-class custom-provider entry, replaces every native dropdown with CatCup's own `Select`/`Combobox`, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out on an install with no password. M0, M1, M2 and the 0.2.x MVP are complete. 0.3.1 adds profiles — a profile is a data scope, with an opt-in per-item shared layer — a multi-model provider list with per-character and per-profile model choice, group generation handling modes, and book distillation from `.txt`/`.md`/`.epub`. The desktop scope also landed in it — tray icon, window-state restore, self-update with signed artifacts, `.catcup` file associations, packaged macOS/Linux builds and a CI job that compiles the shell on all three platforms — plus CatCup's own `.catcup` package format, a password-change screen for web and LAN, impersonation and drag-and-drop import. Windows code signing is deliberately deferred. M3 (STscript, full Quick Replies, the extension API) and M5 (mobile, i18n, accessibility, UX stages C–E) are still ahead. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (stage A: Settings and Providers landed 2026-11-12; stage B: app shell and chat chrome landed 2026-11-13); follow `docs/DESIGN.md` for interface work.
 
@@ -47,6 +50,7 @@ apps/
     src/prompt/         prompt assembly, token budgeting and group prompts
     src/generation/     the SSE stream shared by single-character and group generation
     src/worldinfo/      world info loader, scanner, timed effects and prompt buckets
+    src/retrieval/      lexical tokenizer and BM25F index (world info; no model, no deps)
     src/group/          group member resolution, speaker selection and reply cleanup
     src/memory/         rolling summaries: schedule, request building and injection
     src/quickreplies/   quick reply storage target and command execution
@@ -107,6 +111,7 @@ Read before changing behaviour:
 - API keys may only live in `data/secrets.json`. No API response may contain a plaintext key; the client sees only `hasKey`.
 - Single user + password. First-time setup is limited to loopback. LAN login uses the same password. Every shape can change the password; only the desktop can remove one, because a LAN server with none would be reachable and unauthenticated.
 - Before changing character card / chat / world info / preset schemas, compare with `.ref/SillyTavern` and preserve field names and the JSONL header format.
+- CatCup-only state never goes inside an ST file it would confuse: derived data (indexes, embeddings, caches) lives in a sidecar file beside the source, and anything written into an ST object goes under `extensions.catcup`, which ST preserves and ignores.
 - `.ref/` is for reading only. **Never import from it at runtime and never use it as a build input.**
 - When adding code adapted from ST or RisuAI, update `NOTICE` and `docs/REUSE.md` in the same change.
 - License: AGPL-3.0-only. SillyTavern is AGPL-3.0; RisuAI is GPL-3.0 (compatible under AGPLv3 §13).

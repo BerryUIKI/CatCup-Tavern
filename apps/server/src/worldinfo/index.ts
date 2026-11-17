@@ -1,4 +1,5 @@
 export { getStringHash } from './hash.js';
+export { clearIndexCache, getEntryIndex, indexFingerprint } from './lexicalIndex.js';
 export type { WorldInfoBook, WorldInfoBookSummary } from './loader.js';
 export {
     listWorldInfoBooks,

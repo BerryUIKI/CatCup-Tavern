@@ -11,6 +11,7 @@
 import { PROMPT_ROLE, WI_ANCHOR_POSITION, WORLD_INFO_LOGIC, WORLD_INFO_POSITION } from '@catcup/shared';
 
 import { estimateTokens } from '../prompt/tokenizer.js';
+import { getEntryIndex } from './lexicalIndex.js';
 import { type KeyMatchOptions, matchesKey } from './matching.js';
 import { createTimedEffects, ensureTimedWorldInfo, type TimedEffects } from './timedEffects.js';
 import {
@@ -40,6 +41,9 @@ export const DEFAULT_WORLD_INFO_SETTINGS: WorldInfoSettings = {
     minActivations: 0,
     minActivationsDepthMax: 0,
     maxRecursionSteps: 0,
+    lexicalMatch: false,
+    lexicalThreshold: 0.35,
+    lexicalLimit: 10,
 };
 
 /** Upper bound SillyTavern applies to `scanDepth` and the chat buffer. */
@@ -77,6 +81,28 @@ interface ScanBuffer {
     hasRecurse(): boolean;
     /** Text an entry is matched against for the given pass kind. */
     text(entry: ScanEntry, state: ScanState): string;
+    /**
+     * The chat window at the default depth, with no per-entry opt-ins.
+     *
+     * The lexical pass has no single entry to read flags from — its whole point
+     * is to consider entries the keyword loop rejected — so it works from one
+     * shared query instead of a per-entry haystack. Two consequences, both
+     * deliberate and both divergences from a keyword hit:
+     *
+     * - `entry.scanDepth` is not honoured. A lexical hit for an entry that
+     *   asked to scan 50 messages is decided on the default window, so an
+     *   entry can be surfaced on less text than its author configured, or
+     *   miss text the keyword pass would have seen.
+     * - The `match*` opt-ins (`matchScenario`, `matchPersonaDescription` and
+     *   the rest) are not included either, and neither are `injections` — the
+     *   summary text scanned alongside the chat. A keyword hit can fire on the
+     *   scenario; a lexical one cannot.
+     *
+     * Sharing one window is what makes a single index query possible at all,
+     * and it keeps the pass from growing a per-entry haystack walk. The gap is
+     * recorded here rather than silently reproduced.
+     */
+    window(state: ScanState): string;
 }
 
 function createScanBuffer(
@@ -134,6 +160,17 @@ function createScanBuffer(
 
             // Minimum-activation passes deliberately exclude the recursion
             // buffer so that depth seeking cannot be satisfied by recursion.
+            if (recurseBuffer.length > 0 && state !== SCAN_STATE.MIN_ACTIVATIONS) {
+                result += JOINER + recurseBuffer.join(JOINER);
+            }
+
+            return result;
+        },
+
+        window(state) {
+            const depth = Math.min(Math.max(baseDepth + skew, 0), MAX_SCAN_DEPTH);
+            let result = MATCHER + messages.slice(0, depth).join(JOINER);
+
             if (recurseBuffer.length > 0 && state !== SCAN_STATE.MIN_ACTIVATIONS) {
                 result += JOINER + recurseBuffer.join(JOINER);
             }
@@ -515,6 +552,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             budget: { limit: budgetLimit, used: 0, overflowed: false },
             loops: 0,
             timedEffects: timed.active,
+            lexicalAdded: 0,
         };
     }
 
@@ -537,6 +575,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
     let loops = 0;
     let allActivatedText = '';
     let budgetUsed = 0;
+    let lexicalAdded = 0;
 
     while (scanState) {
         if (settings.maxRecursionSteps && settings.maxRecursionSteps <= loops) {
@@ -679,6 +718,97 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 secondary.key ? `${primaryKey.trim()} / ${secondary.key}` : primaryKey.trim(),
             );
             activatedNow.push(entry);
+        }
+
+        // Lexical pass: surface entries whose substring keys missed but whose
+        // text is about what the chat is about.
+        //
+        // This runs after the keyword loop and before inclusion groups, so a
+        // lexical candidate is subject to exactly the same downstream gates as
+        // a keyword one — groups, probability, the budget, timed effects. It
+        // only ever ADDS candidates; nothing that matched by key is removed.
+        // SillyTavern's Vector Storage does the same with
+        // `WORLDINFO_FORCE_ACTIVATE`, for the same reason: a lexical hit is a
+        // suggestion, never an override of authored intent.
+        if (settings.lexicalMatch && scanState === SCAN_STATE.INITIAL) {
+            const query = buffer.window(scanState);
+
+            // One index per scan, built once per book revision. Only the index
+            // is cached: a hit resolves against `sorted`, the entries this scan
+            // was handed, never against objects captured when the index was
+            // built. The fingerprint covers the scored fields only, so an edit
+            // to a field it excludes — `disable`, `position`, `order`,
+            // `probability`, `role`, the timed effects — would otherwise go
+            // unnoticed until the process restarted.
+            const carried = activatedNow;
+            const { index } = getEntryIndex(sorted);
+            const byId = new Map<string, ScanEntry>();
+            for (const candidate of sorted) {
+                byId.set(candidate.id, candidate);
+            }
+
+            // The threshold is relative. A BM25 score has no absolute meaning —
+            // it depends on corpus size, term rarity and document length — so
+            // a fixed cutoff would behave differently on every book. Taking a
+            // fraction of this scan's best hit means "good for this book, for
+            // this query", which is the only comparable thing available.
+            const hits = index.query(query, settings.lexicalLimit);
+            const best = hits[0]?.score ?? 0;
+            const floor = best * settings.lexicalThreshold;
+
+            for (const hit of hits) {
+                if (hit.score < floor) {
+                    break;
+                }
+
+                const entry = byId.get(hit.id);
+                if (!entry) {
+                    continue;
+                }
+                if (allActivated.has(entry.id) || failedProbability.has(entry.id)) {
+                    continue;
+                }
+                if (carried.includes(entry)) {
+                    continue;
+                }
+                if (entry.disable || entry.constant || entry.decorators.includes('@@dont_activate')) {
+                    continue;
+                }
+
+                // SillyTavern's other gates are honoured here too. An entry the
+                // author excluded from this character, this trigger or this
+                // moment must stay excluded no matter which pass noticed it.
+                if (entry.triggers.length > 0 && !entry.triggers.includes(trigger)) {
+                    continue;
+                }
+
+                const filter = entry.characterFilter;
+                if (filter && filter.names.length > 0) {
+                    const included =
+                        input.activeCharacter !== undefined && filter.names.includes(input.activeCharacter.id);
+                    if (filter.isExclude ? included : !included) {
+                        continue;
+                    }
+                }
+                if (filter && filter.tags.length > 0 && input.activeCharacter !== undefined) {
+                    const assigned = input.activeCharacter.tagIds ?? [];
+                    const intersects = assigned.some((tag) => filter.tags.includes(tag));
+                    if (filter.isExclude ? intersects : !intersects) {
+                        continue;
+                    }
+                }
+
+                if (timed.isActive('delay', entry)) {
+                    continue;
+                }
+                if (timed.isActive('cooldown', entry) && !timed.isActive('sticky', entry)) {
+                    continue;
+                }
+
+                trace.activate(entry, 'lexical', `${hit.score.toFixed(2)}`);
+                carried.push(entry);
+                lexicalAdded += 1;
+            }
         }
 
         // Sticky entries float to the front; everything else keeps the
@@ -869,6 +999,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         budget: { limit: budgetLimit, used: budgetUsed, overflowed },
         loops,
         timedEffects: timed.active,
+        lexicalAdded,
     };
 }
 
