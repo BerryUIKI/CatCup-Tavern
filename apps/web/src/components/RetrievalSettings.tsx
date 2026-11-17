@@ -82,7 +82,7 @@ export function RetrievalSettings({ config, onChange, busy }: RetrievalSettingsP
                         max={100}
                         step={5}
                         format={(value) => `${value}%`}
-                        hint="Keeps matches scoring within this much of this turn's best hit. Higher is more selective; the best hit is always kept."
+                        hint="Keeps matches scoring within this much of this turn's best hit. Higher is more selective, but even at 100% the best hit is still added — use the checkbox above to turn the pass off."
                         disabled={!config.lexicalMatch || busy}
                         onCommit={(value) => onChange({ lexicalThreshold: value / 100 })}
                     />
