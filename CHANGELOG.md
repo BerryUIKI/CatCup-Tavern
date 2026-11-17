@@ -18,6 +18,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 - CatCup-only derived state — indexes, embeddings, caches — lives in a sidecar beside its source, and anything that must be written into a SillyTavern object goes under `extensions.catcup`, which SillyTavern preserves and ignores.
 - `GET /api/auth/status` answers `desktop` and `titleBar`, so the page can tell the shell from a browser tab and draw the bar only where the frame was removed. The geometry is passed in from the shell as `CATCUP_TITLE_BAR_*` rather than duplicated in the SPA.
 
+### Fixed
+
+- **Enabling or disabling a world info book no longer resets the other scan settings.** The book checkbox sent a patch carrying only `globalBooks`, but the request schema applied every other field's default to that patch on the way in, so the merge in storage overwrote the saved depth, budget percentage, budget cap, recursion, minimum activations and the matching flags with their defaults. `PATCH /api/settings` now treats `worldInfo` as a true partial, the same way it already treated `memory`. Nothing on disk changes shape; a saved value simply survives the next book toggle.
+
 ## 0.3.2 — 2026-11-16
 
 ### Added

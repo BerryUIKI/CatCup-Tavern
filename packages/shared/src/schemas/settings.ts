@@ -153,6 +153,30 @@ export const DEFAULT_WORLD_INFO_CONFIG: WorldInfoConfig = {
     lexicalLimit: 10,
 };
 
+/**
+ * A partial world info update for `PATCH /api/settings`.
+ *
+ * `worldInfoConfigSchema.partial()` still applies each field's default in Zod 4,
+ * so a patch carrying only `globalBooks` — which is what the settings panel's
+ * book checkbox sends — would reset every other scan parameter to its default.
+ * This schema keeps unspecified fields absent, so the storage merge leaves them
+ * alone. Same reason and same shape as `memorySettingsPatchSchema`.
+ */
+export const worldInfoConfigPatchSchema = z.object({
+    globalBooks: z.array(z.string()).optional(),
+    depth: z.number().int().min(0).max(1000).optional(),
+    budgetPercent: z.number().min(0).max(100).optional(),
+    budgetCap: z.number().int().min(0).optional(),
+    caseSensitive: z.boolean().optional(),
+    matchWholeWords: z.boolean().optional(),
+    useGroupScoring: z.boolean().optional(),
+    recursive: z.boolean().optional(),
+    minActivations: z.number().int().min(0).max(100).optional(),
+    minActivationsDepthMax: z.number().int().min(0).max(100).optional(),
+    maxRecursionSteps: z.number().int().min(0).max(10).optional(),
+});
+export type WorldInfoConfigPatch = z.infer<typeof worldInfoConfigPatchSchema>;
+
 /** Author's Note settings, mirroring SillyTavern's note extension. */
 export const authorNoteSchema = z.object({
     enabled: z.boolean().default(false),
@@ -309,7 +333,7 @@ export const settingsPatchSchema = z.object({
     personas: z.array(personaEntrySchema).optional(),
     activePersonaId: z.string().nullable().optional(),
     ui: uiSettingsSchema.partial().optional(),
-    worldInfo: worldInfoConfigSchema.partial().optional(),
+    worldInfo: worldInfoConfigPatchSchema.optional(),
     authorNote: authorNoteSchema.partial().optional(),
     memory: memorySettingsPatchSchema.optional(),
     quickReplies: quickReplySettingsPatchSchema.optional(),

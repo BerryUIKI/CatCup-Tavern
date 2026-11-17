@@ -996,6 +996,8 @@ Partial update. All fields are optional:
 
 `activeProviderId` must reference an existing, enabled provider. A missing id returns `404`; a disabled provider returns `400` with code `PROVIDER_DISABLED`. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
 
+Nested blocks are true partials: a field you omit keeps its saved value rather than falling back to its default. That holds for `generation`, `ui`, `worldInfo`, `authorNote`, `memory`, `quickReplies`, `tts` and `imageGeneration`, so `{ "worldInfo": { "globalBooks": ["eldoria"] } }` changes the book list and nothing else. `false` and `0` are values, not omissions.
+
 `ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`. `imageApiKey` is the same for image generation, stored under `image` and reported as `imageHasKey`.
 
 ## Providers
