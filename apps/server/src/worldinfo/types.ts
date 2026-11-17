@@ -117,9 +117,7 @@ export interface WorldInfoSettings {
      *
      * Off by default, and it never removes a keyword activation: it only adds
      * candidates, exactly as SillyTavern's Vector Storage extension does with
-     * `WORLDINFO_FORCE_ACTIVATE`. Set `worldInfo.lexicalMatch` in the profile's
-     * `settings.json` to turn it on; Settings → World Info does not expose it
-     * yet.
+     * `WORLDINFO_FORCE_ACTIVATE`. Controlled by `worldInfo.lexicalMatch`.
      */
     lexicalMatch: boolean;
     /**

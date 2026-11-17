@@ -174,6 +174,9 @@ export const worldInfoConfigPatchSchema = z.object({
     minActivations: z.number().int().min(0).max(100).optional(),
     minActivationsDepthMax: z.number().int().min(0).max(100).optional(),
     maxRecursionSteps: z.number().int().min(0).max(10).optional(),
+    lexicalMatch: z.boolean().optional(),
+    lexicalThreshold: z.number().min(0).max(1).optional(),
+    lexicalLimit: z.number().int().min(1).max(50).optional(),
 });
 export type WorldInfoConfigPatch = z.infer<typeof worldInfoConfigPatchSchema>;
 
