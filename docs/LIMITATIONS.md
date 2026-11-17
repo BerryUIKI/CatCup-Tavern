@@ -66,7 +66,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - **STscript and typed slash commands.** A line such as `/send hello` typed into the message box is sent to the model as ordinary text. Only Quick Reply buttons run the supported commands.
 - **SillyTavern extensions.** None load.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
-- **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
+- **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory. World info has an opt-in lexical (BM25) pass, but it ranks words, not meanings: a paraphrase that shares no vocabulary with an entry still will not match. The pass has no interface yet — it is switched on by setting `worldInfo.lexicalMatch` to `true` in the profile's `settings.json`, because Settings → World Info still shows only the book list.
 - **Removing the password is desktop-only.** A web or LAN install can change its password in Settings → About, but not remove it: with no password there would be nothing between the network and your data. Only the desktop app can drop back to open mode.
 
 **Partial, and worth knowing before you rely on it**

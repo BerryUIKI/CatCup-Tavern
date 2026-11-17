@@ -2,6 +2,17 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation; `0.3.2` asks providers for a request protocol, adds a first-class custom-provider entry and replaces every native dropdown with a CatCup control, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out appearing with no password.
 
+## Unreleased
+
+### Added
+
+- **A lexical pass for world info.** Off by default, and switched on with `worldInfo.lexicalMatch`. A BM25F index over each entry's keywords, comment and content lets an entry fire on what the chat is _about_ rather than only on whether it repeats one of the author's substrings — so a chat mentioning the northern peaks can reach an entry keyed on "dragon" whose text describes where dragons roost. Nothing a keyword matched is removed, and inclusion groups, probability, the token budget, timed effects and the trigger and character filters all still apply; the pass only ever adds candidates, the same contract SillyTavern's Vector Storage keeps through `WORLDINFO_FORCE_ACTIVATE`. The inspector shows a lexical hit with its score and the reason `lexical`. `lexicalThreshold` (a fraction of the scan's best hit, because a BM25 score has no absolute meaning) and `lexicalLimit` bound the pass. Fields, documents and any other ST file are untouched: the setting lives in `settings.json` only. There is no control for it yet — set the field in the profile's `settings.json` — and the pass works from one shared chat window rather than a per-entry haystack, so an entry's own `scanDepth` and its `match*` opt-ins do not widen what it is matched against.
+
+### Changed
+
+- **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.
+- CatCup-only derived state — indexes, embeddings, caches — lives in a sidecar beside its source, and anything that must be written into a SillyTavern object goes under `extensions.catcup`, which SillyTavern preserves and ignores.
+
 ## 0.3.2 — 2026-11-16
 
 ### Added

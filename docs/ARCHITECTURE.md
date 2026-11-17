@@ -69,6 +69,7 @@ apps/server/
     sse.ts               client SSE writer
     tts/                 OpenAI-compatible speech adapter
     worldinfo/           ST loader, scanner, entries, timed effects and prompt buckets
+    retrieval/           lexical tokenizer and BM25F index, cached per book revision
 apps/web/
   src/
     components/          auth, library, chat, groups, images, memory, quick replies, regex, settings
