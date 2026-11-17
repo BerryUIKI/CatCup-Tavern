@@ -59,6 +59,11 @@ interface SidebarProps {
     loggingOut: boolean;
     open: boolean;
     onClose: () => void;
+    /**
+     * Height of the desktop shell's title bar, which floats over this rail.
+     * `0` in a browser, where there is no bar to clear.
+     */
+    titleBarHeight: number;
 }
 
 const ACTIVATION_SHORT = ['Natural', 'List', 'Manual', 'Pooled'];
@@ -105,7 +110,13 @@ export function Sidebar({
     loggingOut,
     open,
     onClose,
+    titleBarHeight,
 }: SidebarProps) {
+    // The desktop shell floats its window buttons over this rail's top-right
+    // corner, so the brand row starts below them instead of under them. Zero
+    // in a browser, which is also where the strip is absent entirely.
+    const dragRegion = titleBarHeight > 0 ? { paddingTop: titleBarHeight } : undefined;
+
     const [query, setQuery] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,7 +165,7 @@ export function Sidebar({
             )}
             aria-label="Library"
         >
-            <div className="flex items-center gap-3 px-4 pb-3 pt-5">
+            <div className="flex items-center gap-3 px-4 pb-3 pt-5" style={dragRegion}>
                 <Logo size={38} className="shrink-0 text-amber" />
                 <div className="min-w-0 flex-1">
                     <h1 className="truncate font-display text-lg leading-tight tracking-wide text-parchment">

@@ -5,6 +5,7 @@ import {
     type ChatMessage,
     type ChatSummary,
     chatPersonaId,
+    expectsKey,
     getLatestSummary,
     type Persona,
     prepareSpeechText,
@@ -81,6 +82,8 @@ interface ChatViewProps {
     onOpenSettings: (section?: 'providers') => void;
     onOpenSidebar: () => void;
     onOpenLibrary: () => void;
+    /** Height of the desktop shell's title bar, which floats over this header. */
+    titleBarHeight: number;
 }
 
 function findLastAssistantIndex(messages: ChatMessage[]): number {
@@ -129,6 +132,7 @@ export function ChatView({
     onOpenSettings,
     onOpenSidebar,
     onOpenLibrary,
+    titleBarHeight,
 }: ChatViewProps) {
     const pushToast = useAppStore((state) => state.pushToast);
     const chatQuery = useChat(character?.id ?? null, selectedChatId);
@@ -497,7 +501,7 @@ export function ChatView({
     const actionsDisabled = generation.streaming || updateMessageMutation.isPending || deleteMessageMutation.isPending;
 
     const provider = settingsData?.providers.find((item) => item.id === settingsData.activeProviderId) ?? null;
-    const providerReady = provider ? provider.kind === 'ollama' || provider.hasKey : false;
+    const providerReady = provider ? !expectsKey(provider.kind) || provider.hasKey : false;
     // The model this chat will use: the character's own choice when the
     // provider serves it, otherwise the provider default. The streaming start
     // event reports the same value once a request is under way.
@@ -576,7 +580,10 @@ export function ChatView({
         : [];
 
     const header = (
-        <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6">
+        <header
+            className="relative z-20 flex shrink-0 items-center gap-3 border-b border-line-soft bg-ink/60 px-3 py-3 backdrop-blur md:px-6"
+            style={titleBarHeight > 0 ? { paddingTop: titleBarHeight + 12 } : undefined}
+        >
             <button type="button" className="icon-btn md:hidden" onClick={onOpenSidebar} aria-label="Open library">
                 <Menu size={19} />
             </button>

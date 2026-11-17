@@ -96,7 +96,28 @@ The shell's log — `shell.log`, described under the readiness contract — live
 - **Crash.** The child is placed in a Windows job object with `KILL_ON_JOB_CLOSE`, so killing the shell — Task Manager included — takes the server with it. If the process is already in a job that forbids nesting, the assignment is skipped and the normal exit path still applies.
 - **Second launch.** The single-instance plugin shows and focuses the existing window instead of starting a second server against the same data directory, and it works while the window is hidden — `set_focus` alone would do nothing to a hidden window.
 - **Window state.** Size, position, maximised and full-screen state are remembered between launches through `tauri-plugin-window-state`, which stores them in `.window-state.json` under the app config directory. Visibility is deliberately not restored: quitting from the tray while the window is hidden must not start the next launch with no window on screen. A saved position is only reused when it still intersects a monitor, so unplugging a second display does not strand the window off-screen. On a first launch, or after the file is deleted, the window opens at its default 1280 × 820.
+- **Title bar.** On Windows the native title bar is removed and the page draws its own (see _Custom title bar_ below). macOS and Linux keep the native decoration; the SPA reads `titleBar: null` from `/api/auth/status` there and draws nothing.
 - **Tray icon.** An icon sits in the notification area from startup. Its menu has **Open CatCup Tavern** and **Quit**; left-clicking the icon opens the window and focuses it, and right-clicking opens the menu. This is the only way back once the window is hidden, which is why the left click is wired to open rather than to the menu.
+
+## Custom title bar
+
+The shell removes the native frame on Windows and the page draws the bar. The implementation is `apps/desktop/src-tauri/src/chrome.rs` (frame removal, corners) and `apps/web/src/components/TitleBar.tsx` (everything the user sees and presses).
+
+**Fusion, not a second strip.** The bar is an overlay, not a row: the window buttons float over the top-right corner of the library rail and the chat header, and those two add `titleBarHeight` to their own top padding so nothing sits under them. The brand — logo and product name — stays in the library rail where it already was, so it appears once rather than in a bar and again below it. The cost is 32 logical pixels on those two headers; a separate bar would have cost a full row and repeated the brand.
+
+**Where the geometry comes from.** `chrome.rs` owns the numbers: `TITLE_BAR_HEIGHT` (32), `BUTTON_WIDTH` (46) and `BUTTON_ORDER`. The shell passes them to the server as `CATCUP_TITLE_BAR_*`, the server hands them back on `/api/auth/status` as `titleBar`, and the SPA sizes the strip and the buttons from that. One source, so the two sides cannot drift apart.
+
+**Why the page drives the window.** The obvious implementation subclasses the window and answers `WM_NCCALCSIZE`, `WM_NCHITTEST` and `WM_NCLBUTTONDOWN` — that is how Electron's `titleBarStyle: "hidden"` works, and `HTMAXBUTTON` over the page's maximise button is what raises the Snap Layout flyout. **It does not work in a Tauri/webview window, and this was measured rather than assumed.** WebView2 runs as a child window covering the whole client area and takes every mouse message itself, so the top-level window procedure never sees a hit test over the bar. A subclass installed on the top-level window received no `WM_NCHITTEST` at all while the pointer moved across the bar — the only `WM_NCLBUTTONDOWN` it ever saw was `HTTOP` from a resize gutter — and the window could neither be dragged nor have its buttons pressed. Hence:
+
+- **Dragging** is `data-tauri-drag-region` on the strip, which invokes `plugin:window|start_dragging` from the page. A double click on the strip toggles maximise.
+- **The buttons** are real `<button>`s that invoke `plugin:window|minimize`, `toggle_maximize` and `close`. They are focusable and named (**Minimize**, **Maximize**/**Restore**, **Close**), and the glyph flips to Restore from `is_maximized`.
+- **The capability.** The page is served by the sidecar over loopback, which Tauri treats as a remote origin, so `capabilities/title-bar.json` grants those five window commands to `http://127.0.0.1:*` on the `main` window. Nothing else is granted; this is the only IPC surface the page has.
+
+**What the frame costs.** `set_decorations(false)` drops `WS_THICKFRAME` with the frame, so `install` puts that style back — that is what keeps the resize gutters and Aero Snap. Rounded corners come from `DWM_WINDOW_CORNER_PREFERENCE` = `DWMWCP_ROUND`, because a frameless window loses them.
+
+**Known limitation: no Snap Layout flyout.** Hovering the maximise button does not raise Windows 11's Snap Layout panel, because raising it requires a non-client `HTMAXBUTTON` hit that the webview never lets the window procedure see. `Win`+arrow keys and dragging to a screen edge still snap. This is the price of a webview-based custom title bar and is listed in `docs/LIMITATIONS.md`.
+
+**What was rejected.** `tauri-plugin-decorum` was evaluated and not used. Its snap support is a simulated `Win+Z` sent through `enigo` some 620 ms after the pointer rests on its button — a keyboard-driven overlay, not the native flyout — and its last release (2024-09) pins `tauri 2.0.0-rc`.
 
 ## Opening a card file
 

@@ -1,0 +1,16 @@
+{
+    "$schema": "../gen/schemas/desktop-schema.json",
+    "identifier": "title-bar",
+    "description": "The page draws the desktop shell's title bar, so it needs the window commands that bar stands for: dragging, minimising, maximising and closing. The page is served by the sidecar over loopback, which Tauri treats as a remote origin, so the grant has to be explicit and named here.",
+    "windows": ["main"],
+    "remote": {
+        "urls": ["http://127.0.0.1:*"]
+    },
+    "permissions": [
+        "core:window:allow-start-dragging",
+        "core:window:allow-minimize",
+        "core:window:allow-toggle-maximize",
+        "core:window:allow-close",
+        "core:window:allow-is-maximized"
+    ]
+}

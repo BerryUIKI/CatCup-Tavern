@@ -12,19 +12,37 @@ import { z } from 'zod';
  * what they are, one protocol with a service prefill, and calls the field
  * **protocol**.
  */
-export const providerKindSchema = z.enum(['openai', 'openrouter', 'anthropic', 'ollama', 'custom']);
+export const providerKindSchema = z.enum([
+    'openai',
+    'openrouter',
+    'anthropic',
+    'ollama',
+    'custom',
+    'openai-responses',
+    'gemini',
+]);
 export type ProviderKind = z.infer<typeof providerKindSchema>;
 
 /**
  * The protocol each kind speaks, for display and for adapters that want to
- * group kinds together. Every OpenAI-shaped kind resolves to `openai` because
- * that is the adapter that serves it.
+ * group kinds together. Every kind resolves to the adapter that serves it.
  */
-export const PROVIDER_PROTOCOLS = ['openai', 'anthropic', 'ollama'] as const;
+export const PROVIDER_PROTOCOLS = ['openai', 'openai-responses', 'anthropic', 'gemini', 'ollama'] as const;
 export type ProviderProtocol = (typeof PROVIDER_PROTOCOLS)[number];
 
 export function protocolFor(kind: ProviderKind): ProviderProtocol {
-    return kind === 'anthropic' ? 'anthropic' : kind === 'ollama' ? 'ollama' : 'openai';
+    switch (kind) {
+        case 'anthropic':
+            return 'anthropic';
+        case 'ollama':
+            return 'ollama';
+        case 'openai-responses':
+            return 'openai-responses';
+        case 'gemini':
+            return 'gemini';
+        default:
+            return 'openai';
+    }
 }
 
 /** One model a provider serves; the id is what a request sends. */
@@ -127,6 +145,8 @@ export const DEFAULT_BASE_URLS: Record<ProviderKind, string> = {
     anthropic: 'https://api.anthropic.com/v1',
     ollama: 'http://127.0.0.1:11434',
     custom: '',
+    'openai-responses': 'https://api.openai.com/v1',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta',
 };
 
 /**
@@ -138,13 +158,18 @@ export const DEFAULT_BASE_URLS: Record<ProviderKind, string> = {
  */
 export const PROTOCOL_LABELS: Record<ProviderProtocol, string> = {
     openai: 'OpenAI Chat Completions',
+    'openai-responses': 'OpenAI Responses',
     anthropic: 'Anthropic Messages',
+    gemini: 'Gemini native',
     ollama: 'Ollama native',
 };
 
 export const PROTOCOL_HINTS: Record<ProviderProtocol, string> = {
     openai: 'POST /chat/completions, streamed as SSE. OpenAI, OpenRouter, DeepSeek, LM Studio, vLLM and most gateways speak it.',
+    'openai-responses':
+        "POST /responses, streamed as SSE. OpenAI's newer API: server-side state, reasoning summaries and hosted tools. Not every OpenAI-compatible gateway implements it.",
     anthropic: "POST /messages with x-api-key and anthropic-version, streamed as SSE. Anthropic's own API.",
+    gemini: 'POST /models/{model}:streamGenerateContent, streamed as SSE. Google’s own API, with the key as a query parameter.',
     ollama: 'POST /api/chat, streamed as NDJSON. A local Ollama server; usually no key.',
 };
 
@@ -193,6 +218,13 @@ export const PROVIDER_TEMPLATES: ProviderTemplate[] = [
         hint: 'A local Ollama server; usually no key.',
         initials: 'OL',
     },
+    {
+        id: 'gemini',
+        kind: 'gemini',
+        label: 'Google Gemini',
+        hint: "Google's Gemini API, through its own generateContent protocol.",
+        initials: 'GE',
+    },
 ];
 
 /**
@@ -222,7 +254,7 @@ export function providerSummary(kind: ProviderKind, defaultModel: string): strin
  * that does need one says so with a `401`. The UI uses it for the "no API key
  * saved" mark, never to block a request.
  */
-export const KEY_REQUIRED_KINDS: ProviderKind[] = ['openai', 'openrouter', 'anthropic'];
+export const KEY_REQUIRED_KINDS: ProviderKind[] = ['openai', 'openrouter', 'anthropic', 'openai-responses', 'gemini'];
 
 export function expectsKey(kind: ProviderKind): boolean {
     return KEY_REQUIRED_KINDS.includes(kind);

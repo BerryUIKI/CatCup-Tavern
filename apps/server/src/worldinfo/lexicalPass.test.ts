@@ -151,7 +151,15 @@ describe('lexical pass', () => {
 
         // Moved to an at-depth injection and demoted in order, with nothing the
         // fingerprint reads changed.
-        const after = makeEntry({ uid: 0, key: ['dragon'], content, comment: 'Beasts', position: 4, order: 1, depth: 3 });
+        const after = makeEntry({
+            uid: 0,
+            key: ['dragon'],
+            content,
+            comment: 'Beasts',
+            position: 4,
+            order: 1,
+            depth: 3,
+        });
 
         const result = scan([after], chat('A wyrm circled the northern peaks.'));
         const activated = result.activated[0];

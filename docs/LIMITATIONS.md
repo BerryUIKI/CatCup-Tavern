@@ -57,7 +57,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 
 - Add, duplicate and delete providers, including any OpenAI-compatible endpoint. A **Custom provider** entry starts one from nothing: pick the request protocol and type the endpoint.
 - Switch the active provider from the library footer without opening settings; one click, and the model it uses is shown in the list.
-- Two request protocols and a native one: OpenAI Chat Completions (which covers OpenAI, OpenRouter, DeepSeek, LM Studio, vLLM and most gateways), Anthropic Messages and native Ollama. Google Gemini, the OpenAI Responses API, KoboldAI and the other SillyTavern-specific backends are not implemented.
+- Five request protocols: OpenAI Chat Completions (which covers OpenAI, OpenRouter, DeepSeek, LM Studio, vLLM and most gateways), the OpenAI Responses API, Anthropic Messages, Google Gemini's own `generateContent`, and native Ollama. KoboldAI and the other SillyTavern-specific backends are not implemented.
 
 ## What does not work yet
 
@@ -106,6 +106,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - **Imported books arrive disabled and imported presets arrive active** — the opposite of what you might expect; enable books before they affect a chat.
 - **The desktop app is local-only and keeps its own data folder**, separate from the web build. There is no in-app migration screen: to reuse an existing folder, set `CATCUP_DATA_DIR` before launching, and stop the web server first because nothing stops two servers writing the same files. It cannot be opened from the LAN. It also opens without an access password, because the desktop is single-user on one machine; set one in About and the sign-in screen returns.
 - **Closing the desktop window does not quit it.** The window hides to the notification area and the server keeps running; quit from the tray menu. If the icon has been tucked into the hidden-icons fly-out, the app can look stuck — it is still there, and a second launch brings the window back without starting another server.
+- **Hovering the desktop app's maximise button does not open the Windows 11 Snap Layout panel.** The window draws its own title bar, and that panel needs a hit on a native title-bar button which the embedded webview hides. `Win`+arrow keys, dragging to a screen edge and the taskbar's own snap menu all still work.
 - **Downloads and sign-in persistence in the desktop app have not been exercised.**
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
 - **The installer is unsigned, and signing it is deliberately deferred.** Windows warns once on first run; the update archive itself is signed with CatCup's own key and checked before it installs, so self-update is unaffected by this. A publisher certificate would put a name on that warning, not make the app run where it otherwise would not — see [MILESTONES.md](MILESTONES.md).

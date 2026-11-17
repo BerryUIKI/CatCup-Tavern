@@ -6,11 +6,37 @@ import type { RegexScript } from './regex.js';
 import type { ItemScope } from './shared.js';
 import type { WorldInfoEntry } from './worldinfo.js';
 
+/**
+ * The geometry of the shell's custom title bar, in logical pixels.
+ *
+ * The shell passes these to the server, which hands them on here, so the strip
+ * the SPA draws is the same one the shell hit-tests. Present only in the desktop
+ * shell: a web or LAN install has no bar and gets `null`.
+ */
+export interface TitleBarGeometry {
+    height: number;
+    buttonWidth: number;
+    /**
+     * The window buttons, left to right. Their meaning is the shell's — their
+     * clicks never reach the page — so the SPA only draws them.
+     */
+    buttonOrder: Array<'minimize' | 'maximize' | 'close'>;
+}
+
 export interface AuthStatus {
     needsSetup: boolean;
     authenticated: boolean;
     /** Desktop install with no password: the API is open to the local app. */
     openSession: boolean;
+    /**
+     * The page is being shown by the desktop shell rather than a browser.
+     *
+     * The shell serves the same SPA over loopback, so the page cannot tell the
+     * two apart on its own.
+     */
+    desktop: boolean;
+    /** The custom title bar to draw, or `null` when the shell keeps the native one. */
+    titleBar: TitleBarGeometry | null;
 }
 
 export interface AuthSetupRequest {
