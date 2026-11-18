@@ -504,6 +504,16 @@ Extra names an entry answers to live in `<book>.aliases.json`, **beside** the bo
 
 `autoKeys` on a `ScanEntry` carries the list. The scanner matches each alias with the same `matchesKey` and the same per-entry `caseSensitive` / `matchWholeWords` options as an authored key, and treats a hit as a **primary** key — so the secondary-key logic, inclusion groups, probability and the token budget all apply. The trace detail reads `alias: <name>` when the match came from one. An alias the entry's own `key` already lists is dropped at load time, so the authored key is the one reported.
 
+### Generated aliases
+
+A model can propose the list. One request per entry — the model sees the entry's keys, comment and content and answers `{"aliases": [...]}` — and nothing is written until the run's review sheet is accepted.
+
+- **The run is resumable**, unlike a book distillation run. Records live in `<profile>/alias-runs/<id>.json` and carry per-entry state, so a resume plans only the rows that still need work. A row that finished keeps its proposal only when the entry's `contentHash` still matches; an entry edited while the run was stopped is planned again, which is the point of storing the hash per row rather than per run.
+- **A skipped row stays skipped across a resume** unless its entry has since gained content. Skipping is a decision the plan made — the entry had nothing to read — not a failure to retry.
+- **Filtering happens before storage.** A proposal that repeats one of the entry's own keys or one of its existing aliases is dropped, as is anything longer than a keyword could usefully be, and the list is capped at 12 per entry. A model asked for "other names" will sometimes answer with thirty, and an entry carrying thirty aliases matches everything in every scene.
+- **Provenance is written on apply, not on generation.** The accepted rows are written through `setGeneratedAliases`, which stamps `generatedFrom` with the content hash the row was generated against and `generatedAt` with the apply time. A row without a hash — one that came from a hand-edit — is written without provenance and is never stale.
+- **Two failures read differently.** A request the provider refused is reported as such; a reply that arrived but could not be parsed as JSON says so. Both are marked `incomplete` rather than failing the run, because one bad entry should cost that entry.
+
 ### Scan status
 
 `apps/server/src/worldinfo/scanner.ts` now covers SillyTavern's full evaluation pipeline:

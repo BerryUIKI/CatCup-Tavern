@@ -1280,6 +1280,84 @@ This never writes to the book file: an entry's identity hash covers its whole ra
 
 Removes one entry's aliases. Response: `{ "ok": true }`; `ok` is `false` when there was nothing to remove.
 
+### `GET /api/worlds/:id/aliases/estimate`
+
+What generating this book's aliases would cost, before anything is spent.
+
+```
+/api/worlds/eldoria/aliases/estimate?includeExisting=true&uids=0,1
+```
+
+```json
+{
+    "estimate": { "requests": 2, "withAliases": 0, "empty": 1, "promptTokens": 1223, "model": "stub-model" }
+}
+```
+
+`requests` is the number of entries a run would ask about — the number of requests a person is about to spend, not an approximation. `empty` counts entries skipped because they have no content and no keywords. `promptTokens` is counted with the same tokenizer the chat budget uses, against the model the run would use. `uids` is optional and comma-separated; without it the estimate covers the whole book.
+
+### `POST /api/worlds/:id/aliases/runs`
+
+Starts a run and streams its progress as SSE.
+
+```json
+{ "uids": [3, 4], "includeExisting": true, "model": "gpt-5" }
+```
+
+Every field is optional. `uids` restricts the run to those entries; without it the whole book is planned. `includeExisting: false` skips entries that already carry aliases, which is what a second pass over a partly finished book wants.
+
+Events:
+
+```text
+start     { runId, model, items: AliasRunItem[] }
+item      { item }
+progress  { done, total }
+done      { run: AliasRun }
+error     { message }
+```
+
+`done` is the only terminal event and ends the stream. The run is **not** stopped when the client disconnects: a hundred-entry book is minutes of work, and only `/stop` cancels it. A run that fails on its first request still emits `done` with `status: "failed"`.
+
+`400` when there is no provider or the provider has no model; `404` when the book does not exist.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/attach`
+
+Reattaches to a run still in flight. The opening `start` event is replayed on subscribe, so the rows that already finished are drawn. `409` with code `ALIAS_FINISHED` when the run is no longer in flight.
+
+### `GET /api/worlds/:id/aliases/runs`
+
+The run records this profile holds for that book, newest first. Each is an `AliasRun`; a finished one is read, not streamed.
+
+### `GET /api/worlds/:id/aliases/runs/:runId`
+
+One run record. `404` when it is gone.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/stop`
+
+Aborts a run. Response `{ "ok": boolean }`; `false` when the run was not in flight. A stopped run keeps every row that finished, and its record is what a resume plans from.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/resume`
+
+Restarts a recorded run as a new stream. A row that finished keeps its proposal only when the entry's content hash still matches; everything else is planned again. A row that was skipped stays skipped unless its entry has since gained content. `409` with code `ALIAS_RUNNING` when the run is in flight.
+
+### `POST /api/worlds/:id/aliases/apply`
+
+Writes the rows a review sheet kept. `?runId=` is optional and supplies provenance — each row's `generatedFrom` is taken from that run's recorded content hash, so an entry edited between the run and the apply is stored as stale rather than as fresh.
+
+```json
+{ "entries": [{ "uid": 3, "aliases": ["王女", "Aurelia"] }, { "uid": 4, "aliases": ["Bram"] }] }
+```
+
+Response: `{ "updated": 2, "kept": 0 }`. `kept` counts rows skipped because the book no longer holds that uid — an entry deleted between the run and the apply costs that row, not the batch. The book file is never written; only the sidecar is.
+
+### `DELETE /api/worlds/:id/aliases/runs/:runId`
+
+Deletes a run record. Response `{ "ok": boolean }`.
+
+### `GET /api/worlds/:id/aliases/stale`
+
+The uids whose generated aliases no longer match their entry's content: `{ "stale": [3] }`. The full alias view already carries this; the endpoint exists for a caller that wants only the badge count.
+
 ### `POST /api/worlds/import`
 
 ```json
