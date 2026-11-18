@@ -44,6 +44,21 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 | `pnpm --filter @catcup/server test`   | Server tests only                                  |
 | `pnpm --filter @catcup/web build`     | Web build only                                     |
 | `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first  |
+| `pnpm --filter @catcup/server recall` | Measure what aliases and the lexical pass add to recall (see below) |
+
+### Measuring retrieval
+
+`recall` answers the question #127 was opened to settle: does a book need aliases, embeddings, or neither?
+
+```bash
+pnpm --filter @catcup/server recall <book.json> <chat.txt> [--aliases <aliases.json>]
+```
+
+It runs the real scanner over one paragraph three ways — the book's own keys, the same book with its alias sidecar applied, and that plus the BM25 pass — and reports how many entries each reached. It needs no provider, no key and no cost, and it reads the app's own loader and scanner rather than reimplementing them, so the numbers are the ones the app would produce.
+
+`--aliases` defaults to a `<book>.aliases.json` beside the book. Nothing is generated: the point is to measure a sidecar you already have.
+
+Read the output as: if aliases close most of the gap between `keys only` and `+ lexical`, embeddings would be paying twice for coverage aliases already give.
 
 ## Environment variables
 
