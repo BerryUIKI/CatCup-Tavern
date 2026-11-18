@@ -487,7 +487,8 @@ Extra names an entry answers to live in `<book>.aliases.json`, **beside** the bo
         "3": {
             "aliases": ["王女", "the Princess", "Aurelia"],
             "generatedFrom": "6532256678366231", // absent for hand-entered lists
-            "generatedAt": 1763330000000
+            "generatedAt": 1763330000000,
+            "generatedWith": "gpt-5" // the model that wrote them
         }
     }
 }
@@ -496,7 +497,7 @@ Extra names an entry answers to live in `<book>.aliases.json`, **beside** the bo
 - **Keyed by uid**, as a string, exactly as `id = <book>.<uid>` addresses an entry. A record whose uid the book no longer holds is ignored, never fatal.
 - **Never inside the entry.** An entry's `hash` covers its whole raw record, `extensions` included, and `chat_metadata.timedWorldInfo` records are matched by that hash. Writing aliases into the entry would change the hash and silently detach that entry's sticky and cooldown from every chat that already has them.
 - **Additive.** A book with no sidecar loads and scans exactly as it does without this feature, and reading never creates one.
-- **Optional provenance.** `generatedFrom` is the content hash a model produced the list from; when the entry's content hash differs, the list is reported as stale. A hand-entered list has no `generatedFrom` and is never stale.
+- **Optional provenance.** `generatedFrom` is the content hash a model produced the list from; when the entry's content hash differs, the list is reported as stale. A hand-entered list has no `generatedFrom` and is never stale. `generatedWith` names the model, and is shown in the editor rather than acted on: a book filled in over several runs cannot otherwise say which rows came from the cheap one.
 - **Follows the book.** The file is renamed with a scope move, copied with a scope copy, and deleted with the book. It is not part of a SillyTavern export.
 - **Normalization.** Alias strings are trimmed, de-duplicated case-insensitively (first spelling wins) and capped at 50 per entry and 100 characters each; an empty list drops the record.
 

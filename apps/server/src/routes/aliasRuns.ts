@@ -224,25 +224,22 @@ export async function registerAliasRoutes(app: FastifyInstance): Promise<void> {
 
         // Provenance travels with the run, not with each row: a row's hash was
         // stamped when it was planned, and the apply is the only moment it is
-        // known which run a row came from.
+        // known which run a row came from. The model goes with it for the same
+        // reason — a book filled in over several runs cannot otherwise say
+        // which rows came from the cheap one.
         const from = new Map<number, string>();
         const runId = z.object({ runId: z.string().max(200).optional() }).parse(request.query ?? {}).runId;
-        if (runId) {
-            const run = await readAliasRun(runId);
-            for (const item of run?.items ?? []) {
-                if (item.contentHash) {
-                    from.set(item.uid, item.contentHash);
-                }
+        const run = runId ? await readAliasRun(runId) : null;
+        for (const item of run?.items ?? []) {
+            if (item.contentHash) {
+                from.set(item.uid, item.contentHash);
             }
         }
 
         try {
-            const result = await applyWorldAliases(id, body.entries, from);
-            if (runId) {
-                const run = await readAliasRun(runId);
-                if (run) {
-                    await saveAliasRun({ ...run, applied: result });
-                }
+            const result = await applyWorldAliases(id, body.entries, from, run?.model ?? '');
+            if (run) {
+                await saveAliasRun({ ...run, applied: result });
             }
             return result;
         } catch (error) {

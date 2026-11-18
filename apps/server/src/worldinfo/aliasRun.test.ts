@@ -404,6 +404,31 @@ describe('applying a run', () => {
         expect(result).toEqual({ updated: 1, kept: 1 });
     });
 
+    it('records the model a row was generated with, and shows it in the view', async () => {
+        const { applyWorldAliases, readWorldAliases } = await import('../storage/worlds.js');
+        await applyWorldAliases(
+            'eldoria',
+            [{ uid: 0, aliases: ['王女'] }],
+            new Map([[0, 'hash-of-entry-0']]),
+            'cheap-model-7b',
+        );
+
+        const view = await readWorldAliases('eldoria');
+        expect(view.generated['0']?.model).toBe('cheap-model-7b');
+        expect(view.generated['0']?.from).toBe('hash-of-entry-0');
+    });
+
+    it('leaves the model out of a hand-entered set', async () => {
+        const { applyWorldAliases, readWorldAliases } = await import('../storage/worlds.js');
+        // No provenance map, so this is a hand edit rather than a generation —
+        // a model name on it would claim the row came from somewhere it did not.
+        await applyWorldAliases('eldoria', [{ uid: 1, aliases: ['Bram'] }], new Map(), 'cheap-model-7b');
+
+        const view = await readWorldAliases('eldoria');
+        expect(view.generated['1']).toBeUndefined();
+        expect(view.aliases['1']).toEqual(['Bram']);
+    });
+
     it('reports a stale set once the entry content moves past it', async () => {
         const { readWorldAliases, writeWorldAliases } = await import('../storage/worlds.js');
         const { getStringHash } = await import('../worldinfo/hash.js');

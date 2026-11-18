@@ -215,6 +215,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
 
     const entries = useMemo(() => worldQuery.data?.world.entries ?? [], [worldQuery.data]);
     const aliasMap = aliasesQuery.data?.aliases ?? {};
+    const generatedMap = aliasesQuery.data?.generated ?? {};
     const staleAliases = useMemo(() => new Set(aliasesQuery.data?.stale ?? []), [aliasesQuery.data]);
 
     const [selectedUid, setSelectedUid] = useState<number | null>(null);
@@ -542,6 +543,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                     <AliasChips
                                         aliases={aliasMap[String(selected.uid)] ?? []}
                                         stale={staleAliases.has(selected.uid)}
+                                        model={generatedMap[String(selected.uid)]?.model}
                                         onRefresh={() => setGenerate({ onlyUid: selected.uid })}
                                         busy={setAliases.isPending}
                                         onChange={(next) => {

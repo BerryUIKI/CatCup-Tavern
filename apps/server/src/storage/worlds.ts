@@ -279,7 +279,7 @@ export async function copyWorldIntoScope(id: string, target: ItemScope): Promise
 export async function readWorldAliases(id: string): Promise<{
     aliases: Record<string, string[]>;
     stale: number[];
-    generated: Record<string, { from?: string; at?: number }>;
+    generated: Record<string, { from?: string; at?: number; model?: string }>;
 }> {
     const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
     if (!found) {
@@ -297,7 +297,7 @@ export async function readWorldAliases(id: string): Promise<{
     }
 
     const aliases: Record<string, string[]> = {};
-    const generated: Record<string, { from?: string; at?: number }> = {};
+    const generated: Record<string, { from?: string; at?: number; model?: string }> = {};
     const stale: number[] = [];
 
     for (const [key, record] of Object.entries(records)) {
@@ -309,6 +309,7 @@ export async function readWorldAliases(id: string): Promise<{
             generated[key] = {
                 ...(record.generatedFrom ? { from: record.generatedFrom } : {}),
                 ...(record.generatedAt ? { at: record.generatedAt } : {}),
+                ...(record.generatedWith ? { model: record.generatedWith } : {}),
             };
             const current = contentHashByUid.get(Number(key));
             if (current !== undefined && String(current) !== record.generatedFrom) {
@@ -353,6 +354,8 @@ export async function applyWorldAliases(
     id: string,
     rows: readonly { uid: number; aliases: string[] }[],
     generatedFrom: ReadonlyMap<number, string> = new Map(),
+    /** The model the run used, recorded beside each row it produced. */
+    model = '',
 ): Promise<{ updated: number; kept: number }> {
     const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
     if (!found) {
@@ -373,7 +376,7 @@ export async function applyWorldAliases(
         }
         const from = generatedFrom.get(row.uid);
         if (from) {
-            await setGeneratedAliases(found.filePath, id, row.uid, row.aliases, from);
+            await setGeneratedAliases(found.filePath, id, row.uid, row.aliases, from, model);
         } else {
             await setAliases(found.filePath, id, row.uid, row.aliases);
         }

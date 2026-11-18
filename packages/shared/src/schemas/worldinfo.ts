@@ -208,9 +208,9 @@ export const MAX_ALIAS_LENGTH = 100;
  * aliases into the entry would move the hash and silently disable its
  * sticky/cooldown in every existing chat.
  *
- * One record per uid. `generatedFrom` and `generatedAt` are written only when a
- * model produced the aliases; a hand-entered list omits them, which is also why
- * they are optional here.
+ * One record per uid. `generatedFrom`, `generatedAt` and `generatedWith` are
+ * written only when a model produced the aliases; a hand-entered list omits
+ * them, which is also why they are optional here.
  */
 export const worldInfoAliasRecordSchema = z.object({
     aliases: z.array(z.string().min(1).max(MAX_ALIAS_LENGTH)).max(MAX_ALIASES_PER_ENTRY).default([]),
@@ -218,6 +218,15 @@ export const worldInfoAliasRecordSchema = z.object({
     generatedFrom: z.string().max(64).optional(),
     /** Epoch milliseconds. */
     generatedAt: z.number().int().nonnegative().optional(),
+    /**
+     * The model id that produced the set.
+     *
+     * Not used for anything the app decides — it is provenance a person reads.
+     * A book filled in over several runs, possibly with a cheaper model for the
+     * bulk, cannot otherwise say which rows came from which, and "these look
+     * wrong" and "the cheap model wrote these" call for different responses.
+     */
+    generatedWith: z.string().max(200).optional(),
 });
 export type WorldInfoAliasRecord = z.infer<typeof worldInfoAliasRecordSchema>;
 
