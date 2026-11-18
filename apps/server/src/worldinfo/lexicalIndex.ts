@@ -67,6 +67,12 @@ export function indexFingerprint(entries: readonly ScanEntry[]): string {
         for (const key of entry.key) {
             mix(key);
         }
+        // Aliases are indexed as part of the entry's keys, so an edit to them
+        // changes what the index would score. Without this an alias edit would
+        // leave a stale index serving the old keys until the process restart.
+        for (const alias of entry.autoKeys) {
+            mix(alias);
+        }
     }
 
     return `${entries.length}:${(hash1 >>> 0).toString(36)}${(hash2 >>> 0).toString(36)}`;

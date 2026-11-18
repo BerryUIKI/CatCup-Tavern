@@ -4,11 +4,12 @@
 
 import { readdir, stat } from 'node:fs/promises';
 
-import { worldInfoEntrySchema } from '@catcup/shared';
+import { type WorldInfoAliasMap, worldInfoEntrySchema } from '@catcup/shared';
 
 import { readJsonFile } from '../storage/jsonFile.js';
 import { assertSimpleName, paths, resolveInside } from '../storage/paths.js';
 import { locateItem } from '../storage/scopes.js';
+import { readAliases } from './aliases.js';
 import { getStringHash } from './hash.js';
 import { parseDecorators } from './matching.js';
 import type { ScanEntry } from './types.js';
@@ -120,8 +121,34 @@ export function parseWorldInfoBook(id: string, raw: unknown): ScanEntry[] {
             decorators,
             content,
             hash,
+            autoKeys: [],
         });
         index += 1;
+    }
+
+    return entries;
+}
+
+/**
+ * Attach a book's aliases to the entries they belong to.
+ *
+ * Aliases are kept out of the entry itself, so they arrive here as a second
+ * input and are merged on top of an already-parsed entry. An alias the book's
+ * own keys already list is dropped: it would only produce a duplicate trace
+ * line, and the authored key is the one that should be reported.
+ */
+export function applyAliases(entries: ScanEntry[], aliases: WorldInfoAliasMap): ScanEntry[] {
+    if (Object.keys(aliases).length === 0) {
+        return entries;
+    }
+
+    for (const entry of entries) {
+        const record = aliases[String(entry.uid)];
+        if (!record || record.aliases.length === 0) {
+            continue;
+        }
+        const authored = new Set(entry.key.map((key) => key.toLowerCase()));
+        entry.autoKeys = record.aliases.filter((alias) => !authored.has(alias.toLowerCase()));
     }
 
     return entries;
@@ -186,7 +213,12 @@ export async function readWorldInfoBook(id: string, dir?: string): Promise<World
     if (raw === null) {
         return null;
     }
-    return { id, entries: parseWorldInfoBook(id, raw), raw };
+
+    const entries = parseWorldInfoBook(id, raw);
+    // The sidecar is optional: a missing or unreadable one leaves every entry
+    // exactly as `parseWorldInfoBook` produced it.
+    const aliases = await readAliases(file, id).catch(() => ({}) as WorldInfoAliasMap);
+    return { id, entries: applyAliases(entries, aliases), raw };
 }
 
 /**

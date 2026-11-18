@@ -258,7 +258,14 @@ export class Bm25Index {
 
 /** Build the index from entries in one call. */
 export function buildEntryIndex(
-    entries: readonly { id: string; key: readonly string[]; comment: string; content: string }[],
+    entries: readonly {
+        id: string;
+        key: readonly string[];
+        /** Extra names from the alias sidecar; indexed as more keys. */
+        autoKeys?: readonly string[];
+        comment: string;
+        content: string;
+    }[],
     options: Bm25Options = {},
 ): Bm25Index {
     return Bm25Index.build(
@@ -267,8 +274,10 @@ export function buildEntryIndex(
             fields: [
                 // Keys are joined rather than indexed as separate fields so the
                 // boost applies once, and a key that is several words long is
-                // still one phrase position in the document.
-                { text: entry.key.join('\n'), boost: ENTRY_FIELD_BOOSTS.key },
+                // still one phrase position in the document. Aliases join them
+                // because to the scanner they *are* keys — a lexical hit on an
+                // alias should carry the same weight as one on an authored key.
+                { text: [...entry.key, ...(entry.autoKeys ?? [])].join('\n'), boost: ENTRY_FIELD_BOOSTS.key },
                 { text: entry.comment, boost: ENTRY_FIELD_BOOSTS.comment },
                 { text: entry.content, boost: ENTRY_FIELD_BOOSTS.content },
             ],
