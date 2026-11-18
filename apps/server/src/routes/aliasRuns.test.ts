@@ -173,6 +173,26 @@ describe('alias generation routes', () => {
 
         const view = await call('GET', '/api/worlds/eldoria/aliases');
         expect(view.json().aliases).toEqual({ '0': ['王女', 'Aurelia'], '1': ['Ser Bram'] });
+        // No runId, so no provenance: a hand edit is never stale and claims no model.
+        expect(view.json().generated).toEqual({});
+    });
+
+    it('records the run model as provenance when the apply names the run', async () => {
+        const listed = await call('GET', '/api/worlds/eldoria/aliases/runs');
+        const run = (listed.json() as { runs: { id: string; status: string }[] }).runs.find(
+            (candidate) => candidate.status === 'done',
+        );
+        expect(run).toBeDefined();
+
+        const response = await call('POST', `/api/worlds/eldoria/aliases/apply?runId=${run?.id}`, {
+            entries: [{ uid: 0, aliases: ['王女'] }],
+        });
+        expect(response.statusCode).toBe(200);
+
+        const view = await call('GET', '/api/worlds/eldoria/aliases');
+        // The stub provider's model id, carried from the run record.
+        expect(view.json().generated['0']?.model).toBe('stub-model');
+        expect(view.json().generated['0']?.from).toEqual(expect.any(String));
     });
 
     it('skips a row whose entry is gone rather than failing the batch', async () => {

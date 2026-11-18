@@ -292,7 +292,7 @@ export interface ImportWorldRequest {
 export interface WorldAliasView {
     aliases: Record<string, string[]>;
     stale: number[];
-    generated: Record<string, { from?: string; at?: number }>;
+    generated: Record<string, { from?: string; at?: number; model?: string }>;
 }
 
 /** How much of another installation an import move touches. */
@@ -315,6 +315,14 @@ export interface ExistingInstallResult {
     errors: string[];
     /** Chats whose character was not found in the same import. */
     skippedChats: string[];
+    /**
+     * The books this import created.
+     *
+     * The import dialog offers to generate their aliases, which is worth most
+     * the moment a book arrives rather than later, when the button has to be
+     * remembered.
+     */
+    worldIds: string[];
 }
 
 export interface ContextPreviewMessage {

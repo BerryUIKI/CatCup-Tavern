@@ -717,11 +717,13 @@ Copy an existing SillyTavern installation into this one.
 
 - `path` is an **absolute** path on the machine running CatCup. A relative path, a missing path or a directory with no SillyTavern data is a `400` with a message saying which.
 - `dryRun: true` returns `{ "plan": { characters, chats, worlds, presets, sources, errors } }` and writes nothing. `sources` lists the folders that contributed files.
-- Without `dryRun` it copies, returning `{ "result": { imported: { characters, chats, worlds, presets }, errors, skippedChats } }`.
+- Without `dryRun` it copies, returning `{ "result": { imported: { characters, chats, worlds, presets }, errors, skippedChats, worldIds } }`. `worldIds` names the books this import created, so the dialog can offer to generate their aliases — a file that could not be read is reported in `errors` and never in `worldIds`.
 
 What is read: `characters/`, `chats/<character>/*.jsonl`, `worlds/`, and OpenAI presets from `openai presets/`, `presets/openai/` or `public/presets/openai/`. Chats are attached to a character by matching the folder name against the imported card's name or id; a chat whose character is not in the same import is reported in `skippedChats` rather than guessed at. Files over 20 MB and kinds beyond 500 files are skipped, with an error per file.
 
 Importing is additive: running it twice adds copies with numeric suffixes instead of overwriting.
+
+The import dialog uses `worldIds` to offer alias generation per book, with the request count from `GET /api/worlds/:id/aliases/estimate` shown before anything is spent. Nothing runs unless the person asks.
 
 Group chats, backgrounds, themes and SillyTavern's own settings are not imported.
 
@@ -1258,7 +1260,7 @@ The extra names the book's entries answer to, read from `<book>.aliases.json` be
 {
     "aliases": { "3": ["王女", "the Princess"] },
     "stale": [],
-    "generated": { "3": { "from": "6532256678366231", "at": 1763330000000 } }
+    "generated": { "3": { "from": "6532256678366231", "at": 1763330000000, "model": "gpt-5" } }
 }
 ```
 

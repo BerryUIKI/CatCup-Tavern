@@ -109,6 +109,10 @@ export async function setAliases(
  * names describe text that has since changed. A hand-typed set has no
  * `generatedFrom` and can never be stale, which is correct — a person wrote it
  * against whatever the entry says today.
+ *
+ * `generatedWith` is not consulted by anything. It is there so a book filled in
+ * over several runs can say which model wrote which row, which is the
+ * difference between "these look wrong" and "the cheap model wrote these".
  */
 export async function setGeneratedAliases(
     bookPath: string,
@@ -116,13 +120,19 @@ export async function setGeneratedAliases(
     uid: number,
     aliases: readonly string[],
     generatedFrom: string,
+    generatedWith = '',
     generatedAt = Date.now(),
 ): Promise<WorldInfoAliasRecord | null> {
     return writeRecord(
         bookPath,
         id,
         uid,
-        (normalized) => ({ aliases: normalized, generatedFrom, generatedAt }),
+        (normalized) => ({
+            aliases: normalized,
+            generatedFrom,
+            generatedAt,
+            ...(generatedWith ? { generatedWith } : {}),
+        }),
         aliases,
     );
 }
