@@ -1,4 +1,4 @@
-import type { DistillRun } from '@catcup/shared';
+import type { DistillEvent, DistillRun } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
 
 import { createRun, emit, findRun, releaseRun, runningCount, stopRun, subscribe } from './registry.js';
@@ -18,9 +18,16 @@ function run(id: string): DistillRun {
     };
 }
 
-describe('the distill registry', () => {
+/** The opening event the distill engine replays to a late subscriber. */
+function replay(state: { run: DistillRun }): Extract<DistillEvent, { type: 'start' }> {
+    return { type: 'start', runId: state.run.id, model: state.run.model, chunks: state.run.chunks };
+}
+
+const make = (id: string) => createRun<DistillRun, DistillEvent>(run(id), id, replay);
+
+describe('the run registry', () => {
     it('counts only the runs still in flight', () => {
-        createRun(run('a'));
+        make('a');
         expect(runningCount()).toBe(1);
 
         releaseRun('a');
@@ -29,11 +36,11 @@ describe('the distill registry', () => {
     });
 
     it('replays the current chunk list to a late subscriber', () => {
-        const state = createRun(run('b'));
+        const state = make('b');
         state.run.chunks.push({ index: 0, stage: 'analyze', label: 'Chapter 1', state: 'done' });
 
         const seen: string[] = [];
-        subscribe('b', (event) => seen.push(event.type));
+        subscribe<DistillRun, DistillEvent>('b', (event) => seen.push(event.type));
 
         // An attach mid-run must draw the rows that already finished, not an
         // empty list, so the replay happens on subscribe.
@@ -42,12 +49,12 @@ describe('the distill registry', () => {
     });
 
     it('delivers events to every listener until one unsubscribes', () => {
-        const state = createRun(run('c'));
+        const state = make('c');
         const first: string[] = [];
         const second: string[] = [];
 
-        const off = subscribe('c', (event) => first.push(event.type));
-        subscribe('c', (event) => second.push(event.type));
+        const off = subscribe<DistillRun, DistillEvent>('c', (event) => first.push(event.type));
+        subscribe<DistillRun, DistillEvent>('c', (event) => second.push(event.type));
         emit(state, { type: 'progress', done: 1, total: 2 });
         off();
         emit(state, { type: 'progress', done: 2, total: 2 });
@@ -59,7 +66,7 @@ describe('the distill registry', () => {
     });
 
     it('stops a running run and reports when there is none', () => {
-        const state = createRun(run('d'));
+        const state = make('d');
         expect(stopRun('d')).toBe(true);
         expect(state.controller.signal.aborted).toBe(true);
 
@@ -72,5 +79,27 @@ describe('the distill registry', () => {
             throw new Error('should not be called');
         });
         expect(() => off()).not.toThrow();
+    });
+
+    it('holds runs of two engines under the one count a profile switch reads', () => {
+        // Distillation and alias generation are different pipelines over
+        // different inputs, but both write to the active profile, so both have
+        // to block a switch. One registry is what makes that automatic.
+        make('distill-run');
+        const alias = createRun<{ id: string; status: string }, string>(
+            { id: 'alias-run', status: 'running' },
+            'alias-run',
+            (state) => state.run.id,
+        );
+
+        expect(runningCount()).toBe(2);
+
+        const seen: string[] = [];
+        subscribe<string, string>('alias-run', (event) => seen.push(event));
+        expect(seen).toEqual(['alias-run']);
+
+        releaseRun(alias.run.id);
+        releaseRun('distill-run');
+        expect(runningCount()).toBe(0);
     });
 });

@@ -157,19 +157,23 @@ describe('profile routes', () => {
     it('refuses to switch while a distillation run is in flight', async () => {
         // A run resolves its scope when it starts and writes into that profile
         // when it finishes, so the same guard has to cover it.
-        const { createRun, releaseRun } = await import('../distill/registry.js');
-        createRun({
-            id: 'distill-route-test',
-            bookId: 'novel',
-            bookName: 'novel',
-            mode: 'sections',
-            model: '',
-            status: 'running',
-            startedAt: 0,
-            finishedAt: null,
-            chunks: [],
-            draft: null,
-        });
+        const { createRun, releaseRun } = await import('../runs/registry.js');
+        createRun(
+            {
+                id: 'distill-route-test',
+                bookId: 'novel',
+                bookName: 'novel',
+                mode: 'sections',
+                model: '',
+                status: 'running',
+                startedAt: 0,
+                finishedAt: null,
+                chunks: [],
+                draft: null,
+            },
+            'distill-route-test',
+            () => ({ type: 'start', runId: 'distill-route-test', model: '', chunks: [] }),
+        );
         try {
             const response = await call('PUT', '/api/profiles/active', { id: 'default' });
             expect(response.statusCode).toBe(409);

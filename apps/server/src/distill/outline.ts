@@ -1,8 +1,9 @@
 import { type DistillCharacterDraft, type DistillEntryDraft, errorMessage, type ProviderConfig } from '@catcup/shared';
 
 import { getAdapter } from '../providers/index.js';
+import { extractJson } from '../providers/reply.js';
 import type { PromptMessage } from '../providers/types.js';
-import { extractJson } from './analyze.js';
+import { mapWithConcurrency } from '../runs/concurrency.js';
 import type { Cluster } from './merge.js';
 import { characterOutlineMessages, placeOutlineMessages } from './prompts.js';
 
@@ -199,30 +200,6 @@ function fromMerge(cluster: Cluster): DistillEntryDraft | DistillCharacterDraft 
         evidence: evidenceLine(cluster),
         accepted: false,
     };
-}
-
-/** Run tasks with a fixed pool, preserving result order. */
-export async function mapWithConcurrency<T, R>(
-    items: readonly T[],
-    limit: number,
-    task: (item: T, index: number) => Promise<R>,
-): Promise<R[]> {
-    const results = new Array<R>(items.length);
-    let next = 0;
-
-    const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-        while (next < items.length) {
-            const index = next;
-            next += 1;
-            const item = items[index];
-            if (item !== undefined) {
-                results[index] = await task(item, index);
-            }
-        }
-    });
-
-    await Promise.all(workers);
-    return results;
 }
 
 /**
