@@ -17,6 +17,7 @@ import {
     readAliases,
     removeAliasFile,
     setAliases,
+    setGeneratedAliases,
 } from '../worldinfo/aliases.js';
 import {
     appendEntry,
@@ -337,6 +338,49 @@ export async function writeWorldAliases(
 
     const record = await setAliases(found.filePath, id, uid, aliases);
     return { aliases: record?.aliases ?? [] };
+}
+
+/**
+ * Write the rows a review sheet accepted.
+ *
+ * Batch rather than one route call per row: a hundred-entry book would otherwise
+ * be a hundred round trips, and a half-written sidecar with no record of what
+ * stopped halfway. Each row carries its own provenance — the content hash the
+ * run generated it against — so an entry edited between the run and the apply
+ * is stored as stale rather than as fresh.
+ */
+export async function applyWorldAliases(
+    id: string,
+    rows: readonly { uid: number; aliases: string[] }[],
+    generatedFrom: ReadonlyMap<number, string> = new Map(),
+): Promise<{ updated: number; kept: number }> {
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        throw new Error('World info book not found');
+    }
+
+    const raw = await readJsonFile<unknown>(found.filePath, null);
+    const known = new Set(readEntriesForEditor(raw).map((entry) => entry.uid));
+
+    let updated = 0;
+    let kept = 0;
+    for (const row of rows) {
+        if (!known.has(row.uid)) {
+            // The entry was deleted between the run and the apply. Skipping it
+            // is the only sane answer; failing the whole batch is not.
+            kept += 1;
+            continue;
+        }
+        const from = generatedFrom.get(row.uid);
+        if (from) {
+            await setGeneratedAliases(found.filePath, id, row.uid, row.aliases, from);
+        } else {
+            await setAliases(found.filePath, id, row.uid, row.aliases);
+        }
+        updated += 1;
+    }
+
+    return { updated, kept };
 }
 
 /** Remove one entry's aliases. */

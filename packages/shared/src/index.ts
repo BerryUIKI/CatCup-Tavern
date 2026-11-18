@@ -6,6 +6,7 @@ export * from './modelResolution.js';
 export * from './persona.js';
 export * from './quickReplies.js';
 export * from './regex.js';
+export * from './schemas/aliasGeneration.js';
 export * from './schemas/api.js';
 export * from './schemas/character.js';
 export * from './schemas/chat.js';

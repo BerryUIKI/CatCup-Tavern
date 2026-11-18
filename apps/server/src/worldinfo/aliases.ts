@@ -98,6 +98,48 @@ export async function setAliases(
     uid: number,
     aliases: readonly string[],
 ): Promise<WorldInfoAliasRecord | null> {
+    return writeRecord(bookPath, id, uid, (normalized) => ({ aliases: normalized }), aliases);
+}
+
+/**
+ * Record a model's proposal, with the content it was generated from.
+ *
+ * The provenance is what makes "stale" meaningful: `readWorldAliases` compares
+ * `generatedFrom` against the entry's content hash now, and a mismatch means the
+ * names describe text that has since changed. A hand-typed set has no
+ * `generatedFrom` and can never be stale, which is correct — a person wrote it
+ * against whatever the entry says today.
+ */
+export async function setGeneratedAliases(
+    bookPath: string,
+    id: string,
+    uid: number,
+    aliases: readonly string[],
+    generatedFrom: string,
+    generatedAt = Date.now(),
+): Promise<WorldInfoAliasRecord | null> {
+    return writeRecord(
+        bookPath,
+        id,
+        uid,
+        (normalized) => ({ aliases: normalized, generatedFrom, generatedAt }),
+        aliases,
+    );
+}
+
+/**
+ * Write one entry's record, or drop it when the list is empty.
+ *
+ * Shared by the hand-entered and generated paths so the normalization and the
+ * empty-list rule cannot drift between them.
+ */
+async function writeRecord(
+    bookPath: string,
+    id: string,
+    uid: number,
+    record: (normalized: string[]) => WorldInfoAliasRecord,
+    aliases: readonly string[],
+): Promise<WorldInfoAliasRecord | null> {
     const file = await readAliasFile(bookPath, id);
     const normalized = normalizeAliases(aliases);
 
@@ -107,12 +149,10 @@ export async function setAliases(
         return null;
     }
 
-    // A hand-typed list is not derived from any content, so a previous
-    // generation's provenance stops applying the moment a person edits it.
-    const record: WorldInfoAliasRecord = { aliases: normalized };
-    file.entries[String(uid)] = record;
+    const next = record(normalized);
+    file.entries[String(uid)] = next;
     await writeAliasFile(bookPath, { ...file, book: id });
-    return record;
+    return next;
 }
 
 /** Drop one entry's aliases. */
