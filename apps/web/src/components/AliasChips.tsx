@@ -1,5 +1,5 @@
 import { MAX_ALIASES_PER_ENTRY } from '@catcup/shared';
-import { Plus, X } from 'lucide-react';
+import { Plus, RefreshCw, X } from 'lucide-react';
 import { type KeyboardEvent, useId, useState } from 'react';
 
 /**
@@ -21,12 +21,15 @@ export function AliasChips({
     stale,
     busy,
     onChange,
+    onRefresh,
 }: {
     aliases: readonly string[];
     /** True when a model produced these against content that has since changed. */
     stale: boolean;
     busy: boolean;
     onChange: (next: string[]) => void;
+    /** Ask the model again for this entry. Only offered when the set is stale. */
+    onRefresh?: (() => void) | undefined;
 }) {
     const [draft, setDraft] = useState('');
     const inputId = useId();
@@ -64,8 +67,22 @@ export function AliasChips({
                     Also matches
                 </label>
                 {stale ? (
-                    <span className="rounded border border-amber/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber">
-                        Stale
+                    <span className="flex items-center gap-1.5">
+                        <span className="rounded border border-amber/40 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-amber">
+                            Stale
+                        </span>
+                        {onRefresh ? (
+                            <button
+                                type="button"
+                                className="btn-ghost px-1.5 py-0.5 text-[11px]"
+                                disabled={busy}
+                                onClick={onRefresh}
+                                title="Ask the model again, now that this entry has changed"
+                            >
+                                <RefreshCw size={11} />
+                                Refresh
+                            </button>
+                        ) : null}
                     </span>
                 ) : null}
             </div>
@@ -119,7 +136,9 @@ export function AliasChips({
                 Extra names this entry fires on, kept beside the book rather than inside it. An alias counts as a
                 keyword, so it also satisfies the secondary-key logic and shares the token budget — a bad one can hide
                 the entry as well as reveal it.
-                {stale ? ' The entry changed since these were generated.' : ''}
+                {stale
+                    ? ' The entry changed since these were generated, so some of them may no longer fit. Refresh asks the model again; editing any name below replaces the whole list, and a hand-edited list is never stale.'
+                    : ''}
             </p>
         </div>
     );
