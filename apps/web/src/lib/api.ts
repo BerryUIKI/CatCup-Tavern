@@ -1,4 +1,6 @@
 import type {
+    AliasEstimate,
+    AliasRun,
     AttachImageRequest,
     AuthPasswordResponse,
     AuthStatus,
@@ -232,6 +234,32 @@ export const api = {
             }),
         clearAliases: (id: string, uid: number) =>
             request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}/aliases/${uid}`, { method: 'DELETE' }),
+        estimateAliases: (id: string, query: { uids?: number[]; includeExisting: boolean }) => {
+            const params = new URLSearchParams({ includeExisting: String(query.includeExisting) });
+            if (query.uids && query.uids.length > 0) {
+                params.set('uids', query.uids.join(','));
+            }
+            return request<{ estimate: AliasEstimate }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/estimate?${params.toString()}`,
+            );
+        },
+        aliasRuns: (id: string) => request<{ runs: AliasRun[] }>(`/worlds/${encodeURIComponent(id)}/aliases/runs`),
+        aliasRun: (id: string, runId: string) =>
+            request<{ run: AliasRun }>(`/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}`),
+        stopAliasRun: (id: string, runId: string) =>
+            request<{ ok: boolean }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}/stop`,
+                { method: 'POST' },
+            ),
+        deleteAliasRun: (id: string, runId: string) =>
+            request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}`, {
+                method: 'DELETE',
+            }),
+        applyAliases: (id: string, runId: string | null, entries: Array<{ uid: number; aliases: string[] }>) =>
+            request<{ updated: number; kept: number }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/apply${runId ? `?runId=${encodeURIComponent(runId)}` : ''}`,
+                { method: 'POST', body: JSON.stringify({ entries }) },
+            ),
         exportUrl: (id: string) => `/api/worlds/${encodeURIComponent(id)}/export`,
     },
     context: {

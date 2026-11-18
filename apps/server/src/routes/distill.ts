@@ -4,10 +4,10 @@ import { z } from 'zod';
 
 import { estimateBook } from '../distill/estimate.js';
 import { BookParseError } from '../distill/parse.js';
-import { findRun, stopRun, subscribe } from '../distill/registry.js';
 import { acceptDraft, startModelRun, startSectionsRun } from '../distill/run.js';
 import { buildSkillArchive, SKILL_NAME } from '../distill/skill.js';
 import { badRequest, HttpError, notFound } from '../http/errors.js';
+import { findRun, stopRun, subscribe } from '../runs/registry.js';
 import { endSse, initSse, writeSse } from '../sse.js';
 import { createBook, deleteBook, listBooks, readBook } from '../storage/books.js';
 import { deleteRun, listRuns, readRun, saveRun } from '../storage/distillRuns.js';

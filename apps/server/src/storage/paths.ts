@@ -75,6 +75,10 @@ export const paths = {
     get distill(): string {
         return inside('distill');
     },
+    /** Run records for alias generation over a world info book. */
+    get aliasRuns(): string {
+        return inside('alias-runs');
+    },
     get regex(): string {
         return inside('regex.json');
     },
@@ -148,6 +152,7 @@ export const SCOPED_DIRECTORIES = [
     'user/images',
     'books',
     'distill',
+    'alias-runs',
 ] as const;
 
 /**

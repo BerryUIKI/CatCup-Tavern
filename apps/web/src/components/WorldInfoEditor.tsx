@@ -7,7 +7,7 @@ import {
     type WorldInfoEntryPatch,
     type WorldInfoEntryView,
 } from '@catcup/shared';
-import { ArrowDown, ArrowLeft, ArrowUp, Copy, Plus, Save, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Copy, Plus, Save, Search, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -23,6 +23,7 @@ import {
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
 import { AliasChips } from './AliasChips';
+import { AliasGenerateDialog } from './AliasGenerateDialog';
 import { Select } from './Select';
 import { Spinner } from './Spinner';
 
@@ -217,6 +218,8 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
     const staleAliases = useMemo(() => new Set(aliasesQuery.data?.stale ?? []), [aliasesQuery.data]);
 
     const [selectedUid, setSelectedUid] = useState<number | null>(null);
+    /** The open generation dialog: whole book, or one entry when `onlyUid` is set. */
+    const [generate, setGenerate] = useState<{ onlyUid?: number } | null>(null);
     const [draft, setDraft] = useState<EntryDraft | null>(null);
     const [search, setSearch] = useState('');
     const [section, setSection] = useState<Section>('content');
@@ -385,6 +388,15 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                 <button
                     type="button"
                     className="btn-ghost"
+                    onClick={() => setGenerate({})}
+                    title="Have the model propose extra names for every entry"
+                >
+                    <Sparkles size={15} />
+                    Generate aliases
+                </button>
+                <button
+                    type="button"
+                    className="btn-ghost"
                     onClick={() => void addEntry()}
                     disabled={createEntry.isPending}
                 >
@@ -530,6 +542,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                     <AliasChips
                                         aliases={aliasMap[String(selected.uid)] ?? []}
                                         stale={staleAliases.has(selected.uid)}
+                                        onRefresh={() => setGenerate({ onlyUid: selected.uid })}
                                         busy={setAliases.isPending}
                                         onChange={(next) => {
                                             setAliases.mutate(
@@ -882,6 +895,13 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                     )}
                 </section>
             </div>
+
+            <AliasGenerateDialog
+                bookId={bookId}
+                open={generate !== null}
+                onClose={() => setGenerate(null)}
+                {...(generate?.onlyUid !== undefined ? { onlyUid: generate.onlyUid } : {})}
+            />
         </div>
     );
 }

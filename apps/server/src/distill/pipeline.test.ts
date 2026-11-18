@@ -3,28 +3,9 @@ import { createServer, type Server } from 'node:http';
 import { distillAnalysisSchema } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
 
-import { analyzeChunk, extractJson } from './analyze.js';
+import { analyzeChunk } from './analyze.js';
 import { editDistance, mergeAnalyses, nearMissPairs, normalizeName, similarity } from './merge.js';
-import { mapWithConcurrency, OUTLINE_THRESHOLD } from './outline.js';
-
-describe('extractJson', () => {
-    it('reads a bare object', () => {
-        expect(extractJson('{"a":1}')).toEqual({ a: 1 });
-    });
-
-    it('reads a fenced object', () => {
-        expect(extractJson('```json\n{"a":1}\n```')).toEqual({ a: 1 });
-    });
-
-    it('reads an object with prose around it', () => {
-        expect(extractJson('Here you go:\n{"a":1}\nHope that helps.')).toEqual({ a: 1 });
-    });
-
-    it('returns null when there is no object', () => {
-        expect(extractJson('I could not find anything.')).toBeNull();
-        expect(extractJson('')).toBeNull();
-    });
-});
+import { OUTLINE_THRESHOLD } from './outline.js';
 
 describe('normalizeName', () => {
     it('folds case, punctuation and a leading article', () => {
@@ -352,24 +333,6 @@ describe('mergeAnalyses', () => {
         } finally {
             await stub.close();
         }
-    });
-});
-
-describe('mapWithConcurrency', () => {
-    it('keeps result order and never exceeds the limit', async () => {
-        let running = 0;
-        let peak = 0;
-
-        const results = await mapWithConcurrency([1, 2, 3, 4, 5, 6], 2, async (item) => {
-            running += 1;
-            peak = Math.max(peak, running);
-            await new Promise((resolve) => setTimeout(resolve, 5));
-            running -= 1;
-            return item * 2;
-        });
-
-        expect(results).toEqual([2, 4, 6, 8, 10, 12]);
-        expect(peak).toBeLessThanOrEqual(2);
     });
 });
 
