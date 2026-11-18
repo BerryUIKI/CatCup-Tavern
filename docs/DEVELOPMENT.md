@@ -32,18 +32,18 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 
 ## Scripts
 
-| Command                               | Description                                        |
-| ------------------------------------- | -------------------------------------------------- |
-| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together |
-| `pnpm build`                          | Build server with tsup and web with Vite           |
-| `pnpm start`                          | Run the built server                               |
-| `pnpm typecheck`                      | TypeScript across all workspace packages           |
-| `pnpm test`                           | Vitest across packages                             |
-| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                           |
-| `pnpm format`                         | Biome formatter                                    |
-| `pnpm --filter @catcup/server test`   | Server tests only                                  |
-| `pnpm --filter @catcup/web build`     | Web build only                                     |
-| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first  |
+| Command                               | Description                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together                  |
+| `pnpm build`                          | Build server with tsup and web with Vite                            |
+| `pnpm start`                          | Run the built server                                                |
+| `pnpm typecheck`                      | TypeScript across all workspace packages                            |
+| `pnpm test`                           | Vitest across packages                                              |
+| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                                            |
+| `pnpm format`                         | Biome formatter                                                     |
+| `pnpm --filter @catcup/server test`   | Server tests only                                                   |
+| `pnpm --filter @catcup/web build`     | Web build only                                                      |
+| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first                   |
 | `pnpm --filter @catcup/server recall` | Measure what aliases and the lexical pass add to recall (see below) |
 
 ### Measuring retrieval
