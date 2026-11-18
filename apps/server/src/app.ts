@@ -10,6 +10,7 @@ import { ZodError } from 'zod';
 
 import { config } from './config.js';
 import { HttpError } from './http/errors.js';
+import { registerAliasRoutes } from './routes/aliasRuns.js';
 import { registerAuthRoutes, requireAuth } from './routes/auth.js';
 import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
@@ -152,6 +153,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerRegexRoutes(app);
     await registerQuickReplyRoutes(app);
     await registerImportRoutes(app);
+    await registerAliasRoutes(app);
     await registerDistillRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);
