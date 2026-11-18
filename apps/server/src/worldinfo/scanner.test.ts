@@ -15,6 +15,7 @@ function makeEntry(overrides: Partial<ScanEntry> = {}): ScanEntry {
         world: 'test',
         id: `test.${uid}`,
         decorators: [],
+        autoKeys: [],
         hash: uid * 7919 + 13,
         key: [],
         keysecondary: [],

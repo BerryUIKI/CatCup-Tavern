@@ -1,10 +1,11 @@
-import { worldInfoEntryPatchSchema } from '@catcup/shared';
+import { MAX_ALIASES_PER_ENTRY, worldInfoEntryPatchSchema } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
 import { getSettings, updateSettings } from '../storage/settings.js';
 import {
+    clearWorldAliases,
     createWorld,
     createWorldEntry,
     deleteWorld,
@@ -12,9 +13,11 @@ import {
     duplicateWorldEntry,
     listWorlds,
     readWorld,
+    readWorldAliases,
     reorderWorldEntries,
     updateWorldEntry,
     type WorldEntryResult,
+    writeWorldAliases,
 } from '../storage/worlds.js';
 
 const idParams = z.object({ id: z.string().min(1).max(200) });
@@ -29,6 +32,10 @@ const importSchema = z.object({
 
 const reorderSchema = z.object({
     uids: z.array(z.number().int().min(0)).max(100_000),
+});
+
+const aliasPatchSchema = z.object({
+    aliases: z.array(z.string()).max(MAX_ALIASES_PER_ENTRY),
 });
 
 function unwrap(result: WorldEntryResult) {
@@ -87,6 +94,30 @@ export async function registerWorldRoutes(app: FastifyInstance): Promise<void> {
     app.delete('/api/worlds/:id/entries/:uid', async (request) => {
         const { id, uid } = entryParams.parse(request.params);
         return unwrap(await deleteWorldEntry(id, uid));
+    });
+
+    app.get('/api/worlds/:id/aliases', async (request) => {
+        const { id } = idParams.parse(request.params);
+        return readWorldAliases(id);
+    });
+
+    app.put('/api/worlds/:id/aliases/:uid', async (request) => {
+        const { id, uid } = entryParams.parse(request.params);
+        const { aliases } = aliasPatchSchema.parse(request.body ?? {});
+        try {
+            return await writeWorldAliases(id, uid, aliases);
+        } catch (error) {
+            throw notFound(error instanceof Error ? error.message : 'Aliases could not be saved');
+        }
+    });
+
+    app.delete('/api/worlds/:id/aliases/:uid', async (request) => {
+        const { id, uid } = entryParams.parse(request.params);
+        try {
+            return { ok: await clearWorldAliases(id, uid) };
+        } catch (error) {
+            throw notFound(error instanceof Error ? error.message : 'Aliases could not be removed');
+        }
     });
 
     app.get('/api/worlds/:id/export', async (request, reply) => {

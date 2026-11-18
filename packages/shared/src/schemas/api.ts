@@ -282,6 +282,19 @@ export interface ImportWorldRequest {
     book: unknown;
 }
 
+/**
+ * A book's alias sets, keyed by uid.
+ *
+ * `stale` names the uids whose entry content changed after a model generated
+ * their aliases. A hand-entered set is never stale, because it was written
+ * against whatever the entry says now.
+ */
+export interface WorldAliasView {
+    aliases: Record<string, string[]>;
+    stale: number[];
+    generated: Record<string, { from?: string; at?: number }>;
+}
+
 /** How much of another installation an import move touches. */
 export interface ExistingInstallCounts {
     characters: number;

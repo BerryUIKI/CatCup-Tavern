@@ -15,11 +15,14 @@ import {
     useDeleteWorldEntry,
     useDuplicateWorldEntry,
     useReorderWorldEntries,
+    useSetWorldAliases,
     useUpdateWorldEntry,
     useWorld,
+    useWorldAliases,
 } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { useAppStore } from '../store/app';
+import { AliasChips } from './AliasChips';
 import { Select } from './Select';
 import { Spinner } from './Spinner';
 
@@ -205,9 +208,13 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
     const updateEntry = useUpdateWorldEntry(bookId);
     const deleteEntry = useDeleteWorldEntry(bookId);
     const reorderEntries = useReorderWorldEntries(bookId);
+    const aliasesQuery = useWorldAliases(bookId);
+    const setAliases = useSetWorldAliases(bookId);
     const pushToast = useAppStore((state) => state.pushToast);
 
     const entries = useMemo(() => worldQuery.data?.world.entries ?? [], [worldQuery.data]);
+    const aliasMap = aliasesQuery.data?.aliases ?? {};
+    const staleAliases = useMemo(() => new Set(aliasesQuery.data?.stale ?? []), [aliasesQuery.data]);
 
     const [selectedUid, setSelectedUid] = useState<number | null>(null);
     const [draft, setDraft] = useState<EntryDraft | null>(null);
@@ -520,6 +527,25 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                             onChange={(event) => update('keysecondary', event.target.value)}
                                         />
                                     </Field>
+                                    <AliasChips
+                                        aliases={aliasMap[String(selected.uid)] ?? []}
+                                        stale={staleAliases.has(selected.uid)}
+                                        busy={setAliases.isPending}
+                                        onChange={(next) => {
+                                            setAliases.mutate(
+                                                { uid: selected.uid, aliases: next },
+                                                {
+                                                    onError: (error) =>
+                                                        pushToast(
+                                                            error instanceof Error
+                                                                ? error.message
+                                                                : 'Could not save the aliases.',
+                                                            'error',
+                                                        ),
+                                                },
+                                            );
+                                        }}
+                                    />
                                     <Field label="Content">
                                         <textarea
                                             className="input-shell min-h-[160px] resize-y font-mono text-xs leading-relaxed"

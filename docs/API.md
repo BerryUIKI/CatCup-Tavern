@@ -1250,6 +1250,36 @@ Removes one entry. `displayIndex` values are not renumbered, so gaps remain unti
 
 Response: `{ "world": WorldDetail }`.
 
+### `GET /api/worlds/:id/aliases`
+
+The extra names the book's entries answer to, read from `<book>.aliases.json` beside the book.
+
+```json
+{
+    "aliases": { "3": ["王女", "the Princess"] },
+    "stale": [],
+    "generated": { "3": { "from": "6532256678366231", "at": 1763330000000 } }
+}
+```
+
+`stale` lists the uids whose entry content changed after a model generated their aliases. A hand-entered list is never stale. A book with no sidecar answers with empty objects.
+
+### `PUT /api/worlds/:id/aliases/:uid`
+
+```json
+{ "aliases": ["王女", "the Princess"] }
+```
+
+Replaces one entry's list. Strings are trimmed, de-duplicated case-insensitively and capped at 50 per entry and 100 characters each. An empty array removes the record.
+
+Response: `{ "aliases": ["王女", "the Princess"] }`. `404` when the book or the uid does not exist.
+
+This never writes to the book file: an entry's identity hash covers its whole raw record, and changing it would detach that entry's timed effects from every chat that already has them.
+
+### `DELETE /api/worlds/:id/aliases/:uid`
+
+Removes one entry's aliases. Response: `{ "ok": true }`; `ok` is `false` when there was nothing to remove.
+
 ### `POST /api/worlds/import`
 
 ```json
@@ -1263,7 +1293,7 @@ Importing does not enable the book; add its id to `worldInfo.globalBooks` throug
 
 ### `GET /api/worlds/:id/export`
 
-Returns the stored body as a JSON download.
+Returns the stored body as a JSON download. Alias sidecars are **not** included: the download is exactly the book SillyTavern would have written, so an export carries no CatCup-only state.
 
 ### `DELETE /api/worlds/:id`
 

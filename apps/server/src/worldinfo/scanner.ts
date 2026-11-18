@@ -679,7 +679,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 continue;
             }
 
-            if (entry.key.length === 0) {
+            if (entry.key.length === 0 && entry.autoKeys.length === 0) {
                 trace.skip(entry, 'no-keys');
                 continue;
             }
@@ -690,9 +690,20 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 matchWholeWords: entry.matchWholeWords ?? settings.matchWholeWords,
             };
 
-            const primaryKey = entry.key
+            // An alias is an additional primary key, not a separate mechanism:
+            // it uses the same matcher, the same per-entry options, and it
+            // feeds the same gates below. Only the trace detail names it, so a
+            // hit that came from an alias is visible in the inspector.
+            const authored = entry.key
                 .map((key) => substitute(key))
                 .find((key) => Boolean(key) && matchesKey(haystack, key.trim(), matchOptions));
+            const aliased = authored
+                ? undefined
+                : entry.autoKeys
+                      .map((alias) => substitute(alias))
+                      .find((alias) => Boolean(alias) && matchesKey(haystack, alias.trim(), matchOptions));
+            const primaryKey = authored ?? aliased;
+            const fromAlias = Boolean(aliased);
 
             if (!primaryKey) {
                 trace.skip(entry, 'primary-key-miss');
@@ -701,7 +712,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
 
             const hasSecondary = entry.selective && entry.keysecondary.length > 0;
             if (!hasSecondary) {
-                trace.activate(entry, 'primary-key', primaryKey.trim());
+                trace.activate(entry, 'primary-key', fromAlias ? `alias: ${primaryKey.trim()}` : primaryKey.trim());
                 activatedNow.push(entry);
                 continue;
             }

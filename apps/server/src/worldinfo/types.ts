@@ -44,6 +44,16 @@ export type ScanEntry = WorldInfoEntry & {
     /** Decorator lines parsed from the start of the raw content. */
     decorators: string[];
     /**
+     * Extra names this entry answers to, from the book's alias sidecar.
+     *
+     * They are matched as additional **primary** keys, so they satisfy
+     * `selective`/`keysecondary` gates and enter inclusion groups, probability
+     * and the budget exactly as an authored key does. Never written into the
+     * book: an entry's hash covers its whole raw record, so storing them there
+     * would move the hash and detach its timed effects.
+     */
+    autoKeys: string[];
+    /**
      * SillyTavern-compatible content hash, computed over the raw entry with
      * decorators stripped. Timed-effect records are matched by this value.
      */

@@ -54,6 +54,7 @@ import type {
     SharedItemKind,
     SummarizeResponse,
     SummaryRecord,
+    WorldAliasView,
     WorldDetail,
     WorldInfoEntryPatch,
     WorldSummary,
@@ -223,6 +224,14 @@ export const api = {
                 method: 'PUT',
                 body: JSON.stringify({ uids }),
             }),
+        aliases: (id: string) => request<WorldAliasView>(`/worlds/${encodeURIComponent(id)}/aliases`),
+        setAliases: (id: string, uid: number, aliases: string[]) =>
+            request<{ aliases: string[] }>(`/worlds/${encodeURIComponent(id)}/aliases/${uid}`, {
+                method: 'PUT',
+                body: JSON.stringify({ aliases }),
+            }),
+        clearAliases: (id: string, uid: number) =>
+            request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}/aliases/${uid}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/worlds/${encodeURIComponent(id)}/export`,
     },
     context: {

@@ -193,6 +193,51 @@ export type WorldInfoEntry = z.infer<typeof worldInfoEntrySchema>;
 export type WorldInfoEntryPatch = z.infer<typeof worldInfoEntryPatchSchema>;
 export type WorldInfoFile = z.infer<typeof worldInfoFileSchema>;
 
+/** How many aliases one entry may carry. */
+export const MAX_ALIASES_PER_ENTRY = 50;
+
+/** Longest alias worth keeping; a key longer than this never matches a chat. */
+export const MAX_ALIAS_LENGTH = 100;
+
+/**
+ * Extra names an entry answers to, stored in a sidecar rather than the book.
+ *
+ * SillyTavern has no concept of these, and they must not go inside an entry:
+ * `loader.ts` hashes the whole raw entry — `extensions` included — and that
+ * hash is how a chat's `timedWorldInfo` records find their entry again. Writing
+ * aliases into the entry would move the hash and silently disable its
+ * sticky/cooldown in every existing chat.
+ *
+ * One record per uid. `generatedFrom` and `generatedAt` are written only when a
+ * model produced the aliases; a hand-entered list omits them, which is also why
+ * they are optional here.
+ */
+export const worldInfoAliasRecordSchema = z.object({
+    aliases: z.array(z.string().min(1).max(MAX_ALIAS_LENGTH)).max(MAX_ALIASES_PER_ENTRY).default([]),
+    /** Hash of the entry content the aliases were generated from. */
+    generatedFrom: z.string().max(64).optional(),
+    /** Epoch milliseconds. */
+    generatedAt: z.number().int().nonnegative().optional(),
+});
+export type WorldInfoAliasRecord = z.infer<typeof worldInfoAliasRecordSchema>;
+
+/**
+ * The alias sidecar for one book: `worlds/<id>.aliases.json`.
+ *
+ * A book with no sidecar behaves exactly as it does without this feature, so
+ * this file is additive and nothing else may depend on its presence.
+ */
+export const worldInfoAliasFileSchema = z.object({
+    version: z.literal(1).default(1),
+    /** The book id it belongs to, so a stray file is identifiable. */
+    book: z.string().optional(),
+    entries: z.record(z.string(), worldInfoAliasRecordSchema).default({}),
+});
+export type WorldInfoAliasFile = z.infer<typeof worldInfoAliasFileSchema>;
+
+/** Alias lists keyed by uid, which is what the editor and the scanner read. */
+export type WorldInfoAliasMap = Record<string, WorldInfoAliasRecord>;
+
 /**
  * Injection positions understood by SillyTavern's prompt builder. The numeric
  * values are persisted in world info files and must not be renumbered.
