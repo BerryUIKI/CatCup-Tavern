@@ -5,6 +5,8 @@
 import {
     type CharacterDetail,
     type ChatMessage,
+    DEFAULT_APPEND_ONLY_MEMORY_PROMPT,
+    DEFAULT_MEMORY_PROMPT,
     type GenerationSettings,
     getLatestSummary,
     type MemorySettings,
@@ -189,8 +191,36 @@ export type SummaryRequestResult = { request: SummaryRequest } | { reason: strin
 export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestResult {
     const latest = getLatestSummary(input.messages);
     const maxTokens = input.memory.responseLength > 0 ? input.memory.responseLength : input.generation.maxTokens;
+
+    /**
+     * In append-only mode the previous summary is deliberately withheld.
+     *
+     * Handing it back is what makes the default chain destructive: the model is
+     * asked to fold an unbounded history into a fixed word budget, so whatever
+     * does not fit is gone for good. Withholding it asks for the new range
+     * alone, which is also what makes the result a stable unit an index could
+     * later consume.
+     *
+     * The transcript still starts after the latest summary, so nothing is
+     * summarized twice — only the previous summary's *text* stops being an
+     * input.
+     */
+    const carried = input.memory.appendOnly ? '' : (latest?.value ?? '');
+
+    /**
+     * The stock prompt tells the model to "use that as a base and expand",
+     * which is incoherent when nothing is carried. A prompt still holding that
+     * instruction is swapped for the append-only default rather than sent as
+     * an instruction about text the model was not given; a prompt the person
+     * wrote themselves is sent as written, since it is theirs to shape.
+     */
+    const prompt =
+        input.memory.appendOnly && input.memory.prompt === DEFAULT_MEMORY_PROMPT
+            ? DEFAULT_APPEND_ONLY_MEMORY_PROMPT
+            : input.memory.prompt;
+
     const macroContext = createMacroContext(input.character, input.persona, input.group, latest?.value);
-    const summaryPrompt = substituteMacros(input.memory.prompt, {
+    const summaryPrompt = substituteMacros(prompt, {
         ...macroContext,
         words: input.memory.promptWords,
     });
@@ -198,7 +228,7 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestR
         return { reason: 'The summary prompt is empty.' };
     }
 
-    const fixed = input.countTokens(summaryPrompt) + input.countTokens(latest?.value ?? '') + REQUEST_OVERHEAD;
+    const fixed = input.countTokens(summaryPrompt) + input.countTokens(carried) + REQUEST_OVERHEAD;
     const budget = input.generation.contextSize - maxTokens - RESERVED_TOKENS - fixed;
     if (budget <= 0) {
         return { reason: 'The context budget leaves no room for a summary request.' };
@@ -215,7 +245,7 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestR
         return { reason: 'No new messages to summarize.' };
     }
 
-    const userContent = [latest?.value ?? '', transcript.text].filter(Boolean).join('\n\n');
+    const userContent = [carried, transcript.text].filter(Boolean).join('\n\n');
 
     return {
         request: {

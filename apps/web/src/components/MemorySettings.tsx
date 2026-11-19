@@ -90,6 +90,33 @@ export function MemorySettings() {
                 </p>
             ) : null}
 
+            <div className="rounded-xl border border-line-soft bg-surface/40 px-3 py-2.5">
+                <label className="flex items-start gap-2 text-sm text-parchment-dim">
+                    <input
+                        type="checkbox"
+                        className="mt-0.5 size-4 shrink-0 accent-amber"
+                        checked={form.appendOnly}
+                        onChange={(event) => set('appendOnly', event.target.checked)}
+                    />
+                    <span>
+                        Keep every summary, and never rewrite an older one
+                        <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                            Off (the default) is what the other client does: each summary replaces the last, so detail
+                            that does not fit the word limit is lost for good. On, each summary covers a settled range
+                            and is kept, and the prompt carries the newest plus the opening — a long chat forgets its
+                            middle rather than its beginning.
+                        </span>
+                    </span>
+                </label>
+                {form.appendOnly && form.prompt === DEFAULT_MEMORY_PROMPT ? (
+                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                        The stock prompt asks the model to build on the previous summary, which append-only mode does
+                        not send. It is swapped for a version that does not; write your own prompt above to override
+                        that.
+                    </p>
+                ) : null}
+            </div>
+
             <div>
                 <label className="label-text" htmlFor="memory-prompt">
                     Summary prompt
