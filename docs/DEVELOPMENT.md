@@ -60,6 +60,16 @@ It runs the real scanner over one paragraph three ways — the book's own keys, 
 
 Read the output as: if aliases close most of the gap between `keys only` and `+ lexical`, embeddings would be paying twice for coverage aliases already give.
 
+`chat-recall` is the same idea for a conversation:
+
+```bash
+pnpm --filter @catcup/server chat-recall <chat.jsonl> [--window 5] [--top 3]
+```
+
+For each turn it rebuilds the window the prompt would have kept — including the turn being answered — and counts what a BM25 pass would have surfaced from messages the window had already dropped. It answers whether a retrieval pass over chat messages earns its place, which is the open question in #129.
+
+The result is an **upper bound**: a hit scored, which is not the same as a hit being useful. Read a few recoverable turns by hand before trusting the number.
+
 ## Environment variables
 
 | Variable                    | Default       | Purpose                                                       |
