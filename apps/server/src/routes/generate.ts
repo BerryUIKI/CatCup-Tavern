@@ -7,6 +7,7 @@ import {
     type GenerateAction,
     type GroupDepthPrompt,
     getLatestSummary,
+    getSummaries,
     REGEX_PLACEMENT,
     type RegexScript,
     readCardDepthPrompt,
@@ -20,7 +21,7 @@ import { z } from 'zod';
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
 import type { GenerationType } from '../prompt/definitions.js';
@@ -277,8 +278,21 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
-        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
-        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+        const memoryInjection = buildMemoryInjection(
+            settings.memory,
+            summariesForTurn(settings.memory, getSummaries(messages), (summary) =>
+                tokenCounter.count(formatMemoryText(settings.memory, summary, macroContext) ?? ''),
+            ),
+            macroContext,
+        );
+        // The scan sees the same summaries the prompt does: in append-only
+        // mode a world info entry keyed on an old summary's wording would
+        // otherwise stop firing the moment a newer summary replaced it.
+        const memoryText = formatSummaryList(
+            settings.memory,
+            [...getSummaries(messages)].sort((a, b) => b.index - a.index),
+            macroContext,
+        );
 
         // The card's own in-chat aside, SillyTavern's
         // `data.extensions.depth_prompt`. It is injected at the depth the card

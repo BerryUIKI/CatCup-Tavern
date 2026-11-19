@@ -2,6 +2,7 @@ import {
     type ContextPreview,
     type GroupDepthPrompt,
     getLatestSummary,
+    getSummaries,
     readCardDepthPrompt,
     resolveModel,
     resolvePersona,
@@ -11,7 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { notFound } from '../http/errors.js';
-import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { buildPrompt } from '../prompt/builder.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
@@ -56,8 +57,21 @@ export async function registerContextRoutes(app: FastifyInstance): Promise<void>
         const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
-        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
-        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+        const memoryInjection = buildMemoryInjection(
+            settings.memory,
+            summariesForTurn(settings.memory, getSummaries(chat.messages), (summary) =>
+                tokenCounter.count(formatMemoryText(settings.memory, summary, macroContext) ?? ''),
+            ),
+            macroContext,
+        );
+        // The scan sees the same summaries the prompt does: in append-only
+        // mode a world info entry keyed on an old summary's wording would
+        // otherwise stop firing the moment a newer summary replaced it.
+        const memoryText = formatSummaryList(
+            settings.memory,
+            [...getSummaries(chat.messages)].sort((a, b) => b.index - a.index),
+            macroContext,
+        );
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
 

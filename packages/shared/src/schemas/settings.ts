@@ -218,6 +218,19 @@ export const DEFAULT_AUTHOR_NOTE: AuthorNoteSettings = {
 export const memorySettingsSchema = z.object({
     /** Update the summary automatically after replies. */
     enabled: z.boolean().default(false),
+    /**
+     * Never re-summarise: each summary covers a settled range and is final.
+     *
+     * Off by default, which keeps the SillyTavern behaviour exactly: every
+     * summary is a rewrite of the one before, so detail that does not fit the
+     * word limit is lost at each step and never comes back. On, the chain is
+     * append-only and `summary_n` cannot destroy what `summary_{n-1}` held.
+     *
+     * The stored shape does not change either way — SillyTavern's format puts
+     * one summary on each covered message, and older anchors are already
+     * preserved in the file and ignored by the read path.
+     */
+    appendOnly: z.boolean().default(false),
     /** Prompt sent to the model to request a summary; `{{words}}` is expanded. */
     prompt: z.string().max(10000).default(DEFAULT_MEMORY_PROMPT),
     /** Template wrapped around the summary when it enters the prompt. */
@@ -244,6 +257,7 @@ export type MemorySettings = z.infer<typeof memorySettingsSchema>;
 
 export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
     enabled: false,
+    appendOnly: false,
     prompt: DEFAULT_MEMORY_PROMPT,
     template: DEFAULT_MEMORY_TEMPLATE,
     position: 0,
@@ -266,6 +280,7 @@ export const DEFAULT_MEMORY_SETTINGS: MemorySettings = {
  */
 export const memorySettingsPatchSchema = z.object({
     enabled: z.boolean().optional(),
+    appendOnly: z.boolean().optional(),
     prompt: z.string().max(10000).optional(),
     template: z.string().max(2000).optional(),
     position: z.number().int().min(-1).max(2).optional(),
