@@ -1,7 +1,7 @@
 # RFC 0004 — Talking to a character from an IM client
 
 - **Issue:** none yet; this is the first write-up
-- **Status:** Proposed 2026-11-20 — the questions that need an answer are in §9
+- **Status:** Accepted 2026-11-20 — the three review questions are answered in §9
 
 ## 1. The problem
 
@@ -203,13 +203,45 @@ independent and can be done by anyone at any time.
   second must wait or be refused. Refusing with a message is simplest and
   clearest.
 
-## 9. Questions for review
+## 9. Review questions, decided
 
-1. **Owner-only, or an allowlist mapped to profiles?** (Recommendation:
-   owner-only first.)
-2. **Telegram first, or a different platform the user actually uses?** The
-   long-polling advantage only matters if Telegram is the right platform for
-   them.
-3. **Is the bot token acceptable at all**, given it puts a third party in the
-   message path? For a roleplay app that stores private stories, that is the
-   user's call, not mine.
+Answered 2026-11-20. They stay here as decided sections rather than being
+deleted, so a later change argues against the reasoning instead of
+rediscovering it.
+
+### 9.1 Who may reach the bot — **owner only**
+
+One allowlisted Telegram user id, compared server-side. Every other message is
+ignored silently: no reply, no "you are not allowed", nothing that confirms the
+bot is listening.
+
+This keeps the single-user invariant exactly as `SECURITY.md` states it, and it
+is what makes step 3's chat binding a one-row file rather than a tenant table.
+An allowlist mapped to profiles stays a natural second step, because profiles
+already exist — but it is not the first one.
+
+### 9.2 Which platform — **Telegram**
+
+Chosen for the deployment property rather than for popularity: long polling
+needs no public address, no TLS and no domain, so an install at home or on a
+laptop exposes nothing to the network. The 4,096-character limit is handled by
+splitting on paragraph boundaries, which §5.4 already describes.
+
+Discord and Matrix stay possible as second implementations behind the same
+transport interface. Nothing in the design is Telegram-specific except
+`im/telegram.ts`.
+
+### 9.3 Third party in the message path — **accepted**
+
+Telegram sees every message and every reply. That is stated here plainly
+because it is a property of the chosen design, not a footnote: the app's
+existing promise is "local-first, keys never leave the server", and this adds a
+channel where message _content_ does leave. Nothing about that promise is
+broken — the provider key still stays server-side — but the guarantee is
+narrower than it was before, and `docs/SECURITY.md` must gain a paragraph
+saying so in the same change that adds the transport.
+
+An operator who does not accept it has two options that stay available: the
+Telegram log import (outbound-reading only, no bot, no token) and the
+notification push (outbound only, still one direction). Neither of those puts
+message content anywhere the provider does not already receive it.
