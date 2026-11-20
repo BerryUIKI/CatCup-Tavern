@@ -29,12 +29,22 @@ export const imSettingsSchema = z.object({
      * precision on real accounts.
      */
     ownerId: z.string().trim().max(40).default(''),
+    /**
+     * Send a message to the owner when a generation finishes or fails.
+     *
+     * Off by default and separate from `enabled`: a bot used for conversation is
+     * not necessarily a bot wanted as a notification channel, and a person who
+     * does not accept message content leaving the machine can still read these
+     * — a notification carries a character name and one sentence.
+     */
+    notifyOnReply: z.boolean().default(false),
 });
 export type ImSettings = z.infer<typeof imSettingsSchema>;
 
 export const DEFAULT_IM_SETTINGS: ImSettings = {
     enabled: false,
     ownerId: '',
+    notifyOnReply: false,
 };
 
 /**
@@ -47,6 +57,7 @@ export const DEFAULT_IM_SETTINGS: ImSettings = {
 export const imSettingsPatchSchema = z.object({
     enabled: z.boolean().optional(),
     ownerId: z.string().trim().max(40).optional(),
+    notifyOnReply: z.boolean().optional(),
 });
 export type ImSettingsPatch = z.infer<typeof imSettingsPatchSchema>;
 

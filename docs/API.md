@@ -1763,10 +1763,10 @@ Stores the bot token in `data/secrets.json`, beside the provider keys and never 
 ### `PATCH /api/im/settings`
 
 ```json
-{ "enabled": true, "ownerId": "99999999" }
+{ "enabled": true, "ownerId": "99999999", "notifyOnReply": false }
 ```
 
-Both fields are optional and a missing one keeps its stored value. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody.
+Every field is optional and a missing one keeps its stored value. `notifyOnReply` is separate from `enabled` on purpose: a bot used for conversation is not necessarily one wanted as a notification channel. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody.
 
 Both write endpoints call the transport sync, so a change takes effect without a restart. Response: `{ "settings": ImSettings, "status": ImStatusView }`.
 

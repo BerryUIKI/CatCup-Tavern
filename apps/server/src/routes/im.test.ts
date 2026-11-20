@@ -97,10 +97,10 @@ describe('the IM routes', () => {
     it('saves the allowlist and the enabled flag', async () => {
         const response = await call('PATCH', '/api/im/settings', { enabled: true, ownerId: '12345' });
         expect(response.statusCode).toBe(200);
-        expect(response.json().settings).toEqual({ enabled: true, ownerId: '12345' });
+        expect(response.json().settings).toEqual({ enabled: true, ownerId: '12345', notifyOnReply: false });
 
         const settings = await call('GET', '/api/settings');
-        expect(settings.json().settings.im).toEqual({ enabled: true, ownerId: '12345' });
+        expect(settings.json().settings.im).toEqual({ enabled: true, ownerId: '12345', notifyOnReply: false });
     });
 
     it('does not start polling without a token', async () => {
