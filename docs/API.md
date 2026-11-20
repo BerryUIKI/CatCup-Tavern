@@ -1708,6 +1708,36 @@ Returns the image bytes with the correct `Content-Type`, `Cache-Control: private
 
 Deletes the image and its sidecar. Messages that already reference it keep the reference. Response: `{ "ok": true }`; `404` when the image does not exist.
 
+## Importing a Telegram export
+
+A Telegram Desktop JSON export becomes a CatCup chat. No bot, no token — the user already has the file.
+
+### `POST /api/import/telegram/scan`
+
+```json
+{ "raw": "<the export file's text>" }
+```
+
+Writes nothing. Returns `{ "scan": TelegramScanView }`: the participant names and how many messages each sent — the one decision this importer will not make for you — plus the message count, the rows it dropped (service, empty, malformed) and the date range of the messages it kept.
+
+`400` with code `TELEGRAM_FORMAT` when the file is not JSON.
+
+### `POST /api/import/telegram`
+
+```json
+{ "raw": "<the export file's text>", "characterId": "Aurelia", "owner": "You" }
+```
+
+Writes the chat. `owner` is **required** and is the participant who becomes the persona; every other participant becomes the character. The scan is redone from `raw` rather than trusted from the client, so a confirmation screen cannot be edited into importing messages nobody saw.
+
+Response: `{ "chat": ChatDetail, "imported": number }`. The chat is written through the same storage path as any other, so it reads back through `GET /api/chats/:characterId/:chatId` and exports to SillyTavern unchanged.
+
+- `400 TELEGRAM_UNKNOWN_OWNER` when `owner` never speaks in the export — refusing beats importing a chat where every line is the character's.
+- `400 TELEGRAM_GROUP` when more than one other participant speaks. Collapsing them into one name would rewrite who said what.
+- `400 TELEGRAM_EMPTY` when nothing in the file became a message.
+
+A repeat import adds a copy with a numeric suffix rather than overwriting.
+
 ## Instant messaging
 
 Reaching a character from Telegram, per [RFC 0004](RFC/0004-im-integration.md). Off by default; nothing polls unless a token is stored and the setting is on.

@@ -56,6 +56,7 @@ import type {
     SharedItemKind,
     SummarizeResponse,
     SummaryRecord,
+    TelegramScanView,
     WorldAliasView,
     WorldDetail,
     WorldInfoEntryPatch,
@@ -341,6 +342,18 @@ export const api = {
         remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,
     },
+    /** Scan a Telegram export's text; writes nothing. */
+    scanTelegramExport: (raw: string) =>
+        request<{ scan: TelegramScanView }>('/import/telegram/scan', {
+            method: 'POST',
+            body: JSON.stringify({ raw }),
+        }),
+    /** Write a scanned export as a chat on one character. */
+    importTelegramExport: (raw: string, characterId: string, owner: string) =>
+        request<{ chat: ChatDetail; imported: number }>('/import/telegram', {
+            method: 'POST',
+            body: JSON.stringify({ raw, characterId, owner }),
+        }),
     importFromInstall: (path: string, dryRun: boolean) =>
         request<{ plan: ExistingInstallPlan } | { result: ExistingInstallResult }>('/import/sillytavern', {
             method: 'POST',

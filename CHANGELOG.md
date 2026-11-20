@@ -41,6 +41,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   Turning it on means message text and replies travel through Telegram's servers. See [SECURITY.md](docs/SECURITY.md): the provider key still never leaves the server, but "local-first" no longer covers the messages themselves.
 
+- **A Telegram chat can become a CatCup chat.** Export the conversation in Telegram Desktop as JSON and choose it in **Import from another app**. The scan shows the participants and how many messages each sent, because the one decision that cannot be automated is **which one is you** — getting it wrong reverses every "I" in the story and is invisible until someone reads the import back. The chat is then written through the same storage path as any other, so it reads back in the app, exports to SillyTavern and distils like a chat made here.
+
+  What it keeps is deliberate. Service rows, joins and messages with no text are **counted and dropped**, not invented into prose. Media becomes a short marker (`[photo]`, `[voice message]`), never a file path — a chat file can be exported or shared, and a path from the exporting machine is a leak. A conversation with more than one other speaker is **refused** rather than flattened into one name, because collapsing two people rewrites who said what. No bot and no token: this reads a file the user already has.
+
 ### Changed
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.
