@@ -2,11 +2,12 @@
 
 Proposals for features that are large enough to need agreement before code. An RFC here is not a commitment to build it; it is the design as currently understood, with the questions that still need an answer.
 
-| RFC                               | Feature                                              | Issue                                                         | Status   |
-| --------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------- | -------- |
-| [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer            | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78)   | Accepted |
-| [0002](0002-book-distillation.md) | Distil world info and characters from a book         | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77)   | Accepted |
-| [0003](0003-guided-roleplay.md)   | Guided roleplay: a director layer, story mode on top | [#104](https://github.com/BerryUIKI/CatCup-Tavern/issues/104) | Proposed |
+| RFC                               | Feature                                               | Issue                                                         | Status   |
+| --------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------- | -------- |
+| [0001](0001-profiles.md)          | Profiles: scoped data plus a shared layer             | [#78](https://github.com/BerryUIKI/CatCup-Tavern/issues/78)   | Accepted |
+| [0002](0002-book-distillation.md) | Distil world info and characters from a book          | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77)   | Accepted |
+| [0003](0003-guided-roleplay.md)   | Guided roleplay: a director layer, story mode on top  | [#104](https://github.com/BerryUIKI/CatCup-Tavern/issues/104) | Proposed |
+| [0004](0004-im-integration.md)    | Talk to a character from Telegram, Discord or similar | —                                                             | Proposed |
 
 ## How an RFC moves
 
