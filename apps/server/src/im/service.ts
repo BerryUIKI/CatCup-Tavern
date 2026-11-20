@@ -1,6 +1,9 @@
 import type { ImSettings, ImStatusView } from '@catcup/shared';
 
 import { getSettings, getTelegramToken } from '../storage/settings.js';
+import { handleMessage } from './conversation.js';
+import { loopbackGenerate } from './generate.js';
+import { notifyReply } from './notify.js';
 import { TelegramTransport } from './telegram.js';
 import type { IncomingMessage, Transport, TransportHooks, TransportStatus } from './transport.js';
 
@@ -19,14 +22,52 @@ import type { IncomingMessage, Transport, TransportHooks, TransportStatus } from
 let current: { transport: Transport; settings: ImSettings } | null = null;
 
 /**
+ * Where the server listens, so a reply can be produced by calling CatCup's own
+ * generation route rather than by a second copy of prompt assembly.
+ *
+ * Set once the server has an address. Until then a message that tries to
+ * generate answers with "the server has not finished starting" rather than
+ * hanging.
+ */
+let baseUrl: string | null = null;
+
+/** Record the address the server ended up on. Called after `listen`. */
+export function setServerBaseUrl(url: string): void {
+    baseUrl = url;
+}
+
+/**
  * Whose messages reach the transport.
  *
- * Replaced when the binding slice (#144) lands. Until then a transport has
- * nowhere to put a message, so the default records it and does nothing — the
- * transport itself is the thing this slice proves, and it is provable without
- * a chat on the other end.
+ * A message is answered by `handleMessage`, which resolves the binding, handles
+ * the commands and calls back into generation. The sink stays replaceable so a
+ * test can watch what arrives without a bot.
  */
-let onMessage: (message: IncomingMessage) => void = () => {};
+let onMessage: (message: IncomingMessage) => void = (message) => {
+    void handleMessage(message, {
+        transport: { send: (chatId, text) => sendTo(chatId, text) },
+        generate: loopbackGenerate({ baseUrl: () => baseUrl }),
+        onReply: ({ characterName, text }) => {
+            void notifyReply({ characterName, text });
+        },
+    }).catch((error) => {
+        // A conversation that fails must not take the poll loop with it.
+        console.warn('[im] Conversation failed:', error);
+    });
+};
+
+/** The running transport, for the notification path. `null` when nothing is on. */
+export function getTransport(): Transport | null {
+    return current?.transport ?? null;
+}
+
+/** Send through whichever transport is running, if any. */
+async function sendTo(chatId: string, text: string): Promise<void> {
+    if (!current) {
+        return;
+    }
+    await current.transport.send(chatId, text);
+}
 
 /** Replace the message sink. Used by the binding, and by tests. */
 export function setMessageSink(sink: (message: IncomingMessage) => void): void {

@@ -517,6 +517,26 @@ A model can propose the list. One request per entry — the model sees the entry
 - **Provenance is written on apply, not on generation.** The accepted rows are written through `setGeneratedAliases`, which stamps `generatedFrom` with the content hash the row was generated against and `generatedAt` with the apply time. A row without a hash — one that came from a hand-edit — is written without provenance and is never stale.
 - **Two failures read differently.** A request the provider refused is reported as such; a reply that arrived but could not be parsed as JSON says so. Both are marked `incomplete` rather than failing the run, because one bad entry should cost that entry.
 
+### IM bindings
+
+Which CatCup chat a Telegram conversation drives lives in `im-telegram.json` at the profile root:
+
+```jsonc
+{
+    "version": 1,
+    "transport": "telegram",
+    "bindings": {
+        // Telegram chat id -> the chat it drives
+        "123456789": { "characterId": "Aurelia", "chatId": "Aurelia - 2026-1-1_10-0-0", "boundAt": 1763330000000 }
+    }
+}
+```
+
+- **Beside the profile, not inside a chat.** It is CatCup-only wiring about which phone reaches which story. It means nothing to SillyTavern, and `chat_metadata` already carries `persona_id` and the summary anchors — transport bookkeeping there would travel into an export as noise.
+- **Keyed by the IM side's chat id**, so one person on one phone reaches one conversation. Rebinding replaces the record.
+- **A corrupt or hand-edited file reads as no bindings**, which costs one `/chat` command rather than a bot that will not start.
+- **A chat deleted in the app is reported, not recreated.** The binding is cleared and the next message says so; recreating would fork the story without telling anyone.
+
 ### Scan status
 
 `apps/server/src/worldinfo/scanner.ts` now covers SillyTavern's full evaluation pipeline:
