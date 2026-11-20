@@ -23,6 +23,7 @@ import { registerHealthRoutes } from './routes/health.js';
 import { registerImRoutes } from './routes/im.js';
 import { registerImageRoutes } from './routes/images.js';
 import { registerImportRoutes } from './routes/import.js';
+import { registerTelegramImportRoutes } from './routes/importTelegram.js';
 import { registerMemoryRoutes } from './routes/memory.js';
 import { registerPersonaRoutes } from './routes/personas.js';
 import { registerPresetRoutes } from './routes/presets.js';
@@ -156,6 +157,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerImportRoutes(app);
     await registerAliasRoutes(app);
     await registerImRoutes(app);
+    await registerTelegramImportRoutes(app);
     await registerDistillRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);

@@ -101,6 +101,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 **Platform**
 
 - **No in-app backup, restore or migration.** Back up by copying the data folder while the server is stopped.
+- **A Telegram export imports one conversation at a time, and refuses groups.** Export the chat in Telegram Desktop as JSON, then choose it in **Import from another app**. Service rows, joins and messages with no text are dropped and counted; media becomes a short marker such as `[photo]` rather than a file path, because a chat file can be exported or shared and a path from the exporting machine is a leak. An export with more than one other speaker is refused rather than flattened — collapsing two people into one name would rewrite who said what. There is no Discord or Matrix import: neither has a first-party export in this shape.
 - **The SillyTavern folder import usually finds no presets.** SillyTavern 1.19 keeps user presets in OpenAI Settings, which the importer does not read; import them one at a time from Settings → Prompts.
 - **Repeat imports add copies** with numeric suffixes instead of updating what is already there.
 - **Imported books arrive disabled and imported presets arrive active** — the opposite of what you might expect; enable books before they affect a chat.

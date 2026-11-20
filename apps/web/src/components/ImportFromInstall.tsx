@@ -8,6 +8,7 @@ import { useAppStore } from '../store/app';
 import { AliasGenerateDialog } from './AliasGenerateDialog';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
+import { TelegramImport } from './TelegramImport';
 
 function Counts({ counts }: { counts: { characters: number; chats: number; worlds: number; presets: number } }) {
     return (
@@ -128,6 +129,8 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
         <>
             <Modal open={open} onClose={onClose} title="Import from another app" widthClassName="max-w-2xl">
                 <div className="space-y-4 p-5">
+                    <TelegramImport />
+
                     <p className="text-sm leading-relaxed text-muted">
                         Point at a user folder from another roleplay client — the one that holds{' '}
                         <code className="text-parchment-dim">characters</code>,{' '}

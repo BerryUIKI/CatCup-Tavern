@@ -67,3 +67,25 @@ export const imTokenSchema = z.object({
     token: z.string().max(200).optional(),
 });
 export type ImTokenInput = z.infer<typeof imTokenSchema>;
+
+/**
+ * What a Telegram export scan reports, so the import screen can show a person
+ * what would be written before it is.
+ *
+ * It names the participants and how often each spoke — the one decision that
+ * cannot be automated is which of them is *you*, and a picker needs the names.
+ */
+export interface TelegramParticipant {
+    name: string;
+    count: number;
+}
+
+export interface TelegramScanView {
+    title: string | null;
+    participants: TelegramParticipant[];
+    /** Rows that carry text and would be written. */
+    messages: number;
+    /** Rows dropped because they are not conversation. */
+    skipped: { service: number; empty: number; malformed: number };
+    range: { from: string | null; to: string | null };
+}
