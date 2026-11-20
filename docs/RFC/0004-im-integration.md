@@ -1,6 +1,9 @@
 # RFC 0004 — Talking to a character from an IM client
 
-- **Issue:** none yet; this is the first write-up
+- **Issues:** [#143](https://github.com/BerryUIKI/CatCup-Tavern/issues/143) transport,
+  [#144](https://github.com/BerryUIKI/CatCup-Tavern/issues/144) binding and commands,
+  [#145](https://github.com/BerryUIKI/CatCup-Tavern/issues/145) log import,
+  [#146](https://github.com/BerryUIKI/CatCup-Tavern/issues/146) notifications
 - **Status:** Accepted 2026-11-20 — the three review questions are answered in §9
 
 ## 1. The problem
@@ -169,15 +172,15 @@ because it reuses the same send path.
 
 ## 7. What I would build, in order
 
-| Step | Work                                                                              | Why first                                                                 |
-| ---- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| 1    | Extract `generateReply` from `runGenerationStream`; SSE route keeps its behaviour | Nothing else is possible without it, and it is a pure refactor with tests |
-| 2    | `im/` transport interface + Telegram long-polling transport, owner-only allowlist | Proves the shape with the platform that needs no exposed port             |
-| 3    | Chat binding (sidecar) + `/chat`, `/new`, `/stop`, `/help`                        | Makes it usable                                                           |
-| 4    | Long-reply splitting, error mapping (provider down → a message, not silence)      | Makes it not embarrassing                                                 |
-| 5    | Telegram log import                                                               | Independent, cheap, immediately useful                                    |
-| 6    | Notifications when a browser generation finishes                                  | Reuses 2's send path                                                      |
-| 7    | Discord transport, if wanted                                                      | Second implementation of 2, not a second design                           |
+| Step | Work                                                                              | Issue                                                         | Why first                                                                 |
+| ---- | --------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| 1    | Extract `generateReply` from `runGenerationStream`; SSE route keeps its behaviour | **done**, #142                                                | Nothing else is possible without it, and it is a pure refactor with tests |
+| 2    | `im/` transport interface + Telegram long-polling transport, owner-only allowlist | [#143](https://github.com/BerryUIKI/CatCup-Tavern/issues/143) | Proves the shape with the platform that needs no exposed port             |
+| 3    | Chat binding (sidecar) + `/chat`, `/new`, `/stop`, `/help`                        | [#144](https://github.com/BerryUIKI/CatCup-Tavern/issues/144) | Makes it usable                                                           |
+| 4    | Long-reply splitting, error mapping (provider down → a message, not silence)      | #144                                                          | Makes it not embarrassing                                                 |
+| 5    | Telegram log import                                                               | [#145](https://github.com/BerryUIKI/CatCup-Tavern/issues/145) | Independent, cheap, immediately useful                                    |
+| 6    | Notifications when a generation finishes or fails                                 | [#146](https://github.com/BerryUIKI/CatCup-Tavern/issues/146) | Reuses 2's send path                                                      |
+| 7    | Discord transport, if wanted                                                      | —                                                             | Second implementation of 2, not a second design                           |
 
 Steps 1–2 are the only ones with real uncertainty; 3–4 are mechanical; 5–6 are
 independent and can be done by anyone at any time.
