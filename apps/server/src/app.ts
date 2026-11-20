@@ -20,6 +20,7 @@ import { registerGenerateRoutes } from './routes/generate.js';
 import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
 import { registerGroupRoutes } from './routes/groups.js';
 import { registerHealthRoutes } from './routes/health.js';
+import { registerImRoutes } from './routes/im.js';
 import { registerImageRoutes } from './routes/images.js';
 import { registerImportRoutes } from './routes/import.js';
 import { registerMemoryRoutes } from './routes/memory.js';
@@ -154,6 +155,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerQuickReplyRoutes(app);
     await registerImportRoutes(app);
     await registerAliasRoutes(app);
+    await registerImRoutes(app);
     await registerDistillRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);

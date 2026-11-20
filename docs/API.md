@@ -1708,6 +1708,38 @@ Returns the image bytes with the correct `Content-Type`, `Cache-Control: private
 
 Deletes the image and its sidecar. Messages that already reference it keep the reference. Response: `{ "ok": true }`; `404` when the image does not exist.
 
+## Instant messaging
+
+Reaching a character from Telegram, per [RFC 0004](RFC/0004-im-integration.md). Off by default; nothing polls unless a token is stored and the setting is on.
+
+### `GET /api/im/status`
+
+```json
+{
+    "status": { "hasToken": true, "running": true, "error": null, "bot": { "id": "42", "username": "catcup_bot" } }
+}
+```
+
+`hasToken` stands in for the token, which is never returned by any endpoint. `error` is the last poll failure, worded for a person, and is cleared as soon as a poll succeeds. `bot` is Telegram's `getMe` answer, filled in once a poll has run.
+
+### `PUT /api/im/telegram/token`
+
+```json
+{ "token": "123456:ABC-DEF" }
+```
+
+Stores the bot token in `data/secrets.json`, beside the provider keys and never in `settings.json` — a profile switch must not carry a credential, and settings are served to the client. Omitting `token` keeps the stored one; an empty string clears it. The response is the same `ImStatusView` as `GET /api/im/status`.
+
+### `PATCH /api/im/settings`
+
+```json
+{ "enabled": true, "ownerId": "99999999" }
+```
+
+Both fields are optional and a missing one keeps its stored value. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody.
+
+Both write endpoints call the transport sync, so a change takes effect without a restart. Response: `{ "settings": ImSettings, "status": ImStatusView }`.
+
 ## Notes and limits
 
 - Request bodies are limited to 25 MB; uploads to 20 MB per file and 50 files.

@@ -14,6 +14,8 @@ CatCup Tavern is a **single-user, local-first** application. The assets that mat
 
 There is no multi-tenant isolation. Anyone with a valid session has full access to every character, chat, provider and setting.
 
+**An IM bot narrows the last promise rather than breaking it.** If Telegram polling is switched on (RFC 0004, off by default), message text and the model's replies travel through Telegram's servers. The provider key still never leaves the server, and the bot token lives in `data/secrets.json` beside the provider keys — but "local-first" now excludes the messages themselves for anyone using this feature, and that is a choice the operator makes by turning it on. The allowlist is one Telegram user id compared server-side; every other message is dropped without a reply, because a reply would confirm the bot exists.
+
 ```mermaid
 flowchart LR
     Client["Browser / Tauri webview<br/>session cookie only"]
