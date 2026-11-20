@@ -31,6 +31,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   Nothing about the chat file changes. SillyTavern already stores one summary per covered message on `extra.memory` and never clears an older anchor — only the read path stopped at the newest, and this setting is what makes it read the list. It is off by default because the other client still injects only the newest, so a chat written this way reads correctly in both but only CatCup uses the extra summaries. The larger fix — indexing the messages themselves so the _middle_ is reachable too — is tracked in #129 and deliberately not in this change; the plan attached to that issue starts with this.
 
+  **The measurement that decides whether that larger fix is worth building** is a command: `pnpm --filter @catcup/server chat-recall <chat.jsonl>`. For each turn it rebuilds the window the prompt would have kept and counts what a BM25 pass would have surfaced from messages the window had already dropped. No provider, no cost. It reports an **upper bound** — a hit scored, which is not the same as a hit being useful — so read a few turns by hand before acting on it.
+
 ### Changed
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.
