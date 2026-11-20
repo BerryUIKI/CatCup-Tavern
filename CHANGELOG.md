@@ -35,6 +35,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 - **Generation is no longer welded to HTTP.** The code that calls the provider and stores the reply is now a plain async generator (`generateReply`), and the SSE handler is a thin wrapper that relays its events and turns "the browser closed the socket" into a stop. The SSE contract is unchanged — same five events, same abort and partial-reply behaviour — but a second transport can now run the same generation without a `FastifyReply` or a socket, which is what [RFC 0004](docs/RFC/0004-im-integration.md) needs for an IM client. No user-visible change today.
 
+- **A Telegram bot can receive messages, and nothing else yet.** `im/telegram.ts` long-polls the Bot API; a message from the one allowlisted user id reaches a sink, and anything else is dropped **without a reply**, because answering would confirm the bot exists. Polling rather than a webhook is the point: no public address, no TLS, no domain, so an install at home exposes nothing. A failed poll backs off and retries instead of taking the server down, and a `409` says "another process is already polling this bot" rather than "Telegram refused" — the two send a person to different problems.
+
+  The token lives in `data/secrets.json` beside the provider keys and no endpoint returns it; the client sees `hasToken`. **Off by default**, follows the settings across a restart, and stops before the server closes rather than holding the process open for a long-poll timeout. Where a received message goes is the next slice — this one proves a message can arrive and that the allowlist holds.
+
+  Turning it on means message text and replies travel through Telegram's servers. See [SECURITY.md](docs/SECURITY.md): the provider key still never leaves the server, but "local-first" no longer covers the messages themselves.
+
 ### Changed
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.

@@ -6,6 +6,7 @@ import {
     DEFAULT_AUTHOR_NOTE,
     DEFAULT_BASE_URLS,
     DEFAULT_GENERATION_SETTINGS,
+    DEFAULT_IM_SETTINGS,
     DEFAULT_IMAGE_GENERATION_SETTINGS,
     DEFAULT_MEMORY_SETTINGS,
     DEFAULT_PERSONA,
@@ -90,6 +91,7 @@ function createDefaultSettings(): AppSettings {
         quickReplies: { ...DEFAULT_QUICK_REPLY_SETTINGS },
         tts: { ...DEFAULT_TTS_SETTINGS },
         imageGeneration: { ...DEFAULT_IMAGE_GENERATION_SETTINGS },
+        im: { ...DEFAULT_IM_SETTINGS },
     };
 }
 
@@ -321,6 +323,35 @@ const TTS_SECRET_KEY = 'tts';
 /** The single image generation key lives beside the TTS key. */
 const IMAGE_SECRET_KEY = 'image';
 
+/**
+ * The Telegram bot token.
+ *
+ * A fixed name beside the provider keys, for the same reason they are there: a
+ * bot token is a credential that can post as the bot and read its messages, so
+ * it must not sit in `settings.json`, which is served to the client. Nothing
+ * ever returns it; the API answers `hasToken` instead.
+ */
+const TELEGRAM_SECRET_KEY = 'telegram';
+
+export async function getTelegramToken(): Promise<string | undefined> {
+    return (await getSecrets())[TELEGRAM_SECRET_KEY];
+}
+
+export async function setTelegramToken(token: string | undefined): Promise<void> {
+    if (token === undefined) {
+        return;
+    }
+    await withFileLock(paths.secrets, async () => {
+        const secrets = await getSecrets();
+        if (token === '') {
+            delete secrets[TELEGRAM_SECRET_KEY];
+        } else {
+            secrets[TELEGRAM_SECRET_KEY] = token;
+        }
+        await writeJsonFile(paths.secrets, secrets);
+    });
+}
+
 export async function getTtsSecret(): Promise<string | undefined> {
     return (await getSecrets())[TTS_SECRET_KEY];
 }
@@ -471,6 +502,9 @@ async function mutateSettingsNow(patch: SettingsPatch): Promise<AppSettings> {
         }
         if (patch.imageGeneration) {
             settings.imageGeneration = { ...settings.imageGeneration, ...patch.imageGeneration };
+        }
+        if (patch.im) {
+            settings.im = { ...settings.im, ...patch.im };
         }
         return settings;
     });

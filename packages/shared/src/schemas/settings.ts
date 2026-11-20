@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { DEFAULT_MEMORY_PROMPT, DEFAULT_MEMORY_TEMPLATE } from '../memory.js';
+import { DEFAULT_IM_SETTINGS, imSettingsPatchSchema, imSettingsSchema } from './im.js';
 import {
     DEFAULT_IMAGE_GENERATION_SETTINGS,
     imageGenerationPatchSchema,
@@ -326,6 +327,7 @@ export const appSettingsSchema = z.object({
     quickReplies: quickReplySettingsSchema.default(DEFAULT_QUICK_REPLY_SETTINGS),
     tts: ttsSettingsSchema.default(DEFAULT_TTS_SETTINGS),
     imageGeneration: imageGenerationSettingsSchema.default(DEFAULT_IMAGE_GENERATION_SETTINGS),
+    im: imSettingsSchema.default(DEFAULT_IM_SETTINGS),
 });
 export type AppSettings = z.infer<typeof appSettingsSchema>;
 
@@ -357,6 +359,7 @@ export const settingsPatchSchema = z.object({
     quickReplies: quickReplySettingsPatchSchema.optional(),
     tts: ttsSettingsPatchSchema.optional(),
     imageGeneration: imageGenerationPatchSchema.optional(),
+    im: imSettingsPatchSchema.optional(),
     /** Write-only: stored in data/secrets.json, never returned. Empty clears. */
     ttsApiKey: z.string().max(2000).optional(),
     /** Write-only image generation key, stored beside the TTS key. */
