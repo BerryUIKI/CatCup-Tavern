@@ -1,7 +1,7 @@
 # RFC 0003 — Guided roleplay: a director layer, and story mode on top of it
 
 - **Issue:** [#104](https://github.com/BerryUIKI/CatCup-Tavern/issues/104)
-- **Status:** Proposed 2026-11-15
+- **Status:** Accepted 2026-11-15 — **Layer 1 shipped in #151**; Layer 2 is blocked on its own RFC, as "The second distillation" says
 - **Touches:** `packages/shared/src/schemas/`, `apps/server/src/director/`, `apps/server/src/routes/`, `apps/server/src/prompt/`, `apps/server/src/distill/`, `apps/web/src/components/`, `docs/API.md`, `docs/DATA-FORMATS.md`, `docs/LIMITATIONS.md`, `CHANGELOG.md`
 
 ## The problem
