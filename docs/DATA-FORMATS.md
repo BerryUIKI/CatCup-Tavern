@@ -517,6 +517,31 @@ A model can propose the list. One request per entry — the model sees the entry
 - **Provenance is written on apply, not on generation.** The accepted rows are written through `setGeneratedAliases`, which stamps `generatedFrom` with the content hash the row was generated against and `generatedAt` with the apply time. A row without a hash — one that came from a hand-edit — is written without provenance and is never stale.
 - **Two failures read differently.** A request the provider refused is reported as such; a reply that arrived but could not be parsed as JSON says so. Both are marked `incomplete` rather than failing the run, because one bad entry should cost that entry.
 
+### The director
+
+A chat's director config lives in `chat_metadata.director` — an untyped bag SillyTavern preserves and ignores, the same place `persona_id` lives:
+
+```jsonc
+{
+    "chat_metadata": {
+        "director": {
+            "enabled": true,
+            "speakerMode": "auto", // auto | rotate | director
+            "playedMembers": ["Aurelia.png"], // avatar file names, so a rename does not unbind
+            "rules": "Keep the pace slow.",
+            "choices": true,
+            "choiceCount": 3
+        }
+    }
+}
+```
+
+- **Absent on every chat written before this existed**, and a chat without it produces exactly the prompt and file it did. That is the compatibility promise and a test asserts it.
+- **Avatar file names, not display names**, for `playedMembers`: a card being renamed must not silently unbind the person from who they were playing.
+- **Choices travel on the message**, as `extra.director.choices.options` — an unknown `extra` key the chat writer already preserves. The sentinel block is stripped from `mes` before the message is stored, so a chat file never contains `<<<CHOICES>>>`.
+
+Story mode's `chat_metadata.story` is reserved (`graphId`, `nodeId`, `visited`, `state`) and **nothing writes it yet**: RFC 0003's second layer needs a plot distillation that has no design of its own.
+
 ### IM bindings
 
 Which CatCup chat a Telegram conversation drives lives in `im-telegram.json` at the profile root:

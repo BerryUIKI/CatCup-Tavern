@@ -1,4 +1,4 @@
-import type { ChatMessage } from '@catcup/shared';
+import { type ChatMessage, choicesOf } from '@catcup/shared';
 import {
     Check,
     ChevronLeft,
@@ -21,6 +21,7 @@ import { galleryImageUrl } from '../lib/api';
 import { cn } from '../lib/cn';
 import { formatMessageTime } from '../lib/format';
 import { CharacterAvatar } from './CharacterAvatar';
+import { ChoiceChips } from './ChoiceChips';
 
 export function MarkdownText({ text }: { text: string }) {
     return (
@@ -61,6 +62,14 @@ interface MessageBubbleProps {
     onOpenImage?: (url: string, title?: string) => void;
     /** Present when image generation is enabled and this message can seed a prompt. */
     onIllustrate?: () => void;
+    /**
+     * Send one of the director's options as the person's next message.
+     *
+     * Absent when the message has none or the chat is busy; the chips render
+     * from the message itself, so a caller that does not care about choices
+     * needs no change at all.
+     */
+    onChoose?: (label: string) => void;
 }
 
 interface MessageMedia {
@@ -113,6 +122,7 @@ export function MessageBubble({
     speaking,
     onOpenImage,
     onIllustrate,
+    onChoose,
 }: MessageBubbleProps) {
     const isUser = Boolean(message.is_user);
     /** SillyTavern narrator messages carry this type but are not user messages. */
@@ -244,6 +254,17 @@ export function MessageBubble({
                         ) : (
                             <span className="text-sm italic text-muted">Empty message</span>
                         )}
+
+                        {/* The director's options sit under the reply they
+                            belong to, and only when a handler is supplied —
+                            a chat with no director renders nothing extra. */}
+                        {onChoose && !isUser ? (
+                            <ChoiceChips
+                                choices={choicesOf(message)?.options ?? []}
+                                disabled={disabled}
+                                onChoose={onChoose}
+                            />
+                        ) : null}
 
                         {activeMedia ? (
                             <div
