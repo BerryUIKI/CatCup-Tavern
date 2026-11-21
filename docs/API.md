@@ -1708,6 +1708,63 @@ Returns the image bytes with the correct `Content-Type`, `Cache-Control: private
 
 Deletes the image and its sidecar. Messages that already reference it keep the reference. Response: `{ "ok": true }`; `404` when the image does not exist.
 
+## The director
+
+A per-chat layer that turns a conversation into a guided scene, per [RFC 0003](RFC/0003-guided-roleplay.md). The config lives in `chat_metadata.director`, so it travels with the chat file and SillyTavern ignores it.
+
+### `GET /api/chats/:characterId/:chatId/director`
+
+```json
+{
+    "director": {
+        "enabled": false,
+        "speakerMode": "auto",
+        "playedMembers": [],
+        "rules": "",
+        "choices": false,
+        "choiceCount": 3
+    },
+    "enabled": false
+}
+```
+
+A chat that never had a director answers with the defaults and `enabled: false`, which is the same thing the form sees for a director that is switched off.
+
+### `PATCH /api/chats/:characterId/:chatId/director`
+
+```json
+{ "director": { "enabled": true, "rules": "Keep the pace slow.", "choices": true } }
+```
+
+Merged onto what is stored, not replacing it, so a form that sends only what changed cannot reset the rest. Response: `{ "director": DirectorConfig, "personaId": string | null }`.
+
+**`400 DIRECTOR_SELF_PLAY`** when a **single** chat names its own character in `playedMembers`. The card block tells the model "you are {{char}}", so also forbidding it from writing that character contradicts itself; the message names both ways out — a group chat, or a narrator card with the cast played from the world book. A group has no such collision, because the speaker is chosen per turn and a played member is muted for the whole chat.
+
+The refused save writes nothing: the stored config is unchanged.
+
+### `GET /api/chats/:characterId/:chatId/director/cast`
+
+```json
+{ "cast": [{ "id": "Aurelia", "name": "Aurelia" }], "isGroup": false }
+```
+
+Who can be played in this chat. This route covers the single-chat path, so it always answers the chat's own card — which the PATCH above then refuses if chosen. Listing it anyway is deliberate: the refusal points at a group, and hiding the option would leave the person wondering why it is missing.
+
+### How choices work
+
+When `choices` is on, the generation request carries one extra system instruction after the history asking for a line-oriented block:
+
+```text
+<<<CHOICES>>>
+掏出手机看那条短信
+直接下楼
+<<<END>>>
+```
+
+The block is parsed out of the reply **before** regex scripts run, so the stored message is the prose the person sees and never the sentinels. The options land on the reply as `extra.director.choices`, and clicking one sends its label through the ordinary send path — an option is a shortcut for a line the person could have typed, not a special kind of turn.
+
+The format is line-oriented rather than JSON for one reason: a streamed JSON object has to balance its brackets and survive an unescaped quote, while a line format degrades. A block cut off mid-way still yields the lines before the cut, and no block at all means "no options this turn" rather than a failure. **Choices can never fail a reply.**
+
 ## Importing a Telegram export
 
 A Telegram Desktop JSON export becomes a CatCup chat. No bot, no token — the user already has the file.

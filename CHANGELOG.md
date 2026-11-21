@@ -53,6 +53,14 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 - **Tell me when a reply finishes** (`im.notifyOnReply`, off by default). The character's name and the first sentence — not the reply, which is the point. Separate from the bot's own switch, because a bot someone talks to is not necessarily one they want buzzing at them, and a notification is the one part of this feature that carries almost no message content.
 
+- **A chat can be a directed scene.** A per-chat director, off by default, that decides who may speak, keeps the character you play in the prompt without letting the model write them, and offers a short list of options after a reply. Settled by [RFC 0003](docs/RFC/0003-guided-roleplay.md); story mode's graph is reserved but not built, because it needs a plot distillation that has no design yet.
+
+  **A single chat refuses to play its own card** — a `400` that names both ways out (a group chat, or a narrator card with the cast played from the world book). The card block tells the model "you are {{char}}", so a chat that both speaks as its character and forbids writing them contradicts itself, and the failure would show up as a model that occasionally writes the person's lines.
+
+  **Choices are a line-oriented sentinel block, not JSON**, and that is the reliability plan rather than a detail: a streamed JSON object has to balance its brackets and survive an unescaped quote, while a line format degrades — a block cut off mid-way still yields the lines before the cut, and no block means no options rather than a failure. The block is stripped before regex scripts run, so a stored chat never contains the sentinels, and clicking an option sends its label through the ordinary send path. **Choices can never fail a reply.**
+
+  A chat with no `director` key produces the same prompt and the same file it always did, which is the compatibility promise this rests on.
+
 ### Changed
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.

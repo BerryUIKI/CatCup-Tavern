@@ -785,6 +785,14 @@ export function ChatView({
                                         onEditStart={tts.stop}
                                         onBranch={() => handleBranch(index)}
                                         onOpenImage={(url, title) => setLightbox({ url, title })}
+                                        // A director option is a shortcut for a line the
+                                        // person could have typed, so it goes through the
+                                        // same send path rather than a special one.
+                                        onChoose={
+                                            !message.is_user && !message.is_system
+                                                ? (label) => handleSend(label)
+                                                : undefined
+                                        }
                                         onIllustrate={
                                             imageEnabled &&
                                             !message.is_user &&

@@ -1,3 +1,4 @@
+export * from './director.js';
 export * from './groupCards.js';
 export * from './keywords.js';
 export * from './macros.js';
