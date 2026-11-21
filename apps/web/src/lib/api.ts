@@ -32,6 +32,8 @@ import type {
     HealthResponse,
     ImageScope,
     ImportCharactersResponse,
+    ImSettings as ImSettingsValue,
+    ImStatusView,
     ItemScope,
     Persona,
     PersonaView,
@@ -195,6 +197,17 @@ export const api = {
         remove: (id: string) =>
             request<{ settings: SettingsResponse }>(`/personas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     },
+    imStatus: () => request<{ status: ImStatusView }>('/im/status'),
+    setImToken: (token: string) =>
+        request<{ status: ImStatusView }>('/im/telegram/token', {
+            method: 'PUT',
+            body: JSON.stringify({ token }),
+        }),
+    updateImSettings: (patch: { enabled?: boolean; ownerId?: string; notifyOnReply?: boolean }) =>
+        request<{ settings: ImSettingsValue; status: ImStatusView }>('/im/settings', {
+            method: 'PATCH',
+            body: JSON.stringify(patch),
+        }),
     worlds: {
         list: () => request<{ worlds: WorldSummary[] }>('/worlds'),
         get: (id: string) => request<{ world: WorldDetail }>(`/worlds/${encodeURIComponent(id)}`),

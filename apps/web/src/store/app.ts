@@ -12,6 +12,7 @@ export type SettingsSectionId =
     | 'worldinfo'
     | 'regex'
     | 'memory'
+    | 'im'
     | 'persona'
     | 'quickreplies'
     | 'profiles'

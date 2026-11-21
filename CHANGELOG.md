@@ -45,6 +45,14 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   What it keeps is deliberate. Service rows, joins and messages with no text are **counted and dropped**, not invented into prose. Media becomes a short marker (`[photo]`, `[voice message]`), never a file path — a chat file can be exported or shared, and a path from the exporting machine is a leak. A conversation with more than one other speaker is **refused** rather than flattened into one name, because collapsing two people rewrites who said what. No bot and no token: this reads a file the user already has.
 
+- **The Telegram bot can hold a conversation.** `/chat <character>` binds a Telegram chat to one of their chats — the newest one, because that is the one a person means; `/new` starts a fresh one, `/stop` interrupts a reply, `/who` says what this conversation is bound to, `/help` lists the rest. A plain message talks to the bound character.
+
+  Four decisions worth knowing before using it. **A second message while a reply is being written is refused with a sentence**, not queued — a queue needs its own UI and its own failure modes. **A provider failure answers with a sentence**, because silence looks exactly like a bot that has died. **A chat deleted in the app is reported and unbound**, not recreated, since recreating would fork the story without telling anyone. And **long replies are split on paragraph boundaries, then sentences, then characters** — with CJK punctuation included, because a Chinese reply has no spaces and would otherwise be cut mid-word.
+
+  The binding lives in `im-telegram.json` beside the profile, never in a chat file: it is wiring about which phone reaches which story, and it means nothing to SillyTavern.
+
+- **Tell me when a reply finishes** (`im.notifyOnReply`, off by default). The character's name and the first sentence — not the reply, which is the point. Separate from the bot's own switch, because a bot someone talks to is not necessarily one they want buzzing at them, and a notification is the one part of this feature that carries almost no message content.
+
 ### Changed
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.

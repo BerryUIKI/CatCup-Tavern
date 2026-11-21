@@ -9,6 +9,7 @@ import {
     Info,
     Layers,
     ListOrdered,
+    MessageCircle,
     Pencil,
     Regex,
     Save,
@@ -40,6 +41,7 @@ import { type SettingsSectionId, useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
+import { ImSettings } from './ImSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
@@ -116,6 +118,13 @@ const SECTIONS: SettingsSection[] = [
         icon: Brain,
         group: 'Prompt',
         description: 'A rolling summary injected into the prompt and stored with the chat.',
+    },
+    {
+        id: 'im',
+        label: 'Instant messaging',
+        icon: MessageCircle,
+        group: 'Chat',
+        description: 'Talk to a character from Telegram, and hear when a reply is ready.',
     },
     {
         id: 'persona',
@@ -784,6 +793,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <PersonaSettings />
             ) : section === 'memory' ? (
                 <MemorySettings />
+            ) : section === 'im' ? (
+                <ImSettings />
             ) : section === 'quickreplies' ? (
                 <QuickReplySettings />
             ) : section === 'regex' ? (
