@@ -15,7 +15,7 @@ import { registerAuthRoutes, requireAuth } from './routes/auth.js';
 import { registerCharacterRoutes } from './routes/characters.js';
 import { registerChatRoutes } from './routes/chats.js';
 import { registerContextRoutes } from './routes/context.js';
-import { registerDirectorRoutes } from './routes/director.js';
+import { registerDirectorRoutes, registerGroupDirectorRoutes } from './routes/director.js';
 import { registerDistillRoutes } from './routes/distill.js';
 import { registerGenerateRoutes } from './routes/generate.js';
 import { registerGroupGenerateRoutes } from './routes/groupGenerate.js';
@@ -160,6 +160,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerImRoutes(app);
     await registerTelegramImportRoutes(app);
     await registerDirectorRoutes(app);
+    await registerGroupDirectorRoutes(app);
     await registerDistillRoutes(app);
     await registerContextRoutes(app);
     await registerGenerateRoutes(app);

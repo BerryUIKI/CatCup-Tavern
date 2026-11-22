@@ -1750,6 +1750,22 @@ The refused save writes nothing: the stored config is unchanged.
 
 Who can be played in this chat. This route covers the single-chat path, so it always answers the chat's own card — which the PATCH above then refuses if chosen. Listing it anyway is deliberate: the refusal points at a group, and hiding the option would leave the person wondering why it is missing.
 
+### Group chats
+
+The same config, on the group chat's own metadata — two chats with the same cast can be two different stories, so it lives on the chat rather than the group.
+
+```
+GET   /api/groups/:groupId/chats/:chatId/director
+PATCH /api/groups/:groupId/chats/:chatId/director
+GET   /api/groups/:groupId/chats/:chatId/director/cast
+```
+
+The request and response shapes are identical to the single-chat routes, and `cast` answers the group's members with `isGroup: true`.
+
+Two differences, both deliberate. **There is no self-play refusal**: a group has no contradiction between "you are {{char}}" and "never write this member", because the speaker is chosen per turn and a played member is muted for the whole chat. And **a played member who is not in the group is accepted rather than rejected** — a card temporarily out of a group should not block a save that touches something else, and the cast block simply renders nobody for that entry.
+
+Played members are excluded from every speaker strategy, and an explicit `speaker` naming one is ignored for the same reason it is in a single chat.
+
 ### How choices work
 
 When `choices` is on, the generation request carries one extra system instruction after the history asking for a line-oriented block:

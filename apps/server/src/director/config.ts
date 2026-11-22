@@ -109,6 +109,19 @@ export function directorRefusal(input: {
     );
 }
 
+/**
+ * Which language to write the choice instruction in.
+ *
+ * The card's own text is the only signal available and a good one: a Chinese
+ * character in a Chinese story should be asked for Chinese options, because the
+ * instruction's own words leak into the reply's voice otherwise. Latin by
+ * default — the majority case, and the harmless one when wrong.
+ */
+export function choiceLanguage(card: { description?: string; personality?: string; first_mes?: string }): 'en' | 'zh' {
+    const sample = `${card.description ?? ''}${card.personality ?? ''}${card.first_mes ?? ''}`;
+    return /[一-鿿]/.test(sample) ? 'zh' : 'en';
+}
+
 /** Read a chat's director config, as every caller does. */
 export function readDirector(metadata: Record<string, unknown> | null | undefined): DirectorConfig | null {
     return directorOf(metadata);

@@ -3,8 +3,10 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { directorRefusal } from '../director/config.js';
+import { resolveMembers } from '../group/members.js';
 import { badRequest, notFound } from '../http/errors.js';
 import { chatPersonaId, patchChatMetadata, readChat } from '../storage/chats.js';
+import { getGroup, patchGroupChatMetadata, readGroupChat } from '../storage/groups.js';
 import { requireCharacter } from './helpers.js';
 
 /**
@@ -91,5 +93,82 @@ export async function registerDirectorRoutes(app: FastifyInstance): Promise<void
         }
 
         return { cast: [{ id: character.id, name: character.name }], isGroup: false };
+    });
+}
+
+const groupParamsSchema = z.object({
+    groupId: z.string().trim().min(1).max(200),
+    chatId: z.string().trim().min(1).max(300),
+});
+
+/**
+ * The director on a group chat.
+ *
+ * Separate route rather than one that branches on which kind of chat it is: a
+ * group chat is addressed by group id, not by character and chat, and the
+ * refusal that governs a single chat does not apply — a group has no
+ * contradiction between "you are {{char}}" and "never write this member",
+ * because the speaker is chosen per turn and a played member is muted for the
+ * whole chat.
+ */
+export async function registerGroupDirectorRoutes(app: FastifyInstance): Promise<void> {
+    app.get('/api/groups/:groupId/chats/:chatId/director', async (request) => {
+        const { groupId, chatId } = groupParamsSchema.parse(request.params);
+        const found = await getGroup(groupId);
+        if (!found) {
+            throw notFound('Group not found');
+        }
+        const chat = await readGroupChat(found.group, chatId);
+        if (!chat) {
+            throw notFound('Chat not found');
+        }
+
+        return {
+            director: directorOf(chat.header.chat_metadata) ?? directorConfigSchema.parse({}),
+            enabled: Boolean(directorOf(chat.header.chat_metadata)),
+        };
+    });
+
+    app.patch('/api/groups/:groupId/chats/:chatId/director', async (request) => {
+        const { groupId, chatId } = groupParamsSchema.parse(request.params);
+        const found = await getGroup(groupId);
+        if (!found) {
+            throw notFound('Group not found');
+        }
+        const chat = await readGroupChat(found.group, chatId);
+        if (!chat) {
+            throw notFound('Chat not found');
+        }
+
+        const { director: patch } = updateSchema.parse(request.body ?? {});
+        const stored = directorConfigSchema.parse(chat.header.chat_metadata.director ?? {});
+        const next = directorConfigSchema.parse({ ...stored, ...patch });
+
+        // A played member naming a card that is not in this group is accepted,
+        // not refused: the group's cast changes, and a card temporarily out
+        // should not block a save that touches something else. The block simply
+        // renders nobody for that entry.
+        await patchGroupChatMetadata(found.group, chatId, { director: next });
+
+        return { director: next };
+    });
+
+    /** The group's members, so a person can choose who they play. */
+    app.get('/api/groups/:groupId/chats/:chatId/director/cast', async (request) => {
+        const { groupId, chatId } = groupParamsSchema.parse(request.params);
+        const found = await getGroup(groupId);
+        if (!found) {
+            throw notFound('Group not found');
+        }
+        const chat = await readGroupChat(found.group, chatId);
+        if (!chat) {
+            throw notFound('Chat not found');
+        }
+
+        const members = await resolveMembers(found.group).catch(() => []);
+        return {
+            cast: members.map((member) => ({ id: member.speaker.fileName, name: member.speaker.name })),
+            isGroup: true,
+        };
     });
 }
