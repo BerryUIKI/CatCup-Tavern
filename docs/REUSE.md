@@ -13,10 +13,14 @@ ecosystem's shared data standard. CatCup implements it so a library moves betwee
 conversion tool. Implementing a published format is not adaptation and carries no attribution
 obligation; the files that do it say which specification they follow.
 
-**Adapted code.** A much smaller set of files was written by reading another client's source rather
-than working from a format. Those keep a header naming the upstream file, and they are what this page
-lists. `docs/REUSE-ISOLATION.md` splits them by what they actually are — format implementations
-versus one client's behavioural choices — because only the second is a real claim.
+**Adapted code.** A smaller set of files was written by reading another client's source rather than
+working from a format. Those keep a header naming the upstream file until the code underneath is
+CatCup's own, and they are what this page lists. `docs/REUSE-ISOLATION.md` splits them by what they
+actually are — format implementations versus one client's behavioural choices — and records the plan
+for rewriting the second group.
+
+**The licence is not in question.** CatCup is AGPL-3.0-only by choice and stays there. This page
+exists so a reader can see where each file came from, not to prepare a change of terms.
 
 ## Where the adapted code lives
 
@@ -33,15 +37,21 @@ them could honestly be re-expressed as "written against the specification".
 
 ## 0. License position
 
-CatCup is **AGPL-3.0-only by its own choice**. The ecosystem it belongs to is mostly AGPL-3.0, its
-content library is built for clients that are, and the project prefers that.
+CatCup is **AGPL-3.0-only**. That is the project's current choice, not an accident of what the code
+was built from: the ecosystem it belongs to is mostly AGPL-3.0, and its content library is built for
+clients that are.
 
-Two facts keep that choice a choice rather than an inheritance:
+Two things are worth being clear about, now and later:
 
-| Fact                                                       | Consequence                                                            |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------- |
-| The data formats are a shared standard, implemented here   | No obligation attaches to reading and writing them                     |
-| Every commit is the project's own except the adapted files | There is no third party whose consent a different choice would require |
+| Fact                                                     | Consequence                                        |
+| -------------------------------------------------------- | -------------------------------------------------- |
+| The data formats are a shared standard, implemented here | No obligation attaches to reading and writing them |
+| The adapted files are a shrinking, itemised list         | The project knows exactly what it owes and to whom |
+
+The licence is not a decision this page is working towards. It is the project's
+current choice, and `docs/REUSE-ISOLATION.md` records the plan for the code —
+which is what would keep a later change of terms in the project's own hands
+rather than anyone else's.
 
 Requirements that do follow from the adapted files:
 
@@ -168,7 +178,7 @@ upstream file.
 | `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                      | `convertCharacterBook`: card lorebook to world info entries               |
 | `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes` and `/pattern/flags` validation                 |
 | `packages/compat-st/src/prompt.ts`             | ST `world-info.js` + `openai.js`                                       | Prompt buckets, `wi_format`, Author's Note composition                    |
-| `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Default prompt definitions, order and identifiers                         |
+| `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Identifiers, order and markers from ST; the instruction text is CatCup's  |
 | `apps/server/src/prompt/manager.ts`            | ST `PromptManager.js`                                                  | Sanitize, order lookup and prompt collection                              |
 | `packages/compat-st/src/prompt-messages.ts`    | ST `openai.js`                                                         | `ChatCompletion` slots, budget and system-message squashing               |
 | `apps/server/src/prompt/assemble.ts`           | ST `openai.js`                                                         | Marker merge, card overrides, injection and population                    |
@@ -177,7 +187,7 @@ upstream file.
 | `packages/compat-st/src/prompt-tokenizer.ts`   | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js`      | Model to tiktoken-encoding mapping, the byte estimate and Claude counting |
 | `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                        |
 | `packages/shared/src/regex.ts`                 | ST `public/scripts/extensions/regex/engine.js`                         | Placement gate, replacement syntax, trim strings and the depth window     |
-| `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory` and the default prompts                  |
+| `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory`; the default prompts are CatCup's        |
 | `apps/server/src/memory/summary.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Update schedule, transcript window and the summary request                |
 | `apps/server/src/memory/inject.ts`             | ST `public/scripts/extensions/memory/index.js`                         | Injection template and position formatting                                |
 | `apps/server/src/memory/service.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Summary request lifecycle and storage                                     |
@@ -188,7 +198,7 @@ upstream file.
 | `packages/shared/src/tts.ts`                   | ST `public/scripts/extensions/tts/index.js`                            | Own text cleaner and chunker                                              |
 | `apps/server/src/tts/openaiCompatible.ts`      | ST `public/scripts/extensions/tts/openai.js` + OpenAI speech API       | Request shape and error handling                                          |
 | `apps/web/src/hooks/useTts.ts`                 | ST `public/scripts/extensions/tts/system.js`                           | Browser voice selection and chunked utterances, rewritten for React       |
-| `packages/shared/src/schemas/images.ts`        | ST `stable-diffusion/index.js` + `Default_Comfy_Workflow.json`         | Settings model, defaults and the starter ComfyUI graph                    |
+| `packages/shared/src/schemas/images.ts`        | ST `stable-diffusion/index.js` + `Default_Comfy_Workflow.json`         | Settings model and starter graph; drafting templates are CatCup's         |
 | `apps/server/src/images/automatic1111.ts`      | ST `src/endpoints/stable-diffusion.js` + `stable-diffusion/index.js`   | `/sdapi/v1/txt2img` request shape and seed extraction                     |
 | `apps/server/src/images/comfyui.ts`            | ST `stable-diffusion.js` + `generateComfyImageCommon`                  | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders     |
 | `apps/server/src/images/openaiCompatible.ts`   | ST `stable-diffusion/index.js` (`generateOpenAiImage`)                 | `/images/generations` body, size mapping and base64/URL handling          |
