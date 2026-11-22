@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-
+import type { GenerationType } from '@catcup/compat-st';
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     applyRegexScripts,
     type CharacterDetail,
@@ -25,10 +26,8 @@ import { badRequest, notFound } from '../http/errors.js';
 import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
-import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { appendMessage, chatPersonaId, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';

@@ -26,10 +26,9 @@
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-
+import type { ScanEntry } from '@catcup/compat-st';
+import { DEFAULT_WORLD_INFO_SETTINGS, scanWorldInfo } from '@catcup/compat-st';
 import { applyAliases, parseWorldInfoBook } from '../src/worldinfo/loader.js';
-import { DEFAULT_WORLD_INFO_SETTINGS, scanWorldInfo } from '../src/worldinfo/scanner.js';
-import type { ScanEntry } from '../src/worldinfo/types.js';
 
 interface AliasFile {
     entries?: Record<string, { aliases?: string[] }>;

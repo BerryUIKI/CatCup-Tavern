@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     type DistillAcceptInput,
     type DistillChunk,
@@ -11,8 +11,6 @@ import {
     type ItemScope,
     resolveModel,
 } from '@catcup/shared';
-
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createRun, emit, type RunState, releaseRun, subscribe } from '../runs/registry.js';
 import { readBook, readBookSections } from '../storage/books.js';
 import { importCharacter, setCharacterWorld } from '../storage/characters.js';

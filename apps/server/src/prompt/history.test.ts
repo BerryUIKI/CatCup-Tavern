@@ -1,6 +1,5 @@
+import { parseExampleBlocks } from '@catcup/compat-st';
 import { describe, expect, it } from 'vitest';
-
-import { parseExampleBlocks } from './history.js';
 
 // The parser is handed already-expanded text, so the speaker names are real.
 const EXAMPLES = `<START>

@@ -1,7 +1,5 @@
+import { normalizeCard, readFavorite } from '@catcup/compat-st';
 import { describe, expect, it } from 'vitest';
-
-import { readFavorite } from './favorite.js';
-import { normalizeCard } from './parse.js';
 
 describe('readFavorite', () => {
     it('uses the V2/V3 extension flag and ignores a stale root flag', () => {

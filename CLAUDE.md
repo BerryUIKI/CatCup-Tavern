@@ -68,6 +68,7 @@ apps/
     src/store/          Zustand UI state
   desktop/              Tauri 2 shell; src-tauri/ holds the Rust sidecar host, tray, updater and window state
 packages/shared/        Zod schemas, shared types, ST data models
+packages/compat-st/     code ported from SillyTavern — see below
 assets/brand/           brand masters and their generated icons (see assets/brand/README.md)
 docs/                   handbook (see docs/README.md)
 scripts/                repository tooling; `pnpm icons` rebuilds every icon from the brand masters,
@@ -115,6 +116,7 @@ Read before changing behaviour:
 - API keys may only live in `data/secrets.json`. No API response may contain a plaintext key; the client sees only `hasKey`.
 - Single user + password. First-time setup is limited to loopback. LAN login uses the same password. Every shape can change the password; only the desktop can remove one, because a LAN server with none would be reachable and unauthenticated.
 - Before changing character card / chat / world info / preset schemas, compare with `.ref/SillyTavern` and preserve field names and the JSONL header format.
+- **Code ported from SillyTavern lives in `packages/compat-st`.** It is a boundary for legibility, not a licence change — the app imports it and is built with it, so the result is still one AGPL-3.0 program. Add to that package rather than scattering new ports through `apps/server/src`, and keep the per-file header saying which upstream file each came from.
 - CatCup-only state never goes inside an ST file it would confuse: derived data (indexes, embeddings, caches) lives in a sidecar file beside the source, and anything written into an ST object goes under `extensions.catcup`, which ST preserves and ignores.
 - `.ref/` is for reading only. **Never import from it at runtime and never use it as a build input.**
 - When adding code adapted from ST or RisuAI, update `NOTICE` and `docs/REUSE.md` in the same change.

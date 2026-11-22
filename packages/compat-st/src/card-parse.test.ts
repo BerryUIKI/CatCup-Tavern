@@ -1,6 +1,5 @@
+import { normalizeCard, parseJsonCard } from '@catcup/compat-st';
 import { describe, expect, it } from 'vitest';
-
-import { normalizeCard, parseJsonCard } from './parse.js';
 
 const v2Card = {
     spec: 'chara_card_v2',

@@ -1,13 +1,14 @@
-import { beforeAll, describe, expect, it } from 'vitest';
-
 import {
     createTokenCounter,
     ESTIMATE_COUNTER,
     encodingForModel,
     estimateAnthropicTokens,
     estimateTokens,
-    warmTokenizers,
-} from './tokenizer.js';
+} from '@catcup/compat-st';
+import { beforeAll, describe, expect, it } from 'vitest';
+// The app's wrapper, not the package's: the vocabulary path is the server's to
+// know, and the package's own `warmTokenizers` takes it as an argument.
+import { warmTokenizers } from './tokenizer.js';
 
 beforeAll(async () => {
     await warmTokenizers();

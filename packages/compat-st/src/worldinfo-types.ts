@@ -194,6 +194,17 @@ export interface ScanInput {
     /** Context size in tokens; the percentage budget is derived from it. */
     maxContext: number;
     settings?: Partial<WorldInfoSettings>;
+    /**
+     * Build the lexical index over the entries for this scan.
+     *
+     * Injected rather than imported: the cache, the BM25 module and the
+     * fingerprint all live in the app, and this package must not reach back into
+     * it. Declared structurally — the scanner only ever calls `query` — so
+     * neither side has to know the other's class.
+     */
+    lexicalIndex?: (entries: readonly ScanEntry[]) => {
+        index: { query: (text: string, limit?: number) => Array<{ id: string; score: number }> };
+    };
     globalScanData?: GlobalScanData;
     /** Persisted timed effects. Omit to run without any. */
     timed?: {

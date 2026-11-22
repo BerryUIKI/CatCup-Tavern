@@ -1,9 +1,9 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-
+import type { ScanEntry, ScanInput } from '@catcup/compat-st';
+import { scanWorldInfo } from '@catcup/compat-st';
 import { beforeEach, describe, expect, it } from 'vitest';
-
 import {
     aliasPathFor,
     copyAliasFile,
@@ -14,8 +14,6 @@ import {
     setAliases,
 } from './aliases.js';
 import { applyAliases, parseWorldInfoBook, readWorldInfoBook } from './loader.js';
-import { scanWorldInfo } from './scanner.js';
-import type { ScanEntry, ScanInput } from './types.js';
 
 let dir = '';
 

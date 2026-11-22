@@ -5,6 +5,21 @@
 >
 > Scope and status live in [MILESTONES.md](MILESTONES.md); runtime compatibility is tracked in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md). This page records licensing and reuse.
 
+## Where the derived code lives
+
+The ported code has its own package: **`packages/compat-st`**. Its README says
+what is in it and what is deliberately not; `docs/REUSE-ISOLATION.md` records
+the boundary's rationale.
+
+**This is a boundary for legibility, not a licence change.** The app imports the
+package and is built with it, which makes it one program under AGPL-3.0. Nothing
+about what a recipient of the built app may do has changed, and the headers on
+the individual files still say which SillyTavern file each came from.
+
+What the split does buy: a list of what is derived that cannot drift as files are
+added, a place for the notice, and — if the licence ever needs to change — the
+one boundary such a change would start from.
+
 ## 0. License conclusion
 
 | Project     | License  | Relationship                                                                                               |

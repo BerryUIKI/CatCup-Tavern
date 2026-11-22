@@ -1,6 +1,6 @@
 import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-
+import { getStringHash } from '@catcup/compat-st';
 import {
     type ItemScope,
     isRecord,
@@ -8,7 +8,6 @@ import {
     type WorldInfoEntryPatch,
     type WorldSummary,
 } from '@catcup/shared';
-
 import {
     aliasPathFor,
     copyAliasFile,
@@ -28,7 +27,6 @@ import {
     readEntriesForEditor,
     reorderEntries,
 } from '../worldinfo/entries.js';
-import { getStringHash } from '../worldinfo/hash.js';
 import { parseWorldInfoBook } from '../worldinfo/loader.js';
 import { readJsonFile, writeJsonFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';

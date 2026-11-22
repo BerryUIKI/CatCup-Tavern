@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-
+import type { ScanEntry } from '@catcup/compat-st';
+import { createTokenCounter, getStringHash } from '@catcup/compat-st';
 import {
     type AliasEstimate,
     type AliasEvent,
@@ -10,8 +11,6 @@ import {
     MAX_ALIAS_LENGTH,
     resolveModel,
 } from '@catcup/shared';
-
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { mapWithConcurrency } from '../runs/concurrency.js';
 import { createRun, emit, type RunState, releaseRun, subscribe } from '../runs/registry.js';
 import { saveAliasRun } from '../storage/aliasRuns.js';
@@ -19,9 +18,7 @@ import { getActiveProvider, getProviderSecret, getSettings } from '../storage/se
 import { readWorldAliases } from '../storage/worlds.js';
 import { aliasMessages } from './aliasPrompts.js';
 import { cleanAliases, requestAliases } from './aliasRequest.js';
-import { getStringHash } from './hash.js';
 import { readWorldInfoBook } from './loader.js';
-import type { ScanEntry } from './types.js';
 
 /**
  * Generate a book's aliases with the active model.

@@ -463,7 +463,7 @@ Secondary-key logic (`selectiveLogic`): `0` AND ANY, `1` NOT ALL, `2` NOT ANY, `
 
 ### Loading rules
 
-`apps/server/src/worldinfo/loader.ts` reads a book from either shape:
+`apps/server/src/worldinfo/loader.ts` (parsing in `packages/compat-st/src/parse.ts`) reads a book from either shape:
 
 - the wrapped `{ "entries": { "0": {...} } }` form shown above;
 - a bare `uid -> entry` map, which older exports produce.
@@ -564,7 +564,7 @@ Which CatCup chat a Telegram conversation drives lives in `im-telegram.json` at 
 
 ### Scan status
 
-`apps/server/src/worldinfo/scanner.ts` now covers SillyTavern's full evaluation pipeline:
+`packages/compat-st/src/scanner.ts` now covers SillyTavern's full evaluation pipeline:
 
 - activation: constant, `@@activate` / `@@dont_activate`, primary and secondary keys with all four `selectiveLogic` modes, `scanDepth`, `caseSensitive`, `matchWholeWords`, `/regex/flags` keys, generation-type `triggers`, and character name/tag filters;
 - recursion: the `NONE` / `INITIAL` / `RECURSION` / `MIN_ACTIVATIONS` state machine, `recursive`, `maxRecursionSteps`, `minActivations` with its depth skew, `excludeRecursion`, `preventRecursion` and `delayUntilRecursion` levels;

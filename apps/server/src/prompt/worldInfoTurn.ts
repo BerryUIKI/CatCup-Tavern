@@ -1,3 +1,5 @@
+import type { ScanResult, WorldInfoPrompt } from '@catcup/compat-st';
+import { buildWorldInfoPrompt, ensureTimedWorldInfo, scanWorldInfo } from '@catcup/compat-st';
 import type {
     AuthorNoteSettings,
     CharacterDetail,
@@ -7,12 +9,8 @@ import type {
     WorldInfoConfig,
 } from '@catcup/shared';
 import { applyRegexScripts, REGEX_PLACEMENT } from '@catcup/shared';
-
+import { getEntryIndex } from '../worldinfo/lexicalIndex.js';
 import { loadWorldInfoEntries } from '../worldinfo/loader.js';
-import { buildWorldInfoPrompt } from '../worldinfo/prompt.js';
-import { scanWorldInfo } from '../worldinfo/scanner.js';
-import { ensureTimedWorldInfo } from '../worldinfo/timedEffects.js';
-import type { ScanResult, WorldInfoPrompt } from '../worldinfo/types.js';
 import { type MacroContext, substituteMacros } from './macros.js';
 
 /** Group member names for `{{group}}`, `{{groupNotMuted}}` and friends. */
@@ -147,6 +145,9 @@ export async function scanWorldInfoForTurn(input: WorldInfoTurnInput): Promise<W
         entries,
         chat,
         maxContext: input.contextSize,
+        // The index and its cache belong to the app; the scanner only asks for
+        // one when the lexical pass is on.
+        lexicalIndex: (candidates) => getEntryIndex(candidates),
         settings: {
             depth: input.config.depth,
             budgetPercent: input.config.budgetPercent,

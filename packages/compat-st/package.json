@@ -1,0 +1,28 @@
+{
+    "name": "@catcup/compat-st",
+    "version": "0.3.2",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "default": "./src/index.ts"
+        }
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@agnai/web-tokenizers": "0.1.6-pre3",
+        "@catcup/shared": "workspace:*",
+        "js-tiktoken": "^1.0.21",
+        "png-chunk-text": "^1.0.0",
+        "png-chunks-extract": "^1.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^26.6.6",
+        "typescript": "^7.0.2",
+        "vitest": "^5.1.0"
+    }
+}
