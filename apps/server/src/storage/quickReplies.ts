@@ -1,3 +1,7 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/endpoints/quick-replies.js
+// One file per set, named after the set. See docs/REUSE.md.
+
 import { readdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 

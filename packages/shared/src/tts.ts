@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/tts/index.js
+// The idea of cleaning markdown before speech, not its pipeline: this
+// cleaner is CatCup's. See docs/REUSE.md.
+
 /**
  * Text preparation for speech.
  *

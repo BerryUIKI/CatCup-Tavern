@@ -1,3 +1,7 @@
+// Implements the OpenAI preset JSON format: a prompt list plus the order
+// it is rendered in. Presets are exchanged as files, so the field names
+// are the standard. See docs/DATA-FORMATS.md.
+
 import { z } from 'zod';
 
 /**

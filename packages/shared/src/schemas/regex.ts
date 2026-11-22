@@ -1,3 +1,7 @@
+// Implements the regex-script data format: one find/replace rule plus the
+// placements it applies to. The numeric placement values are persisted in
+// settings files and must not be renumbered.
+
 import { z } from 'zod';
 
 /**

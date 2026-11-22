@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/slash-commands.js
+// and the quick-reply extension's QuickReplySet.js, for the behaviour of
+// the supported commands. The executor is CatCup's. See docs/REUSE.md.
+
 import {
     type AppSettings,
     applyRegexScripts,

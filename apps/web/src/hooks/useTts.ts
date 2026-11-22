@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/tts/system.js
+// Browser voice selection and chunked utterances, rewritten for React.
+// See docs/REUSE.md.
+
 import { splitSpeechText } from '@catcup/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 

@@ -1,3 +1,7 @@
+// Implements the Quick Replies v2 set format: one JSON file per set, named
+// after the set. Fields the editor does not show are kept so a set from
+// another client round-trips. See docs/DATA-FORMATS.md.
+
 import { z } from 'zod';
 
 /**

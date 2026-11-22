@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/endpoints/images.js
+// The `user/images/<folder>` layout and base64 upload semantics.
+// See docs/REUSE.md.
+
 import { randomBytes } from 'node:crypto';
 import type { Dirent } from 'node:fs';
 import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
