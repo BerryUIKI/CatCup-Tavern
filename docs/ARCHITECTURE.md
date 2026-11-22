@@ -54,7 +54,7 @@ apps/server/
     config.ts            env + default paths
     assets.ts            shipped asset paths (tokenizer, vocabularies)
     cards/               PNG tEXt / JSON v2-v3 parsing, CharX packages
-    generation/          shared SSE generation stream and stop registry
+    generation/          generation core (transport-free) and its SSE face, plus the stop registry
     group/               member resolution, speaker selection, reply cleanup
     http/                HTTP helpers: errors, URL joining, shared guards
     images/              image adapters (A1111, ComfyUI, OpenAI-compatible), prompt drafting, connection test
@@ -69,6 +69,7 @@ apps/server/
     sse.ts               client SSE writer
     tts/                 OpenAI-compatible speech adapter
     worldinfo/           ST loader, scanner, entries, timed effects and prompt buckets
+    retrieval/           lexical tokenizer and BM25F index, cached per book revision
 apps/web/
   src/
     components/          auth, library, chat, groups, images, memory, quick replies, regex, settings
@@ -186,6 +187,8 @@ event: error      data: { message }
 - The server persists the assistant message before emitting `done`.
 - Client disconnect / Stop aborts the upstream request and saves the partial text with `extra.stopped = true`.
 - A `: ping` comment is emitted every 15s to keep proxies from timing out.
+
+**Generation is a plain async generator under an SSE wrapper.** `generateReply` in `generation/stream.ts` owns the provider call, the abort controller and persistence, and yields the events above; `runGenerationStream` is the HTTP face that opens SSE, relays them and translates "the socket closed" into an abort. The split exists so a transport that is not a browser can run the same generation — an IM bot has no `FastifyReply` and no long-lived socket, and neither does a test. The SSE contract above is unchanged by it. See [RFC 0004](RFC/0004-im-integration.md).
 
 ```mermaid
 sequenceDiagram

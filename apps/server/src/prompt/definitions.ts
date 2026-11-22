@@ -18,6 +18,14 @@ export const IDENTIFIER = {
     CHAR_PERSONALITY: 'charPersonality',
     SCENARIO: 'scenario',
     PERSONA_DESCRIPTION: 'personaDescription',
+    /**
+     * The director's standing instructions and cast block.
+     *
+     * Placed after the persona and before the character description, so the
+     * rules sit with the other system material rather than in the dialogue.
+     * Absent from the prompt entirely when no director is enabled.
+     */
+    DIRECTOR_RULES: 'directorRules',
 } as const;
 
 /** The fixed system prompts SillyTavern merges into the collection by identifier. */
@@ -172,6 +180,25 @@ export const ST_DEFAULT_PROMPTS: PromptEntry[] = [
     {
         identifier: IDENTIFIER.PERSONA_DESCRIPTION,
         name: 'Persona Description',
+        system_prompt: true,
+        marker: true,
+        injection_position: 0,
+        injection_depth: 4,
+        injection_order: 100,
+        injection_trigger: [],
+        extension: false,
+    },
+    {
+        /**
+         * The director. Marker-only like the persona and character blocks: the
+         * content comes from the chat's own director config, never from here.
+         *
+         * It is always in the list and injects nothing unless the chat has an
+         * enabled director, which is what makes "a chat without a director
+         * behaves exactly as before" true without a second code path.
+         */
+        identifier: IDENTIFIER.DIRECTOR_RULES,
+        name: 'Director',
         system_prompt: true,
         marker: true,
         injection_position: 0,

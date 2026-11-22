@@ -1,7 +1,13 @@
 import type { WorldInfoEntry } from '@catcup/shared';
 
 /** Why an entry was activated during a scan. */
-export type ActivationReason = 'constant' | 'decorator-activate' | 'primary-key' | 'secondary-key' | 'sticky';
+export type ActivationReason =
+    | 'constant'
+    | 'decorator-activate'
+    | 'primary-key'
+    | 'secondary-key'
+    | 'sticky'
+    | 'lexical';
 
 /** Why an entry was considered and rejected during a scan. */
 export type SkipReason =
@@ -37,6 +43,16 @@ export type ScanEntry = WorldInfoEntry & {
     id: string;
     /** Decorator lines parsed from the start of the raw content. */
     decorators: string[];
+    /**
+     * Extra names this entry answers to, from the book's alias sidecar.
+     *
+     * They are matched as additional **primary** keys, so they satisfy
+     * `selective`/`keysecondary` gates and enter inclusion groups, probability
+     * and the budget exactly as an authored key does. Never written into the
+     * book: an entry's hash covers its whole raw record, so storing them there
+     * would move the hash and detach its timed effects.
+     */
+    autoKeys: string[];
     /**
      * SillyTavern-compatible content hash, computed over the raw entry with
      * decorators stripped. Timed-effect records are matched by this value.
@@ -106,6 +122,22 @@ export interface WorldInfoSettings {
     minActivationsDepthMax: number;
     /** `world_info_max_recursion_steps`; `0` is unlimited. */
     maxRecursionSteps: number;
+    /**
+     * Let a lexical (BM25) pass surface entries the substring keys missed.
+     *
+     * Off by default, and it never removes a keyword activation: it only adds
+     * candidates, exactly as SillyTavern's Vector Storage extension does with
+     * `WORLDINFO_FORCE_ACTIVATE`. Controlled by `worldInfo.lexicalMatch`.
+     */
+    lexicalMatch: boolean;
+    /**
+     * Minimum BM25 score for a lexical hit to count. Relative, not absolute —
+     * BM25 scores are corpus-dependent, so this is a fraction of the best
+     * score in this scan rather than a fixed number.
+     */
+    lexicalThreshold: number;
+    /** Cap on how many entries one lexical pass may add. */
+    lexicalLimit: number;
 }
 
 /** SillyTavern's `scan_state` enum. */
@@ -228,6 +260,12 @@ export interface ScanResult {
     /** Number of scan passes performed. */
     loops: number;
     timedEffects: TimedEffectsView;
+    /**
+     * How many entries the lexical pass contributed, or `0` when it ran and
+     * found nothing useful, or was off. Reported separately from `activated`
+     * because it is the only activation source that is not SillyTavern's.
+     */
+    lexicalAdded: number;
 }
 
 /** The Author's Note prompt SillyTavern rewrites after a scan. */

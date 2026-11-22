@@ -32,19 +32,44 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 
 ## Scripts
 
-| Command                               | Description                                        |
-| ------------------------------------- | -------------------------------------------------- |
-| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together |
-| `pnpm build`                          | Build server with tsup and web with Vite           |
-| `pnpm start`                          | Run the built server                               |
-| `pnpm typecheck`                      | TypeScript across all workspace packages           |
-| `pnpm test`                           | Vitest across packages                             |
-| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                           |
-| `pnpm format`                         | Biome formatter                                    |
-| `pnpm --filter @catcup/server test`   | Server tests only                                  |
-| `pnpm --filter @catcup/web build`     | Web build only                                     |
-| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first  |
-| `pnpm site`                           | Build the landing page into `site/dist`            |
+| Command                               | Description                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together                  |
+| `pnpm build`                          | Build server with tsup and web with Vite                            |
+| `pnpm start`                          | Run the built server                                                |
+| `pnpm typecheck`                      | TypeScript across all workspace packages                            |
+| `pnpm test`                           | Vitest across packages                                              |
+| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                                            |
+| `pnpm format`                         | Biome formatter                                                     |
+| `pnpm --filter @catcup/server test`   | Server tests only                                                   |
+| `pnpm --filter @catcup/web build`     | Web build only                                                      |
+| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first                   |
+| `pnpm site`                           | Build the landing page into `site/dist`                             |
+| `pnpm --filter @catcup/server recall` | Measure what aliases and the lexical pass add to recall (see below) |
+
+### Measuring retrieval
+
+`recall` answers the question #127 was opened to settle: does a book need aliases, embeddings, or neither?
+
+```bash
+pnpm --filter @catcup/server recall <book.json> <chat.txt> [--aliases <aliases.json>]
+```
+
+It runs the real scanner over one paragraph three ways — the book's own keys, the same book with its alias sidecar applied, and that plus the BM25 pass — and reports how many entries each reached. It needs no provider, no key and no cost, and it reads the app's own loader and scanner rather than reimplementing them, so the numbers are the ones the app would produce.
+
+`--aliases` defaults to a `<book>.aliases.json` beside the book. Nothing is generated: the point is to measure a sidecar you already have.
+
+Read the output as: if aliases close most of the gap between `keys only` and `+ lexical`, embeddings would be paying twice for coverage aliases already give.
+
+`chat-recall` is the same idea for a conversation:
+
+```bash
+pnpm --filter @catcup/server chat-recall <chat.jsonl> [--window 5] [--top 3]
+```
+
+For each turn it rebuilds the window the prompt would have kept — including the turn being answered — and counts what a BM25 pass would have surfaced from messages the window had already dropped. It answers whether a retrieval pass over chat messages earns its place, which is the open question in #129.
+
+The result is an **upper bound**: a hit scored, which is not the same as a hit being useful. Read a few recoverable turns by hand before trusting the number.
 
 ## Environment variables
 

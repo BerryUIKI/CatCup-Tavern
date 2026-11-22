@@ -1,10 +1,9 @@
 import { profileCreateSchema, profileRenameSchema, type SettingsResponse } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
-import { runningCount } from '../distill/registry.js';
 import { activeGenerations } from '../generation/registry.js';
 import { badRequest, conflict, notFound } from '../http/errors.js';
+import { runningCount } from '../runs/registry.js';
 import { withFileLock } from '../storage/mutex.js';
 import { paths } from '../storage/paths.js';
 import {

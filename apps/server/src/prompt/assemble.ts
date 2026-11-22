@@ -91,6 +91,14 @@ export interface AssembleInput {
      * passes the speaking member's own `depth_prompt` as a single entry.
      */
     cardDepthPrompts?: readonly GroupDepthPrompt[];
+    /**
+     * The director's standing rules plus its generated cast block.
+     *
+     * Empty when the chat has no enabled director, which is what makes an
+     * ordinary chat produce exactly the prompt it always did: the marker is in
+     * the order either way, but an empty literal adds nothing.
+     */
+    directorRules?: string;
 }
 
 /**
@@ -287,6 +295,22 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
             role: 'system',
             content: personaText,
         });
+    }
+
+    // The director sits after the persona and before the character description,
+    // with the other system material rather than in the dialogue.
+    if (input.directorRules?.trim()) {
+        const at = literals.findIndex((literal) => literal.identifier === IDENTIFIER.CHAR_DESCRIPTION);
+        const entry = {
+            identifier: IDENTIFIER.DIRECTOR_RULES,
+            role: 'system' as CompletionRole,
+            content: input.directorRules.trim(),
+        };
+        if (at >= 0) {
+            literals.splice(at, 0, entry);
+        } else {
+            literals.push(entry);
+        }
     }
 
     for (const literal of literals) {

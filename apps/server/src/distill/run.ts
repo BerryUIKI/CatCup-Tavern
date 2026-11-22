@@ -13,6 +13,7 @@ import {
 } from '@catcup/shared';
 
 import { createTokenCounter } from '../prompt/tokenizer.js';
+import { createRun, emit, type RunState, releaseRun, subscribe } from '../runs/registry.js';
 import { readBook, readBookSections } from '../storage/books.js';
 import { importCharacter, setCharacterWorld } from '../storage/characters.js';
 import { saveRun } from '../storage/distillRuns.js';
@@ -23,7 +24,6 @@ import { analyzeChunk } from './analyze.js';
 import { chunkBook, chunkBudget } from './chunk.js';
 import { mergeAnalyses } from './merge.js';
 import { outlineClusters } from './outline.js';
-import { createRun, emit, type RunState, releaseRun, subscribe } from './registry.js';
 import type { Section } from './sections.js';
 
 /**
@@ -210,7 +210,12 @@ export async function startSectionsRun(bookId: string, onEvent?: (event: Distill
     };
     await saveRun(run);
 
-    const state = createRun(run);
+    const state = createRun<DistillRun, DistillEvent>(run, run.id, (current) => ({
+        type: 'start',
+        runId: current.run.id,
+        model: current.run.model,
+        chunks: current.run.chunks,
+    }));
     if (onEvent) {
         subscribe(run.id, onEvent);
     }
@@ -249,7 +254,12 @@ export async function startModelRun(
     };
     await saveRun(run);
 
-    const state = createRun(run);
+    const state = createRun<DistillRun, DistillEvent>(run, run.id, (current) => ({
+        type: 'start',
+        runId: current.run.id,
+        model: current.run.model,
+        chunks: current.run.chunks,
+    }));
     if (onEvent) {
         subscribe(run.id, onEvent);
     }
@@ -259,7 +269,8 @@ export async function startModelRun(
 
 async function executeSections(state: RunState, sections: readonly { title: string; text: string }[]): Promise<void> {
     const { run, controller } = state;
-    emit(state, { type: 'start', runId: run.id, model: '', chunks: run.chunks });
+    // No `start` event here: `subscribe` replays it, so a listener registered
+    // before the engine began would otherwise be sent the opening event twice.
 
     try {
         const entries: DistillEntryDraft[] = [];
@@ -307,7 +318,7 @@ async function executeSections(state: RunState, sections: readonly { title: stri
  */
 async function executeModel(state: RunState, context: ModelContext): Promise<void> {
     const { run, controller } = state;
-    emit(state, { type: 'start', runId: run.id, model: run.model, chunks: run.chunks });
+    // See `executeSections`: the replay in `subscribe` is the only `start`.
 
     try {
         const analyses: Awaited<ReturnType<typeof analyzeChunk>>[] = [];

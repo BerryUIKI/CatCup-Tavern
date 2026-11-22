@@ -302,7 +302,9 @@ A rolling summary is stored as `extra.memory` on the message it covers, which is
 }
 ```
 
-The latest `extra.memory` in the chat is the one in effect; older ones remain in the file and come back if the newest is deleted, matching ST's Restore. A summary request always excludes the newest message, so a new summary lands on the last message it actually covered. The injection template and position live in settings, not in the chat file, so a chat copied into SillyTavern still carries its summary but uses SillyTavern's own Memory settings to inject it.
+The latest `extra.memory` in the chat is the one in effect; older ones remain in the file and come back if the newest is deleted, matching ST's Restore.
+
+With `memory.appendOnly` on, every stored summary is one **settled range** rather than a rewrite of the one before, and the prompt carries the newest few plus the earliest one. Nothing about this file changes — the setting decides how the summaries are _produced_ and which are _read_, and both clients still see the same `extra.memory` values. A summary request always excludes the newest message, so a new summary lands on the last message it actually covered. The injection template and position live in settings, not in the chat file, so a chat copied into SillyTavern still carries its summary but uses SillyTavern's own Memory settings to inject it.
 
 Editing a message that carries a summary, switching its swipe, switching the opening greeting, continuing the message or regenerating it removes that summary: it no longer describes the stored text.
 
@@ -474,6 +476,91 @@ For each entry:
 - Leading `@@` decorator lines are split off `content` into `decorators`. Only `@@activate` and `@@dont_activate` are recognised; a line that does not start with `@@` ends the decorator block.
 - `hash` is computed over the raw entry as SillyTavern does, so timed-effect records in an imported chat still match.
 - Records that do not validate as entries are skipped rather than failing the whole book.
+
+### Alias sidecar
+
+Extra names an entry answers to live in `<book>.aliases.json`, **beside** the book and never inside it:
+
+```jsonc
+{
+    "version": 1,
+    "book": "Eldoria",
+    "entries": {
+        "3": {
+            "aliases": ["王女", "the Princess", "Aurelia"],
+            "generatedFrom": "6532256678366231", // absent for hand-entered lists
+            "generatedAt": 1763330000000,
+            "generatedWith": "gpt-5" // the model that wrote them
+        }
+    }
+}
+```
+
+- **Keyed by uid**, as a string, exactly as `id = <book>.<uid>` addresses an entry. A record whose uid the book no longer holds is ignored, never fatal.
+- **Never inside the entry.** An entry's `hash` covers its whole raw record, `extensions` included, and `chat_metadata.timedWorldInfo` records are matched by that hash. Writing aliases into the entry would change the hash and silently detach that entry's sticky and cooldown from every chat that already has them.
+- **Additive.** A book with no sidecar loads and scans exactly as it does without this feature, and reading never creates one.
+- **Optional provenance.** `generatedFrom` is the content hash a model produced the list from; when the entry's content hash differs, the list is reported as stale. A hand-entered list has no `generatedFrom` and is never stale. `generatedWith` names the model, and is shown in the editor rather than acted on: a book filled in over several runs cannot otherwise say which rows came from the cheap one.
+- **Follows the book.** The file is renamed with a scope move, copied with a scope copy, and deleted with the book. It is not part of a SillyTavern export.
+- **Normalization.** Alias strings are trimmed, de-duplicated case-insensitively (first spelling wins) and capped at 50 per entry and 100 characters each; an empty list drops the record.
+
+### Scanning aliases
+
+`autoKeys` on a `ScanEntry` carries the list. The scanner matches each alias with the same `matchesKey` and the same per-entry `caseSensitive` / `matchWholeWords` options as an authored key, and treats a hit as a **primary** key — so the secondary-key logic, inclusion groups, probability and the token budget all apply. The trace detail reads `alias: <name>` when the match came from one. An alias the entry's own `key` already lists is dropped at load time, so the authored key is the one reported.
+
+### Generated aliases
+
+A model can propose the list. One request per entry — the model sees the entry's keys, comment and content and answers `{"aliases": [...]}` — and nothing is written until the run's review sheet is accepted.
+
+- **The run is resumable**, unlike a book distillation run. Records live in `<profile>/alias-runs/<id>.json` and carry per-entry state, so a resume plans only the rows that still need work. A row that finished keeps its proposal only when the entry's `contentHash` still matches; an entry edited while the run was stopped is planned again, which is the point of storing the hash per row rather than per run.
+- **A skipped row stays skipped across a resume** unless its entry has since gained content. Skipping is a decision the plan made — the entry had nothing to read — not a failure to retry.
+- **Filtering happens before storage.** A proposal that repeats one of the entry's own keys or one of its existing aliases is dropped, as is anything longer than a keyword could usefully be, and the list is capped at 12 per entry. A model asked for "other names" will sometimes answer with thirty, and an entry carrying thirty aliases matches everything in every scene.
+- **Provenance is written on apply, not on generation.** The accepted rows are written through `setGeneratedAliases`, which stamps `generatedFrom` with the content hash the row was generated against and `generatedAt` with the apply time. A row without a hash — one that came from a hand-edit — is written without provenance and is never stale.
+- **Two failures read differently.** A request the provider refused is reported as such; a reply that arrived but could not be parsed as JSON says so. Both are marked `incomplete` rather than failing the run, because one bad entry should cost that entry.
+
+### The director
+
+A chat's director config lives in `chat_metadata.director` — an untyped bag SillyTavern preserves and ignores, the same place `persona_id` lives:
+
+```jsonc
+{
+    "chat_metadata": {
+        "director": {
+            "enabled": true,
+            "speakerMode": "auto", // auto | rotate | director
+            "playedMembers": ["Aurelia.png"], // avatar file names, so a rename does not unbind
+            "rules": "Keep the pace slow.",
+            "choices": true,
+            "choiceCount": 3
+        }
+    }
+}
+```
+
+- **Absent on every chat written before this existed**, and a chat without it produces exactly the prompt and file it did. That is the compatibility promise and a test asserts it.
+- **Avatar file names, not display names**, for `playedMembers`: a card being renamed must not silently unbind the person from who they were playing.
+- **Choices travel on the message**, as `extra.director.choices.options` — an unknown `extra` key the chat writer already preserves. The sentinel block is stripped from `mes` before the message is stored, so a chat file never contains `<<<CHOICES>>>`.
+
+Story mode's `chat_metadata.story` is reserved (`graphId`, `nodeId`, `visited`, `state`) and **nothing writes it yet**: RFC 0003's second layer needs a plot distillation that has no design of its own.
+
+### IM bindings
+
+Which CatCup chat a Telegram conversation drives lives in `im-telegram.json` at the profile root:
+
+```jsonc
+{
+    "version": 1,
+    "transport": "telegram",
+    "bindings": {
+        // Telegram chat id -> the chat it drives
+        "123456789": { "characterId": "Aurelia", "chatId": "Aurelia - 2026-1-1_10-0-0", "boundAt": 1763330000000 }
+    }
+}
+```
+
+- **Beside the profile, not inside a chat.** It is CatCup-only wiring about which phone reaches which story. It means nothing to SillyTavern, and `chat_metadata` already carries `persona_id` and the summary anchors — transport bookkeeping there would travel into an export as noise.
+- **Keyed by the IM side's chat id**, so one person on one phone reaches one conversation. Rebinding replaces the record.
+- **A corrupt or hand-edited file reads as no bindings**, which costs one `/chat` command rather than a bot that will not start.
+- **A chat deleted in the app is reported, not recreated.** The binding is cleared and the next message says so; recreating would fork the story without telling anyone.
 
 ### Scan status
 

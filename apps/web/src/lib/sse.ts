@@ -1,4 +1,5 @@
 import type {
+    AliasEvent,
     ChatMessage,
     DistillEvent,
     GenerateRequest,
@@ -133,6 +134,38 @@ export async function streamGeneration(
 export type DistillHandlers = {
     [K in DistillEvent['type']]?: (event: Extract<DistillEvent, { type: K }>) => void;
 };
+
+/** The events an alias generation run sends, by type. */
+export type AliasHandlers = {
+    [K in AliasEvent['type']]?: (event: Extract<AliasEvent, { type: K }>) => void;
+};
+
+/**
+ * Start or resume an alias run and follow it.
+ *
+ * The same SSE framing as generation and distillation, deliberately: one
+ * reader handles all three, so an event shape change cannot make them disagree
+ * about how a stream is cut into events.
+ */
+export async function streamAliases(
+    path: string,
+    body: Record<string, unknown>,
+    handlers: AliasHandlers,
+    signal?: AbortSignal,
+): Promise<void> {
+    const response = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+    });
+
+    await readEvents<AliasEvent>(response, 'The run could not be started', (event) => {
+        const handler = handlers[event.type] as ((value: AliasEvent) => void) | undefined;
+        handler?.(event);
+    });
+}
 
 export async function streamDistill(
     path: string,
