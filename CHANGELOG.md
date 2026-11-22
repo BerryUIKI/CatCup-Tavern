@@ -18,7 +18,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
   result on `:4173`, and `pnpm site` builds it. Every download button points at the installer asset
   itself (`releases/download/v<version>/CatCup.Tavern_<version>_x64-setup.exe`, named by the Tauri
   bundler and built from `package.json` at build time) rather than at the release page, and the install
-  section names the file it downloads beside a link to every release.
+  section names the file it downloads beside a link to every release. The language menu's links are
+  computed against the page they sit on rather than written as `./` and `../<code>/`, which only
+  resolve from inside a locale folder: from the English page they left the project path altogether and
+  landed on whatever else the account hosts, and from a locale page `./` pointed back at itself. The
+  build now also resolves every relative `href` and `src` in every page against the folder it was
+  written to, and fails when one has no file behind it or climbs out of the site.
 
 - **An entry can answer to more than one name.** `公主` never fired on a chat saying `王女`, and the lexical pass cannot close that — it ranks shared words, it does not know two words mean the same thing. Each world info entry can now carry an **Also matches** list of extra names, edited as chips under its keywords, and the scanner treats every alias as an additional **primary** key: same matcher, same per-entry options, and the context inspector names the alias that fired. Because it is a primary key it is not merely additive — an alias also satisfies the secondary-key logic and shares inclusion groups, probability and the token budget, so a bad alias can hide an entry as well as reveal one, which is why the editor says so.
 
