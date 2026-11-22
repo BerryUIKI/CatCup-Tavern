@@ -14,6 +14,10 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    DirectorCast,
+    DirectorConfig,
+    DirectorConfigPatch,
+    DirectorView,
     DistillAccepted,
     DistillAcceptInput,
     DistillBookEstimate,
@@ -571,6 +575,21 @@ export const api = {
             );
             return data.chat;
         },
+        director: {
+            get: (characterId: string, chatId: string) =>
+                request<DirectorView>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director`,
+                ),
+            save: (characterId: string, chatId: string, patch: DirectorConfigPatch) =>
+                request<{ director: DirectorConfig }>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director`,
+                    { method: 'PATCH', body: JSON.stringify({ director: patch }) },
+                ),
+            cast: (characterId: string, chatId: string) =>
+                request<DirectorCast>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director/cast`,
+                ),
+        },
         summarize: (characterId: string, chatId: string) =>
             request<SummarizeResponse>(
                 `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/summarize`,
@@ -650,6 +669,21 @@ export const api = {
                     `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
                     { method: 'DELETE' },
                 ),
+            director: {
+                get: (groupId: string, chatId: string) =>
+                    request<DirectorView>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director`,
+                    ),
+                save: (groupId: string, chatId: string, patch: DirectorConfigPatch) =>
+                    request<{ director: DirectorConfig }>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director`,
+                        { method: 'PATCH', body: JSON.stringify({ director: patch }) },
+                    ),
+                cast: (groupId: string, chatId: string) =>
+                    request<DirectorCast>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director/cast`,
+                    ),
+            },
             updateMessage: async (
                 groupId: string,
                 chatId: string,

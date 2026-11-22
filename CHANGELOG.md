@@ -71,7 +71,7 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   **It works in a group chat too**, which is the case it was designed for: several characters, one of them yours. A group has no self-play refusal — there is no contradiction between "you are {{char}}" and "never write this member", because the speaker is chosen per turn and a played member is muted for the whole chat — and a played member whose card is temporarily out of the group is accepted rather than blocking the save. The config lives on the group _chat_ rather than the group, so two chats with the same cast can be two different stories.
 
-  There is no form for any of it yet: the director is API-only, and `LIMITATIONS.md` says so.
+  **Tools → Director** in the chat header is where you set it up: a **Rules** tab for the standing instructions, the speaker mode and the option count, and a **Who you play** tab listing the chat's cast. The two are separate tabs because the cast line is the half that makes a guided scene work and the half most easily scrolled past. Explicit save with a leave guard, like every other configuration form here — a rule that saved on every keystroke would drift the scene while it was still being written.
 
   **A single chat refuses to play its own card** — a `400` that names both ways out (a group chat, or a narrator card with the cast played from the world book). The card block tells the model "you are {{char}}", so a chat that both speaks as its character and forbids writing them contradicts itself, and the failure would show up as a model that occasionally writes the person's lines.
 
