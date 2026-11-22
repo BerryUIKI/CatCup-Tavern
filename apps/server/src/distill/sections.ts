@@ -1,6 +1,3 @@
-// Derived from SillyTavern (AGPL-3.0) conventions for chapter headings; the
-// regular expressions are CatCup's own. See docs/REUSE.md.
-
 /**
  * Split plain text into sections at chapter headings.
  *

@@ -1,7 +1,6 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/png/encode.js
-// Which is itself based on https://github.com/hughsk/png-chunks-encode (MIT).
-// See docs/REUSE.md.
+// Implements the PNG container format: length-prefixed chunks with a CRC
+// over the type and data, which is what any PNG reader validates. The
+// chunk layout is the specification's, not any client's.
 
 import PNGtext from 'png-chunk-text';
 import extract from 'png-chunks-extract';
@@ -78,9 +77,9 @@ export function encodePng(chunks: readonly PngChunk[]): Uint8Array {
 /**
  * Replace text chunks by keyword, leaving every other chunk untouched.
  *
- * New chunks are inserted just before `IEND`, which is where SillyTavern puts
- * them. A keyword that appears more than once is collapsed to one chunk,
- * because readers take the first match and duplicates would be ambiguous.
+ * New chunks are inserted just before `IEND`, the usual place for metadata. A
+ * keyword that appears more than once is collapsed to one chunk, because
+ * readers take the first match and duplicates would be ambiguous.
  */
 export function withTextChunks(
     buffer: Uint8Array,

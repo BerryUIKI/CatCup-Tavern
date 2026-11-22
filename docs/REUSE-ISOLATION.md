@@ -33,7 +33,7 @@ The inventory is less tidy than it looks, and that is the first finding — and 
 was resolved in phase 0, which is why the table below now reads differently from
 the one this document opened with.
 
-`docs/REUSE.md` §7 lists **48 files, 9,948 lines**, as coming from another client
+`docs/REUSE.md` §7 listed **48 files, 9,948 lines**, as coming from another client
 or implementing one of its formats. When phase 0 began, their provenance was
 recorded three different ways:
 
@@ -49,20 +49,21 @@ lines this document's first revision quoted — was too low. Phase 0 closed it.
 Every one of the 48 now carries a line header that states what is true of that
 file: the specification it implements, or the upstream file it was adapted from.
 
-The buckets, counted from the table:
+The buckets, counted from the table after phases 0 and 1:
 
-| Bucket            | What it is                                                                                                                                                                                 | Files | Lines    |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------- |
-| **A. Format**     | A published specification, implemented. The six schema files — card, chat, world info, preset, regex, quick replies.                                                                       | 6     | 860      |
-| **B. Behaviour**  | Code written by reading another client's source: the scanner, key matching, timed effects, card parsing, prompt assembly, prompt history, memory scheduling, and the adapters around them. | 42    | 9,088    |
-| **C. Expression** | Text and data that is neither a format nor an algorithm: two default prompt strings, one summarize instruction, and the Claude vocabulary (1.7 MB).                                        | —     | inside B |
+| Bucket            | What it is                                                                                                                                                                                       | Files | Lines    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------- |
+| **A. Format**     | A published specification, implemented: the six schemas, card parse and write, card PNG, the favourite flag.                                                                                     | 10    | 1,206    |
+| **B. Behaviour**  | Code written by reading another client's source: the scanner, key matching, timed effects, world info parsing, prompt assembly, prompt history, memory scheduling, and the adapters around them. | 37    | 8,745    |
+| **C. Expression** | Text and data that is neither a format nor an algorithm: two default prompt strings, one summarize instruction, and the Claude vocabulary (1.7 MB).                                              | —     | inside B |
 
 Bucket C overlaps B rather than sitting beside it: the prompt strings live inside
 `prompt-definitions.ts` and `memory.ts`, which also contain ordinary code. It is
 separated because it is the part with a different fix and a different priority.
 
 `packages/compat-st/src/keywords.ts` was a duplicate of the `@catcup/shared` copy
-that nothing imported. It was deleted in phase 0.
+that nothing imported. It was deleted in phase 0. `worldinfo/loader.ts` dropped
+out of the count in phase 1: it is CatCup's file I/O now, not adapted code.
 
 ### The finding that changes the order of work
 
@@ -141,22 +142,42 @@ implementing the card format and said "derived" because the first version was
 written by reading a reference implementation of it. They are re-labelled rather
 than rewritten, which is the same judgement phase 1 applies to the rest.
 
-### Phase 1 — re-sort the format bucket (half a day)
+### Phase 1 — re-sort the format bucket — **done**
 
-Bucket A is small — 860 lines, six schema files — because the schemas were written
-from the specification to begin with. So the work here is to find what belongs in
-A and was filed under B by mistake. Two candidates are already settled: card
-parsing and the favourite flag. The remaining ones are world info entry parsing,
-PNG chunk handling and the sidecar-ish helpers around them.
+Bucket A started at 860 lines across six schema files, because the schemas were
+written from the specification to begin with. The work was to find what belonged
+in A and was filed under B by mistake.
 
-Sorting them honestly has a disproportionate effect: it moves a few hundred lines
-out of the column that needs rewriting, and it keeps `README.md` and `NOTICE`
-accurate about which parts follow a standard.
+Result: **10 files, 1,206 lines.** Card parsing, card writing, card PNG handling
+and the favourite flag are format implementations — the wrapper shape, the
+`tEXt` chunks, the PNG container and `extensions.fav` all come from
+specifications, and the first versions were marked derived only because they
+were written by reading a reference implementation of those formats.
 
-**Risk:** low, but it needs care. Calling a file "format" is a claim of fact, and
-the test is whether the behaviour it encodes is written down in a specification
-or only in another client's source. §"Can bucket B actually be rewritten?" below
-is the yardstick.
+Three judgements went the other way, and they are the useful part:
+
+- **`parse.ts` stays adapted.** The `{ entries }` wrapper and uid resolution are
+  the format, but the hash payload — which fields, in which order — is only
+  written down in another client's source. The header now says exactly that
+  split rather than claiming the whole file.
+- **`worldinfo/characterBook.ts` stays adapted.** The field mapping between a
+  card's book and a world info entry is ordinary, but what an _absent_ field
+  means in the converted entry follows another client's defaults. Under the
+  yardstick below, that is behaviour.
+- **`worldinfo/loader.ts` loses its header.** It keeps file I/O and re-exports
+  the parsers from `compat-st`; the adapted code moved out in the package split,
+  so the header was describing a file that no longer contains it.
+
+One header was also wrong in the other direction and is gone:
+`distill/sections.ts` claimed "SillyTavern conventions for chapter headings" for
+a file it never appears in `REUSE.md`, whose regular expressions are CatCup's own
+and whose conventions are just how novels are written.
+
+**Risk realised:** the judgement is genuinely close on `parse.ts` and
+`characterBook.ts`, and the first pass got both wrong by being generous. The
+rule that settled it: a header may only be dropped when the behaviour it encodes
+is written down in a specification. "We happen to match them" is not the test;
+"the document says so" is.
 
 ### Phase 2 — write CatCup's own default prompts (a day)
 
@@ -171,8 +192,8 @@ and they should never have been the last thing left unchecked.
 
 ### Phase 3 — rewrite the behaviour (the real work)
 
-Bucket B, 9,088 lines, or whatever phase 0 and phase 1 leave in it. Priority
-order by size and by how much of the claim each carries:
+Bucket B, now 8,745 lines across 37 files. Priority order by size and by how much
+of the claim each carries:
 
 1. `compat-st/src/scanner.ts` (1,034) — recursion states, inclusion groups, the
    budget latch.

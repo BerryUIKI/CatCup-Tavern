@@ -1,7 +1,3 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
-
 import { readdir, stat } from 'node:fs/promises';
 import { applyAliases, parseWorldInfoBook, type ScanEntry } from '@catcup/compat-st';
 import type { WorldInfoAliasMap } from '@catcup/shared';

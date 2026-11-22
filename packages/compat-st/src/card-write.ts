@@ -1,6 +1,6 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/character-card-parser.js
-// See docs/REUSE.md.
+// Implements Character Card V2/V3 write-back: the `chara` and `ccv3` tEXt
+// chunks, and promoting a legacy flat card into a V2 wrapper so it can
+// round-trip. The wrapper shape is the specification's.
 
 import { CATCUP_MODEL_EXTENSION, type CharacterPatch, isRecord } from '@catcup/shared';
 

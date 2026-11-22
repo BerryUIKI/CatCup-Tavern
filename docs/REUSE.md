@@ -147,19 +147,19 @@ upstream file.
 | Location                                       | Basis                                                                  | What it does                                                              |
 | ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG                                  | `tEXt` chunk reading, `ccv3` before `chara`                               |
-| `packages/compat-st/src/card-write.ts`         | ST `src/character-card-parser.js`                                      | Card write-back: `chara` + `ccv3` chunks, legacy promotion                |
+| `packages/compat-st/src/card-write.ts`         | **format** — Character Card V2/V3 PNG                                  | Card write-back: `chara` + `ccv3` chunks, legacy promotion                |
 | `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                                     | The favourite flag and the legacy string-`'true'` rule                    |
-| `packages/compat-st/src/card-png.ts`           | ST `src/png/encode.js`                                                 | PNG chunk serialization and text-chunk replacement (MIT origin)           |
+| `packages/compat-st/src/card-png.ts`           | **format** — PNG container                                             | Chunk serialization with CRC, and `tEXt` replacement                      |
 | `apps/server/src/cards/charx.ts`               | RisuAI `src/ts/process/processzip.ts` + `src/ts/characterCards.ts`     | CharX ZIP layout, `card.json` + `assets/**` and asset URIs                |
 | `apps/server/src/storage/characterAssets.ts`   | RisuAI `src/ts/process/processzip.ts`                                  | Per-character asset storage and round-trip, with CatCup paths and caps    |
 | `packages/shared/src/schemas/character.ts`     | **format** — Character Card V2/V3                                      | Field names and `character_book` structure                                |
-| `packages/shared/src/schemas/chat.ts`          | **format** — ST chat JSONL and `MediaAttachment`                       | Header and message fields, `extra.media` shape                            |
+| `packages/shared/src/schemas/chat.ts`          | **format** — chat JSONL and `MediaAttachment`                          | Header and message fields, `extra.media` shape                            |
 | `packages/shared/src/schemas/worldinfo.ts`     | **format** — World Info JSON                                           | Entry field set, positions, logic and role constants                      |
-| `packages/shared/src/schemas/preset.ts`        | **format** — OpenAI preset                                             | Preset fields, `prompts` / `prompt_order`                                 |
-| `packages/shared/src/schemas/regex.ts`         | **format** — `RegexScriptData`                                         | Script field names, placements and substitution modes                     |
+| `packages/shared/src/schemas/preset.ts`        | **format** — preset JSON                                               | Preset fields, `prompts` / `prompt_order`                                 |
+| `packages/shared/src/schemas/regex.ts`         | **format** — regex script data                                         | Script field names, placements and substitution modes                     |
 | `packages/shared/src/schemas/quickreplies.ts`  | **format** — Quick Replies v2 set                                      | Version 2 set and quick reply field names and defaults                    |
-| `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                      | Book shape handling, entry normalization                                  |
-| `apps/server/src/worldinfo/loader.ts`          | ST `public/scripts/world-info.js`                                      | File I/O and the hashed entry list                                        |
+| `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                      | Book shapes and uid resolution are the format; the hash payload is ST's   |
+| `apps/server/src/worldinfo/loader.ts`          | —                                                                      | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`    |
 | `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                                   | `getStringHash`, the timed-effect identity                                |
 | `packages/compat-st/src/matching.ts`           | ST `public/scripts/world-info.js`                                      | Key matching, regex keys, decorator parsing                               |
 | `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                      | Scan states, groups, budget, positions                                    |
