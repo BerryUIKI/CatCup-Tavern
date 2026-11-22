@@ -6,6 +6,8 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- **A plan for removing the last of the adapted code.** `docs/REUSE-ISOLATION.md` replaces the earlier assessment with an evaluation and a phased plan. Its finding is that the risk is not where intuition points: the 1,034-line world info scanner is an algorithm, close to the idea/expression line and implementable from the format documentation, while the highest-expression content in the repository is three short default prompt strings — the Main Prompt, Enhance Definitions and the memory summarize instruction — and short creative text is exactly what copyright protects. The plan therefore closes formats first (1,924 lines, mostly re-labelling as specification implementations), writes CatCup's own default prompts second, and rewrites the behaviour last. It also records plainly what no amount of refactoring can buy: this tree cannot make a clean-room claim, because the test suite that would gate a rewrite was itself written against the adapted code, and anyone who needs that claim needs a different process rather than a smaller diff.
+
 - **A public landing page, in nine languages.** `site/` is a static page published to `gh-pages` by
   `.github/workflows/pages.yml`, with English at the root and `zh-CN`, `ja`, `ko`, `de`, `fr`, `es`,
   `ru` and `pt-BR` beside it, each with its own `<html lang>`, title, description, canonical and
@@ -84,9 +86,9 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   A chat with no `director` key produces the same prompt and the same file it always did, which is the compatibility promise this rests on.
 
-- **The code ported from SillyTavern has its own package.** `packages/compat-st` now holds the card parser and writer, the world info scanner and its helpers, the prompt definitions and history shaping, and the tokenizer's model map — 22 files that used to be scattered through `apps/server/src` and `packages/shared/src` with only a header to mark them.
+- **The code adapted from another tavern client has its own package.** `packages/compat-st` now holds the card parser and writer, the world info scanner and its helpers, the prompt definitions and history shaping, and the tokenizer's model map — 22 files that used to be scattered through `apps/server/src` and `packages/shared/src` with only a header to mark them.
 
-  **This is a boundary for legibility, not a licence change.** The app imports the package and is built with it, so the result is still one AGPL-3.0 program; what a recipient of the installer may do has not changed. What it buys is a list of what is derived that cannot drift as files are added, and the one boundary a genuine licence change would start from. `docs/REUSE-ISOLATION.md` records the reasoning and what a real separation would require.
+  **This is a home for the attribution, not a licence boundary.** The app imports the package and is built with it, so it is one program; a directory does not change what anyone may do with the build. What it buys is a list that cannot drift as files are added. `docs/REUSE-ISOLATION.md` now sorts that list into the files that implement a published format and the files that reproduce one client's behaviour, and sets out the plan for rewriting the second set — which is the only thing that would change what the tree is.
 
   Three things stayed where they were, and the reasons are the interesting part: the loader's file I/O, prompt assembly and the memory service all need storage, providers or the app's own modules, and a package that imports its own consumer is not a boundary. The key-splitting helper stayed for a different reason — the browser needs it, and pulling this package into the web bundle would drag Node code along. Where a dependency pointed the wrong way, it was inverted: the scanner now takes its lexical index as an argument instead of importing the app's cache, and the tokenizer takes its vocabulary path.
 

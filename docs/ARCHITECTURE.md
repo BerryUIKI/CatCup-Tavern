@@ -4,13 +4,13 @@
 
 ## 1. Goals and principles
 
-CatCup Tavern is a **SillyTavern-compatible AI roleplay client**, not a generic chat app.
+CatCup Tavern is a **tavern-format AI roleplay client**, not a generic chat app and not an add-on to another client.
 
-1. **Experience first.** Follow SillyTavern's information architecture (character rail, chat stream, settings/parameters) and invest in a darker, quieter tavern atmosphere. Do not redesign for the sake of looking different.
-2. **Data stays portable.** ST cards, chats, world info and presets import/export cleanly; files we write should remain readable by ST.
+1. **Experience first.** Follow the information architecture the tavern clients share (character rail, chat stream, settings/parameters) and invest in a darker, quieter atmosphere. Do not redesign for the sake of looking different.
+2. **Data stays portable.** The ecosystem's cards, chats, world info and presets import and export cleanly; files we write stay readable by the other clients. These formats are a shared standard, implemented here from the specifications.
 3. **Server-authoritative.** Prompt assembly, chat provider calls, API keys and persistence happen on the Node server. The browser only holds a session cookie. The one exception is the browser TTS backend, which speaks through the browser's voices and involves no CatCup key or server call.
 4. **One codebase, three shapes.** Web, LAN and the Tauri desktop shell share the same server + SPA.
-5. **Progressive compatibility.** Data formats and core semantics first; STscript and extension APIs in layers.
+5. **Progressive compatibility.** Data formats and core semantics first; the script and extension APIs in layers.
 
 ## 2. Runtime topology
 

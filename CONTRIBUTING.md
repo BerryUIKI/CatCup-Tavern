@@ -118,12 +118,15 @@ CI runs the same four gates on every PR into `dev` or `main` and on every push t
 - Keep provider calls and API keys server-side.
 - Preserve unknown fields when reading ST files; do not drop data on round-trip.
 - Do not import from `.ref/` at runtime or build time. It is reference material only.
-- Add a file header when adapting code from SillyTavern or RisuAI:
+- Add a file header when adapting code from another client:
 
 ```ts
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/<commit>/<path>
+// Adapted from <project> (<license>)
+// https://github.com/<project>/blob/<commit>/<path>
 ```
+
+A file written against a published format needs no such header — say which
+specification it implements instead.
 
 ## Tests
 
@@ -145,13 +148,13 @@ Docs live in `docs/`; the index is [docs/README.md](docs/README.md). Update the 
 - security change → `docs/SECURITY.md`;
 - user-facing change → `CHANGELOG.md`.
 
-## Licensing and reuse
+## Licensing and attribution
 
-- The project is AGPL-3.0-only.
-- Do not copy code from SillyTavern (AGPL-3.0) or RisuAI (GPL-3.0) without updating `NOTICE` and [docs/REUSE.md](docs/REUSE.md).
-- GPL-3.0 code may be combined into this AGPL-3.0 project under AGPLv3 §13.
+- The project is AGPL-3.0-only. That is CatCup's own choice, not something forced on it: the data formats it reads and writes are a shared standard, implemented here from the specification.
+- A few modules were adapted from other tavern clients. Credit them: update `NOTICE` and [docs/REUSE.md](docs/REUSE.md) in the same change.
+- Prefer writing against the format documentation to adapting an existing client's code. A format is free to implement; someone else's expression is not.
 - Do not introduce dependencies with licenses incompatible with AGPL-3.0 distribution.
-- Keep the original copyright header and note the modifications.
+- Keep the original copyright header and note the modifications in any file you adapt.
 
 ## Security
 

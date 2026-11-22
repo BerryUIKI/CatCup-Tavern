@@ -1,6 +1,6 @@
 # SillyTavern compatibility
 
-CatCup Tavern aims to be a compatible **client**, not a byte-for-byte reimplementation of SillyTavern. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
+CatCup Tavern aims to be a compatible **client** in a shared ecosystem, not a byte-for-byte reimplementation of any one product. SillyTavern is the reference this page measures against, because it is the client most libraries currently live in and the one a migration comes from — but the formats themselves are a de-facto standard that several clients implement. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
 > Status snapshot: **M1 and M2 complete**, released as `0.3.0` on 2026-11-13; M4 is in progress with the desktop shell and packaging shipped; M3 and M5 are planned. See [MILESTONES.md](MILESTONES.md).
 
@@ -196,4 +196,4 @@ Future compatibility tests should copy small fixtures into a test directory rath
 2. Add a fixture-based test for the behaviour.
 3. Preserve unknown fields and exact field names.
 4. Update this page, [DATA-FORMATS.md](DATA-FORMATS.md) and `CHANGELOG.md`.
-5. If code is adapted, update `NOTICE` and [REUSE.md](REUSE.md) under the AGPL/GPL terms.
+5. If code is adapted rather than written against the format, update `NOTICE` and [REUSE.md](REUSE.md), and record in [REUSE-ISOLATION.md](REUSE-ISOLATION.md) whether it implements a format or reproduces behaviour.
