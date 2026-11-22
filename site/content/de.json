@@ -1,0 +1,255 @@
+{
+    "meta": {
+        "title": "CatCup Tavern — ein lokal-first Rollenspiel-Client für Windows, Web und LAN",
+        "description": "Ein KI-Rollenspiel-Client, der Charakterkarten, Chats, Lorebooks und Prompt-Presets als gewöhnliche Dateien auf deiner Festplatte hält. Ein Server, drei Gestalten: Browser-Tab, LAN, Windows-App. Eine bestehende Bibliothek lässt sich in einem Schritt übernehmen."
+    },
+    "brand": {
+        "tagline": "Geschichten, warm serviert."
+    },
+    "nav": {
+        "chat": "Chat",
+        "lorebooks": "Lorebooks",
+        "install": "Installieren",
+        "docs": "Doku",
+        "github": "GitHub",
+        "download": "Herunterladen"
+    },
+    "lang": {
+        "label": "Sprache",
+        "menu": "Sprache wählen"
+    },
+    "a11y": {
+        "skip": "Zum Inhalt springen",
+        "shape": "Fensterform",
+        "transcript": "Gespräch"
+    },
+    "hero": {
+        "title": "Ein Rollenspiel-Client, der seine Bücher selbst führt.",
+        "lede": "Ein Charakter oder ein ganzer Raum voll, mit Lorebooks, Prompt-Presets, rollierender Erinnerung, Sprache und Bildern. Jede Karte, jeder Chat ist eine gewöhnliche Datei auf deiner eigenen Festplatte. Ein Server bedient drei Gestalten: Browser-Tab, LAN und Windows-App.",
+        "download": "Für Windows herunterladen",
+        "docs": "Zur Dokumentation",
+        "meta": "0.3.2 · 16. November 2026 · Windows, Web und LAN",
+        "demoNote": "Das ist die Oberfläche, hier auf der Seite laufend. Schreib eine Zeile, und Mira antwortet.",
+        "startOver": "Von vorn beginnen"
+    },
+    "shapes": {
+        "browser": "Browser",
+        "lan": "LAN",
+        "windows": "Windows",
+        "browserAddress": "localhost:5173",
+        "lanAddress": "http://192.168.1.24:8000",
+        "lanNote": "Server auf diesem Rechner",
+        "windowsTitle": "CatCup Tavern"
+    },
+    "demo": {
+        "characters": "Charaktere",
+        "groups": "Gruppen",
+        "search": "Charaktere suchen",
+        "characterSubtitle": "Beispiel · Fantasy",
+        "profile": "Standardprofil",
+        "provider": "OpenAI · gpt-4o-mini",
+        "chatSelect": "Mira · Beispiel",
+        "placeholder": "Nachricht an Mira…",
+        "send": "Senden",
+        "stop": "Stopp",
+        "impersonate": "Die nächste Nachricht als ich schreiben",
+        "hints": "Enter zum Senden · Shift+Enter für eine neue Zeile",
+        "disclaimer": "Modellausgaben können falsch sein. Figuren sind erfunden.",
+        "you": "Du",
+        "empty": "Das Gespräch beginnt hier von vorn.",
+        "userLine": "Mir wurde gesagt, der Weg sei kürzer, als er ist.",
+        "characterInitials": "MI",
+        "youInitials": "Du",
+        "character": "Mira"
+    },
+    "opening": [
+        {
+            "kind": "narration",
+            "text": "Die Tür klemmt, dann gibt sie nach. Warme Luft nach Thymian und Holzrauch legt sich um dich."
+        },
+        {
+            "kind": "speech",
+            "text": "„Da bist du ja. Ich habe den Weg gehört, bevor ich dich gehört habe.“"
+        },
+        {
+            "kind": "narration",
+            "text": "Das Feuer brennt seit Mittag. Ein Topf Eintopf dreht sich langsam am Rand, und der Raum riecht nach Regen und Zwiebeln."
+        },
+        {
+            "kind": "narration",
+            "text": "Mira stellt eine Tasse auf den Tisch in der Ecke, ohne zu fragen, ob du eine wolltest."
+        },
+        {
+            "kind": "speech",
+            "text": "„Setz dich. Der Regen kann warten, und das, was du eigentlich zuerst sagen wolltest, auch. Fang mit der wahren Version an.“"
+        },
+        {
+            "kind": "speech",
+            "text": "„Schlechter Weg, gutes Timing. Heute gibt es Eintopf, und das ist mehr, als dieser Weg über sich sagen kann.“"
+        }
+    ],
+    "replies": [
+        "„Ist er immer.“ *Sie setzt sich dir gegenüber, was sie nicht mit jedem tut.* „Der Weg lügt nicht über seine Länge. Es sind die Leute, die ihn beschreiben, die abrunden.“\n\n*Sie schiebt die Tasse ein Stück näher.* „Trink das, bevor es kalt wird. Dann erzähl mir den Teil, den du ausgelassen hast.“",
+        "„Was das Gebirge mir diese Woche gegeben hat.“ *Sie hebt eine Augenbraue.* „Wenn du die Zutatenliste brauchst, bevor du isst, warst du zu lange in Städten.“",
+        "„Genug Reisende, damit das Feuer ehrlich bleibt. Weniger, als du denkst, mehr, als dieser Weg verdient.“ *Sie füllt Eintopf in eine Schüssel und stellt sie dir ohne Zeremonie hin.*",
+        "„Du willst wissen, ob ich sie alle behalte.“ *Sie wischt sich die Hände am Tuch an ihrem Gürtel ab.* „Nein. Ich behalte die, die gelogen haben, warum sie unterwegs sind.“",
+        "„Regen an den Läden heißt, heute kommt niemand mehr, heißt, du kannst erzählen, so lange du willst.“ *Sie zieht die Bank mit dem Fuß hervor.* „Frag mich das, um das du schon die ganze Zeit herumgehst.“",
+        "„Der Kessel ist nie ganz leer. Das ist keine Metapher, ich halte ihn einfach so.“ *Sie klopft zweimal auf den Deckel.*",
+        "„Du bist den weiten Weg gegangen. Die meisten tun das beim ersten Mal.“ *Sie nickt zum Feuer.* „Setz dich. Du kannst mir erzählen, wovor du weggelaufen bist, oder wir tun so, als wäre es das Wetter.“",
+        "„Ich werde nicht raten, was du zurückgelassen hast.“ *Sie stellt ihre Tasse ab und wartet, und das Warten ist nicht unfreundlich.*",
+        "„Bleib über Nacht. Am Morgen ist der Weg noch da, und er wird nicht leichter, aber du hast geschlafen.“",
+        "„Stell eine bessere Frage.“ *Sie lächelt über deinen Gesichtsausdruck.* „Nicht, um schwierig zu sein. Nur, weil die bessere Frage meistens die ist, mit der du wirklich hergekommen bist.“"
+    ],
+    "data": {
+        "heading": "Deine Daten bleiben Dateien",
+        "body": "Charaktere sind PNG-Karten mit ihren Angaben im Bild, oder schlichtes JSON. Chats sind JSONL, eine Nachricht pro Zeile, Swipes und Abzweigungen inklusive. Lorebooks, Presets und Einstellungen sind JSON. Ordner kopieren heißt sichern, Ordner kopieren heißt umziehen, und jede Datei lässt sich in einem Editor öffnen.",
+        "tree": [
+            "data/",
+            "├── characters/     Karten, PNG oder JSON",
+            "├── chats/          ein JSONL pro Chat",
+            "├── worlds/         Lorebooks",
+            "├── presets/        Prompt-Presets",
+            "├── groups/         Gruppenräume",
+            "├── user/images/    erzeugte Bilder",
+            "├── secrets.json    API-Schlüssel, nur serverseitig",
+            "└── settings.json   Anbieter, Personas, Profile"
+        ],
+        "note": "Richte den Import auf den Datenordner einer anderen App, und Karten, Chats, Lorebooks und Presets kommen in einem Schritt herüber. Nichts wird in ein eigenes Format umgewandelt."
+    },
+    "features": {
+        "heading": "Was es kann",
+        "works": "Funktioniert",
+        "partial": "Teilweise",
+        "rows": [
+            {
+                "path": "data/characters/",
+                "name": "Charaktere und Gruppen",
+                "desc": "PNG-, JSON-V2/V3- und CharX-Karten. Sprich mit einem Charakter oder setz fünf in einen Raum, jeder mit eigenen Begrüßungen, Avataren und Redeordnung.",
+                "status": "works"
+            },
+            {
+                "path": "data/worlds/",
+                "name": "Lorebooks",
+                "desc": "Primär- und Sekundärschlüssel, Rekursion, gewichtete Einschlussgruppen, Haft- und Abklingzeiten, das Token-Budget und jede Einfügeposition, dazu ein Prüfer, der zeigt, warum ein Eintrag gezündet hat.",
+                "status": "works"
+            },
+            {
+                "path": "data/presets/",
+                "name": "Prompt-Presets",
+                "desc": "Ein Preset importieren, Prompts umsortieren oder abschalten, oder einen in eine Chat-Einfügung verschieben, mit eigener Tiefe, Reihenfolge und Rolle.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/",
+                "name": "Chats und Abzweigungen",
+                "desc": "Gestreamte Antworten mit getrennt aufbewahrtem Denken, Swipes, Bearbeiten und eine Abzweigung aus jeder Nachricht, die den ursprünglichen Chat unangetastet lässt.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/ · summary",
+                "name": "Zusammenfassungsgedächtnis",
+                "desc": "Eine rollierende Zusammenfassung, gespeichert in der Chat-Datei, direkt neben den Nachrichten, die sie zusammenfasst. Selbst bearbeiten oder nach Antworten aktualisieren lassen.",
+                "status": "works"
+            },
+            {
+                "path": "user/images/",
+                "name": "Sprache und Bilder",
+                "desc": "Browserstimmen oder ein OpenAI-kompatibler Sprach-Endpunkt. Bilder von Automatic1111, ComfyUI oder einem OpenAI-kompatiblen Endpunkt, pro Charakter aufbewahrt.",
+                "status": "works"
+            },
+            {
+                "path": "data/secrets.json",
+                "name": "Anbieter",
+                "desc": "Fünf Anfrageprotokolle für OpenAI, OpenRouter, Anthropic, Gemini, Ollama und jeden kompatiblen Endpunkt, den du eintippst. Schlüssel bleiben auf dem Server.",
+                "status": "works"
+            },
+            {
+                "path": "quickreplies/",
+                "name": "Schnellantworten",
+                "desc": "Sets mit einer Knopfleiste über dem Eingabefeld: sieben Befehle, die sich verketten lassen, noch ohne Auto-Ausführung und Kontextmenüs.",
+                "status": "partial"
+            },
+            {
+                "path": "Import",
+                "name": "Aus einer anderen App importieren",
+                "desc": "Den Datenordner einer anderen App durchsuchen, sehen, was gefunden wurde, und Charaktere, Chats, Lorebooks und Presets in einem Zug kopieren.",
+                "status": "works"
+            }
+        ]
+    },
+    "pipeline": {
+        "heading": "Wie eine Antwort entsteht",
+        "steps": [
+            {
+                "name": "Zusammenbauen",
+                "desc": "Das Preset wird der Reihe nach gebaut, mit Persona, Charakter und Szenario an ihren Plätzen."
+            },
+            {
+                "name": "Lore durchsuchen",
+                "desc": "Lorebook-Schlüssel werden gegen den letzten Chat geprüft; Einschlussgruppen und Zeiteffekte entscheiden, was zündet."
+            },
+            {
+                "name": "Token einteilen",
+                "desc": "Der Kontext wird mit dem passenden Tokenizer für OpenAI-, Claude- und Gemini-Modelle auf das Budget gekürzt."
+            },
+            {
+                "name": "Anbieter aufrufen",
+                "desc": "Eine Anfrage an den aktiven Anbieter, in dem Protokoll, das dieser Anbieter spricht."
+            },
+            {
+                "name": "Streamen",
+                "desc": "Token kommen über SSE an. Der Server speichert die Nachricht, die Seite zeichnet sie nur."
+            }
+        ],
+        "caption": "Der Kontext-Prüfer zeigt den zusammengebauten Prompt Platz für Platz mit seiner Tokenzahl, jeden geprüften Lorebook-Eintrag und den Grund, warum er gezündet hat oder nicht."
+    },
+    "limits": {
+        "heading": "Was noch fehlt",
+        "intro": "Das ist Software im frühen Zugang. Das sind die Lücken, die man vor der Installation kennen sollte.",
+        "items": [
+            "Getippte Slash-Befehle und Skripte. Eine Zeile wie /send hello geht als Text an das Modell; nur Schnellantwort-Knöpfe führen Befehle aus.",
+            "Erweiterungen, die für andere Clients geschrieben wurden. Keine lädt.",
+            "Anhänge und Bildeingabe. Kein Datei-Upload und keine Bilder als Eingabe.",
+            "Vektor-Gedächtnis. Lange Chats werden auf das Budget gekürzt; die Zusammenfassung ist das einzige Langzeitgedächtnis.",
+            "macOS und Linux. Die Shell packt auf beiden und CI baut sie, veröffentlicht wird aber nur Windows, und gelaufen ist keines von beiden.",
+            "Ein unsigniertes Installationsprogramm. SmartScreen warnt einmal bei einer heruntergeladenen Kopie; nimm die Datei von der Release-Seite und von nirgendwo sonst."
+        ],
+        "more": "Die vollständigen Listen stehen in",
+        "limitationsLink": "Grenzen",
+        "compatLink": "Format-Kompatibilität"
+    },
+    "install": {
+        "heading": "Installieren",
+        "rows": [
+            {
+                "name": "Windows",
+                "desc": "Lade das Installationsprogramm aus dem neuesten Release und führe es aus. Es installiert pro Benutzer, braucht keinen Administrator und kein eigenes Node und hält deine Daten in %APPDATA%\\dev.catcup.tavern. Es ist unsigniert, deshalb warnt SmartScreen einmal und nennt keinen Herausgeber: wähle Mehr Informationen → Trotzdem ausführen.",
+                "link": "Installationsprogramm herunterladen"
+            },
+            {
+                "name": "Web oder LAN aus dem Quellcode",
+                "desc": "Braucht Node 22.13 oder neuer und pnpm 11. Beim ersten Start setzt du ein Zugangspasswort, und zwar nur auf dem Rechner, auf dem der Server läuft."
+            },
+            {
+                "name": "Eine Installation umziehen",
+                "desc": "CATCUP_DATA_DIR zeigt die App auf einen anderen Datenordner. So zieht eine Installation auf einen neuen Rechner um, und so übernimmt eine Desktop-Installation eine bestehende Bibliothek."
+            }
+        ],
+        "copy": "Kopieren",
+        "copied": "Kopiert",
+        "lanNote": "Für ein LAN an alle Schnittstellen binden; das Passwort ist das einzige Tor.",
+        "tls": "TLS ist nicht eingebaut. Außerhalb eines vertrauenswürdigen Netzes gehört es hinter einen Reverse-Proxy oder ein VPN.",
+        "after": "Danach http://localhost:5173 öffnen.",
+        "allReleases": "Alle Releases",
+        "direct": "Direkter Download: das Installationsprogramm dieser Version, gehostet auf GitHub."
+    },
+    "footer": {
+        "license": "AGPL-3.0-only. Aufgebaut auf dem Format-Ökosystem von SillyTavern — die Zuordnung der übernommenen Formate und Code steht in NOTICE.",
+        "docs": "Dokumentation",
+        "changelog": "Änderungen",
+        "limitations": "Grenzen",
+        "security": "Sicherheit",
+        "licenseLink": "Lizenz",
+        "languages": "Diese Seite auf"
+    }
+}

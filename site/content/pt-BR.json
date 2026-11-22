@@ -1,0 +1,255 @@
+{
+    "meta": {
+        "title": "CatCup Tavern — um cliente de RPG com IA local-first para Windows, web e rede local",
+        "description": "Um cliente de RPG com IA que guarda fichas de personagem, conversas, livros de lore e predefinições de prompt como arquivos comuns no seu disco. Um servidor, três formas: uma aba do navegador, sua rede local e um app para Windows. Uma biblioteca existente é importada em um passo."
+    },
+    "brand": {
+        "tagline": "Histórias servidas quentinhas."
+    },
+    "nav": {
+        "chat": "Conversa",
+        "lorebooks": "Livros de lore",
+        "install": "Instalar",
+        "docs": "Documentação",
+        "github": "GitHub",
+        "download": "Baixar"
+    },
+    "lang": {
+        "label": "Idioma",
+        "menu": "Escolher idioma"
+    },
+    "a11y": {
+        "skip": "Ir para o conteúdo",
+        "shape": "Formato da janela",
+        "transcript": "Conversa"
+    },
+    "hero": {
+        "title": "Um cliente de RPG que cuida dos próprios cadernos.",
+        "lede": "Um personagem ou uma sala inteira, com livros de lore, predefinições de prompt, memória contínua, voz e imagens. Cada ficha e cada conversa é um arquivo comum no seu próprio disco. Um servidor atende três formas: uma aba do navegador, sua rede local e um app para Windows.",
+        "download": "Baixar para Windows",
+        "docs": "Ler a documentação",
+        "meta": "0.3.2 · 16 de novembro de 2026 · Windows, web e rede local",
+        "demoNote": "Não é uma captura: é a interface funcionando aqui na página. Escreva uma linha e Mira responde.",
+        "startOver": "Começar de novo"
+    },
+    "shapes": {
+        "browser": "Navegador",
+        "lan": "Rede local",
+        "windows": "Windows",
+        "browserAddress": "localhost:5173",
+        "lanAddress": "http://192.168.1.24:8000",
+        "lanNote": "servidor nesta máquina",
+        "windowsTitle": "CatCup Tavern"
+    },
+    "demo": {
+        "characters": "Personagens",
+        "groups": "Grupos",
+        "search": "Buscar personagens",
+        "characterSubtitle": "exemplo · fantasia",
+        "profile": "Perfil padrão",
+        "provider": "OpenAI · gpt-4o-mini",
+        "chatSelect": "Mira · exemplo",
+        "placeholder": "Escrever para Mira…",
+        "send": "Enviar",
+        "stop": "Parar",
+        "impersonate": "Escrever a próxima mensagem como eu",
+        "hints": "Enter para enviar · Shift+Enter para uma linha nova",
+        "disclaimer": "A saída do modelo pode ser imprecisa. Os personagens são fictícios.",
+        "you": "Você",
+        "empty": "A conversa recomeça aqui.",
+        "userLine": "Me disseram que a estrada seria mais curta do que é.",
+        "characterInitials": "MI",
+        "youInitials": "Vo",
+        "character": "Mira"
+    },
+    "opening": [
+        {
+            "kind": "narration",
+            "text": "A porta trava, depois cede. Um ar quente, com cheiro de tomilho e fumaça de lenha, envolve você."
+        },
+        {
+            "kind": "speech",
+            "text": "“Aí está você. Ouvi a estrada antes de ouvir você.”"
+        },
+        {
+            "kind": "narration",
+            "text": "O fogo está aceso desde o meio-dia. Uma panela de ensopado gira devagar na borda, e a sala cheira a chuva e a cebola."
+        },
+        {
+            "kind": "narration",
+            "text": "Mira põe uma xícara na mesa do canto sem perguntar se você queria uma."
+        },
+        {
+            "kind": "speech",
+            "text": "“Senta. A chuva pode esperar, e o que você ia dizer primeiro também. Comece pela versão verdadeira.”"
+        },
+        {
+            "kind": "speech",
+            "text": "“Estrada ruim, hora boa. Hoje tem ensopado, o que é mais do que aquela estrada pode dizer a favor de si mesma.”"
+        }
+    ],
+    "replies": [
+        "“É sempre.” *Ela se senta à sua frente, o que não faz com todo mundo.* “A estrada não mente sobre o comprimento. São as pessoas que a descrevem que arredondam para baixo.”\n\n*Ela empurra a xícara um pouco mais para perto.* “Beba antes que esfrie. Depois me conte a parte que você deixou de fora.”",
+        "“O que a montanha me deu esta semana.” *Ela ergue uma sobrancelha.* “Se você precisa da lista de ingredientes antes de comer, ficou tempo demais nas cidades.”",
+        "“Viajantes suficientes para manter o fogo honesto. Menos do que você imagina, mais do que essa estrada merece.” *Ela serve o ensopado numa tigela e põe na sua frente sem cerimônia.*",
+        "“Você quer saber se eu lembro de todos.” *Ela enxuga as mãos no pano do cinto.* “Não. Lembro dos que mentiram sobre por que estavam viajando.”",
+        "“Chuva nas venezianas significa que ninguém vem hoje, o que significa que você pode falar o quanto quiser.” *Ela puxa o banco com o pé.* “Me pergunte aquilo em volta do que você anda girando.”",
+        "“A chaleira nunca fica totalmente vazia. Não é metáfora, é só o jeito que eu a mantenho.” *Ela bate duas vezes na tampa.*",
+        "“Você veio pelo caminho longo. Quase todo mundo faz isso na primeira vez.” *Ela acena para o fogo.* “Senta. Pode me contar do que estava fugindo, ou podemos fingir que era o tempo.”",
+        "“Não vou adivinhar o que você deixou para trás.” *Ela põe a xícara de lado e espera, e a espera não é dura.*",
+        "“Fica esta noite. De manhã a estrada ainda estará lá, e não vai ficar mais fácil, mas você terá dormido.”",
+        "“Faça uma pergunta melhor.” *Ela sorri com a sua expressão.* “Não para ser difícil. Só porque a pergunta melhor costuma ser aquela com que você realmente veio.”"
+    ],
+    "data": {
+        "heading": "Seus dados continuam arquivos",
+        "body": "Personagens são fichas PNG com os dados dentro da imagem, ou JSON puro. Conversas são JSONL, uma mensagem por linha, variantes e ramificações incluídas. Livros de lore, predefinições e ajustes são JSON. Copiar a pasta é fazer backup, copiar a pasta é mudar de máquina, e qualquer arquivo abre num editor.",
+        "tree": [
+            "data/",
+            "├── characters/     fichas, PNG ou JSON",
+            "├── chats/          um JSONL por conversa",
+            "├── worlds/         livros de lore",
+            "├── presets/        predefinições de prompt",
+            "├── groups/         salas de grupo",
+            "├── user/images/    imagens geradas",
+            "├── secrets.json    chaves de API, só no servidor",
+            "└── settings.json   provedores, personas, perfis"
+        ],
+        "note": "Aponte o importador para a pasta de dados de outro app e fichas, conversas, livros de lore e predefinições vêm num passo. Nada é convertido para um formato próprio."
+    },
+    "features": {
+        "heading": "O que ele faz",
+        "works": "Funciona",
+        "partial": "Parcial",
+        "rows": [
+            {
+                "path": "data/characters/",
+                "name": "Personagens e grupos",
+                "desc": "Fichas PNG, JSON V2/V3 e CharX. Converse com um personagem, ou ponha cinco numa sala, cada um com suas saudações, avatares e ordem de fala.",
+                "status": "works"
+            },
+            {
+                "path": "data/worlds/",
+                "name": "Livros de lore",
+                "desc": "Chaves primárias e secundárias, recursão, grupos de inclusão com peso, efeitos fixos e de recarga, o orçamento de tokens e todas as posições de injeção, além de um inspetor que mostra por que uma entrada disparou.",
+                "status": "works"
+            },
+            {
+                "path": "data/presets/",
+                "name": "Predefinições de prompt",
+                "desc": "Importe uma predefinição, reordene ou desative prompts, ou mova um para uma injeção da conversa com sua própria profundidade, ordem e papel.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/",
+                "name": "Conversas e ramificações",
+                "desc": "Respostas em fluxo com o raciocínio guardado à parte, variantes, edição e uma ramificação a partir de qualquer mensagem que deixa a conversa original intacta.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/ · summary",
+                "name": "Memória por resumo",
+                "desc": "Um resumo contínuo guardado dentro do arquivo da conversa, ao lado das mensagens que ele resume. Edite você mesmo, ou deixe atualizar depois das respostas.",
+                "status": "works"
+            },
+            {
+                "path": "user/images/",
+                "name": "Voz e imagens",
+                "desc": "Vozes do navegador ou um endpoint de voz compatível com OpenAI. Imagens do Automatic1111, do ComfyUI ou de um endpoint compatível com OpenAI, guardadas por personagem.",
+                "status": "works"
+            },
+            {
+                "path": "data/secrets.json",
+                "name": "Provedores",
+                "desc": "Cinco protocolos de requisição, cobrindo OpenAI, OpenRouter, Anthropic, Gemini, Ollama e qualquer endpoint compatível que você digitar. As chaves ficam no servidor.",
+                "status": "works"
+            },
+            {
+                "path": "quickreplies/",
+                "name": "Respostas rápidas",
+                "desc": "Conjuntos numa barra de botões acima da caixa de mensagem: sete comandos que se encadeiam, ainda sem execução automática nem menus de contexto.",
+                "status": "partial"
+            },
+            {
+                "path": "Import",
+                "name": "Importar de outro app",
+                "desc": "Explore a pasta de dados de outro app, veja o que foi encontrado e copie personagens, conversas, livros de lore e predefinições numa única ação.",
+                "status": "works"
+            }
+        ]
+    },
+    "pipeline": {
+        "heading": "Como uma resposta é montada",
+        "steps": [
+            {
+                "name": "Montar",
+                "desc": "A predefinição é construída em ordem, com a persona, o personagem e o cenário em seus lugares."
+            },
+            {
+                "name": "Varrer o lore",
+                "desc": "As chaves dos livros são comparadas com a conversa recente; grupos de inclusão e efeitos temporizados decidem o que dispara."
+            },
+            {
+                "name": "Distribuir tokens",
+                "desc": "O contexto é cortado ao orçamento do modelo por um tokenizador para modelos OpenAI, Claude e Gemini."
+            },
+            {
+                "name": "Chamar o provedor",
+                "desc": "Uma requisição ao provedor ativo, no protocolo que aquele provedor fala."
+            },
+            {
+                "name": "Transmitir",
+                "desc": "Os tokens chegam por SSE. O servidor grava a mensagem; a página apenas a desenha."
+            }
+        ],
+        "caption": "O inspetor de contexto mostra o prompt montado espaço por espaço com sua contagem de tokens, cada entrada de lore considerada e o motivo de ela ter disparado ou não."
+    },
+    "limits": {
+        "heading": "O que ainda não existe",
+        "intro": "Este é um software de acesso antecipado. Estas são as lacunas que vale saber antes de instalar.",
+        "items": [
+            "Comandos de barra digitados à mão e scripts. Uma linha como /send hello vai ao modelo como texto; só os botões de resposta rápida executam comandos.",
+            "Extensões escritas para outros clientes. Nenhuma carrega.",
+            "Anexos e entrada de imagem. Não há upload de arquivo nem imagem de entrada.",
+            "Memória vetorial. Conversas longas são cortadas ao orçamento; o resumo é a única memória de longo prazo.",
+            "macOS e Linux. A camada gráfica empacota nas duas plataformas e a CI as compila, mas só o Windows é publicado, e nenhuma das duas foi executada.",
+            "Instalador sem assinatura. O SmartScreen avisa uma vez numa cópia baixada; pegue o arquivo na página de versões e em nenhum outro lugar."
+        ],
+        "more": "As listas completas estão em",
+        "limitationsLink": "Limitações",
+        "compatLink": "Compatibilidade de formatos"
+    },
+    "install": {
+        "heading": "Instalar",
+        "rows": [
+            {
+                "name": "Windows",
+                "desc": "Baixe o instalador da versão mais recente e execute. Ele instala por usuário, não precisa de administrador nem de um Node separado, e guarda seus dados em %APPDATA%\\dev.catcup.tavern. Não é assinado, então o SmartScreen avisa uma vez e não mostra editor: escolha Mais informações → Executar assim mesmo.",
+                "link": "Baixar o instalador"
+            },
+            {
+                "name": "Web ou rede local a partir do código",
+                "desc": "Precisa de Node 22.13 ou mais novo e pnpm 11. Você define uma senha de acesso no primeiro início, e só na máquina que roda o servidor."
+            },
+            {
+                "name": "Mudar uma instalação de lugar",
+                "desc": "CATCUP_DATA_DIR aponta o app para outra pasta de dados. É assim que uma instalação muda de máquina, e que a versão desktop assume uma biblioteca existente."
+            }
+        ],
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "lanNote": "Para rede local, escute em todas as interfaces; a senha é a única porta.",
+        "tls": "Não há TLS embutido. Fora de uma rede confiável, ponha-o atrás de um proxy reverso ou de uma VPN.",
+        "after": "Depois abra http://localhost:5173.",
+        "allReleases": "Todas as versões",
+        "direct": "Download direto: o instalador desta versão, hospedado no GitHub."
+    },
+    "footer": {
+        "license": "AGPL-3.0-only. Construído sobre o ecossistema de formatos do SillyTavern — a atribuição dos formatos e do código seguidos está no NOTICE.",
+        "docs": "Documentação",
+        "changelog": "Histórico de versões",
+        "limitations": "Limitações",
+        "security": "Segurança",
+        "licenseLink": "Licença",
+        "languages": "Esta página em"
+    }
+}

@@ -1,0 +1,255 @@
+{
+    "meta": {
+        "title": "CatCup Tavern — un client de jeu de rôle local-first pour Windows, le web et le réseau local",
+        "description": "Un client de rôle par IA qui garde les fiches de personnage, les discussions, les livres de lore et les préréglages de prompt comme de simples fichiers sur votre disque. Un seul serveur, trois formes : un onglet, votre réseau local, une application Windows. Une bibliothèque existante s'importe en une étape."
+    },
+    "brand": {
+        "tagline": "Des histoires, servies chaudes."
+    },
+    "nav": {
+        "chat": "Discussion",
+        "lorebooks": "Livres de lore",
+        "install": "Installer",
+        "docs": "Docs",
+        "github": "GitHub",
+        "download": "Télécharger"
+    },
+    "lang": {
+        "label": "Langue",
+        "menu": "Choisir une langue"
+    },
+    "a11y": {
+        "skip": "Aller au contenu",
+        "shape": "Forme de la fenêtre",
+        "transcript": "Conversation"
+    },
+    "hero": {
+        "title": "Un client de rôle qui tient ses propres registres.",
+        "lede": "Un personnage ou toute une salle, avec livres de lore, préréglages de prompt, mémoire glissante, voix et images. Chaque fiche et chaque discussion est un simple fichier sur votre disque. Un seul serveur sert trois formes : un onglet de navigateur, votre réseau local et une application Windows.",
+        "download": "Télécharger pour Windows",
+        "docs": "Lire la documentation",
+        "meta": "0.3.2 · 16 novembre 2026 · Windows, web et réseau local",
+        "demoNote": "Ceci n'est pas une capture : c'est l'interface, ici même. Écrivez une ligne et Mira répond.",
+        "startOver": "Recommencer"
+    },
+    "shapes": {
+        "browser": "Navigateur",
+        "lan": "Réseau local",
+        "windows": "Windows",
+        "browserAddress": "localhost:5173",
+        "lanAddress": "http://192.168.1.24:8000",
+        "lanNote": "serveur sur cette machine",
+        "windowsTitle": "CatCup Tavern"
+    },
+    "demo": {
+        "characters": "Personnages",
+        "groups": "Groupes",
+        "search": "Rechercher un personnage",
+        "characterSubtitle": "exemple · fantasy",
+        "profile": "Profil par défaut",
+        "provider": "OpenAI · gpt-4o-mini",
+        "chatSelect": "Mira · exemple",
+        "placeholder": "Écrire à Mira…",
+        "send": "Envoyer",
+        "stop": "Arrêter",
+        "impersonate": "Écrire le prochain message à ma place",
+        "hints": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne",
+        "disclaimer": "Les réponses du modèle peuvent être inexactes. Les personnages sont fictifs.",
+        "you": "Vous",
+        "empty": "La conversation reprend ici.",
+        "userLine": "On m'avait dit que la route serait plus courte qu'elle ne l'est.",
+        "characterInitials": "MI",
+        "youInitials": "Vi",
+        "character": "Mira"
+    },
+    "opening": [
+        {
+            "kind": "narration",
+            "text": "La porte résiste, puis cède. Un air chaud, qui sent le thym et la fumée de bois, vous enveloppe."
+        },
+        {
+            "kind": "speech",
+            "text": "« Te voilà. J'ai entendu la route avant de t'entendre. »"
+        },
+        {
+            "kind": "narration",
+            "text": "Le feu brûle depuis midi. Une marmite de ragoût tourne doucement sur le bord, et la pièce sent la pluie et l'oignon."
+        },
+        {
+            "kind": "narration",
+            "text": "Mira pose une tasse sur la table du coin sans demander si vous en vouliez une."
+        },
+        {
+            "kind": "speech",
+            "text": "« Assieds-toi. La pluie peut attendre, et ce que tu allais dire en premier aussi. Commence par la version vraie. »"
+        },
+        {
+            "kind": "speech",
+            "text": "« Mauvaise route, bon moment. Ce soir il y a du ragoût, et c'est plus que ce que cette route peut dire de bien. »"
+        }
+    ],
+    "replies": [
+        "« Elle l'est toujours. » *Elle s'assied en face de vous, ce qu'elle ne fait pas pour tout le monde.* « La route ne ment pas sur sa longueur. Ce sont les gens qui la décrivent qui arrondissent. »\n\n*Elle pousse la tasse un peu plus près.* « Bois ça avant que ça refroidisse. Ensuite raconte-moi la partie que tu as laissée de côté. »",
+        "« Ce que la montagne m'a donné cette semaine. » *Elle hausse un sourcil.* « S'il te faut la liste des ingrédients avant de manger, tu es resté trop longtemps en ville. »",
+        "« Assez de voyageurs pour que le feu reste honnête. Moins que tu ne penses, plus que cette route ne mérite. » *Elle sert le ragoût dans un bol et le pose devant vous sans cérémonie.*",
+        "« Tu veux savoir si je me souviens de tous. » *Elle s'essuie les mains sur le linge à sa ceinture.* « Non. Je me souviens de ceux qui ont menti sur la raison de leur voyage. »",
+        "« La pluie contre les volets veut dire que personne ne vient ce soir, donc tu peux parler aussi longtemps que tu veux. » *Elle sort le banc du pied.* « Pose-moi la question autour de laquelle tu tournes. »",
+        "« La bouilloire n'est jamais tout à fait vide. Ce n'est pas une métaphore, c'est simplement comme ça que je l'entretiens. » *Elle tapote deux fois le couvercle.*",
+        "« Tu as pris le long chemin. La plupart des gens le font la première fois. » *Elle désigne le feu d'un signe de tête.* « Assieds-toi. Tu peux me dire ce que tu fuyais, ou nous pouvons faire comme si c'était le temps. »",
+        "« Je ne vais pas deviner ce que tu as laissé derrière toi. » *Elle pose sa tasse et attend, et cette attente n'a rien de dur.*",
+        "« Reste cette nuit. Demain matin la route sera toujours là, et elle ne sera pas plus facile, mais tu auras dormi. »",
+        "« Pose une meilleure question. » *Elle sourit à votre expression.* « Pas pour être difficile. Seulement parce que la meilleure question est souvent celle avec laquelle tu es vraiment venu. »"
+    ],
+    "data": {
+        "heading": "Vos données restent des fichiers",
+        "body": "Les personnages sont des fiches PNG dont les métadonnées voyagent dans l'image, ou du simple JSON. Les discussions sont en JSONL, un message par ligne, variantes et branches comprises. Livres de lore, préréglages et réglages sont du JSON. Copier le dossier, c'est sauvegarder ; copier le dossier, c'est déménager ; et tout s'ouvre dans un éditeur.",
+        "tree": [
+            "data/",
+            "├── characters/     fiches, PNG ou JSON",
+            "├── chats/          un JSONL par discussion",
+            "├── worlds/         livres de lore",
+            "├── presets/        préréglages de prompt",
+            "├── groups/         salles de groupe",
+            "├── user/images/    images générées",
+            "├── secrets.json    clés d'API, côté serveur",
+            "└── settings.json   fournisseurs, personas, profils"
+        ],
+        "note": "Pointez l'import sur le dossier de données d'une autre application : fiches, discussions, livres de lore et préréglages passent en une étape. Rien n'est converti dans un format maison."
+    },
+    "features": {
+        "heading": "Ce qu'il fait",
+        "works": "Fonctionne",
+        "partial": "Partiel",
+        "rows": [
+            {
+                "path": "data/characters/",
+                "name": "Personnages et groupes",
+                "desc": "Fiches PNG, JSON V2/V3 et CharX. Parlez à un personnage, ou mettez-en cinq dans une salle, chacun avec ses salutations, son avatar et son ordre de parole.",
+                "status": "works"
+            },
+            {
+                "path": "data/worlds/",
+                "name": "Livres de lore",
+                "desc": "Clés primaires et secondaires, récursion, groupes d'inclusion pondérés, effets persistants et de recharge, le budget de tokens et chaque position d'injection, plus un inspecteur qui explique pourquoi une entrée s'est déclenchée.",
+                "status": "works"
+            },
+            {
+                "path": "data/presets/",
+                "name": "Préréglages de prompt",
+                "desc": "Importez un préréglage, réordonnez ou désactivez des prompts, ou déplacez-en un dans une injection de discussion avec sa profondeur, son ordre et son rôle.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/",
+                "name": "Discussions et branches",
+                "desc": "Réponses en flux, avec le raisonnement tenu à part ; variantes, édition, et une branche depuis n'importe quel message qui laisse la discussion d'origine intacte.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/ · summary",
+                "name": "Mémoire par résumé",
+                "desc": "Un résumé glissant, rangé dans le fichier de discussion, à côté des messages qu'il résume. Modifiez-le, ou laissez-le se mettre à jour après les réponses.",
+                "status": "works"
+            },
+            {
+                "path": "user/images/",
+                "name": "Voix et images",
+                "desc": "Voix du navigateur ou un point de terminaison vocal compatible OpenAI. Images depuis Automatic1111, ComfyUI ou un point de terminaison compatible OpenAI, conservées par personnage.",
+                "status": "works"
+            },
+            {
+                "path": "data/secrets.json",
+                "name": "Fournisseurs",
+                "desc": "Cinq protocoles de requête, couvrant OpenAI, OpenRouter, Anthropic, Gemini, Ollama et tout point de terminaison compatible que vous saisissez. Les clés restent sur le serveur.",
+                "status": "works"
+            },
+            {
+                "path": "quickreplies/",
+                "name": "Réponses rapides",
+                "desc": "Des jeux affichés en barre de boutons au-dessus de la zone de saisie : sept commandes qui s'enchaînent, sans exécution automatique ni menus contextuels pour l'instant.",
+                "status": "partial"
+            },
+            {
+                "path": "Import",
+                "name": "Importer depuis une autre application",
+                "desc": "Analysez le dossier de données d'une autre application, voyez ce qui a été trouvé, puis copiez fiches, discussions, livres de lore et préréglages en une action.",
+                "status": "works"
+            }
+        ]
+    },
+    "pipeline": {
+        "heading": "Comment une réponse se compose",
+        "steps": [
+            {
+                "name": "Assembler",
+                "desc": "Le préréglage est construit dans l'ordre, avec la persona, le personnage et le scénario à leur place."
+            },
+            {
+                "name": "Balayer le lore",
+                "desc": "Les clés des livres de lore sont confrontées à la discussion récente ; groupes d'inclusion et effets temporisés décident de ce qui se déclenche."
+            },
+            {
+                "name": "Répartir les tokens",
+                "desc": "Le contexte est réduit au budget du modèle par un tokenizer adapté aux modèles OpenAI, Claude et Gemini."
+            },
+            {
+                "name": "Appeler le fournisseur",
+                "desc": "Une requête au fournisseur actif, dans le protocole que ce fournisseur parle."
+            },
+            {
+                "name": "Diffuser",
+                "desc": "Les tokens arrivent en SSE. Le serveur enregistre le message ; la page ne fait que le dessiner."
+            }
+        ],
+        "caption": "L'inspecteur de contexte montre le prompt assemblé emplacement par emplacement avec son nombre de tokens, chaque entrée de lore envisagée, et la raison pour laquelle elle s'est déclenchée ou non."
+    },
+    "limits": {
+        "heading": "Ce qui n'est pas encore là",
+        "intro": "C'est un logiciel en accès anticipé. Voilà les manques à connaître avant d'installer.",
+        "items": [
+            "Commandes slash et scripts saisis à la main. Une ligne comme /send hello part au modèle comme du texte ; seuls les boutons de réponse rapide exécutent des commandes.",
+            "Extensions écrites pour d'autres clients. Aucune ne se charge.",
+            "Pièces jointes et entrée d'image. Pas d'envoi de fichier ni d'image en entrée.",
+            "Mémoire vectorielle. Les longues discussions sont coupées au budget ; le résumé est la seule mémoire à long terme.",
+            "macOS et Linux. Le shell s'empaquette sur les deux et la CI les compile, mais seul Windows est publié, et aucun des deux n'a été lancé.",
+            "Un installateur non signé. SmartScreen avertit une fois sur une copie téléchargée ; prenez le fichier sur la page des versions et nulle part ailleurs."
+        ],
+        "more": "Les listes complètes sont dans",
+        "limitationsLink": "Limites",
+        "compatLink": "Compatibilité des formats"
+    },
+    "install": {
+        "heading": "Installer",
+        "rows": [
+            {
+                "name": "Windows",
+                "desc": "Téléchargez l'installateur de la dernière version et lancez-le. Il s'installe par utilisateur, ne demande ni administrateur ni Node séparé, et garde vos données dans %APPDATA%\\dev.catcup.tavern. Il n'est pas signé, donc SmartScreen avertit une fois sans nommer d'éditeur : choisissez Informations complémentaires → Exécuter quand même.",
+                "link": "Télécharger l'installateur"
+            },
+            {
+                "name": "Web ou réseau local depuis les sources",
+                "desc": "Il faut Node 22.13 ou plus récent et pnpm 11. Vous définissez un mot de passe d'accès au premier lancement, et seulement depuis la machine qui fait tourner le serveur."
+            },
+            {
+                "name": "Déplacer une installation",
+                "desc": "CATCUP_DATA_DIR pointe l'application vers un autre dossier de données. C'est ainsi qu'une installation déménage, et qu'une installation de bureau reprend une bibliothèque existante."
+            }
+        ],
+        "copy": "Copier",
+        "copied": "Copié",
+        "lanNote": "Pour un réseau local, écoutez sur toutes les interfaces ; le mot de passe est la seule porte.",
+        "tls": "Il n'y a pas de TLS intégré. Au-delà d'un réseau de confiance, placez-la derrière un proxy inverse ou un VPN.",
+        "after": "Ouvrez ensuite http://localhost:5173.",
+        "allReleases": "Toutes les versions",
+        "direct": "Téléchargement direct : l'installateur de cette version, hébergé sur GitHub."
+    },
+    "footer": {
+        "license": "AGPL-3.0-only. Bâti sur l'écosystème de formats de SillyTavern — l'attribution des formats et du code repris se trouve dans NOTICE.",
+        "docs": "Documentation",
+        "changelog": "Journal des versions",
+        "limitations": "Limites",
+        "security": "Sécurité",
+        "licenseLink": "Licence",
+        "languages": "Cette page en"
+    }
+}

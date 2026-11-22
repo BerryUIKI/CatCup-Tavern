@@ -1,0 +1,255 @@
+{
+    "meta": {
+        "title": "CatCup Tavern — a local-first roleplay client for Windows, web and LAN",
+        "description": "An AI roleplay client that keeps every character card, chat, lorebook and prompt preset as an ordinary file on your disk. One server, three shapes: a browser tab, your LAN, a Windows app. An existing library imports in one step."
+    },
+    "brand": {
+        "tagline": "Stories, served warm."
+    },
+    "nav": {
+        "chat": "Chat",
+        "lorebooks": "Lorebooks",
+        "install": "Install",
+        "docs": "Docs",
+        "github": "GitHub",
+        "download": "Download"
+    },
+    "lang": {
+        "label": "Language",
+        "menu": "Choose a language"
+    },
+    "a11y": {
+        "skip": "Skip to content",
+        "shape": "Window shape",
+        "transcript": "Conversation"
+    },
+    "hero": {
+        "title": "A roleplay client that keeps its own books.",
+        "lede": "One character or a whole group, with lorebooks, prompt presets, rolling memory, speech and images — every card and every chat an ordinary file on your own disk. One server serves three shapes: a browser tab, your LAN, and a Windows app.",
+        "download": "Download for Windows",
+        "docs": "Read the docs",
+        "meta": "0.3.2 · 16 November 2026 · Windows, web and LAN",
+        "demoNote": "This is the interface, running on the page. Type a line and Mira answers.",
+        "startOver": "Start over"
+    },
+    "shapes": {
+        "browser": "Browser",
+        "lan": "LAN",
+        "windows": "Windows",
+        "browserAddress": "localhost:5173",
+        "lanAddress": "http://192.168.1.24:8000",
+        "lanNote": "server on this machine",
+        "windowsTitle": "CatCup Tavern"
+    },
+    "demo": {
+        "characters": "Characters",
+        "groups": "Groups",
+        "search": "Search characters",
+        "characterSubtitle": "sample fantasy",
+        "profile": "Default profile",
+        "provider": "OpenAI · gpt-4o-mini",
+        "chatSelect": "Mira · sample",
+        "placeholder": "Message Mira…",
+        "send": "Send",
+        "stop": "Stop",
+        "impersonate": "Write the next message as me",
+        "hints": "Enter to send · Shift+Enter for a new line",
+        "disclaimer": "Model output can be inaccurate. Characters are fictional.",
+        "you": "You",
+        "empty": "The transcript starts again here.",
+        "userLine": "I was told the road would be shorter than it was.",
+        "characterInitials": "MI",
+        "youInitials": "You",
+        "character": "Mira"
+    },
+    "opening": [
+        {
+            "kind": "narration",
+            "text": "The door sticks, then gives. Warm air, smelling of thyme and woodsmoke, folds around you."
+        },
+        {
+            "kind": "speech",
+            "text": "“There you are. I heard the road before I heard you.”"
+        },
+        {
+            "kind": "narration",
+            "text": "The fire has been going since noon. A pot of stew turns slowly at its edge, and the room smells of rain and onions."
+        },
+        {
+            "kind": "narration",
+            "text": "Mira sets a cup down at the corner table without asking whether you wanted one."
+        },
+        {
+            "kind": "speech",
+            "text": "“Sit. The rain can wait, and so can whatever you were going to say first. Start with the true version.”"
+        },
+        {
+            "kind": "speech",
+            "text": "“Bad road, good timing. There is stew tonight, which is more than the road can say.”"
+        }
+    ],
+    "replies": [
+        "“It always is.” *She sits down across from you, which she does not do for everyone.* “The road is honest about its length. It is the people who describe it who round it down.”\n\n*She nudges the cup a little closer.* “Drink that before it goes cold. Then tell me the part you left out.”",
+        "“Whatever the mountain gave me this week.” *She raises an eyebrow.* “If you need the ingredient list before you eat, you have been in cities too long.”",
+        "“Enough travellers to keep the fire honest. Fewer than you would think, more than the road deserves.” *She ladles stew into a bowl and sets it in front of you without ceremony.*",
+        "“You want to know whether I remember them all.” *She wipes her hands on the cloth at her belt.* “I don't. I remember the ones who lied about why they were travelling.”",
+        "“Rain on the shutters means no one is coming tonight, which means you can talk as long as you like.” *She pulls the bench out with her foot.* “Ask me the thing you have been circling.”",
+        "“The kettle is never quite empty. That is not a metaphor, it is just how I keep it.” *She taps the lid twice.*",
+        "“You walked the long way round. Most people do, the first time.” *She nods at the fire.* “Sit. You can tell me what you were running from, or we can pretend it was the weather.”",
+        "“I am not going to guess what you left behind.” *She sets her cup down and waits, and the waiting is not unkind.*",
+        "“Stay the night. In the morning the road will still be there, and it will be no easier, but you will have slept.”",
+        "“Ask a better question.” *She smiles at your expression.* “Not to be difficult. Only because the better question is usually the one you actually came here with.”"
+    ],
+    "data": {
+        "heading": "Your data stays files",
+        "body": "Characters are PNG cards with their metadata inside the image, or plain JSON. Chats are JSONL, one message per line, swipes and branches included. Lorebooks, presets and settings are JSON. Copy the folder to back up, copy it to another machine to move, and open any of it in an editor.",
+        "tree": [
+            "data/",
+            "├── characters/     cards, PNG or JSON",
+            "├── chats/          one JSONL per chat",
+            "├── worlds/         lorebooks",
+            "├── presets/        prompt presets",
+            "├── groups/         group rooms",
+            "├── user/images/    generated pictures",
+            "├── secrets.json    API keys, server-only",
+            "└── settings.json   providers, personas, profiles"
+        ],
+        "note": "Point the importer at another app's data folder and its cards, chats, lorebooks and presets come across in one step. Nothing is converted into a private format."
+    },
+    "features": {
+        "heading": "What it does",
+        "works": "Works",
+        "partial": "Partial",
+        "rows": [
+            {
+                "path": "data/characters/",
+                "name": "Characters and groups",
+                "desc": "PNG, JSON V2/V3 and CharX cards. Talk to one character, or put five in a room with their own greetings, avatars and reply order.",
+                "status": "works"
+            },
+            {
+                "path": "data/worlds/",
+                "name": "Lorebooks",
+                "desc": "Primary and secondary keys, recursion, inclusion groups with weights, sticky and cooldown effects, the token budget and every injection position — plus an inspector that shows why an entry fired.",
+                "status": "works"
+            },
+            {
+                "path": "data/presets/",
+                "name": "Prompt presets",
+                "desc": "Import an OpenAI preset, reorder prompts, disable them, or move one into a chat injection with its own depth, order and role.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/",
+                "name": "Chats and branching",
+                "desc": "Streaming replies with reasoning kept apart, swipes, editing, and a branch from any message that leaves the original chat intact.",
+                "status": "works"
+            },
+            {
+                "path": "data/chats/ · summary",
+                "name": "Summary memory",
+                "desc": "A rolling summary stored inside the chat file, next to the messages it summarises. Edit it yourself, or let it update after replies.",
+                "status": "works"
+            },
+            {
+                "path": "user/images/",
+                "name": "Speech and images",
+                "desc": "Browser voices or an OpenAI-compatible speech endpoint. Pictures from Automatic1111, ComfyUI or an OpenAI-compatible endpoint, kept per character.",
+                "status": "works"
+            },
+            {
+                "path": "data/secrets.json",
+                "name": "Providers",
+                "desc": "Five request protocols, covering OpenAI, OpenRouter, Anthropic, Gemini, Ollama and any compatible endpoint you type in. Keys stay on the server.",
+                "status": "works"
+            },
+            {
+                "path": "quickreplies/",
+                "name": "Quick replies",
+                "desc": "Sets with a button bar above the message box: seven commands that chain, no auto-execution or context menus yet.",
+                "status": "partial"
+            },
+            {
+                "path": "Import",
+                "name": "Import from another app",
+                "desc": "Scan another app's data folder, see what was found, and copy characters, chats, lorebooks and presets in one action.",
+                "status": "works"
+            }
+        ]
+    },
+    "pipeline": {
+        "heading": "How a reply is assembled",
+        "steps": [
+            {
+                "name": "Assemble",
+                "desc": "The preset is built in order, with the persona, character and scenario in their slots."
+            },
+            {
+                "name": "Scan lore",
+                "desc": "Lorebook keys are matched against the recent chat; inclusion groups and timed effects decide what fires."
+            },
+            {
+                "name": "Budget tokens",
+                "desc": "The context is trimmed to the model's budget by a tokenizer for OpenAI, Claude and Gemini models."
+            },
+            {
+                "name": "Call the provider",
+                "desc": "One request to the active provider, in the protocol that provider speaks."
+            },
+            {
+                "name": "Stream",
+                "desc": "Tokens arrive over SSE. The server saves the message; the page only draws it."
+            }
+        ],
+        "caption": "The context inspector shows the assembled prompt slot by slot with its token count, every lorebook entry considered, and the reason each one fired or did not."
+    },
+    "limits": {
+        "heading": "What is not there yet",
+        "intro": "This is early-access software. These are the gaps worth knowing before you install it.",
+        "items": [
+            "Typed slash commands and scripting. A line like /send hello goes to the model as text; only Quick Reply buttons run commands.",
+            "Extensions written for other clients. None load.",
+            "Attachments and vision. No file upload and no image input.",
+            "Vector memory. Long chats are trimmed to the budget; the summary is the only long-term memory.",
+            "macOS and Linux. The shell packages on both and CI compiles them, but only Windows is released, and neither has been run.",
+            "An unsigned installer. SmartScreen warns once on a downloaded copy; take the file from the release page and nowhere else."
+        ],
+        "more": "The full lists are in",
+        "limitationsLink": "Limitations",
+        "compatLink": "Format compatibility"
+    },
+    "install": {
+        "heading": "Install",
+        "rows": [
+            {
+                "name": "Windows",
+                "desc": "Download the installer from the latest release and run it. It installs per user, needs no administrator and no separate Node, and keeps your data in %APPDATA%\\dev.catcup.tavern. It is unsigned, so SmartScreen warns once and names no publisher: choose More info → Run anyway.",
+                "link": "Download the installer"
+            },
+            {
+                "name": "Web or LAN from source",
+                "desc": "Needs Node 22.13 or newer and pnpm 11. You set an access password on first run, and only from the machine running the server."
+            },
+            {
+                "name": "Move an install",
+                "desc": "CATCUP_DATA_DIR points the app at another data folder. That is how an install moves to a new machine, or a desktop install adopts an existing library."
+            }
+        ],
+        "copy": "Copy",
+        "copied": "Copied",
+        "lanNote": "For a LAN, bind to every interface; the password is the only gate.",
+        "tls": "There is no built-in TLS. Beyond a trusted network, put it behind a reverse proxy or a VPN.",
+        "after": "Then open http://localhost:5173.",
+        "allReleases": "All releases",
+        "direct": "Direct download: the installer for this version, hosted on GitHub."
+    },
+    "footer": {
+        "license": "AGPL-3.0-only. Built on the SillyTavern format ecosystem — attribution for the formats and code it follows is in NOTICE.",
+        "docs": "Documentation",
+        "changelog": "Changelog",
+        "limitations": "Limitations",
+        "security": "Security",
+        "licenseLink": "License",
+        "languages": "This page in"
+    }
+}
