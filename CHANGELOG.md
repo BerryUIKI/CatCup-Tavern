@@ -69,6 +69,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 - **A chat can be a directed scene.** A per-chat director, off by default, that decides who may speak, keeps the character you play in the prompt without letting the model write them, and offers a short list of options after a reply. Settled by [RFC 0003](docs/RFC/0003-guided-roleplay.md); story mode's graph is reserved but not built, because it needs a plot distillation that has no design yet.
 
+  **It works in a group chat too**, which is the case it was designed for: several characters, one of them yours. A group has no self-play refusal — there is no contradiction between "you are {{char}}" and "never write this member", because the speaker is chosen per turn and a played member is muted for the whole chat — and a played member whose card is temporarily out of the group is accepted rather than blocking the save. The config lives on the group _chat_ rather than the group, so two chats with the same cast can be two different stories.
+
+  There is no form for any of it yet: the director is API-only, and `LIMITATIONS.md` says so.
+
   **A single chat refuses to play its own card** — a `400` that names both ways out (a group chat, or a narrator card with the cast played from the world book). The card block tells the model "you are {{char}}", so a chat that both speaks as its character and forbids writing them contradicts itself, and the failure would show up as a model that occasionally writes the person's lines.
 
   **Choices are a line-oriented sentinel block, not JSON**, and that is the reliability plan rather than a detail: a streamed JSON object has to balance its brackets and survive an unescaped quote, while a line format degrades — a block cut off mid-way still yields the lines before the cut, and no block means no options rather than a failure. The block is stripped before regex scripts run, so a stored chat never contains the sentinels, and clicking an option sends its label through the ordinary send path. **Choices can never fail a reply.**

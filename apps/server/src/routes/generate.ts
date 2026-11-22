@@ -18,7 +18,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { choiceInstruction, parseChoices } from '../director/choices.js';
-import { directorBlock, readDirector } from '../director/config.js';
+import { choiceLanguage, directorBlock, readDirector } from '../director/config.js';
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
@@ -106,19 +106,6 @@ async function saveSwipe(
         },
         extraDelete: stopped ? ['memory'] : ['memory', 'stopped'],
     });
-}
-
-/**
- * Which language to write the choice instruction in.
- *
- * The card's own text is the only signal available and a good one: a Chinese
- * character in a Chinese story should be asked for Chinese options, because the
- * instruction's own words leak into the reply's voice otherwise. Latin by
- * default — the majority case, and the harmless one when wrong.
- */
-function choiceLanguage(character: CharacterDetail): 'en' | 'zh' {
-    const sample = `${character.card.description ?? ''}${character.card.personality ?? ''}${character.card.first_mes ?? ''}`;
-    return /[一-鿿]/.test(sample) ? 'zh' : 'en';
 }
 
 async function persistMessage(
@@ -398,7 +385,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             // stored, so it never accumulates across turns.
             prompt.push({
                 role: 'system',
-                content: choiceInstruction(director.choiceCount, choiceLanguage(character)),
+                content: choiceInstruction(director.choiceCount, choiceLanguage(character.card)),
             });
         }
 

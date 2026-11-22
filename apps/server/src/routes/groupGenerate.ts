@@ -22,7 +22,8 @@ import {
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
+import { choiceInstruction, parseChoices } from '../director/choices.js';
+import { choiceLanguage, directorBlock, readDirector } from '../director/config.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { type ResolvedMember, resolveMembers } from '../group/members.js';
 import { cleanGroupReply, stForceAvatarUrl } from '../group/output.js';
@@ -93,6 +94,8 @@ interface PersistContext {
     substitute: (text: string, escapeValues: boolean) => string;
     /** Names of the other members, for trimming a reply that speaks for them. */
     otherNames: string[];
+    /** How many options to pull out of the reply; absent leaves it alone. */
+    directorChoices?: number;
     /** The batch id SillyTavern uses to group one turn's replies. */
     batchId: number;
 }
@@ -147,9 +150,17 @@ async function persistGroupReply(
     reasoning: string,
     stopped: boolean,
 ): Promise<ChatMessage> {
+    // Choices come out first, before the group trimmer looks at the text: the
+    // trimmer's job is to cut a reply that speaks for another member, and the
+    // option lines look exactly like that. Stripping them first means the
+    // trimmer only ever sees prose, and the options survive intact.
+    const parsed = context.directorChoices ? parseChoices(text, context.directorChoices) : null;
+    const replyText = parsed ? parsed.prose : text;
+    const choices = parsed && parsed.options.length > 0 ? parsed.options : null;
+
     // Trim a reply that starts speaking for another member before scripts run,
     // as SillyTavern's `cleanGroupMessage` does.
-    const cleaned = cleanGroupReply(text, context.speaker.name, context.otherNames);
+    const cleaned = cleanGroupReply(replyText, context.speaker.name, context.otherNames);
     const storedText = applyRegexScripts(context.regexScripts, cleaned, REGEX_PLACEMENT.AI_OUTPUT, {
         substitute: context.substitute,
     });
@@ -167,6 +178,7 @@ async function persistGroupReply(
         gen_finished: new Date().toISOString(),
         ...(storedReasoning ? { reasoning: storedReasoning } : {}),
         ...(stopped ? { stopped: true } : {}),
+        ...(choices ? { director: { choices: { options: choices } } } : {}),
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
@@ -219,6 +231,24 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         if (members.length === 0) {
             throw badRequest('This group has no enabled members with a character card');
         }
+        // The director is per conversation, so it lives on the group chat's own
+        // metadata, not on the group record: two chats with the same cast can
+        // be two different stories.
+        const director = readDirector(chat.header.chat_metadata);
+        // The cast block names who the player controls; in a group it is built
+        // from the group's own members, so a played member is listed by the name
+        // the prompt will use for them.
+        const directorBlockText = director
+            ? directorBlock({
+                  character: resolvedMembers[0]?.speaker ?? { id: '', name: '' },
+                  members: resolvedMembers.map((member) => ({
+                      id: member.speaker.fileName,
+                      name: member.speaker.name,
+                  })),
+                  director,
+              })
+            : '';
+
         const groupMacros: GroupMacroMembers = {
             members: resolvedMembers.map((member) => member.speaker.name),
             enabled: members.map((member) => member.speaker.name),
@@ -273,6 +303,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
                 ...(body.action === 'send' && body.message !== undefined ? { message: body.message } : {}),
                 ...(body.action === 'regenerate' && lastMessage ? { message: lastMessage.mes } : {}),
                 ...(body.action === 'send' && body.speaker !== undefined ? { speaker: body.speaker } : {}),
+                ...(director ? { playedMembers: director.playedMembers } : {}),
             });
             if (!selection) {
                 throw badRequest('No enabled member can reply');
@@ -534,8 +565,18 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
             ...(joinedCard ? { joinedCard } : {}),
             cardDepthPrompts,
+            ...(directorBlockText ? { directorRules: directorBlockText } : {}),
         });
         const prompt = assembled.messages;
+
+        if (director?.choices && body.action === 'send') {
+            // After the history, for this generation only — the same mechanism
+            // the group nudge uses, and never stored.
+            prompt.push({
+                role: 'system',
+                content: choiceInstruction(director.choiceCount, choiceLanguage(speaker.card)),
+            });
+        }
 
         if (prompt.length === 0) {
             throw badRequest('The assembled prompt is empty. Check the enabled prompt entries.');
@@ -560,6 +601,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
                 .filter((member) => member.speaker.fileName !== speaker.fileName)
                 .map((member) => member.speaker.name),
             batchId,
+            ...(director?.choices && body.action === 'send' ? { directorChoices: director.choiceCount } : {}),
         };
 
         await runGenerationStream({
