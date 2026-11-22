@@ -44,6 +44,7 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 | `pnpm --filter @catcup/server test`   | Server tests only                                                   |
 | `pnpm --filter @catcup/web build`     | Web build only                                                      |
 | `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first                   |
+| `pnpm site`                           | Build the landing page into `site/dist`                             |
 | `pnpm --filter @catcup/server recall` | Measure what aliases and the lexical pass add to recall (see below) |
 
 ### Measuring retrieval
@@ -226,6 +227,36 @@ A skill is only as good as its fidelity to the app. Two rules keep it honest:
 
 `biome check` covers `.claude/skills/**/*.mjs` because the repository-wide `includes` does not exclude
 it, so skill scripts are formatted and linted like the rest of the repo.
+
+## Landing site
+
+The public site at <https://berryuiki.github.io/CatCup-Tavern/> lives in `site/` and is published by
+`.github/workflows/pages.yml` to the `gh-pages` branch whenever `main` changes something under `site/`.
+It is static: no framework, no bundler and no dependencies.
+
+| Path                       | Holds                                                                     |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `site/template.html`       | The one page, with `{{key}}` placeholders and `{{#list}}…{{/list}}` loops |
+| `site/styles.css`          | Tokens copied from `apps/web/src/styles.css` and the whole layout         |
+| `site/main.js`             | Shape switcher, the live chat window, the language menu, copy buttons     |
+| `site/content/<code>.json` | One deck per locale, `en` being the source                                |
+| `scripts/build-site.mjs`   | Renders each deck into `site/dist`, writes `sitemap.xml` and the rest     |
+| `scripts/preview-site.mjs` | Builds and serves `site/dist` on <http://localhost:4173>                  |
+
+Three rules:
+
+- **Copy comes from the deck, never from the template.** Every user-visible string is a key in
+  `site/content/en.json`; the build fails if a locale is missing a key, carries one `en` no longer has,
+  or leaves a placeholder in the HTML. Add a string in `en`, then in all nine locales.
+- **The hero is the product, built in HTML.** The chat window is real markup styled from the app's own
+  tokens, and the canned replies live in `replies` in the deck. It is not a screenshot and must not
+  become one.
+- **Claims are checked against the code.** The status words in `features.rows` and every line in
+  `limits.items` must match `docs/LIMITATIONS.md`; a feature that ships is moved out of `limits` in the
+  same pull request that ships it.
+
+`CATCUP_SITE_ONLY=de,fr pnpm site` builds just those locales while a translation is in progress. CI and
+the workflow always build all nine.
 
 ## Related docs
 

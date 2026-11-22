@@ -6,6 +6,20 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- **A public landing page, in nine languages.** `site/` is a static page published to `gh-pages` by
+  `.github/workflows/pages.yml`, with English at the root and `zh-CN`, `ja`, `ko`, `de`, `fr`, `es`,
+  `ru` and `pt-BR` beside it, each with its own `<html lang>`, title, description, canonical and
+  `hreflang` alternates. The page's one moving part is the product itself: a chat window built in HTML
+  and CSS from the real components' structure and the app's own tokens, which accepts what you type and
+  streams Mira's canned reply word by word, with Browser / LAN / Windows tabs that change only the
+  window chrome around it. `scripts/build-site.mjs` renders the decks in `site/content/`, writes
+  `sitemap.xml`, `robots.txt` and the assets, and fails when a locale is missing a key or leaves a
+  placeholder behind; it has no dependencies and no bundler. `scripts/preview-site.mjs` serves the
+  result on `:4173`, and `pnpm site` builds it. Every download button points at the installer asset
+  itself (`releases/download/v<version>/CatCup.Tavern_<version>_x64-setup.exe`, named by the Tauri
+  bundler and built from `package.json` at build time) rather than at the release page, and the install
+  section names the file it downloads beside a link to every release.
+
 - **An entry can answer to more than one name.** `公主` never fired on a chat saying `王女`, and the lexical pass cannot close that — it ranks shared words, it does not know two words mean the same thing. Each world info entry can now carry an **Also matches** list of extra names, edited as chips under its keywords, and the scanner treats every alias as an additional **primary** key: same matcher, same per-entry options, and the context inspector names the alias that fired. Because it is a primary key it is not merely additive — an alias also satisfies the secondary-key logic and shares inclusion groups, probability and the token budget, so a bad alias can hide an entry as well as reveal one, which is why the editor says so.
 
   Aliases are stored in **`<book>.aliases.json` beside the book**, never inside it. An entry's identity hash covers its whole raw record, `extensions` included, and a chat's `timedWorldInfo` records are matched by that hash — writing aliases into the entry would have silently detached its sticky and cooldown effects in every chat that already had them. Nothing in the book changes, so a book with no sidecar behaves exactly as it did, and the file moves, copies and is deleted with its book. They do not travel in a SillyTavern export; see `docs/LIMITATIONS.md`.
@@ -62,6 +76,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
   A chat with no `director` key produces the same prompt and the same file it always did, which is the compatibility promise this rests on.
 
 ### Changed
+
+- The README leads with what the product is and the Windows download, before the install notes, and
+  merges its duplicated "why another tavern" and "compatibility" prose into one bullet list plus one
+  table; the desktop features that shipped in 0.3.1 are no longer marked **next**, the provider entry
+  names all five request protocols, and a License section states the AGPL position and points at
+  `NOTICE`.
 
 - **Compatibility is stated as two rules rather than one.** Data formats stay a hard constraint — every file CatCup writes must remain readable by SillyTavern, with field names, the JSONL header shape and unknown-field preservation intact. Runtime semantics are now a default rather than a mandate: a divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. `CLAUDE.md`, `docs/ST-COMPATIBILITY.md` and `docs/LIMITATIONS.md` follow.
 - CatCup-only derived state — indexes, embeddings, caches — lives in a sidecar beside its source, and anything that must be written into a SillyTavern object goes under `extensions.catcup`, which SillyTavern preserves and ignores.
