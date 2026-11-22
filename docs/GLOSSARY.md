@@ -102,6 +102,8 @@ Terms used in CatCup Tavern, SillyTavern compatibility work and the surrounding 
 
 **AGPL-3.0** — The project's license. Network use by others requires providing the corresponding source.
 
-**SillyTavern (ST)** — The reference AI roleplay client whose data formats and interaction semantics CatCup follows.
+**Tavern format** — The data standard the ecosystem shares: character cards, chat JSONL, world info books, prompt presets. A format, not one product's file layout. CatCup implements it so a library moves between clients without conversion.
 
-**RisuAI** — A modern Svelte + Tauri AI client used as a reference for provider logic, character import and packaging.
+**Tavern clients** — The other applications that read and write the same formats. They are the compatibility target; the standard is what CatCup follows, not any one implementation of it.
+
+**RisuAI** — A modern Svelte + Tauri AI client, useful as a reference for provider request shapes and desktop packaging. Its CharX archive format is one CatCup reads.

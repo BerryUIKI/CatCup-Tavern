@@ -1,6 +1,6 @@
 # Data formats
 
-CatCup Tavern stores everything as files under `data/`. The goal is to stay close enough to SillyTavern that a user can migrate cards and chats without a conversion tool. This page documents the formats the app reads and writes, and the parts that are still planned.
+CatCup Tavern stores everything as files under `data/`. The formats are the tavern ecosystem's shared standard, so a user can migrate cards and chats from another client without a conversion tool — and a library can move back out again. This page documents the formats the app reads and writes, and the parts that are still planned.
 
 > Compatibility status is summarized in [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md). If you change a schema, update this page and the shared Zod schemas together.
 

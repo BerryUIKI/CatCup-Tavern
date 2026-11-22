@@ -14,26 +14,42 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Portions of this software are derived from, or based on, the following works:
+CatCup is licensed AGPL-3.0 by its own choice. The character card, chat,
+world info and preset formats it reads and writes are the tavern ecosystem's
+shared standard, implemented here from the specifications.
+
+Some code was adapted from other clients in that ecosystem. Those portions
+remain under their original terms and are credited here:
 
 1. SillyTavern
    https://github.com/SillyTavern/SillyTavern
    Copyright (C) SillyTavern contributors
    Licensed under the GNU Affero General Public License, version 3.
-   Includes the Claude tokenizer vocabulary at
-   apps/server/assets/tokenizers/claude.json, copied from SillyTavern's
-   src/tokenizers/claude.json.
+   The adapted files are listed in docs/REUSE.md and marked with a header
+   naming the upstream file. Also included is the Claude tokenizer
+   vocabulary at apps/server/assets/tokenizers/claude.json, copied from
+   SillyTavern's src/tokenizers/claude.json.
 
 2. RisuAI
    https://github.com/kwaroran/RisuAI
    Copyright (C) 2024 Kwaroran
    Licensed under the GNU General Public License, version 3.
-   Combined with this AGPL-3.0 project under GNU AGPLv3 section 13.
+   Adapted portions are combined with this AGPL-3.0 project under GNU
+   AGPLv3 section 13, which the AGPL permits.
 
-3. @agnai/web-tokenizers
+3. cyrb53 string hash
+   Copyright (C) 2018 bryc
+   Public domain / MIT.
+   Used by packages/compat-st/src/hash.ts. The hash is part of how a chat
+   file stores its timed world info state, so the algorithm must match for
+   imported chats to keep working.
+
+4. @agnai/web-tokenizers
    https://github.com/mlc-ai/tokenizers-cpp
    Copyright (C) MLC AI
    Licensed under the Apache License, version 2.0.
    Runtime dependency used to load the Claude vocabulary.
 
-See docs/REUSE.md for the list of adapted modules and the nature of each reuse.
+See docs/REUSE.md for the list of adapted modules and the nature of each one,
+and docs/REUSE-ISOLATION.md for which of them are format implementations and
+which are another client's behaviour.

@@ -16,26 +16,26 @@ This directory is the project handbook. Start with the path that matches your ro
 
 ## Start here
 
-| If you want to…                                   | Read                                       |
-| ------------------------------------------------- | ------------------------------------------ |
-| Understand where the project is going             | [MILESTONES.md](MILESTONES.md)             |
-| Read a proposal for a large feature               | [RFC/](RFC/README.md)                      |
-| Understand how the system is put together         | [ARCHITECTURE.md](ARCHITECTURE.md)         |
-| Build or change the interface                     | [DESIGN.md](DESIGN.md)                     |
-| Set up a development environment                  | [DEVELOPMENT.md](DEVELOPMENT.md)           |
-| Call the HTTP API or consume the SSE stream       | [API.md](API.md)                           |
-| Read or write ST-compatible files                 | [DATA-FORMATS.md](DATA-FORMATS.md)         |
-| Configure a model provider                        | [PROVIDERS.md](PROVIDERS.md)               |
-| Know what works and what does not, as a user      | [LIMITATIONS.md](LIMITATIONS.md)           |
-| Know what SillyTavern features work today         | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) |
-| Deploy locally or on a LAN                        | [DEPLOYMENT.md](DEPLOYMENT.md)             |
-| Work on the desktop build                         | [DESKTOP.md](DESKTOP.md)                   |
-| Understand the security model                     | [SECURITY.md](SECURITY.md)                 |
-| Fix a problem                                     | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   |
-| Learn the vocabulary                              | [GLOSSARY.md](GLOSSARY.md)                 |
-| Know what code was reused and under which license | [REUSE.md](REUSE.md)                       |
-| See what changed                                  | [../CHANGELOG.md](../CHANGELOG.md)         |
-| Contribute a change                               | [../CONTRIBUTING.md](../CONTRIBUTING.md)   |
+| If you want to…                              | Read                                       |
+| -------------------------------------------- | ------------------------------------------ |
+| Understand where the project is going        | [MILESTONES.md](MILESTONES.md)             |
+| Read a proposal for a large feature          | [RFC/](RFC/README.md)                      |
+| Understand how the system is put together    | [ARCHITECTURE.md](ARCHITECTURE.md)         |
+| Build or change the interface                | [DESIGN.md](DESIGN.md)                     |
+| Set up a development environment             | [DEVELOPMENT.md](DEVELOPMENT.md)           |
+| Call the HTTP API or consume the SSE stream  | [API.md](API.md)                           |
+| Read or write ST-compatible files            | [DATA-FORMATS.md](DATA-FORMATS.md)         |
+| Configure a model provider                   | [PROVIDERS.md](PROVIDERS.md)               |
+| Know what works and what does not, as a user | [LIMITATIONS.md](LIMITATIONS.md)           |
+| Know what SillyTavern features work today    | [ST-COMPATIBILITY.md](ST-COMPATIBILITY.md) |
+| Deploy locally or on a LAN                   | [DEPLOYMENT.md](DEPLOYMENT.md)             |
+| Work on the desktop build                    | [DESKTOP.md](DESKTOP.md)                   |
+| Understand the security model                | [SECURITY.md](SECURITY.md)                 |
+| Fix a problem                                | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   |
+| Learn the vocabulary                         | [GLOSSARY.md](GLOSSARY.md)                 |
+| Know what code was adapted from where        | [REUSE.md](REUSE.md)                       |
+| See what changed                             | [../CHANGELOG.md](../CHANGELOG.md)         |
+| Contribute a change                          | [../CONTRIBUTING.md](../CONTRIBUTING.md)   |
 
 ## Reading paths
 
@@ -71,7 +71,8 @@ flowchart LR
 | [SECURITY.md](SECURITY.md)                 | Threat model, auth, secrets, LAN guidance and hardening backlog                              |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md)   | Common failures and diagnostic steps                                                         |
 | [GLOSSARY.md](GLOSSARY.md)                 | SillyTavern and CatCup terminology                                                           |
-| [REUSE.md](REUSE.md)                       | Licensing and code reuse assessment                                                          |
+| [REUSE.md](REUSE.md)                       | Attribution and code reuse assessment                                                        |
+| [REUSE-ISOLATION.md](REUSE-ISOLATION.md)   | Which adapted code is a format and which is behaviour, and the plan to separate it           |
 | [../CHANGELOG.md](../CHANGELOG.md)         | Release history and unreleased changes                                                       |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md)   | GitFlow, releases, branch protection and quality gates                                       |
 

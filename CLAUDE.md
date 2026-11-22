@@ -2,7 +2,7 @@
 
 ## Project
 
-A SillyTavern-style AI roleplay client. Three shapes share one codebase:
+A tavern-style AI roleplay client. Three shapes share one codebase:
 
 - **Web**: Node/Fastify server + React SPA
 - **LAN**: the same server bound to `0.0.0.0`, single user + access password
@@ -10,8 +10,8 @@ A SillyTavern-style AI roleplay client. Three shapes share one codebase:
 
 Compatibility is **two rules, not one**:
 
-- **Data formats are a hard constraint.** Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must import, export and round-trip without loss, and every file we write must stay readable by SillyTavern. Field names, the JSONL header shape and unknown-field preservation are not negotiable.
-- **Runtime semantics are a default, not a mandate.** How world info is matched, how memory is stored and how a reply is assembled follows SillyTavern unless a divergence measurably improves the experience. A divergence is allowed when it is opt-in, leaves imported data readable by both clients, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. Porting ST's _algorithms_ stays valuable; reproducing its _limitations_ does not.
+- **Data formats are a hard constraint.** Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must import, export and round-trip without loss, and every file we write must stay readable by the other tavern clients. Field names, the JSONL header shape and unknown-field preservation are not negotiable. These are a shared standard, not one product's file layout — implement the specification.
+- **Runtime semantics are a default, not a mandate.** How world info is matched, how memory is stored and how a reply is assembled follows the reference implementations unless a divergence measurably improves the experience. A divergence is allowed when it is opt-in, leaves imported data readable by every client, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. Following another client's _algorithms_ is a compatibility convenience; reproducing its _limitations_ is not.
 
 Current status: **0.3.2 released (2026-11-16)**; `dev` carries the next batch, not yet released. 0.3.2 turns the provider form's Type list into a request protocol with a first-class custom-provider entry, replaces every native dropdown with CatCup's own `Select`/`Combobox`, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out on an install with no password. M0, M1, M2 and the 0.2.x MVP are complete. 0.3.1 adds profiles — a profile is a data scope, with an opt-in per-item shared layer — a multi-model provider list with per-character and per-profile model choice, group generation handling modes, and book distillation from `.txt`/`.md`/`.epub`. The desktop scope also landed in it — tray icon, window-state restore, self-update with signed artifacts, `.catcup` file associations, packaged macOS/Linux builds and a CI job that compiles the shell on all three platforms — plus CatCup's own `.catcup` package format, a password-change screen for web and LAN, impersonation and drag-and-drop import. Windows code signing is deliberately deferred. M3 (STscript, full Quick Replies, the extension API) and M5 (mobile, i18n, accessibility, UX stages C–E) are still ahead. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (stage A: Settings and Providers landed 2026-11-12; stage B: app shell and chat chrome landed 2026-11-13); follow `docs/DESIGN.md` for interface work.
 
@@ -68,7 +68,7 @@ apps/
     src/store/          Zustand UI state
   desktop/              Tauri 2 shell; src-tauri/ holds the Rust sidecar host, tray, updater and window state
 packages/shared/        Zod schemas, shared types, ST data models
-packages/compat-st/     code ported from SillyTavern — see below
+packages/compat-st/     code adapted from another tavern client — see below
 assets/brand/           brand masters and their generated icons (see assets/brand/README.md)
 docs/                   handbook (see docs/README.md)
 scripts/                repository tooling; `pnpm icons` rebuilds every icon from the brand masters,
@@ -116,11 +116,11 @@ Read before changing behaviour:
 - API keys may only live in `data/secrets.json`. No API response may contain a plaintext key; the client sees only `hasKey`.
 - Single user + password. First-time setup is limited to loopback. LAN login uses the same password. Every shape can change the password; only the desktop can remove one, because a LAN server with none would be reachable and unauthenticated.
 - Before changing character card / chat / world info / preset schemas, compare with `.ref/SillyTavern` and preserve field names and the JSONL header format.
-- **Code ported from SillyTavern lives in `packages/compat-st`.** It is a boundary for legibility, not a licence change — the app imports it and is built with it, so the result is still one AGPL-3.0 program. Add to that package rather than scattering new ports through `apps/server/src`, and keep the per-file header saying which upstream file each came from.
+- **Code adapted from another client lives in `packages/compat-st`.** It is a home for the attribution, not a licence boundary — the app imports it and is built with it, so the result is one program. Add to that package rather than scattering new ports through `apps/server/src`, and keep the per-file header naming the upstream file. Prefer writing against a format specification over adapting an implementation; `docs/REUSE-ISOLATION.md` keeps the lists.
 - CatCup-only state never goes inside an ST file it would confuse: derived data (indexes, embeddings, caches) lives in a sidecar file beside the source, and anything written into an ST object goes under `extensions.catcup`, which ST preserves and ignores.
 - `.ref/` is for reading only. **Never import from it at runtime and never use it as a build input.**
-- When adding code adapted from ST or RisuAI, update `NOTICE` and `docs/REUSE.md` in the same change.
-- License: AGPL-3.0-only. SillyTavern is AGPL-3.0; RisuAI is GPL-3.0 (compatible under AGPLv3 §13).
+- When adding code adapted from another client, update `NOTICE` and `docs/REUSE.md` in the same change, and record in `docs/REUSE-ISOLATION.md` whether it implements a format or reproduces behaviour.
+- License: AGPL-3.0-only, CatCup's own choice. Adapted code keeps its original terms; see `NOTICE` and `docs/REUSE-ISOLATION.md`.
 - Frontend: React + Tailwind 4. Theme tokens live in the `@theme` block of `apps/web/src/styles.css`.
 - Interface work follows `docs/DESIGN.md`: one primary action per surface, explicit save with a leave guard for configuration forms, visible focus, focus-trapped dialogs and no hover-only actions.
 - Chat streaming uses SSE: `start` / `token` / `reasoning` / `done` / `error`. The server owns persistence; the client only renders optimistically. The `start` event carries the model the request resolved to.

@@ -35,8 +35,8 @@ _The chat view. Mira is the sample card that ships with the app._
   one message per line, swipes and branches included; lorebooks, presets and settings are JSON. Copy the
   folder to back it up, copy it to another machine to move, open any of it in an editor.
 - **Existing libraries come across.** Character cards (PNG/JSON V2/V3, CharX), chat JSONL, world info
-  and OpenAI presets are read and written in the formats the SillyTavern ecosystem uses, so a library
-  moves in either direction without an export step — that compatibility is a hard constraint, and
+  and OpenAI presets are read and written in the formats the tavern ecosystem shares, so a library
+  moves between clients without an export step — that compatibility is a hard constraint, and
   every deliberate difference is listed in [ST-COMPATIBILITY.md](docs/ST-COMPATIBILITY.md).
 - **One server, three shapes.** The browser, the LAN and the desktop app run the same server — the
   desktop build really does start it as a child process — so there is one implementation of
@@ -275,6 +275,7 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the ful
 
 ## License
 
-[AGPL-3.0-only](LICENSE). The character card, chat, world info and preset formats follow SillyTavern
-(AGPL-3.0), which is what lets a library move in both directions; the code reused from it and from
-RisuAI (GPL-3.0) is listed file by file in [NOTICE](NOTICE) and [docs/REUSE.md](docs/REUSE.md).
+[AGPL-3.0-only](LICENSE). The character card, chat, world info and preset formats are the tavern
+ecosystem's de-facto standard — implemented here, not licensed from anyone — which is what lets a
+library move between clients in both directions. The few modules adapted from other tavern clients
+are listed file by file in [NOTICE](NOTICE) and [docs/REUSE.md](docs/REUSE.md).
