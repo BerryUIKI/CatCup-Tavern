@@ -29,24 +29,38 @@ licence it wants is the derived column below.
 
 ## What is actually in the tree
 
-30 files carry a provenance comment or are listed in `REUSE.md` as coming from
-another client. About 6,200 lines in total, not counting the 1.7 MB vocabulary.
-They are not one problem: three buckets, and the third is not the one intuition
-points at.
+The inventory is less tidy than it looks, and that is the first finding.
 
-| Bucket            | What it is                                                                                                                                                  | Files | Lines        |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ------------ |
-| **A. Format**     | Reads and writes a published format. Card parse/write/PNG, world info parse and entry shape, the card and quick-reply schemas, chapter-heading conventions. | 14    | 1,924        |
-| **B. Behaviour**  | One implementation's _choices_: the scanner, key matching, timed effects, prompt assembly, prompt history, memory scheduling.                               | 14    | 3,985        |
-| **C. Expression** | Text and data that is neither a format nor an algorithm: two default prompt strings, one summarize instruction, and the Claude vocabulary.                  | 2     | 325 + 1.7 MB |
+`docs/REUSE.md` §7 lists **48 files, 9,948 lines**, as coming from another client
+or implementing one of its formats. Their provenance is recorded three different
+ways:
+
+| How the provenance is recorded                             | Files | Lines |
+| ---------------------------------------------------------- | ----- | ----- |
+| A `// Derived from …` / `// Adapted from …` line header    | 22    | 4,995 |
+| A mention inside a doc comment only                        | 4     | 457   |
+| Nothing in the file; the REUSE.md table is the only record | 22    | 4,496 |
+
+That last row is the problem. **A header grep undercounts the real figure by about
+4,500 lines**, so any number quoted from headers — including the 5,300 lines this
+document's previous revision quoted — is too low. The table is the authority, and
+phase 0 is what makes the two agree.
+
+The buckets, counted from the table:
+
+| Bucket            | What it is                                                                                                                                                                                 | Files | Lines    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | -------- |
+| **A. Format**     | A published specification, implemented. The six schema files — card, chat, world info, preset, regex, quick replies.                                                                       | 6     | 860      |
+| **B. Behaviour**  | Code written by reading another client's source: the scanner, key matching, timed effects, card parsing, prompt assembly, prompt history, memory scheduling, and the adapters around them. | 42    | 9,088    |
+| **C. Expression** | Text and data that is neither a format nor an algorithm: two default prompt strings, one summarize instruction, and the Claude vocabulary (1.7 MB).                                        | —     | inside B |
+
+Bucket C overlaps B rather than sitting beside it: the prompt strings live inside
+`prompt-definitions.ts` and `memory.ts`, which also contain ordinary code. It is
+separated because it is the part with a different fix and a different priority.
 
 Plus one dead file: `packages/compat-st/src/keywords.ts`, a duplicate of the
 `@catcup/shared` copy that nothing imports. It is deleted in phase 0 rather than
 counted.
-
-A file that is genuinely both a format and behaviour is counted where its header
-puts it. `docs/REUSE.md` §7 is the authority for which file is which; this table
-is a summary of it.
 
 ### The finding that changes the order of work
 
@@ -104,32 +118,39 @@ makes that cheaper, and none of it substitutes for it.
 Five phases, ordered by value per hour. Each one is independently mergeable and
 gated by the existing test suite.
 
-### Phase 0 — make the inventory true (an hour)
+### Phase 0 — make the inventory true (a day, not an hour)
 
 - Delete `packages/compat-st/src/keywords.ts`: a duplicate of the copy in
   `@catcup/shared` with nothing importing it.
 - Re-source `hash.ts` from cyrb53's own publication, credit bryc, drop the
   derived header. The algorithm was never the other project's.
-- Add the missing headers to `apps/server/src/prompt/manager.ts` and
-  `packages/shared/src/macros.ts`, both listed in `REUSE.md` as ports but
-  carrying no provenance line.
+- **Give the 22 files that carry no provenance comment one**, per
+  `CONTRIBUTING.md`'s rule — or, for the six format schemas among them, a line
+  saying which specification they implement. This is the bulk of the phase, and
+  it is what makes every later number trustworthy.
 
-**Buys:** the inventory can be trusted as a baseline. Everything after it is
-measured against a number that is correct.
+**Buys:** a baseline that is correct. The header count understates the real
+figure by about 4,500 lines, and phase 1's scope is only knowable once that is
+fixed.
 
-### Phase 1 — close the format bucket (a day)
+### Phase 1 — re-sort the format bucket (half a day)
 
-Bucket A, 1,924 lines. These implement published formats, so the work is mostly
-_re-labelling_: a header that says "implements the Character Card V3
-specification" instead of "derived from …", with the spec URL. Where a function
-was genuinely transcribed rather than written against the spec, rewrite that
-function — the tests decide which ones those are, and there will be few.
+Bucket A is already small — 860 lines, six schema files — because the schemas were
+written from the specification to begin with. So the work here is to find what
+belongs in A and was filed under B by mistake: card parsing, world info entry
+parsing, and PNG chunk handling all implement published formats, and their
+headers say "derived" because the first version was written by reading a
+reference implementation of that format.
 
-**Buys:** the largest reduction per hour spent. It also corrects a factual error
-in `README.md` and `NOTICE`, both of which currently say the _formats_ follow
-another client's licence. They follow a standard.
+Sorting them honestly is a small piece of work with a disproportionate effect:
+it moves a few hundred lines out of the column that needs rewriting, and it
+corrects a factual error in `README.md` and `NOTICE`, both of which currently say
+the _formats_ follow another client's licence. They follow a standard.
 
-**Risk:** low. The round-trip tests are exactly the right gate.
+**Risk:** low, but it needs care. Calling a file "format" is a claim of fact, and
+the test is whether the behaviour it encodes is written down in a specification
+or only in another client's source. `docs/REUSE-ISOLATION.md` §"Can bucket B
+actually be rewritten?" is the yardstick.
 
 ### Phase 2 — write CatCup's own default prompts (a day)
 
@@ -144,22 +165,27 @@ and they should never have been the last thing left unchecked.
 
 ### Phase 3 — rewrite the behaviour (the real work)
 
-Bucket B, 3,985 lines. Priority order by size and by how much of the claim each
-carries:
+Bucket B, 9,088 lines, or whatever phase 0 and phase 1 leave in it. Priority
+order by size and by how much of the claim each carries:
 
-1. `scanner.ts` (1,034) — recursion states, inclusion groups, the budget latch.
-2. `prompt/assemble.ts` (786) — marker merge, card overrides, injection.
-3. `timedEffects.ts` (268), `memory/{service,summary}` (525), `matching.ts` (97),
-   `prompt/{history,messages,tokenizer}` and the rest.
+1. `compat-st/src/scanner.ts` (1,034) — recursion states, inclusion groups, the
+   budget latch.
+2. `apps/server/src/prompt/assemble.ts` (786) — marker merge, card overrides,
+   injection.
+3. `compat-st/src/timedEffects.ts` (268), `memory/{service,summary}` (525),
+   `compat-st/src/matching.ts` (97), `compat-st/src/prompt-{history,messages,
+   tokenizer}.ts` and the rest.
 
-Written against `docs/` and gated by the existing tests. Each module lands on its
-own; nothing here has to be done in one change.
+This is weeks, not days, and it is the phase where "good enough" is easy to
+accept prematurely. Two rules keep it honest:
+
+- **Each module lands on its own.** Nothing here has to be done in one change,
+  and a half-rewritten bucket is still a larger claim than the one today.
+- **`docs/ST-COMPATIBILITY.md` is the acceptance bar.** A rewrite that diverges
+  from the reference behaviour is either a bug or a new row in the known
+  deviations table — never neither.
 
 **Buys:** the behaviour claim, which is the one the whole exercise is about.
-
-**Cost:** weeks, not days, and it is the phase where "good enough" is easy to
-accept prematurely. `docs/ST-COMPATIBILITY.md` is the acceptance bar: a rewrite
-that diverges is either a bug or an entry in that table, never neither.
 
 ### Phase 4 — decide the two irreducible items
 
@@ -229,21 +255,21 @@ distribution may carry anyway.
    above is the same either way through phase 3, and the answer only decides
    whether phases 4–5 happen. Recommend: do 0–3 for their own sake, then decide.
 2. **`claude.json`: keep or drop?** Recommend keep.
-3. **When.** Phases 0–2 are three days of work with a low risk profile and can be
-   done whenever. Phase 3 competes with every feature in `docs/MILESTONES.md` and
-   should be scheduled as its own milestone, not slipped in.
+3. **When.** Phases 0–2 are a low-risk few days that can be done whenever. Phase 3
+   competes with every feature in `docs/MILESTONES.md` and should be scheduled as
+   its own milestone, not slipped in.
 4. **Names.** Two artefacts name the other client directly: the package
    `@catcup/compat-st` and `docs/ST-COMPATIBILITY.md`. Both are honest — the
    package really is adapted code, and the document really is a compatibility
    table — but both read as though CatCup is a satellite of one product rather
    than a client in a shared ecosystem. Renaming them is mechanical
    (`compat-st` → `@catcup/tavern-compat` touches 30 import sites; the document
-   rename is a link sweep) and is worth doing at the same time as phase 1, when
+   rename is a link sweep) and is worth doing at the same time as phase 0, when
    the files are being re-read anyway. Recommend yes, and not before.
 
 ## The one-line summary
 
-The tree is 30 files and about 6,200 lines away from containing nothing adapted,
-and phase 1 — the cheapest phase, at roughly a day — closes just under a third of
-it. Nothing here is urgent, nothing here is blocking a release, and the plan is
-written so it can be picked up a phase at a time by anyone who reads it.
+`docs/REUSE.md` lists 48 files and about 9,900 lines as adapted from another
+client, and only 860 of them are already clean as format implementations. Nothing
+here is urgent, nothing is blocking a release, and the phases are independent
+enough that any of them can be picked up alone by whoever reads this next.
