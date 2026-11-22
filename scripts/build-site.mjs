@@ -8,6 +8,7 @@
 // missing a key or carries one the source no longer has — a half-translated
 // page never ships.
 
+import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -139,6 +140,23 @@ function render(template, context) {
 
 const href = (code) => (code === SOURCE ? `${SITE_URL}/` : `${SITE_URL}/${code}/`);
 
+// A link from one locale's page to another has to be relative to the page it
+// sits on, not to the site root. `./` and `../zh-CN/` only happen to work from
+// inside a locale folder: on the English page they point outside the project
+// entirely, which is how every language link once landed on the profile site.
+function relativeLink(fromCode, toCode) {
+    const fromSegment = new URL('.', href(fromCode)).pathname.split('/').filter(Boolean);
+    const toSegment = new URL(href(toCode)).pathname.split('/').filter(Boolean);
+    let shared = 0;
+    while (shared < fromSegment.length && shared < toSegment.length && fromSegment[shared] === toSegment[shared]) {
+        shared += 1;
+    }
+    const up = '../'.repeat(fromSegment.length - shared);
+    const down = toSegment.slice(shared).join('/');
+    const link = up + (down ? `${down}/` : '');
+    return link || './';
+}
+
 function jsonLd(deck, code, version) {
     return JSON.stringify(
         {
@@ -259,7 +277,7 @@ async function build() {
             languages: LOCALES.map((other) => ({
                 code: other.code,
                 name: other.name,
-                url: other.code === SOURCE ? './' : `../${other.code}/`,
+                url: relativeLink(locale.code, other.code),
                 selected: String(other.code === locale.code),
             })),
             demoData: JSON.stringify({
@@ -286,6 +304,7 @@ async function build() {
     }
 
     await copyStatic();
+    await checkOutput();
     console.log(`Built ${selected.length} locales into site/dist`);
 }
 
@@ -331,6 +350,83 @@ async function copyStatic() {
         'utf8',
     );
 }
+
+/* ── Link checks ─────────────────────────────────────────────────────── */
+
+// A relative link is the one thing the checks above cannot see: it type-checks
+// as a string. Every one has to resolve to a file this build wrote, and to stay
+// inside the site — `/CatCup-Tavern/` is a project path, so one `../` too many
+// silently leaves it and lands on whatever else the account hosts.
+function pageDirectory(code) {
+    return code === SOURCE ? [] : [code];
+}
+
+function resolveRelative(code, link) {
+    const path = link.split('#')[0].split('?')[0];
+    if (!path) {
+        return null;
+    }
+    const stack = pageDirectory(code).slice();
+    for (const segment of path.split('/')) {
+        if (segment === '' || segment === '.') {
+            continue;
+        }
+        if (segment === '..') {
+            if (stack.length === 0) {
+                return { escapes: true, target: '' };
+            }
+            stack.pop();
+            continue;
+        }
+        stack.push(segment);
+    }
+    return { escapes: false, target: stack.join('/') };
+}
+
+function checkLinks(html, code, folder = outDir) {
+    const links = [...html.matchAll(/(?:href|src)="([^"]*)"/g)].map((match) => match[1]);
+    const bad = [];
+    for (const link of links) {
+        if (/^(https?:|mailto:|#|\/\/)/.test(link)) {
+            continue;
+        }
+        const resolved = resolveRelative(code, link);
+        if (!resolved) {
+            continue;
+        }
+        if (resolved.escapes) {
+            bad.push(`${link} leaves the site (from /${pageDirectory(code).join('/') || ''})`);
+            continue;
+        }
+        // `./` and `zh-CN/` address a folder; everything else is a file.
+        const isFolder = link.endsWith('/') || resolved.target === '';
+        if (isFolder) {
+            const page = resolved.target ? `${resolved.target}/index.html` : 'index.html';
+            if (!existsSync(join(folder, page))) {
+                bad.push(`${link} has no ${page}`);
+            }
+        } else if (!existsSync(join(folder, resolved.target))) {
+            bad.push(`${link} has no ${resolved.target}`);
+        }
+    }
+    if (bad.length) {
+        throw new Error(`page ${code} has broken links:\n  ${bad.join('\n  ')}`);
+    }
+}
+
+/** The same check over the pages, once the assets exist beside them. */
+async function checkOutput(folder = outDir) {
+    const pages = [SOURCE, ...LOCALES.map((locale) => locale.code).filter((code) => code !== SOURCE)];
+    for (const code of pages) {
+        const file = code === SOURCE ? join(folder, 'index.html') : join(folder, code, 'index.html');
+        if (!existsSync(file)) {
+            continue;
+        }
+        checkLinks(await readFile(file, 'utf8'), code, folder);
+    }
+}
+
+export { checkOutput };
 
 // `node scripts/build-site.mjs` builds; an import (the preview server) only
 // takes the build() export.
