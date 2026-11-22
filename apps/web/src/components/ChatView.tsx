@@ -19,6 +19,7 @@ import {
 import {
     Brain,
     ChevronDown,
+    Clapperboard,
     Eye,
     ImagePlus,
     Images,
@@ -48,11 +49,13 @@ import { useGeneration } from '../hooks/useGeneration';
 import type { ImageChatTarget } from '../hooks/useImages';
 import { useImpersonation } from '../hooks/useImpersonation';
 import { useTts } from '../hooks/useTts';
+import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ContextInspector } from './ContextInspector';
+import { DirectorPanel } from './DirectorPanel';
 import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
 import { ImageGenerationDialog } from './ImageGenerationDialog';
@@ -191,6 +194,7 @@ export function ChatView({
     const [renameValue, setRenameValue] = useState('');
     const [inspectorOpen, setInspectorOpen] = useState(false);
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [directorOpen, setDirectorOpen] = useState(false);
     const [imageDialog, setImageDialog] = useState<{ messageIndex?: number } | null>(null);
     const [galleryOpen, setGalleryOpen] = useState(false);
     const [lightbox, setLightbox] = useState<LightboxImage | null>(null);
@@ -533,6 +537,14 @@ export function ChatView({
                   onSelect: handleOpenRename,
                   disabled: !selectedChatId,
                   ...(disabledReason ? { hint: disabledReason } : {}),
+              },
+              {
+                  id: 'director',
+                  label: 'Director',
+                  icon: Clapperboard,
+                  onSelect: () => setDirectorOpen(true),
+                  disabled: !selectedChatId,
+                  hint: !selectedChatId ? disabledReason : undefined,
               },
               {
                   id: 'memory',
@@ -909,6 +921,20 @@ export function ChatView({
                 onClose={() => setInspectorOpen(false)}
                 characterId={character?.id ?? null}
                 chatId={selectedChatId}
+            />
+
+            <DirectorPanel
+                open={directorOpen}
+                onClose={() => setDirectorOpen(false)}
+                ownCharacterId={character?.id ?? ''}
+                load={async () => {
+                    const [view, cast] = await Promise.all([
+                        api.chats.director.get(character?.id ?? '', selectedChatId ?? ''),
+                        api.chats.director.cast(character?.id ?? '', selectedChatId ?? ''),
+                    ]);
+                    return { director: view.director, cast: cast.cast, isGroup: cast.isGroup };
+                }}
+                save={(patch) => api.chats.director.save(character?.id ?? '', selectedChatId ?? '', patch)}
             />
 
             <MemoryDialog

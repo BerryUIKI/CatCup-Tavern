@@ -94,6 +94,36 @@ export function directorOf(metadata: Record<string, unknown> | null | undefined)
     return parsed.data.enabled ? parsed.data : null;
 }
 
+/**
+ * One member who can be played.
+ *
+ * `id` is the avatar file name, which is what a config stores; `name` is what
+ * the form shows and what the prompt uses.
+ */
+export interface DirectorCastMember {
+    id: string;
+    name: string;
+}
+
+export interface DirectorCast {
+    cast: DirectorCastMember[];
+    /** True for a group chat, where any member may be played. */
+    isGroup: boolean;
+}
+
+/** What `GET .../director` answers. */
+export interface DirectorView {
+    director: DirectorConfig;
+    /**
+     * Whether the director is actually on for this chat.
+     *
+     * Separate from `director.enabled` because a config can be present and
+     * disabled — the form keeps a person's rules while the director is off, and
+     * this is the one field a caller should branch on.
+     */
+    enabled: boolean;
+}
+
 // --- choices ---------------------------------------------------------------
 
 /**
