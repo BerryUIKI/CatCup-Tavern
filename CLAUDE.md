@@ -22,6 +22,7 @@ pnpm --filter @catcup/desktop build  # Windows installer (needs Rust)
 pnpm typecheck
 pnpm test
 pnpm lint
+pnpm site         # build the GitHub Pages landing page into site/dist
 ```
 
 The desktop shell is Rust. `cargo check` runs the Tauri build script, which copies the server bundle, the SPA and the Node sidecar into `target/`, so prepare those first:
@@ -65,7 +66,10 @@ apps/
 packages/shared/        Zod schemas, shared types, ST data models
 assets/brand/           brand masters and their generated icons (see assets/brand/README.md)
 docs/                   handbook (see docs/README.md)
-scripts/                repository tooling; `pnpm icons` rebuilds every icon from the brand masters
+scripts/                repository tooling; `pnpm icons` rebuilds every icon from the brand masters,
+                        `scripts/build-site.mjs` renders the landing page
+site/                   the public landing page: template, styles, `main.js`, nine locale decks in
+                        `content/`; published to `gh-pages` by `.github/workflows/pages.yml`
 .ref/                   SillyTavern / RisuAI reference checkouts (gitignored)
 data/                   runtime data (gitignored)
 ```

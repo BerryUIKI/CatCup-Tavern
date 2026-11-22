@@ -6,11 +6,31 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Added
 
+- **A public landing page, in nine languages.** `site/` is a static page published to `gh-pages` by
+  `.github/workflows/pages.yml`, with English at the root and `zh-CN`, `ja`, `ko`, `de`, `fr`, `es`,
+  `ru` and `pt-BR` beside it, each with its own `<html lang>`, title, description, canonical and
+  `hreflang` alternates. The page's one moving part is the product itself: a chat window built in HTML
+  and CSS from the real components' structure and the app's own tokens, which accepts what you type and
+  streams Mira's canned reply word by word, with Browser / LAN / Windows tabs that change only the
+  window chrome around it. `scripts/build-site.mjs` renders the decks in `site/content/`, writes
+  `sitemap.xml`, `robots.txt` and the assets, and fails when a locale is missing a key or leaves a
+  placeholder behind; it has no dependencies and no bundler. `scripts/preview-site.mjs` serves the
+  result on `:4173`, and `pnpm site` builds it. Every download button points at the installer asset
+  itself (`releases/download/v<version>/CatCup.Tavern_<version>_x64-setup.exe`, named by the Tauri
+  bundler and built from `package.json` at build time) rather than at the release page, and the install
+  section names the file it downloads beside a link to every release.
+
 - **Two more request protocols: OpenAI Responses and Gemini native.** The **Request protocol** list now has five entries instead of three. **OpenAI Responses** (`POST /responses`) is OpenAI's newer API, and it is not Chat Completions under another path: the body takes `input` rather than `messages`, the system text moves to `instructions`, streaming arrives as typed events (`response.output_text.delta`, `response.reasoning_summary_text.delta`) and the token limit is `max_output_tokens`. It is called statelessly — `store: false` — like every other adapter here, so the conversation stays in CatCup's chat log rather than on the provider's side. **Gemini native** speaks Google's own `models/{model}:streamGenerateContent` with `alt=sse`; the model is in the path, `assistant` turns become `model`, system turns become `systemInstruction`, and thinking parts (`part.thought`) arrive as reasoning. Its key goes in the `x-goog-api-key` header rather than a URL query, so it does not land in a proxy log. A **Google Gemini** service template joins the picker. See `docs/PROVIDERS.md`.
 
 - **The desktop window has its own title bar.** On Windows the native frame is gone and the window buttons are drawn by the app instead — fused rather than added as a strip: they float over the top-right corner of the library rail and the chat header, which reserve 32 px for them, so the brand stays where it already was and nothing gains a row. Dragging anywhere along the top strip moves the window, double-clicking it maximises, and the three buttons minimise, toggle maximise and close, with the glyph flipping to Restore while maximised. The window keeps its resize borders, Aero Snap and its rounded corners. Dragging and the buttons go through the Tauri window API from the page, not through the window procedure: WebView2 covers the client area and takes every mouse message itself, so a hit test over the bar never reaches it — measured, and the reason a subclassed `WM_NCHITTEST` implementation could neither drag the window nor press its buttons. **Hovering the maximise button does not raise the Windows 11 Snap Layout flyout**, because that needs a non-client `HTMAXBUTTON` hit the webview hides; `Win`+arrow and edge snapping still work. `tauri-plugin-decorum` was evaluated and rejected: its snap support simulates `Win+Z` rather than raising the native flyout. See `docs/DESKTOP.md#custom-title-bar`.
 
 ### Changed
+
+- The README leads with what the product is and the Windows download, before the install notes, and
+  merges its duplicated "why another tavern" and "compatibility" prose into one bullet list plus one
+  table; the desktop features that shipped in 0.3.1 are no longer marked **next**, the provider entry
+  names all five request protocols, and a License section states the AGPL position and points at
+  `NOTICE`.
 
 - `GET /api/auth/status` answers `desktop` and `titleBar`, so the page can tell the shell from a browser tab and draw the bar only where the frame was removed. The geometry is passed in from the shell as `CATCUP_TITLE_BAR_*` rather than duplicated in the SPA.
 
