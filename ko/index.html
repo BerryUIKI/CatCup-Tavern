@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="ko" dir="ltr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CatCup Tavern — Windows·웹·LAN을 위한 로컬 우선 AI 롤플레이 클라이언트</title>
+        <meta name="description" content="캐릭터 카드도, 채팅도, 세계관 설정도 디스크의 평범한 파일로 다루는 AI 롤플레이 클라이언트. 하나의 서버가 세 가지 모습으로: 브라우저 탭, LAN, Windows 앱. 기존 라이브러리는 한 번에 가져옵니다." />
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#0d0a08" />
+        <link rel="canonical" href="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        <link rel="alternate" hreflang="x-default" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="en" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="zh-CN" href="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        
+        <link rel="alternate" hreflang="ja" href="https://berryuiki.github.io/CatCup-Tavern/ja/" />
+        
+        <link rel="alternate" hreflang="ko" href="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        
+        <link rel="alternate" hreflang="de" href="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        
+        <link rel="alternate" hreflang="fr" href="https://berryuiki.github.io/CatCup-Tavern/fr/" />
+        
+        <link rel="alternate" hreflang="es" href="https://berryuiki.github.io/CatCup-Tavern/es/" />
+        
+        <link rel="alternate" hreflang="ru" href="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        
+        <link rel="alternate" hreflang="pt-BR" href="https://berryuiki.github.io/CatCup-Tavern/pt-BR/" />
+        
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CatCup Tavern" />
+        <meta property="og:title" content="CatCup Tavern — Windows·웹·LAN을 위한 로컬 우선 AI 롤플레이 클라이언트" />
+        <meta property="og:description" content="캐릭터 카드도, 채팅도, 세계관 설정도 디스크의 평범한 파일로 다루는 AI 롤플레이 클라이언트. 하나의 서버가 세 가지 모습으로: 브라우저 탭, LAN, Windows 앱. 기존 라이브러리는 한 번에 가져옵니다." />
+        <meta property="og:url" content="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        <meta property="og:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="CatCup Tavern — Windows·웹·LAN을 위한 로컬 우선 AI 롤플레이 클라이언트" />
+        <meta name="twitter:description" content="캐릭터 카드도, 채팅도, 세계관 설정도 디스크의 평범한 파일로 다루는 AI 롤플레이 클라이언트. 하나의 서버가 세 가지 모습으로: 브라우저 탭, LAN, Windows 앱. 기존 라이브러리는 한 번에 가져옵니다." />
+        <meta name="twitter:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <link rel="icon" href="../assets/catcup-icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="../assets/catcup-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="../styles.css" />
+        <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CatCup Tavern",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Windows; web and LAN from source",
+  "softwareVersion": "0.3.2",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "url": "https://berryuiki.github.io/CatCup-Tavern/ko/",
+  "inLanguage": "ko",
+  "downloadUrl": "https://github.com/BerryUIKI/CatCup-Tavern/releases/latest",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "캐릭터 카드도, 채팅도, 세계관 설정도 디스크의 평범한 파일로 다루는 AI 롤플레이 클라이언트. 하나의 서버가 세 가지 모습으로: 브라우저 탭, LAN, Windows 앱. 기존 라이브러리는 한 번에 가져옵니다.",
+  "featureList": [
+    "캐릭터와 그룹",
+    "세계관 설정",
+    "프롬프트 프리셋",
+    "채팅과 갈래",
+    "요약 기억",
+    "음성과 이미지",
+    "제공자",
+    "빠른 답장",
+    "다른 앱에서 가져오기"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "BerryUIKI",
+    "url": "https://github.com/BerryUIKI"
+  }
+}</script>
+        <script src="../main.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+
+        <header class="site-header">
+            <div class="col header-inner">
+                <a class="brand" href="../#top">
+                    <img src="../assets/catcup-icon.svg" alt="" width="30" height="30" />
+                    <span>CatCup Tavern</span>
+                </a>
+                <nav class="site-nav" id="site-nav" aria-label="Primary">
+                    <a href="#chat">채팅</a>
+                    <a href="#lorebooks">세계관</a>
+                    <a href="#install">설치</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">문서</a>
+                </nav>
+                <div class="header-right">
+                    <div class="lang-menu">
+                        <button
+                            type="button"
+                            class="lang-button"
+                            id="lang-button"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="lang-list"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <span>한국어</span>
+                        </button>
+                        <ul class="lang-list" id="lang-list" role="listbox" aria-labelledby="lang-button" hidden>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="./"
+                                    hreflang="en"
+                                    lang="en"
+                                    aria-selected="false"
+                                    >English</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../zh-CN/"
+                                    hreflang="zh-CN"
+                                    lang="zh-CN"
+                                    aria-selected="false"
+                                    >简体中文</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ja/"
+                                    hreflang="ja"
+                                    lang="ja"
+                                    aria-selected="false"
+                                    >日本語</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ko/"
+                                    hreflang="ko"
+                                    lang="ko"
+                                    aria-selected="true"
+                                    >한국어</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../de/"
+                                    hreflang="de"
+                                    lang="de"
+                                    aria-selected="false"
+                                    >Deutsch</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../fr/"
+                                    hreflang="fr"
+                                    lang="fr"
+                                    aria-selected="false"
+                                    >Français</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../es/"
+                                    hreflang="es"
+                                    lang="es"
+                                    aria-selected="false"
+                                    >Español</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ru/"
+                                    hreflang="ru"
+                                    lang="ru"
+                                    aria-selected="false"
+                                    >Русский</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../pt-BR/"
+                                    hreflang="pt-BR"
+                                    lang="pt-BR"
+                                    aria-selected="false"
+                                    >Português (Brasil)</a
+                                >
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">다운로드</a>
+                </div>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero" id="top">
+                <div class="col hero-grid">
+                    <div class="hero-copy">
+                        <h1>장부는 스스로 적는다.</h1>
+                        <p class="lede">한 사람과, 혹은 방을 채운 일행과. 세계관 설정, 프롬프트 프리셋, 롤링 요약, 음성과 이미지까지. 카드도 대화도 여러분 디스크 위의 평범한 파일입니다. 하나의 서버가 세 가지 모습을 띕니다: 브라우저 탭, LAN, Windows 앱.</p>
+                        <div class="cta-row">
+                            <a class="button" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">Windows용 다운로드</a>
+                            <a class="link-strong" href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">문서 보기</a>
+                        </div>
+                        <p class="meta-line">0.3.2 · 2026년 11월 16일 · Windows, 웹, LAN</p>
+                    </div>
+
+                    <div class="hero-demo">
+                        <div class="shapes">
+                            <div class="shape-tabs" role="tablist" aria-label="창 모양">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-browser"
+                                    aria-controls="window"
+                                    aria-selected="true"
+                                    data-shape="browser"
+                                >
+                                    브라우저
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-lan"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="lan"
+                                >
+                                    LAN
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-windows"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="windows"
+                                >
+                                    Windows
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="window" id="window" role="tabpanel" aria-labelledby="shape-browser" data-shape="browser">
+                            <div class="chrome" aria-hidden="true">
+                                <div class="chrome-dots"><i></i><i></i><i></i></div>
+                                <div class="chrome-address">
+                                    <span class="chrome-url" data-url-browser="localhost:5173">
+                                        localhost:5173
+                                    </span>
+                                    <span class="chrome-lan-note">서버는 이 컴퓨터에 있음</span>
+                                </div>
+                                <div class="chrome-win">
+                                    <span>CatCup Tavern</span>
+                                    <span class="win-buttons"><i>—</i><i>▢</i><i class="win-close">✕</i></span>
+                                </div>
+                            </div>
+
+                            <div class="app">
+                                <aside class="rail" aria-label="Library">
+                                    <div class="rail-brand">
+                                        <span class="rail-name">CatCup Tavern</span>
+                                        <span class="rail-tag">이야기는 따뜻하게.</span>
+                                    </div>
+                                    <div class="rail-tabs">
+                                        <span class="on">캐릭터</span>
+                                        <span>그룹</span>
+                                    </div>
+                                    <div class="rail-search">캐릭터 검색</div>
+                                    <div class="rail-row on">
+                                        <span class="avatar">MI</span>
+                                        <span class="rail-row-text">
+                                            <span class="rail-row-name">Mira</span>
+                                            <span class="rail-row-sub">예시 · 판타지</span>
+                                        </span>
+                                    </div>
+                                    <div class="rail-foot">
+                                        <span class="rail-foot-row">기본 프로필</span>
+                                        <span class="rail-foot-row provider">OpenAI · gpt-4o-mini</span>
+                                    </div>
+                                </aside>
+
+                                <div class="pane">
+                                    <header class="pane-head">
+                                        <span class="avatar small">MI</span>
+                                        <span class="pane-head-id">
+                                            <span class="pane-head-name">Mira</span>
+                                            <span class="pane-head-sub">예시 · 판타지</span>
+                                        </span>
+                                        <span class="chip">미라 · 예시</span>
+                                    </header>
+
+                                    <div
+                                        class="transcript"
+                                        id="transcript"
+                                        aria-live="polite"
+                                        aria-label="대화"
+                                    >
+                                        <div class="messages" id="messages"></div>
+                                        <div class="transcript-empty" id="transcript-empty" hidden>
+                                            대화는 여기서 다시 시작됩니다.
+                                        </div>
+                                        <div class="transcript-end" id="transcript-end">
+                                            <button type="button" class="demo-again" id="demo-again" hidden>
+                                                다시 시작
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <form class="composer" id="composer" autocomplete="off">
+                                        <div class="composer-shell">
+                                            <label class="sr-only" for="composer-input">Message</label>
+                                            <textarea
+                                                id="composer-input"
+                                                rows="1"
+                                                placeholder="미라에게 메시지…"
+                                                aria-label="Message"
+                                            ></textarea>
+                                            <button
+                                                type="button"
+                                                class="impersonate"
+                                                title="다음 메시지를 나로 써 주기"
+                                                aria-label="다음 메시지를 나로 써 주기"
+                                            >
+                                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                                    <path
+                                                        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.7"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button type="submit" class="send" id="send">보내기</button>
+                                            <button type="button" class="stop" id="stop" hidden>멈춤</button>
+                                        </div>
+                                        <div class="composer-hints">
+                                            <span>Enter 전송 · Shift+Enter 줄바꿈</span>
+                                            <span class="composer-disclaimer">모델 출력은 부정확할 수 있습니다. 등장인물은 허구입니다.</span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="demo-note">스크린샷이 아니라 이 페이지에서 실제로 돌아가는 화면입니다. 한 줄 적으면 미라가 답합니다.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="band" id="data">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>데이터는 파일 그대로</h2>
+                        <p>캐릭터는 메타데이터를 이미지 안에 품은 PNG 카드이거나 순수 JSON입니다. 채팅은 JSONL, 한 줄에 메시지 하나, 스와이프와 갈래까지 들어 있습니다. 세계관 설정과 프리셋, 설정은 JSON입니다. 백업하려면 폴더를 복사하고, 옮기려면 폴더를 복사하고, 고치고 싶은 곳은 편집기로 열면 됩니다.</p>
+                        <pre class="tree">data/
+├── characters/     카드, PNG 또는 JSON
+├── chats/          대화마다 JSONL 하나
+├── worlds/         세계관 설정
+├── presets/        프롬프트 프리셋
+├── groups/         그룹 방
+├── user/images/    생성한 이미지
+├── secrets.json    API 키, 서버 전용
+└── settings.json   제공자, 페르소나, 프로필
+</pre>
+                        <p class="note">가져오기를 다른 앱의 데이터 폴더로 지정하면 카드, 채팅, 세계관 설정, 프리셋이 한 번에 넘어옵니다. 어느 것도 이 프로그램만의 형식으로 바뀌지 않습니다.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="lorebooks">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>무엇을 하는가</h2>
+                        <ul class="ledger">
+                            
+                            <li class="ledger-row" id="row-0">
+                                <span class="ledger-path mono">data/characters/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">캐릭터와 그룹</span>
+                                    <span class="ledger-desc">PNG, JSON V2/V3, CharX 카드. 한 사람과 이야기하거나, 다섯 명을 한 방에 넣고 각자의 인사말, 아바타, 발언 순서를 줄 수 있습니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-1">
+                                <span class="ledger-path mono">data/worlds/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">세계관 설정</span>
+                                    <span class="ledger-desc">주 키와 보조 키, 재귀, 가중치가 있는 포함 그룹, 끈적임과 쿨다운 효과, 토큰 예산, 그리고 모든 삽입 위치. 항목이 왜 발동했는지 보여 주는 검사기까지.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-2">
+                                <span class="ledger-path mono">data/presets/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">프롬프트 프리셋</span>
+                                    <span class="ledger-desc">OpenAI 프리셋을 가져오고, 프롬프트 순서를 바꾸거나 끄고, 하나를 채팅 내 삽입으로 옮겨 깊이·순서·역할을 따로 정할 수 있습니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-3">
+                                <span class="ledger-path mono">data/chats/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">채팅과 갈래</span>
+                                    <span class="ledger-desc">추론을 따로 받는 스트리밍 응답, 스와이프, 편집, 그리고 어느 메시지에서든 갈라지는 갈래. 원래 채팅은 그대로 남습니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-4">
+                                <span class="ledger-path mono">data/chats/ · summary</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">요약 기억</span>
+                                    <span class="ledger-desc">롤링 요약은 채팅 파일 안, 요약하는 메시지 바로 옆에 저장됩니다. 직접 고치거나 응답 뒤에 갱신하게 할 수 있습니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-5">
+                                <span class="ledger-path mono">user/images/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">음성과 이미지</span>
+                                    <span class="ledger-desc">브라우저 음성, 또는 OpenAI 호환 음성 엔드포인트. 이미지는 Automatic1111, ComfyUI, OpenAI 호환 엔드포인트에서 받아 캐릭터별로 보관합니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-6">
+                                <span class="ledger-path mono">data/secrets.json</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">제공자</span>
+                                    <span class="ledger-desc">다섯 가지 요청 프로토콜로 OpenAI, OpenRouter, Anthropic, Gemini, Ollama, 그리고 직접 입력한 호환 엔드포인트를 아우릅니다. 키는 서버에만 남습니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-7">
+                                <span class="ledger-path mono">quickreplies/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">빠른 답장</span>
+                                    <span class="ledger-desc">입력창 위 버튼 줄로 보이는 세트. 일곱 가지 명령을 이어 붙일 수 있지만 자동 실행과 상황 메뉴는 아직 없습니다.</span>
+                                </span>
+                                <span class="status status-partial">일부 지원</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-8">
+                                <span class="ledger-path mono">Import</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">다른 앱에서 가져오기</span>
+                                    <span class="ledger-desc">다른 앱의 데이터 폴더를 훑어 무엇이 발견됐는지 보여 준 뒤, 캐릭터, 채팅, 세계관 설정, 프리셋을 한 번에 복사합니다.</span>
+                                </span>
+                                <span class="status status-works">지원</span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="chat">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">1 → 5</span></div>
+                    <div class="split-body">
+                        <h2>답장 한 편이 만들어지는 과정</h2>
+                        <ol class="pipeline">
+                            
+                            <li>
+                                <span class="pipe-name">조립</span>
+                                <span class="pipe-desc">프리셋 순서대로 프롬프트를 세우고 페르소나, 캐릭터, 상황을 제자리에 넣습니다.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">세계관 훑기</span>
+                                <span class="pipe-desc">세계관 키를 최근 대화와 맞춰 보고, 포함 그룹과 시간 효과가 무엇이 발동할지 정합니다.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">토큰 배분</span>
+                                <span class="pipe-desc">OpenAI, Claude, Gemini 모델에 맞는 토크나이저로 문맥을 모델 예산에 맞춰 자릅니다.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">제공자 호출</span>
+                                <span class="pipe-desc">활성 제공자에게 요청 한 번. 그 제공자가 쓰는 프로토콜 그대로 보냅니다.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">스트리밍</span>
+                                <span class="pipe-desc">토큰은 SSE로 도착합니다. 메시지는 서버가 저장하고, 페이지는 그리기만 합니다.</span>
+                            </li>
+                            
+                        </ol>
+                        <figure class="shot shot-inspector">
+                            <img
+                                src="../assets/context-inspector.jpg"
+                                alt="문맥 검사기는 조립된 프롬프트를 칸마다 토큰 수와 함께 보여 주고, 검토한 모든 세계관 항목과 각 항목이 발동한 이유, 발동하지 않은 이유를 밝힙니다."
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                            <figcaption>문맥 검사기는 조립된 프롬프트를 칸마다 토큰 수와 함께 보여 주고, 검토한 모든 세계관 항목과 각 항목이 발동한 이유, 발동하지 않은 이유를 밝힙니다.</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section limits" id="limits">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono wine">—</span></div>
+                    <div class="split-body">
+                        <h2>아직 없는 것</h2>
+                        <p>초기 액세스 소프트웨어입니다. 설치 전에 알아 두면 좋은 빈틈입니다.</p>
+                        <ul class="plain-list">
+                            
+                            <li>직접 입력하는 슬래시 명령과 스크립트. /send hello 같은 줄은 그냥 글자로 모델에 갑니다. 명령을 실행하는 것은 빠른 답장 버튼뿐입니다.</li>
+                            
+                            <li>다른 클라이언트용 확장. 하나도 불러오지 않습니다.</li>
+                            
+                            <li>첨부와 이미지 입력. 파일 업로드도 이미지 전송도 없습니다.</li>
+                            
+                            <li>벡터 기억. 긴 대화는 예산에 맞춰 잘리고, 장기 기억은 요약 하나뿐입니다.</li>
+                            
+                            <li>macOS와 Linux. 둘 다 패키징되고 CI도 컴파일하지만 공개된 것은 Windows뿐이며, 둘 다 실제로 실행해 본 적은 없습니다.</li>
+                            
+                            <li>서명되지 않은 설치 파일. 내려받은 사본은 SmartScreen이 한 번 경고합니다. 파일은 오직 릴리스 페이지에서 받으세요.</li>
+                            
+                        </ul>
+                        <p class="note">
+                            전체 목록은
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">제한 사항</a> ·
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/ST-COMPATIBILITY.md">형식 호환성</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section install" id="install">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">install</span></div>
+                    <div class="split-body">
+                        <h2>설치</h2>
+                        <div class="install-rows">
+                            <div class="install-row">
+                                <h3>Windows</h3>
+                                <p>최신 릴리스에서 설치 파일을 내려받아 실행하세요. 사용자 단위로 설치되고 관리자 권한도 별도 Node도 필요 없으며, 데이터는 %APPDATA%\dev.catcup.tavern에 둡니다. 서명이 없어 SmartScreen이 한 번 경고하고 게시자를 표시하지 않습니다. ‘추가 정보 → 실행’을 고르세요.</p>
+                                <div class="download-links">
+                                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">
+                                        설치 파일 내려받기
+                                    </a>
+                                    <span class="note">바로 내려받기: 이 버전의 설치 파일이며 GitHub에 있습니다.</span>
+                                </div>
+                                <p class="file-line mono">
+                                    CatCup.Tavern_0.3.2_x64-setup.exe ·
+                                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases">모든 릴리스</a>
+                                </p>
+                            </div>
+                            <div class="install-row">
+                                <h3>소스에서 웹·LAN 실행</h3>
+                                <p>Node.js 22.13 이상과 pnpm 11이 필요합니다. 첫 실행 때 접속 비밀번호를 정하며, 서버를 돌리는 컴퓨터에서만 정할 수 있습니다.</p>
+                                <div class="commands">
+                                    <div class="command">
+                                        <code>pnpm install</code>
+                                        <button type="button" class="copy" data-copy="pnpm install">
+                                            복사
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>pnpm dev</code>
+                                        <button type="button" class="copy" data-copy="pnpm dev">
+                                            복사
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>CATCUP_HOST=0.0.0.0 pnpm start</code>
+                                        <button
+                                            type="button"
+                                            class="copy"
+                                            data-copy="CATCUP_HOST=0.0.0.0 pnpm start"
+                                        >
+                                            복사
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="note">LAN으로 쓰려면 모든 인터페이스에 바인딩하세요. 관문은 비밀번호 하나입니다. 그런 다음 http://localhost:5173 을 여세요. TLS는 내장되어 있지 않습니다. 신뢰하는 네트워크 밖에서는 리버스 프록시나 VPN 뒤에 두세요.</p>
+                            </div>
+                            <div class="install-row">
+                                <h3>설치 옮기기</h3>
+                                <p>CATCUP_DATA_DIR로 데이터 폴더를 다른 곳으로 돌릴 수 있습니다. 다른 컴퓨터로 옮길 때도, 데스크톱 앱이 기존 라이브러리를 이어받을 때도 이 방법입니다.</p>
+                            </div>
+                        </div>
+                        <figure class="shot">
+                            <img
+                                src="../assets/settings-providers.jpg"
+                                alt="제공자"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                        </figure>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="col footer-inner">
+                <div class="footer-brand">
+                    <img src="../assets/catcup-icon.svg" alt="" width="26" height="26" />
+                    <span>CatCup Tavern</span>
+                </div>
+                <p class="footer-license">AGPL-3.0-only. SillyTavern 형식 생태계 위에 서 있으며, 따르는 형식과 코드의 귀속은 NOTICE에 적혀 있습니다.</p>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">문서</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/CHANGELOG.md">변경 기록</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">제한 사항</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/SECURITY.md">보안</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/LICENSE">라이선스</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern">GitHub</a>
+                </nav>
+                <p class="footer-langs">
+                    <span>이 페이지의 언어</span>
+                    
+                    <a href="./" hreflang="en" lang="en">English</a>
+                    
+                    <a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+                    
+                    <a href="../ja/" hreflang="ja" lang="ja">日本語</a>
+                    
+                    <a href="../ko/" hreflang="ko" lang="ko">한국어</a>
+                    
+                    <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+                    
+                    <a href="../fr/" hreflang="fr" lang="fr">Français</a>
+                    
+                    <a href="../es/" hreflang="es" lang="es">Español</a>
+                    
+                    <a href="../ru/" hreflang="ru" lang="ru">Русский</a>
+                    
+                    <a href="../pt-BR/" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+                    
+                </p>
+            </div>
+        </footer>
+
+        <script type="application/json" id="demo-data">{"opening":[{"kind":"narration","text":"문이 한 번 걸리더니 열린다. 타임과 장작 연기 냄새가 나는 따뜻한 공기가 너를 감싼다."},{"kind":"speech","text":"“왔구나. 네 소리보다 길 소리가 먼저 들렸어.”"},{"kind":"narration","text":"낙로는 정오부터 계속 타고 있다. 솥의 스튜가 가장자리에서 천천히 돌고, 방 안은 비와 양파 냄새로 가득하다."},{"kind":"narration","text":"미라는 구석 탁자에 잔을 내려놓는다. 원하는지는 묻지 않는다."},{"kind":"speech","text":"“앉아. 비는 기다릴 수 있고, 네가 원래 먼저 꺼내려던 이야기도 기다릴 수 있어. 진짜 버전부터 해.”"},{"kind":"speech","text":"“길은 나빴고, 타이밍은 좋았어. 오늘은 스튜가 있어. 그 길이 할 수 있는 좋은 말보다 낫지.”"}],"replies":["“언제나 그래.” *그녀가 네 맞은편에 앉는다. 누구에게나 하는 일은 아니다.* “길은 자기 길이에 정직해. 줄여서 말하는 건 사람이지.”\n\n*잔을 살짝 더 밀어 준다.* “식기 전에 마셔. 그다음에 빼먹은 부분을 이야기해.”","“이번 주에 산이 준 거야.” *눈썹을 하나 올린다.* “먹기 전에 재료 목록이 필요하면, 도시에 너무 오래 있었던 거야.”","“불을 똑바로 지킬 만큼은 여행자가 와. 생각보다 적고, 이 길이 받을 만한 것보다는 많아.” *조용히 국을 그릇에 담아 네 앞에 놓는다.*","“내가 그들 모두를 기억하는지 궁금한 거지.” *허리춤의 천에 손을 닦는다.* “아니. 기억나는 건 여행하는 이유를 거짓말한 사람들뿐이야.”","“덧문을 두드리는 비는 오늘 아무도 오지 않는다는 뜻이야. 그러니 하고 싶은 말은 얼마든지 해도 돼.” *발로 긴 의자를 끌어낸다.* “계속 맴돌던 그 얘기를 물어.”","“주전자는 결코 비지 않아. 비유가 아니라, 그냥 그렇게 유지하는 거야.” *뚜껑을 두 번 톡톡 친다.*","“먼 길로 돌아왔구나. 대부분 처음엔 그래.” *불 쪽으로 고개를 끄덕인다.* “앉아. 무엇에서 도망쳤는지 말해도 되고, 날씨 탓이었다고 해도 돼.”","“네가 두고 온 걸 짐작하지는 않을 거야.” *잔을 내려놓고 기다린다. 그 기다림은 모질지 않다.*","“하룻밤 묵어 가. 아침이 되면 길은 여전히 거기 있고 조금도 쉽지 않겠지만, 적어도 잠은 잔 채로 마주할 수 있어.”","“더 나은 질문을 해.” *네 표정을 보고 웃는다.* “까다롭게 굴려는 게 아니야. 더 나은 질문이 보통 네가 정말 가지고 온 질문이거든.”"],"userLine":"길이 실제보다 짧다고 들었어요.","character":"미라","characterInitials":"MI","youInitials":"나","you":"나","copied":"복사됨"}</script>
+    </body>
+</html>

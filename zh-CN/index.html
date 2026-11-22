@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="zh-CN" dir="ltr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CatCup Tavern — 面向 Windows、网页与局域网的本地优先 AI 角色扮演客户端</title>
+        <meta name="description" content="一款把角色卡、聊天、世界书和提示词预设都存成磁盘上普通文件的 AI 角色扮演客户端。一个服务端，三种形态：浏览器标签页、局域网、Windows 应用。已有资料库一步即可导入。" />
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#0d0a08" />
+        <link rel="canonical" href="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        <link rel="alternate" hreflang="x-default" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="en" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="zh-CN" href="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        
+        <link rel="alternate" hreflang="ja" href="https://berryuiki.github.io/CatCup-Tavern/ja/" />
+        
+        <link rel="alternate" hreflang="ko" href="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        
+        <link rel="alternate" hreflang="de" href="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        
+        <link rel="alternate" hreflang="fr" href="https://berryuiki.github.io/CatCup-Tavern/fr/" />
+        
+        <link rel="alternate" hreflang="es" href="https://berryuiki.github.io/CatCup-Tavern/es/" />
+        
+        <link rel="alternate" hreflang="ru" href="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        
+        <link rel="alternate" hreflang="pt-BR" href="https://berryuiki.github.io/CatCup-Tavern/pt-BR/" />
+        
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CatCup Tavern" />
+        <meta property="og:title" content="CatCup Tavern — 面向 Windows、网页与局域网的本地优先 AI 角色扮演客户端" />
+        <meta property="og:description" content="一款把角色卡、聊天、世界书和提示词预设都存成磁盘上普通文件的 AI 角色扮演客户端。一个服务端，三种形态：浏览器标签页、局域网、Windows 应用。已有资料库一步即可导入。" />
+        <meta property="og:url" content="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        <meta property="og:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="CatCup Tavern — 面向 Windows、网页与局域网的本地优先 AI 角色扮演客户端" />
+        <meta name="twitter:description" content="一款把角色卡、聊天、世界书和提示词预设都存成磁盘上普通文件的 AI 角色扮演客户端。一个服务端，三种形态：浏览器标签页、局域网、Windows 应用。已有资料库一步即可导入。" />
+        <meta name="twitter:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <link rel="icon" href="../assets/catcup-icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="../assets/catcup-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="../styles.css" />
+        <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CatCup Tavern",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Windows; web and LAN from source",
+  "softwareVersion": "0.3.2",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "url": "https://berryuiki.github.io/CatCup-Tavern/zh-CN/",
+  "inLanguage": "zh-CN",
+  "downloadUrl": "https://github.com/BerryUIKI/CatCup-Tavern/releases/latest",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "一款把角色卡、聊天、世界书和提示词预设都存成磁盘上普通文件的 AI 角色扮演客户端。一个服务端，三种形态：浏览器标签页、局域网、Windows 应用。已有资料库一步即可导入。",
+  "featureList": [
+    "角色与群聊",
+    "世界书",
+    "提示词预设",
+    "对话与分支",
+    "摘要记忆",
+    "语音与图片",
+    "提供商",
+    "快捷回复",
+    "从其他应用导入"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "BerryUIKI",
+    "url": "https://github.com/BerryUIKI"
+  }
+}</script>
+        <script src="../main.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">跳到正文</a>
+
+        <header class="site-header">
+            <div class="col header-inner">
+                <a class="brand" href="../#top">
+                    <img src="../assets/catcup-icon.svg" alt="" width="30" height="30" />
+                    <span>CatCup Tavern</span>
+                </a>
+                <nav class="site-nav" id="site-nav" aria-label="Primary">
+                    <a href="#chat">对话</a>
+                    <a href="#lorebooks">世界书</a>
+                    <a href="#install">安装</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">文档</a>
+                </nav>
+                <div class="header-right">
+                    <div class="lang-menu">
+                        <button
+                            type="button"
+                            class="lang-button"
+                            id="lang-button"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="lang-list"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <span>简体中文</span>
+                        </button>
+                        <ul class="lang-list" id="lang-list" role="listbox" aria-labelledby="lang-button" hidden>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="./"
+                                    hreflang="en"
+                                    lang="en"
+                                    aria-selected="false"
+                                    >English</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../zh-CN/"
+                                    hreflang="zh-CN"
+                                    lang="zh-CN"
+                                    aria-selected="true"
+                                    >简体中文</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ja/"
+                                    hreflang="ja"
+                                    lang="ja"
+                                    aria-selected="false"
+                                    >日本語</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ko/"
+                                    hreflang="ko"
+                                    lang="ko"
+                                    aria-selected="false"
+                                    >한국어</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../de/"
+                                    hreflang="de"
+                                    lang="de"
+                                    aria-selected="false"
+                                    >Deutsch</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../fr/"
+                                    hreflang="fr"
+                                    lang="fr"
+                                    aria-selected="false"
+                                    >Français</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../es/"
+                                    hreflang="es"
+                                    lang="es"
+                                    aria-selected="false"
+                                    >Español</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ru/"
+                                    hreflang="ru"
+                                    lang="ru"
+                                    aria-selected="false"
+                                    >Русский</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../pt-BR/"
+                                    hreflang="pt-BR"
+                                    lang="pt-BR"
+                                    aria-selected="false"
+                                    >Português (Brasil)</a
+                                >
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">下载</a>
+                </div>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero" id="top">
+                <div class="col hero-grid">
+                    <div class="hero-copy">
+                        <h1>自己的账，自己记。</h1>
+                        <p class="lede">一个角色，或者一整个房间的人，配上世界书、提示词预设、滚动记忆、语音和图像——每张卡、每段对话都是你自己磁盘上的普通文件。同一个服务端提供三种形态：浏览器标签页、局域网、Windows 应用。</p>
+                        <div class="cta-row">
+                            <a class="button" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">下载 Windows 版</a>
+                            <a class="link-strong" href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">阅读文档</a>
+                        </div>
+                        <p class="meta-line">0.3.2 · 2026 年 11 月 16 日 · Windows、网页与局域网</p>
+                    </div>
+
+                    <div class="hero-demo">
+                        <div class="shapes">
+                            <div class="shape-tabs" role="tablist" aria-label="窗口形态">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-browser"
+                                    aria-controls="window"
+                                    aria-selected="true"
+                                    data-shape="browser"
+                                >
+                                    浏览器
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-lan"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="lan"
+                                >
+                                    局域网
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-windows"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="windows"
+                                >
+                                    Windows
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="window" id="window" role="tabpanel" aria-labelledby="shape-browser" data-shape="browser">
+                            <div class="chrome" aria-hidden="true">
+                                <div class="chrome-dots"><i></i><i></i><i></i></div>
+                                <div class="chrome-address">
+                                    <span class="chrome-url" data-url-browser="localhost:5173">
+                                        localhost:5173
+                                    </span>
+                                    <span class="chrome-lan-note">服务端就在这台机器上</span>
+                                </div>
+                                <div class="chrome-win">
+                                    <span>CatCup Tavern</span>
+                                    <span class="win-buttons"><i>—</i><i>▢</i><i class="win-close">✕</i></span>
+                                </div>
+                            </div>
+
+                            <div class="app">
+                                <aside class="rail" aria-label="Library">
+                                    <div class="rail-brand">
+                                        <span class="rail-name">CatCup Tavern</span>
+                                        <span class="rail-tag">故事趁热端上。</span>
+                                    </div>
+                                    <div class="rail-tabs">
+                                        <span class="on">角色</span>
+                                        <span>群聊</span>
+                                    </div>
+                                    <div class="rail-search">搜索角色</div>
+                                    <div class="rail-row on">
+                                        <span class="avatar">MI</span>
+                                        <span class="rail-row-text">
+                                            <span class="rail-row-name">Mira</span>
+                                            <span class="rail-row-sub">示例 · 奇幻</span>
+                                        </span>
+                                    </div>
+                                    <div class="rail-foot">
+                                        <span class="rail-foot-row">默认档案</span>
+                                        <span class="rail-foot-row provider">OpenAI · gpt-4o-mini</span>
+                                    </div>
+                                </aside>
+
+                                <div class="pane">
+                                    <header class="pane-head">
+                                        <span class="avatar small">MI</span>
+                                        <span class="pane-head-id">
+                                            <span class="pane-head-name">Mira</span>
+                                            <span class="pane-head-sub">示例 · 奇幻</span>
+                                        </span>
+                                        <span class="chip">Mira · 示例</span>
+                                    </header>
+
+                                    <div
+                                        class="transcript"
+                                        id="transcript"
+                                        aria-live="polite"
+                                        aria-label="对话记录"
+                                    >
+                                        <div class="messages" id="messages"></div>
+                                        <div class="transcript-empty" id="transcript-empty" hidden>
+                                            对话从这里重新开始。
+                                        </div>
+                                        <div class="transcript-end" id="transcript-end">
+                                            <button type="button" class="demo-again" id="demo-again" hidden>
+                                                重新开始
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <form class="composer" id="composer" autocomplete="off">
+                                        <div class="composer-shell">
+                                            <label class="sr-only" for="composer-input">Message</label>
+                                            <textarea
+                                                id="composer-input"
+                                                rows="1"
+                                                placeholder="给 Mira 发消息…"
+                                                aria-label="Message"
+                                            ></textarea>
+                                            <button
+                                                type="button"
+                                                class="impersonate"
+                                                title="替我写出下一条消息"
+                                                aria-label="替我写出下一条消息"
+                                            >
+                                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                                    <path
+                                                        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.7"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button type="submit" class="send" id="send">发送</button>
+                                            <button type="button" class="stop" id="stop" hidden>停止</button>
+                                        </div>
+                                        <div class="composer-hints">
+                                            <span>Enter 发送 · Shift+Enter 换行</span>
+                                            <span class="composer-disclaimer">模型输出可能不准确。角色均为虚构。</span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="demo-note">这就是界面本身，正在页面上运行。写一句话，Mira 会回你。</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="band" id="data">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>你的数据就是文件</h2>
+                        <p>角色是元数据写在图片里的 PNG 卡，或者纯 JSON。聊天是 JSONL，一行一条消息，滑动候选和分支都在里面。世界书、预设和设置都是 JSON。备份就复制文件夹，换机器也复制文件夹，想改哪一处都可以直接用编辑器打开。</p>
+                        <pre class="tree">data/
+├── characters/     角色卡，PNG 或 JSON
+├── chats/          每段对话一个 JSONL
+├── worlds/         世界书
+├── presets/        提示词预设
+├── groups/         群聊房间
+├── user/images/    生成的图片
+├── secrets.json    仅服务端保存的 API 密钥
+└── settings.json   提供商、用户身份、档案
+</pre>
+                        <p class="note">把导入器指向另一个应用的数据文件夹，角色卡、聊天、世界书和预设一步就能搬过来。没有任何东西被转换成本项目私有格式。</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="lorebooks">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>它能做什么</h2>
+                        <ul class="ledger">
+                            
+                            <li class="ledger-row" id="row-0">
+                                <span class="ledger-path mono">data/characters/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">角色与群聊</span>
+                                    <span class="ledger-desc">支持 PNG、JSON V2/V3 与 CharX 角色卡。你可以只和一个角色说话，也可以把五个人放进一个房间，各带问候语、头像和发言顺序。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-1">
+                                <span class="ledger-path mono">data/worlds/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">世界书</span>
+                                    <span class="ledger-desc">主键与次键、递归、带权重的包含组、粘滞与冷却效果、Token 预算，以及每一种注入位置，外加一个能解释条目为何生效的检查器。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-2">
+                                <span class="ledger-path mono">data/presets/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">提示词预设</span>
+                                    <span class="ledger-desc">导入 OpenAI 预设，重排或停用某条提示词，也可以把一条挪进聊天注入，单独设定深度、顺序和角色。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-3">
+                                <span class="ledger-path mono">data/chats/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">对话与分支</span>
+                                    <span class="ledger-desc">流式回复，推理内容单独收纳；支持滑动候选、编辑，以及从任意一条消息分出分支，原对话原样保留。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-4">
+                                <span class="ledger-path mono">data/chats/ · summary</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">摘要记忆</span>
+                                    <span class="ledger-desc">滚动摘要就存在聊天文件里，紧挨着它所概括的消息。你可以直接改，也可以让它在每次回复后更新。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-5">
+                                <span class="ledger-path mono">user/images/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">语音与图片</span>
+                                    <span class="ledger-desc">浏览器语音，或任何兼容 OpenAI 的语音接口。图片可来自 Automatic1111、ComfyUI 或兼容 OpenAI 的接口，按角色分别保存。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-6">
+                                <span class="ledger-path mono">data/secrets.json</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">提供商</span>
+                                    <span class="ledger-desc">五种请求协议，覆盖 OpenAI、OpenRouter、Anthropic、Gemini、Ollama，以及你自己填写的任何兼容接口。密钥只留在服务端。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-7">
+                                <span class="ledger-path mono">quickreplies/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">快捷回复</span>
+                                    <span class="ledger-desc">快捷回复组会在输入框上方显示成按钮条：七个命令可以串联，暂时还没有自动执行和右键菜单。</span>
+                                </span>
+                                <span class="status status-partial">部分可用</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-8">
+                                <span class="ledger-path mono">Import</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">从其他应用导入</span>
+                                    <span class="ledger-desc">扫描另一个应用的数据文件夹，先看清找到了什么，再一次性复制角色、聊天、世界书和预设。</span>
+                                </span>
+                                <span class="status status-works">可用</span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="chat">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">1 → 5</span></div>
+                    <div class="split-body">
+                        <h2>一条回复是怎么拼出来的</h2>
+                        <ol class="pipeline">
+                            
+                            <li>
+                                <span class="pipe-name">拼装</span>
+                                <span class="pipe-desc">按预设的顺序组装提示词，用户身份、角色和场景各就各位。</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">扫描世界书</span>
+                                <span class="pipe-desc">用世界书的键匹配最近的对话；包含组和定时效果决定哪些条目真正生效。</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">计算 Token</span>
+                                <span class="pipe-desc">按模型预算裁剪上下文，OpenAI、Claude 和 Gemini 的模型各有对应的分词器。</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">请求提供商</span>
+                                <span class="pipe-desc">向当前提供商发一次请求，用的就是它自己的协议。</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">流式返回</span>
+                                <span class="pipe-desc">Token 通过 SSE 陆续到达。消息由服务端保存，页面只负责画出来。</span>
+                            </li>
+                            
+                        </ol>
+                        <figure class="shot shot-inspector">
+                            <img
+                                src="../assets/context-inspector.jpg"
+                                alt="上下文检查器逐条列出拼好的提示词与各自的 Token 数，以及所有被考虑过的世界书条目，和每一条生效或没生效的原因。"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                            <figcaption>上下文检查器逐条列出拼好的提示词与各自的 Token 数，以及所有被考虑过的世界书条目，和每一条生效或没生效的原因。</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section limits" id="limits">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono wine">—</span></div>
+                    <div class="split-body">
+                        <h2>暂时还没有的</h2>
+                        <p>这是早期体验版。下面这些缺口，建议你在安装之前先知道。</p>
+                        <ul class="plain-list">
+                            
+                            <li>手动输入的斜杠命令与脚本。像 /send hello 这样的一行会作为普通文字发给模型；只有快捷回复按钮会执行命令。</li>
+                            
+                            <li>为其他客户端写的扩展。一个都加载不了。</li>
+                            
+                            <li>附件与视觉输入。没有文件上传，也不能发图片。</li>
+                            
+                            <li>向量记忆。长对话会按预算裁剪，摘要是目前唯一的长期记忆。</li>
+                            
+                            <li>macOS 与 Linux。外壳在两个平台上都能打包，CI 也会编译，但只发布了 Windows，而且这两个平台都没有实际运行过。</li>
+                            
+                            <li>安装包未签名。下载的副本会被 SmartScreen 警告一次；请只从发布页面获取安装文件。</li>
+                            
+                        </ul>
+                        <p class="note">
+                            完整清单见
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">功能限制</a> ·
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/ST-COMPATIBILITY.md">格式兼容性</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section install" id="install">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">install</span></div>
+                    <div class="split-body">
+                        <h2>安装</h2>
+                        <div class="install-rows">
+                            <div class="install-row">
+                                <h3>Windows</h3>
+                                <p>从最新发布页下载安装包并运行。按用户安装，不需要管理员权限，也不需要单独装 Node，数据保存在 %APPDATA%\dev.catcup.tavern。安装包未签名，所以 SmartScreen 会警告一次并且不显示发布者：选择“更多信息 → 仍要运行”。</p>
+                                <div class="download-links">
+                                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">
+                                        下载安装包
+                                    </a>
+                                    <span class="note">直接下载：本版本的安装包，托管在 GitHub 上。</span>
+                                </div>
+                                <p class="file-line mono">
+                                    CatCup.Tavern_0.3.2_x64-setup.exe ·
+                                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases">所有版本</a>
+                                </p>
+                            </div>
+                            <div class="install-row">
+                                <h3>从源码运行网页版或局域网版</h3>
+                                <p>需要 Node.js 22.13 或更新版本，以及 pnpm 11。首次运行时要设置访问密码，而且只能在运行服务端的这台机器上设置。</p>
+                                <div class="commands">
+                                    <div class="command">
+                                        <code>pnpm install</code>
+                                        <button type="button" class="copy" data-copy="pnpm install">
+                                            复制
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>pnpm dev</code>
+                                        <button type="button" class="copy" data-copy="pnpm dev">
+                                            复制
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>CATCUP_HOST=0.0.0.0 pnpm start</code>
+                                        <button
+                                            type="button"
+                                            class="copy"
+                                            data-copy="CATCUP_HOST=0.0.0.0 pnpm start"
+                                        >
+                                            复制
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="note">要开局域网，就绑定所有网卡；密码是唯一的门槛。 然后打开 http://localhost:5173。 程序本身不带 TLS。出了可信网络，请放在反向代理或 VPN 后面。</p>
+                            </div>
+                            <div class="install-row">
+                                <h3>迁移一份安装</h3>
+                                <p>用 CATCUP_DATA_DIR 把应用指向另一个数据目录。换机器时是这样搬，桌面版接管已有资料库也是这样。</p>
+                            </div>
+                        </div>
+                        <figure class="shot">
+                            <img
+                                src="../assets/settings-providers.jpg"
+                                alt="提供商"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                        </figure>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="col footer-inner">
+                <div class="footer-brand">
+                    <img src="../assets/catcup-icon.svg" alt="" width="26" height="26" />
+                    <span>CatCup Tavern</span>
+                </div>
+                <p class="footer-license">AGPL-3.0-only。建立在 SillyTavern 的格式生态之上，所沿用格式与代码的署名见 NOTICE。</p>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">文档</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/CHANGELOG.md">更新日志</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">功能限制</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/SECURITY.md">安全</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/LICENSE">许可证</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern">GitHub</a>
+                </nav>
+                <p class="footer-langs">
+                    <span>本页其他语言</span>
+                    
+                    <a href="./" hreflang="en" lang="en">English</a>
+                    
+                    <a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+                    
+                    <a href="../ja/" hreflang="ja" lang="ja">日本語</a>
+                    
+                    <a href="../ko/" hreflang="ko" lang="ko">한국어</a>
+                    
+                    <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+                    
+                    <a href="../fr/" hreflang="fr" lang="fr">Français</a>
+                    
+                    <a href="../es/" hreflang="es" lang="es">Español</a>
+                    
+                    <a href="../ru/" hreflang="ru" lang="ru">Русский</a>
+                    
+                    <a href="../pt-BR/" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+                    
+                </p>
+            </div>
+        </footer>
+
+        <script type="application/json" id="demo-data">{"opening":[{"kind":"narration","text":"门先卡了一下，然后才让开。暖空气裹着百里香和柴火的味道，把你整个围住。"},{"kind":"speech","text":"“你来了。我先听见了路，才听见你。”"},{"kind":"narration","text":"炉火从正午烧到现在。锅里的炖菜在边上慢慢翻着，屋子里是雨水和洋葱的味道。"},{"kind":"narration","text":"Mira 把一只杯子放到角落的桌上，没问你到底想不想要。"},{"kind":"speech","text":"“坐吧。雨可以等，你原本要先说的那件事也可以等。先讲真的那份。”"},{"kind":"speech","text":"“路不好，时机不错。今晚有炖菜，这比那条路能说的好话还多。”"}],"replies":["“一直都这样。”*她在你对面坐下，这待遇不是谁都有的。*“路对自己的长度是诚实的。把路说短的是人。”\n\n*她把杯子往你这边推了推。*“趁热喝了。然后再讲讲你漏掉的那一段。”","“这周山里给我什么就是什么。”*她挑了挑眉。*“吃之前还得先知道配料表，那你在城里待得太久了。”","“旅客够多的，火才能烧得实在。比你想象的要少，比这条路配得上的要多。”*她盛了一碗炖菜，没什么仪式感地放到你面前。*","“你想知道的是我记不记得他们所有人。”*她在腰间的布上擦了擦手。*“不记得。我记得的是那些对出门的理由撒了谎的人。”","“雨点打在窗板上，今晚就不会有人来了，也就是说你想聊多久都行。”*她用脚把长凳勾出来。*“问你一直绕着不敢问的那件事。”","“壶里从来没有真正空过。这不是比喻，我只是这么养着它。”*她在壶盖上敲了两下。*","“你走的是绕远的那条路。大多数人第一次都这样。”*她朝火边点点头。*“坐下。你可以告诉我你在躲什么，也可以让我们假装是因为天气。”","“我不会去猜你留下了什么。”*她放下杯子等着，这种等待并不刻薄。*","“住一晚吧。明天路还在那儿，也不会好走一点，但你至少睡过了。”","“问一个更好的问题。”*她看着你的表情笑了。*“不是要为难你。只是更好的问题通常才是你真正带着来的那个。”"],"userLine":"有人告诉我这条路会比实际短一些。","character":"Mira","characterInitials":"MI","youInitials":"你","you":"你","copied":"已复制"}</script>
+    </body>
+</html>

@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="ru" dir="ltr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CatCup Tavern — клиент ролевых игр с ИИ, работающий локально, для Windows, веба и локальной сети</title>
+        <meta name="description" content="Клиент ролевых игр с ИИ, который хранит карточки персонажей, чаты, книги мира и пресеты промптов как обычные файлы на вашем диске. Один сервер, три облика: вкладка браузера, локальная сеть, приложение для Windows. Существующую библиотеку можно перенести за один шаг." />
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#0d0a08" />
+        <link rel="canonical" href="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        <link rel="alternate" hreflang="x-default" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="en" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="zh-CN" href="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        
+        <link rel="alternate" hreflang="ja" href="https://berryuiki.github.io/CatCup-Tavern/ja/" />
+        
+        <link rel="alternate" hreflang="ko" href="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        
+        <link rel="alternate" hreflang="de" href="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        
+        <link rel="alternate" hreflang="fr" href="https://berryuiki.github.io/CatCup-Tavern/fr/" />
+        
+        <link rel="alternate" hreflang="es" href="https://berryuiki.github.io/CatCup-Tavern/es/" />
+        
+        <link rel="alternate" hreflang="ru" href="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        
+        <link rel="alternate" hreflang="pt-BR" href="https://berryuiki.github.io/CatCup-Tavern/pt-BR/" />
+        
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CatCup Tavern" />
+        <meta property="og:title" content="CatCup Tavern — клиент ролевых игр с ИИ, работающий локально, для Windows, веба и локальной сети" />
+        <meta property="og:description" content="Клиент ролевых игр с ИИ, который хранит карточки персонажей, чаты, книги мира и пресеты промптов как обычные файлы на вашем диске. Один сервер, три облика: вкладка браузера, локальная сеть, приложение для Windows. Существующую библиотеку можно перенести за один шаг." />
+        <meta property="og:url" content="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        <meta property="og:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="CatCup Tavern — клиент ролевых игр с ИИ, работающий локально, для Windows, веба и локальной сети" />
+        <meta name="twitter:description" content="Клиент ролевых игр с ИИ, который хранит карточки персонажей, чаты, книги мира и пресеты промптов как обычные файлы на вашем диске. Один сервер, три облика: вкладка браузера, локальная сеть, приложение для Windows. Существующую библиотеку можно перенести за один шаг." />
+        <meta name="twitter:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <link rel="icon" href="../assets/catcup-icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="../assets/catcup-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="../styles.css" />
+        <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CatCup Tavern",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Windows; web and LAN from source",
+  "softwareVersion": "0.3.2",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "url": "https://berryuiki.github.io/CatCup-Tavern/ru/",
+  "inLanguage": "ru",
+  "downloadUrl": "https://github.com/BerryUIKI/CatCup-Tavern/releases/latest",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Клиент ролевых игр с ИИ, который хранит карточки персонажей, чаты, книги мира и пресеты промптов как обычные файлы на вашем диске. Один сервер, три облика: вкладка браузера, локальная сеть, приложение для Windows. Существующую библиотеку можно перенести за один шаг.",
+  "featureList": [
+    "Персонажи и группы",
+    "Книги мира",
+    "Пресеты промптов",
+    "Чаты и ветки",
+    "Память в виде сводки",
+    "Речь и картинки",
+    "Провайдеры",
+    "Быстрые ответы",
+    "Импорт из другого приложения"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "BerryUIKI",
+    "url": "https://github.com/BerryUIKI"
+  }
+}</script>
+        <script src="../main.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">Перейти к содержимому</a>
+
+        <header class="site-header">
+            <div class="col header-inner">
+                <a class="brand" href="../#top">
+                    <img src="../assets/catcup-icon.svg" alt="" width="30" height="30" />
+                    <span>CatCup Tavern</span>
+                </a>
+                <nav class="site-nav" id="site-nav" aria-label="Primary">
+                    <a href="#chat">Чат</a>
+                    <a href="#lorebooks">Книги мира</a>
+                    <a href="#install">Установка</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Документация</a>
+                </nav>
+                <div class="header-right">
+                    <div class="lang-menu">
+                        <button
+                            type="button"
+                            class="lang-button"
+                            id="lang-button"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="lang-list"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <span>Русский</span>
+                        </button>
+                        <ul class="lang-list" id="lang-list" role="listbox" aria-labelledby="lang-button" hidden>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="./"
+                                    hreflang="en"
+                                    lang="en"
+                                    aria-selected="false"
+                                    >English</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../zh-CN/"
+                                    hreflang="zh-CN"
+                                    lang="zh-CN"
+                                    aria-selected="false"
+                                    >简体中文</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ja/"
+                                    hreflang="ja"
+                                    lang="ja"
+                                    aria-selected="false"
+                                    >日本語</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ko/"
+                                    hreflang="ko"
+                                    lang="ko"
+                                    aria-selected="false"
+                                    >한국어</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../de/"
+                                    hreflang="de"
+                                    lang="de"
+                                    aria-selected="false"
+                                    >Deutsch</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../fr/"
+                                    hreflang="fr"
+                                    lang="fr"
+                                    aria-selected="false"
+                                    >Français</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../es/"
+                                    hreflang="es"
+                                    lang="es"
+                                    aria-selected="false"
+                                    >Español</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ru/"
+                                    hreflang="ru"
+                                    lang="ru"
+                                    aria-selected="true"
+                                    >Русский</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../pt-BR/"
+                                    hreflang="pt-BR"
+                                    lang="pt-BR"
+                                    aria-selected="false"
+                                    >Português (Brasil)</a
+                                >
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">Скачать</a>
+                </div>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero" id="top">
+                <div class="col hero-grid">
+                    <div class="hero-copy">
+                        <h1>Клиент ролевых игр, который ведёт свои книги сам.</h1>
+                        <p class="lede">Один персонаж или целая комната, с книгами мира, пресетами промптов, скользящей памятью, речью и картинками. Каждая карточка и каждый чат — обычный файл на вашем диске. Один сервер отвечает сразу в трёх обликах: вкладка браузера, локальная сеть и приложение для Windows.</p>
+                        <div class="cta-row">
+                            <a class="button" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">Скачать для Windows</a>
+                            <a class="link-strong" href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Читать документацию</a>
+                        </div>
+                        <p class="meta-line">0.3.2 · 16 ноября 2026 · Windows, веб и локальная сеть</p>
+                    </div>
+
+                    <div class="hero-demo">
+                        <div class="shapes">
+                            <div class="shape-tabs" role="tablist" aria-label="Форма окна">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-browser"
+                                    aria-controls="window"
+                                    aria-selected="true"
+                                    data-shape="browser"
+                                >
+                                    Браузер
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-lan"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="lan"
+                                >
+                                    Локальная сеть
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-windows"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="windows"
+                                >
+                                    Windows
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="window" id="window" role="tabpanel" aria-labelledby="shape-browser" data-shape="browser">
+                            <div class="chrome" aria-hidden="true">
+                                <div class="chrome-dots"><i></i><i></i><i></i></div>
+                                <div class="chrome-address">
+                                    <span class="chrome-url" data-url-browser="localhost:5173">
+                                        localhost:5173
+                                    </span>
+                                    <span class="chrome-lan-note">сервер на этой машине</span>
+                                </div>
+                                <div class="chrome-win">
+                                    <span>CatCup Tavern</span>
+                                    <span class="win-buttons"><i>—</i><i>▢</i><i class="win-close">✕</i></span>
+                                </div>
+                            </div>
+
+                            <div class="app">
+                                <aside class="rail" aria-label="Library">
+                                    <div class="rail-brand">
+                                        <span class="rail-name">CatCup Tavern</span>
+                                        <span class="rail-tag">Истории подаются тёплыми.</span>
+                                    </div>
+                                    <div class="rail-tabs">
+                                        <span class="on">Персонажи</span>
+                                        <span>Группы</span>
+                                    </div>
+                                    <div class="rail-search">Поиск персонажей</div>
+                                    <div class="rail-row on">
+                                        <span class="avatar">MI</span>
+                                        <span class="rail-row-text">
+                                            <span class="rail-row-name">Mira</span>
+                                            <span class="rail-row-sub">пример · фэнтези</span>
+                                        </span>
+                                    </div>
+                                    <div class="rail-foot">
+                                        <span class="rail-foot-row">Профиль по умолчанию</span>
+                                        <span class="rail-foot-row provider">OpenAI · gpt-4o-mini</span>
+                                    </div>
+                                </aside>
+
+                                <div class="pane">
+                                    <header class="pane-head">
+                                        <span class="avatar small">MI</span>
+                                        <span class="pane-head-id">
+                                            <span class="pane-head-name">Mira</span>
+                                            <span class="pane-head-sub">пример · фэнтези</span>
+                                        </span>
+                                        <span class="chip">Мира · пример</span>
+                                    </header>
+
+                                    <div
+                                        class="transcript"
+                                        id="transcript"
+                                        aria-live="polite"
+                                        aria-label="Разговор"
+                                    >
+                                        <div class="messages" id="messages"></div>
+                                        <div class="transcript-empty" id="transcript-empty" hidden>
+                                            Разговор начинается здесь заново.
+                                        </div>
+                                        <div class="transcript-end" id="transcript-end">
+                                            <button type="button" class="demo-again" id="demo-again" hidden>
+                                                Начать заново
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <form class="composer" id="composer" autocomplete="off">
+                                        <div class="composer-shell">
+                                            <label class="sr-only" for="composer-input">Message</label>
+                                            <textarea
+                                                id="composer-input"
+                                                rows="1"
+                                                placeholder="Написать Мире…"
+                                                aria-label="Message"
+                                            ></textarea>
+                                            <button
+                                                type="button"
+                                                class="impersonate"
+                                                title="Написать следующее сообщение за меня"
+                                                aria-label="Написать следующее сообщение за меня"
+                                            >
+                                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                                    <path
+                                                        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.7"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button type="submit" class="send" id="send">Отправить</button>
+                                            <button type="button" class="stop" id="stop" hidden>Стоп</button>
+                                        </div>
+                                        <div class="composer-hints">
+                                            <span>Enter — отправить · Shift+Enter — новая строка</span>
+                                            <span class="composer-disclaimer">Вывод модели может быть неточным. Персонажи вымышлены.</span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="demo-note">Это не скриншот: интерфейс работает прямо на странице. Напишите строку, и Мира ответит.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="band" id="data">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>Ваши данные остаются файлами</h2>
+                        <p>Персонажи — это PNG-карточки с данными внутри изображения или просто JSON. Чаты — JSONL, одно сообщение на строку, вместе со свайпами и ветками. Книги мира, пресеты и настройки — JSON. Скопировать папку значит сделать резервную копию, скопировать её значит переехать, а любой файл открывается в редакторе.</p>
+                        <pre class="tree">data/
+├── characters/     карточки, PNG или JSON
+├── chats/          по одному JSONL на чат
+├── worlds/         книги мира
+├── presets/        пресеты промптов
+├── groups/         комнаты групп
+├── user/images/    сгенерированные картинки
+├── secrets.json    ключи API, только на сервере
+└── settings.json   провайдеры, персоны, профили
+</pre>
+                        <p class="note">Укажите импортёру папку данных другого приложения — карточки, чаты, книги мира и пресеты перейдут за один шаг. Ничего не превращается в собственный формат.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="lorebooks">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>Что он умеет</h2>
+                        <ul class="ledger">
+                            
+                            <li class="ledger-row" id="row-0">
+                                <span class="ledger-path mono">data/characters/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Персонажи и группы</span>
+                                    <span class="ledger-desc">Карточки PNG, JSON V2/V3 и CharX. Говорите с одним персонажем или посадите пятерых в комнату, каждому со своим приветствием, аватаром и порядком реплик.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-1">
+                                <span class="ledger-path mono">data/worlds/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Книги мира</span>
+                                    <span class="ledger-desc">Основные и вторичные ключи, рекурсия, группы включения с весами, залипающие и остывающие эффекты, бюджет токенов и все позиции вставки, плюс инспектор, объясняющий, почему запись сработала.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-2">
+                                <span class="ledger-path mono">data/presets/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Пресеты промптов</span>
+                                    <span class="ledger-desc">Импортируйте пресет, меняйте порядок промптов, отключайте их или переносите один во вставку в чат со своей глубиной, порядком и ролью.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-3">
+                                <span class="ledger-path mono">data/chats/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Чаты и ветки</span>
+                                    <span class="ledger-desc">Потоковые ответы с отдельно сохранёнными рассуждениями, свайпы, правка и ветка из любого сообщения, которая оставляет исходный чат нетронутым.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-4">
+                                <span class="ledger-path mono">data/chats/ · summary</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Память в виде сводки</span>
+                                    <span class="ledger-desc">Скользящая сводка хранится в файле чата, рядом с сообщениями, которые она обобщает. Правьте её сами или позволяйте обновлять после ответов.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-5">
+                                <span class="ledger-path mono">user/images/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Речь и картинки</span>
+                                    <span class="ledger-desc">Голоса браузера или совместимая с OpenAI точка озвучки. Картинки из Automatic1111, ComfyUI или совместимой с OpenAI точки, с хранением по персонажам.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-6">
+                                <span class="ledger-path mono">data/secrets.json</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Провайдеры</span>
+                                    <span class="ledger-desc">Пять протоколов запросов: OpenAI, OpenRouter, Anthropic, Gemini, Ollama и любая совместимая точка, которую вы впишете. Ключи остаются на сервере.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-7">
+                                <span class="ledger-path mono">quickreplies/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Быстрые ответы</span>
+                                    <span class="ledger-desc">Наборы в виде панели кнопок над полем ввода: семь команд, которые можно выстраивать в цепочку, пока без автозапуска и контекстных меню.</span>
+                                </span>
+                                <span class="status status-partial">Частично</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-8">
+                                <span class="ledger-path mono">Import</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Импорт из другого приложения</span>
+                                    <span class="ledger-desc">Просканируйте папку данных другого приложения, посмотрите, что нашлось, и скопируйте персонажей, чаты, книги мира и пресеты одним действием.</span>
+                                </span>
+                                <span class="status status-works">Работает</span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="chat">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">1 → 5</span></div>
+                    <div class="split-body">
+                        <h2>Как собирается ответ</h2>
+                        <ol class="pipeline">
+                            
+                            <li>
+                                <span class="pipe-name">Собрать</span>
+                                <span class="pipe-desc">Пресет выстраивается по порядку, персона, персонаж и сценарий встают на свои места.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Просмотреть мир</span>
+                                <span class="pipe-desc">Ключи книг мира сверяются с недавним чатом; группы включения и временные эффекты решают, что сработает.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Распределить токены</span>
+                                <span class="pipe-desc">Контекст обрезается до бюджета модели токенизатором для моделей OpenAI, Claude и Gemini.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Вызвать провайдера</span>
+                                <span class="pipe-desc">Один запрос активному провайдеру, на том протоколе, на котором он говорит.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Передать поток</span>
+                                <span class="pipe-desc">Токены приходят по SSE. Сообщение сохраняет сервер, страница только рисует.</span>
+                            </li>
+                            
+                        </ol>
+                        <figure class="shot shot-inspector">
+                            <img
+                                src="../assets/context-inspector.jpg"
+                                alt="Инспектор контекста показывает собранный промпт слот за слотом с числом токенов, все рассмотренные записи книг мира и причину, по которой каждая сработала или нет."
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                            <figcaption>Инспектор контекста показывает собранный промпт слот за слотом с числом токенов, все рассмотренные записи книг мира и причину, по которой каждая сработала или нет.</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section limits" id="limits">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono wine">—</span></div>
+                    <div class="split-body">
+                        <h2>Чего пока нет</h2>
+                        <p>Это ранний доступ. Вот пробелы, о которых стоит знать до установки.</p>
+                        <ul class="plain-list">
+                            
+                            <li>Слэш-команды и скрипты, набранные вручную. Строка вроде /send hello уходит модели как текст; команды выполняют только кнопки быстрых ответов.</li>
+                            
+                            <li>Расширения, написанные для других клиентов. Не загружается ни одно.</li>
+                            
+                            <li>Вложения и ввод изображений. Нет ни загрузки файлов, ни картинок на входе.</li>
+                            
+                            <li>Векторная память. Длинные чаты обрезаются по бюджету; сводка — единственная долговременная память.</li>
+                            
+                            <li>macOS и Linux. Оболочка собирается на обеих платформах, и CI их компилирует, но выпущен только Windows, и ни одна из двух не запускалась.</li>
+                            
+                            <li>Неподписанный установщик. SmartScreen один раз предупредит о скачанной копии; берите файл со страницы релизов и больше ниоткуда.</li>
+                            
+                        </ul>
+                        <p class="note">
+                            Полные списки — в разделах
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">Ограничения</a> ·
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/ST-COMPATIBILITY.md">Совместимость форматов</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section install" id="install">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">install</span></div>
+                    <div class="split-body">
+                        <h2>Установка</h2>
+                        <div class="install-rows">
+                            <div class="install-row">
+                                <h3>Windows</h3>
+                                <p>Скачайте установщик из последнего релиза и запустите. Он ставится для пользователя, не требует администратора и отдельного Node, а данные держит в %APPDATA%\dev.catcup.tavern. Подписи нет, поэтому SmartScreen предупредит один раз и не назовёт издателя: выберите «Подробнее → Выполнить в любом случае».</p>
+                                <div class="download-links">
+                                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">
+                                        Скачать установщик
+                                    </a>
+                                    <span class="note">Прямая загрузка: установщик этой версии, размещённый на GitHub.</span>
+                                </div>
+                                <p class="file-line mono">
+                                    CatCup.Tavern_0.3.2_x64-setup.exe ·
+                                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases">Все релизы</a>
+                                </p>
+                            </div>
+                            <div class="install-row">
+                                <h3>Веб или локальная сеть из исходников</h3>
+                                <p>Нужны Node 22.13 или новее и pnpm 11. При первом запуске вы задаёте пароль доступа, и только на той машине, где работает сервер.</p>
+                                <div class="commands">
+                                    <div class="command">
+                                        <code>pnpm install</code>
+                                        <button type="button" class="copy" data-copy="pnpm install">
+                                            Копировать
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>pnpm dev</code>
+                                        <button type="button" class="copy" data-copy="pnpm dev">
+                                            Копировать
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>CATCUP_HOST=0.0.0.0 pnpm start</code>
+                                        <button
+                                            type="button"
+                                            class="copy"
+                                            data-copy="CATCUP_HOST=0.0.0.0 pnpm start"
+                                        >
+                                            Копировать
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="note">Для локальной сети слушайте все интерфейсы; пароль — единственная дверь. Затем откройте http://localhost:5173. Встроенного TLS нет. За пределами доверенной сети ставьте его за обратный прокси или VPN.</p>
+                            </div>
+                            <div class="install-row">
+                                <h3>Перенести установку</h3>
+                                <p>CATCUP_DATA_DIR указывает приложению на другую папку данных. Так установка переезжает на новую машину, и так настольная версия принимает существующую библиотеку.</p>
+                            </div>
+                        </div>
+                        <figure class="shot">
+                            <img
+                                src="../assets/settings-providers.jpg"
+                                alt="Провайдеры"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                        </figure>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="col footer-inner">
+                <div class="footer-brand">
+                    <img src="../assets/catcup-icon.svg" alt="" width="26" height="26" />
+                    <span>CatCup Tavern</span>
+                </div>
+                <p class="footer-license">AGPL-3.0-only. Построен на экосистеме форматов SillyTavern — атрибуция форматов и кода, которым он следует, указана в NOTICE.</p>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Документация</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/CHANGELOG.md">История изменений</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">Ограничения</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/SECURITY.md">Безопасность</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/LICENSE">Лицензия</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern">GitHub</a>
+                </nav>
+                <p class="footer-langs">
+                    <span>Эта страница на</span>
+                    
+                    <a href="./" hreflang="en" lang="en">English</a>
+                    
+                    <a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+                    
+                    <a href="../ja/" hreflang="ja" lang="ja">日本語</a>
+                    
+                    <a href="../ko/" hreflang="ko" lang="ko">한국어</a>
+                    
+                    <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+                    
+                    <a href="../fr/" hreflang="fr" lang="fr">Français</a>
+                    
+                    <a href="../es/" hreflang="es" lang="es">Español</a>
+                    
+                    <a href="../ru/" hreflang="ru" lang="ru">Русский</a>
+                    
+                    <a href="../pt-BR/" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+                    
+                </p>
+            </div>
+        </footer>
+
+        <script type="application/json" id="demo-data">{"opening":[{"kind":"narration","text":"Дверь заедает, потом поддаётся. Тёплый воздух с запахом тимьяна и смолы обволакивает вас."},{"kind":"speech","text":"«Вот и ты. Я услышала дорогу раньше, чем тебя.»"},{"kind":"narration","text":"Огонь горит с полудня. На краю очага медленно поворачивается котёл с рагу, и комната пахнет дождём и луком."},{"kind":"narration","text":"Мира ставит чашку на стол в углу, не спрашивая, хотели ли вы."},{"kind":"speech","text":"«Садись. Дождь подождёт, и то, что ты собирался сказать первым, тоже. Начни с правдивой версии.»"},{"kind":"speech","text":"«Плохая дорога, хорошее время. Сегодня есть рагу — это больше, чем та дорога может сказать в свою пользу.»"}],"replies":["«Всегда короче.» *Она садится напротив, чего не делает для каждого.* «Дорога честна насчёт своей длины. Округляют в меньшую сторону те, кто её описывает.»\n\n*Она подвигает чашку ближе.* «Выпей, пока не остыло. А потом расскажи ту часть, которую пропустил.»","«То, что горы дали мне на этой неделе.» *Она приподнимает бровь.* «Если тебе нужен список ингредиентов до еды, ты слишком долго жил в городах.»","«Путников хватает, чтобы огонь оставался честным. Меньше, чем ты думаешь, и больше, чем эта дорога заслуживает.» *Она наливает рагу в миску и ставит перед вами без церемоний.*","«Тебе интересно, помню ли я их всех.» *Она вытирает руки о тряпку на поясе.* «Нет. Я помню тех, кто врал о том, зачем едет.»","«Дождь по ставням значит, что сегодня никто не придёт, а значит, можешь говорить сколько захочешь.» *Она выдвигает скамью ногой.* «Спроси то, вокруг чего ты ходишь.»","«Чайник никогда не бывает совсем пустым. Это не метафора, я просто так его держу.» *Она дважды стучит по крышке.*","«Ты шёл длинной дорогой. Большинство так и делает в первый раз.» *Она кивает в сторону огня.* «Садись. Можешь рассказать, от чего бежал, или мы сделаем вид, что дело в погоде.»","«Я не стану угадывать, что ты оставил позади.» *Она ставит чашку и ждёт, и это ожидание не злое.*","«Останься на ночь. Утром дорога никуда не денется и легче не станет, но ты будешь выспавшимся.»","«Задай вопрос получше.» *Она улыбается вашей гримасе.* «Не чтобы досадить. Просто лучший вопрос обычно тот, с которым ты и пришёл.»"],"userLine":"Мне говорили, что дорога короче, чем оказалась.","character":"Мира","characterInitials":"MI","youInitials":"Вы","you":"Вы","copied":"Скопировано"}</script>
+    </body>
+</html>

@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="de" dir="ltr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>CatCup Tavern — ein lokal-first Rollenspiel-Client für Windows, Web und LAN</title>
+        <meta name="description" content="Ein KI-Rollenspiel-Client, der Charakterkarten, Chats, Lorebooks und Prompt-Presets als gewöhnliche Dateien auf deiner Festplatte hält. Ein Server, drei Gestalten: Browser-Tab, LAN, Windows-App. Eine bestehende Bibliothek lässt sich in einem Schritt übernehmen." />
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#0d0a08" />
+        <link rel="canonical" href="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        <link rel="alternate" hreflang="x-default" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="en" href="https://berryuiki.github.io/CatCup-Tavern/" />
+        
+        <link rel="alternate" hreflang="zh-CN" href="https://berryuiki.github.io/CatCup-Tavern/zh-CN/" />
+        
+        <link rel="alternate" hreflang="ja" href="https://berryuiki.github.io/CatCup-Tavern/ja/" />
+        
+        <link rel="alternate" hreflang="ko" href="https://berryuiki.github.io/CatCup-Tavern/ko/" />
+        
+        <link rel="alternate" hreflang="de" href="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        
+        <link rel="alternate" hreflang="fr" href="https://berryuiki.github.io/CatCup-Tavern/fr/" />
+        
+        <link rel="alternate" hreflang="es" href="https://berryuiki.github.io/CatCup-Tavern/es/" />
+        
+        <link rel="alternate" hreflang="ru" href="https://berryuiki.github.io/CatCup-Tavern/ru/" />
+        
+        <link rel="alternate" hreflang="pt-BR" href="https://berryuiki.github.io/CatCup-Tavern/pt-BR/" />
+        
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CatCup Tavern" />
+        <meta property="og:title" content="CatCup Tavern — ein lokal-first Rollenspiel-Client für Windows, Web und LAN" />
+        <meta property="og:description" content="Ein KI-Rollenspiel-Client, der Charakterkarten, Chats, Lorebooks und Prompt-Presets als gewöhnliche Dateien auf deiner Festplatte hält. Ein Server, drei Gestalten: Browser-Tab, LAN, Windows-App. Eine bestehende Bibliothek lässt sich in einem Schritt übernehmen." />
+        <meta property="og:url" content="https://berryuiki.github.io/CatCup-Tavern/de/" />
+        <meta property="og:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="CatCup Tavern — ein lokal-first Rollenspiel-Client für Windows, Web und LAN" />
+        <meta name="twitter:description" content="Ein KI-Rollenspiel-Client, der Charakterkarten, Chats, Lorebooks und Prompt-Presets als gewöhnliche Dateien auf deiner Festplatte hält. Ein Server, drei Gestalten: Browser-Tab, LAN, Windows-App. Eine bestehende Bibliothek lässt sich in einem Schritt übernehmen." />
+        <meta name="twitter:image" content="https://berryuiki.github.io/CatCup-Tavern/assets/og.png" />
+        <link rel="icon" href="../assets/catcup-icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="../assets/catcup-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="../styles.css" />
+        <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "CatCup Tavern",
+  "applicationCategory": "EntertainmentApplication",
+  "operatingSystem": "Windows; web and LAN from source",
+  "softwareVersion": "0.3.2",
+  "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+  "url": "https://berryuiki.github.io/CatCup-Tavern/de/",
+  "inLanguage": "de",
+  "downloadUrl": "https://github.com/BerryUIKI/CatCup-Tavern/releases/latest",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "description": "Ein KI-Rollenspiel-Client, der Charakterkarten, Chats, Lorebooks und Prompt-Presets als gewöhnliche Dateien auf deiner Festplatte hält. Ein Server, drei Gestalten: Browser-Tab, LAN, Windows-App. Eine bestehende Bibliothek lässt sich in einem Schritt übernehmen.",
+  "featureList": [
+    "Charaktere und Gruppen",
+    "Lorebooks",
+    "Prompt-Presets",
+    "Chats und Abzweigungen",
+    "Zusammenfassungsgedächtnis",
+    "Sprache und Bilder",
+    "Anbieter",
+    "Schnellantworten",
+    "Aus einer anderen App importieren"
+  ],
+  "author": {
+    "@type": "Organization",
+    "name": "BerryUIKI",
+    "url": "https://github.com/BerryUIKI"
+  }
+}</script>
+        <script src="../main.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">Zum Inhalt springen</a>
+
+        <header class="site-header">
+            <div class="col header-inner">
+                <a class="brand" href="../#top">
+                    <img src="../assets/catcup-icon.svg" alt="" width="30" height="30" />
+                    <span>CatCup Tavern</span>
+                </a>
+                <nav class="site-nav" id="site-nav" aria-label="Primary">
+                    <a href="#chat">Chat</a>
+                    <a href="#lorebooks">Lorebooks</a>
+                    <a href="#install">Installieren</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Doku</a>
+                </nav>
+                <div class="header-right">
+                    <div class="lang-menu">
+                        <button
+                            type="button"
+                            class="lang-button"
+                            id="lang-button"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="lang-list"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <span>Deutsch</span>
+                        </button>
+                        <ul class="lang-list" id="lang-list" role="listbox" aria-labelledby="lang-button" hidden>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="./"
+                                    hreflang="en"
+                                    lang="en"
+                                    aria-selected="false"
+                                    >English</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../zh-CN/"
+                                    hreflang="zh-CN"
+                                    lang="zh-CN"
+                                    aria-selected="false"
+                                    >简体中文</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ja/"
+                                    hreflang="ja"
+                                    lang="ja"
+                                    aria-selected="false"
+                                    >日本語</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ko/"
+                                    hreflang="ko"
+                                    lang="ko"
+                                    aria-selected="false"
+                                    >한국어</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../de/"
+                                    hreflang="de"
+                                    lang="de"
+                                    aria-selected="true"
+                                    >Deutsch</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../fr/"
+                                    hreflang="fr"
+                                    lang="fr"
+                                    aria-selected="false"
+                                    >Français</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../es/"
+                                    hreflang="es"
+                                    lang="es"
+                                    aria-selected="false"
+                                    >Español</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../ru/"
+                                    hreflang="ru"
+                                    lang="ru"
+                                    aria-selected="false"
+                                    >Русский</a
+                                >
+                            </li>
+                            
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="../pt-BR/"
+                                    hreflang="pt-BR"
+                                    lang="pt-BR"
+                                    aria-selected="false"
+                                    >Português (Brasil)</a
+                                >
+                            </li>
+                            
+                        </ul>
+                    </div>
+                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">Herunterladen</a>
+                </div>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero" id="top">
+                <div class="col hero-grid">
+                    <div class="hero-copy">
+                        <h1>Ein Rollenspiel-Client, der seine Bücher selbst führt.</h1>
+                        <p class="lede">Ein Charakter oder ein ganzer Raum voll, mit Lorebooks, Prompt-Presets, rollierender Erinnerung, Sprache und Bildern. Jede Karte, jeder Chat ist eine gewöhnliche Datei auf deiner eigenen Festplatte. Ein Server bedient drei Gestalten: Browser-Tab, LAN und Windows-App.</p>
+                        <div class="cta-row">
+                            <a class="button" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">Für Windows herunterladen</a>
+                            <a class="link-strong" href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Zur Dokumentation</a>
+                        </div>
+                        <p class="meta-line">0.3.2 · 16. November 2026 · Windows, Web und LAN</p>
+                    </div>
+
+                    <div class="hero-demo">
+                        <div class="shapes">
+                            <div class="shape-tabs" role="tablist" aria-label="Fensterform">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-browser"
+                                    aria-controls="window"
+                                    aria-selected="true"
+                                    data-shape="browser"
+                                >
+                                    Browser
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-lan"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="lan"
+                                >
+                                    LAN
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-windows"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="windows"
+                                >
+                                    Windows
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="window" id="window" role="tabpanel" aria-labelledby="shape-browser" data-shape="browser">
+                            <div class="chrome" aria-hidden="true">
+                                <div class="chrome-dots"><i></i><i></i><i></i></div>
+                                <div class="chrome-address">
+                                    <span class="chrome-url" data-url-browser="localhost:5173">
+                                        localhost:5173
+                                    </span>
+                                    <span class="chrome-lan-note">Server auf diesem Rechner</span>
+                                </div>
+                                <div class="chrome-win">
+                                    <span>CatCup Tavern</span>
+                                    <span class="win-buttons"><i>—</i><i>▢</i><i class="win-close">✕</i></span>
+                                </div>
+                            </div>
+
+                            <div class="app">
+                                <aside class="rail" aria-label="Library">
+                                    <div class="rail-brand">
+                                        <span class="rail-name">CatCup Tavern</span>
+                                        <span class="rail-tag">Geschichten, warm serviert.</span>
+                                    </div>
+                                    <div class="rail-tabs">
+                                        <span class="on">Charaktere</span>
+                                        <span>Gruppen</span>
+                                    </div>
+                                    <div class="rail-search">Charaktere suchen</div>
+                                    <div class="rail-row on">
+                                        <span class="avatar">MI</span>
+                                        <span class="rail-row-text">
+                                            <span class="rail-row-name">Mira</span>
+                                            <span class="rail-row-sub">Beispiel · Fantasy</span>
+                                        </span>
+                                    </div>
+                                    <div class="rail-foot">
+                                        <span class="rail-foot-row">Standardprofil</span>
+                                        <span class="rail-foot-row provider">OpenAI · gpt-4o-mini</span>
+                                    </div>
+                                </aside>
+
+                                <div class="pane">
+                                    <header class="pane-head">
+                                        <span class="avatar small">MI</span>
+                                        <span class="pane-head-id">
+                                            <span class="pane-head-name">Mira</span>
+                                            <span class="pane-head-sub">Beispiel · Fantasy</span>
+                                        </span>
+                                        <span class="chip">Mira · Beispiel</span>
+                                    </header>
+
+                                    <div
+                                        class="transcript"
+                                        id="transcript"
+                                        aria-live="polite"
+                                        aria-label="Gespräch"
+                                    >
+                                        <div class="messages" id="messages"></div>
+                                        <div class="transcript-empty" id="transcript-empty" hidden>
+                                            Das Gespräch beginnt hier von vorn.
+                                        </div>
+                                        <div class="transcript-end" id="transcript-end">
+                                            <button type="button" class="demo-again" id="demo-again" hidden>
+                                                Von vorn beginnen
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <form class="composer" id="composer" autocomplete="off">
+                                        <div class="composer-shell">
+                                            <label class="sr-only" for="composer-input">Message</label>
+                                            <textarea
+                                                id="composer-input"
+                                                rows="1"
+                                                placeholder="Nachricht an Mira…"
+                                                aria-label="Message"
+                                            ></textarea>
+                                            <button
+                                                type="button"
+                                                class="impersonate"
+                                                title="Die nächste Nachricht als ich schreiben"
+                                                aria-label="Die nächste Nachricht als ich schreiben"
+                                            >
+                                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                                    <path
+                                                        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.7"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button type="submit" class="send" id="send">Senden</button>
+                                            <button type="button" class="stop" id="stop" hidden>Stopp</button>
+                                        </div>
+                                        <div class="composer-hints">
+                                            <span>Enter zum Senden · Shift+Enter für eine neue Zeile</span>
+                                            <span class="composer-disclaimer">Modellausgaben können falsch sein. Figuren sind erfunden.</span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="demo-note">Das ist die Oberfläche, hier auf der Seite laufend. Schreib eine Zeile, und Mira antwortet.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="band" id="data">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>Deine Daten bleiben Dateien</h2>
+                        <p>Charaktere sind PNG-Karten mit ihren Angaben im Bild, oder schlichtes JSON. Chats sind JSONL, eine Nachricht pro Zeile, Swipes und Abzweigungen inklusive. Lorebooks, Presets und Einstellungen sind JSON. Ordner kopieren heißt sichern, Ordner kopieren heißt umziehen, und jede Datei lässt sich in einem Editor öffnen.</p>
+                        <pre class="tree">data/
+├── characters/     Karten, PNG oder JSON
+├── chats/          ein JSONL pro Chat
+├── worlds/         Lorebooks
+├── presets/        Prompt-Presets
+├── groups/         Gruppenräume
+├── user/images/    erzeugte Bilder
+├── secrets.json    API-Schlüssel, nur serverseitig
+└── settings.json   Anbieter, Personas, Profile
+</pre>
+                        <p class="note">Richte den Import auf den Datenordner einer anderen App, und Karten, Chats, Lorebooks und Presets kommen in einem Schritt herüber. Nichts wird in ein eigenes Format umgewandelt.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="lorebooks">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>Was es kann</h2>
+                        <ul class="ledger">
+                            
+                            <li class="ledger-row" id="row-0">
+                                <span class="ledger-path mono">data/characters/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Charaktere und Gruppen</span>
+                                    <span class="ledger-desc">PNG-, JSON-V2/V3- und CharX-Karten. Sprich mit einem Charakter oder setz fünf in einen Raum, jeder mit eigenen Begrüßungen, Avataren und Redeordnung.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-1">
+                                <span class="ledger-path mono">data/worlds/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Lorebooks</span>
+                                    <span class="ledger-desc">Primär- und Sekundärschlüssel, Rekursion, gewichtete Einschlussgruppen, Haft- und Abklingzeiten, das Token-Budget und jede Einfügeposition, dazu ein Prüfer, der zeigt, warum ein Eintrag gezündet hat.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-2">
+                                <span class="ledger-path mono">data/presets/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Prompt-Presets</span>
+                                    <span class="ledger-desc">Ein Preset importieren, Prompts umsortieren oder abschalten, oder einen in eine Chat-Einfügung verschieben, mit eigener Tiefe, Reihenfolge und Rolle.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-3">
+                                <span class="ledger-path mono">data/chats/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Chats und Abzweigungen</span>
+                                    <span class="ledger-desc">Gestreamte Antworten mit getrennt aufbewahrtem Denken, Swipes, Bearbeiten und eine Abzweigung aus jeder Nachricht, die den ursprünglichen Chat unangetastet lässt.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-4">
+                                <span class="ledger-path mono">data/chats/ · summary</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Zusammenfassungsgedächtnis</span>
+                                    <span class="ledger-desc">Eine rollierende Zusammenfassung, gespeichert in der Chat-Datei, direkt neben den Nachrichten, die sie zusammenfasst. Selbst bearbeiten oder nach Antworten aktualisieren lassen.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-5">
+                                <span class="ledger-path mono">user/images/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Sprache und Bilder</span>
+                                    <span class="ledger-desc">Browserstimmen oder ein OpenAI-kompatibler Sprach-Endpunkt. Bilder von Automatic1111, ComfyUI oder einem OpenAI-kompatiblen Endpunkt, pro Charakter aufbewahrt.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-6">
+                                <span class="ledger-path mono">data/secrets.json</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Anbieter</span>
+                                    <span class="ledger-desc">Fünf Anfrageprotokolle für OpenAI, OpenRouter, Anthropic, Gemini, Ollama und jeden kompatiblen Endpunkt, den du eintippst. Schlüssel bleiben auf dem Server.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-7">
+                                <span class="ledger-path mono">quickreplies/</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Schnellantworten</span>
+                                    <span class="ledger-desc">Sets mit einer Knopfleiste über dem Eingabefeld: sieben Befehle, die sich verketten lassen, noch ohne Auto-Ausführung und Kontextmenüs.</span>
+                                </span>
+                                <span class="status status-partial">Teilweise</span>
+                            </li>
+                            
+                            <li class="ledger-row" id="row-8">
+                                <span class="ledger-path mono">Import</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">Aus einer anderen App importieren</span>
+                                    <span class="ledger-desc">Den Datenordner einer anderen App durchsuchen, sehen, was gefunden wurde, und Charaktere, Chats, Lorebooks und Presets in einem Zug kopieren.</span>
+                                </span>
+                                <span class="status status-works">Funktioniert</span>
+                            </li>
+                            
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="chat">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">1 → 5</span></div>
+                    <div class="split-body">
+                        <h2>Wie eine Antwort entsteht</h2>
+                        <ol class="pipeline">
+                            
+                            <li>
+                                <span class="pipe-name">Zusammenbauen</span>
+                                <span class="pipe-desc">Das Preset wird der Reihe nach gebaut, mit Persona, Charakter und Szenario an ihren Plätzen.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Lore durchsuchen</span>
+                                <span class="pipe-desc">Lorebook-Schlüssel werden gegen den letzten Chat geprüft; Einschlussgruppen und Zeiteffekte entscheiden, was zündet.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Token einteilen</span>
+                                <span class="pipe-desc">Der Kontext wird mit dem passenden Tokenizer für OpenAI-, Claude- und Gemini-Modelle auf das Budget gekürzt.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Anbieter aufrufen</span>
+                                <span class="pipe-desc">Eine Anfrage an den aktiven Anbieter, in dem Protokoll, das dieser Anbieter spricht.</span>
+                            </li>
+                            
+                            <li>
+                                <span class="pipe-name">Streamen</span>
+                                <span class="pipe-desc">Token kommen über SSE an. Der Server speichert die Nachricht, die Seite zeichnet sie nur.</span>
+                            </li>
+                            
+                        </ol>
+                        <figure class="shot shot-inspector">
+                            <img
+                                src="../assets/context-inspector.jpg"
+                                alt="Der Kontext-Prüfer zeigt den zusammengebauten Prompt Platz für Platz mit seiner Tokenzahl, jeden geprüften Lorebook-Eintrag und den Grund, warum er gezündet hat oder nicht."
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                            <figcaption>Der Kontext-Prüfer zeigt den zusammengebauten Prompt Platz für Platz mit seiner Tokenzahl, jeden geprüften Lorebook-Eintrag und den Grund, warum er gezündet hat oder nicht.</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section limits" id="limits">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono wine">—</span></div>
+                    <div class="split-body">
+                        <h2>Was noch fehlt</h2>
+                        <p>Das ist Software im frühen Zugang. Das sind die Lücken, die man vor der Installation kennen sollte.</p>
+                        <ul class="plain-list">
+                            
+                            <li>Getippte Slash-Befehle und Skripte. Eine Zeile wie /send hello geht als Text an das Modell; nur Schnellantwort-Knöpfe führen Befehle aus.</li>
+                            
+                            <li>Erweiterungen, die für andere Clients geschrieben wurden. Keine lädt.</li>
+                            
+                            <li>Anhänge und Bildeingabe. Kein Datei-Upload und keine Bilder als Eingabe.</li>
+                            
+                            <li>Vektor-Gedächtnis. Lange Chats werden auf das Budget gekürzt; die Zusammenfassung ist das einzige Langzeitgedächtnis.</li>
+                            
+                            <li>macOS und Linux. Die Shell packt auf beiden und CI baut sie, veröffentlicht wird aber nur Windows, und gelaufen ist keines von beiden.</li>
+                            
+                            <li>Ein unsigniertes Installationsprogramm. SmartScreen warnt einmal bei einer heruntergeladenen Kopie; nimm die Datei von der Release-Seite und von nirgendwo sonst.</li>
+                            
+                        </ul>
+                        <p class="note">
+                            Die vollständigen Listen stehen in
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">Grenzen</a> ·
+                            <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/ST-COMPATIBILITY.md">Format-Kompatibilität</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section install" id="install">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">install</span></div>
+                    <div class="split-body">
+                        <h2>Installieren</h2>
+                        <div class="install-rows">
+                            <div class="install-row">
+                                <h3>Windows</h3>
+                                <p>Lade das Installationsprogramm aus dem neuesten Release und führe es aus. Es installiert pro Benutzer, braucht keinen Administrator und kein eigenes Node und hält deine Daten in %APPDATA%\dev.catcup.tavern. Es ist unsigniert, deshalb warnt SmartScreen einmal und nennt keinen Herausgeber: wähle Mehr Informationen → Trotzdem ausführen.</p>
+                                <div class="download-links">
+                                    <a class="button button-small" href="https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe">
+                                        Installationsprogramm herunterladen
+                                    </a>
+                                    <span class="note">Direkter Download: das Installationsprogramm dieser Version, gehostet auf GitHub.</span>
+                                </div>
+                                <p class="file-line mono">
+                                    CatCup.Tavern_0.3.2_x64-setup.exe ·
+                                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/releases">Alle Releases</a>
+                                </p>
+                            </div>
+                            <div class="install-row">
+                                <h3>Web oder LAN aus dem Quellcode</h3>
+                                <p>Braucht Node 22.13 oder neuer und pnpm 11. Beim ersten Start setzt du ein Zugangspasswort, und zwar nur auf dem Rechner, auf dem der Server läuft.</p>
+                                <div class="commands">
+                                    <div class="command">
+                                        <code>pnpm install</code>
+                                        <button type="button" class="copy" data-copy="pnpm install">
+                                            Kopieren
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>pnpm dev</code>
+                                        <button type="button" class="copy" data-copy="pnpm dev">
+                                            Kopieren
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>CATCUP_HOST=0.0.0.0 pnpm start</code>
+                                        <button
+                                            type="button"
+                                            class="copy"
+                                            data-copy="CATCUP_HOST=0.0.0.0 pnpm start"
+                                        >
+                                            Kopieren
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="note">Für ein LAN an alle Schnittstellen binden; das Passwort ist das einzige Tor. Danach http://localhost:5173 öffnen. TLS ist nicht eingebaut. Außerhalb eines vertrauenswürdigen Netzes gehört es hinter einen Reverse-Proxy oder ein VPN.</p>
+                            </div>
+                            <div class="install-row">
+                                <h3>Eine Installation umziehen</h3>
+                                <p>CATCUP_DATA_DIR zeigt die App auf einen anderen Datenordner. So zieht eine Installation auf einen neuen Rechner um, und so übernimmt eine Desktop-Installation eine bestehende Bibliothek.</p>
+                            </div>
+                        </div>
+                        <figure class="shot">
+                            <img
+                                src="../assets/settings-providers.jpg"
+                                alt="Anbieter"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                        </figure>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="col footer-inner">
+                <div class="footer-brand">
+                    <img src="../assets/catcup-icon.svg" alt="" width="26" height="26" />
+                    <span>CatCup Tavern</span>
+                </div>
+                <p class="footer-license">AGPL-3.0-only. Aufgebaut auf dem Format-Ökosystem von SillyTavern — die Zuordnung der übernommenen Formate und Code steht in NOTICE.</p>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/tree/main/docs">Dokumentation</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/CHANGELOG.md">Änderungen</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md">Grenzen</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/SECURITY.md">Sicherheit</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern/blob/main/LICENSE">Lizenz</a>
+                    <a href="https://github.com/BerryUIKI/CatCup-Tavern">GitHub</a>
+                </nav>
+                <p class="footer-langs">
+                    <span>Diese Seite auf</span>
+                    
+                    <a href="./" hreflang="en" lang="en">English</a>
+                    
+                    <a href="../zh-CN/" hreflang="zh-CN" lang="zh-CN">简体中文</a>
+                    
+                    <a href="../ja/" hreflang="ja" lang="ja">日本語</a>
+                    
+                    <a href="../ko/" hreflang="ko" lang="ko">한국어</a>
+                    
+                    <a href="../de/" hreflang="de" lang="de">Deutsch</a>
+                    
+                    <a href="../fr/" hreflang="fr" lang="fr">Français</a>
+                    
+                    <a href="../es/" hreflang="es" lang="es">Español</a>
+                    
+                    <a href="../ru/" hreflang="ru" lang="ru">Русский</a>
+                    
+                    <a href="../pt-BR/" hreflang="pt-BR" lang="pt-BR">Português (Brasil)</a>
+                    
+                </p>
+            </div>
+        </footer>
+
+        <script type="application/json" id="demo-data">{"opening":[{"kind":"narration","text":"Die Tür klemmt, dann gibt sie nach. Warme Luft nach Thymian und Holzrauch legt sich um dich."},{"kind":"speech","text":"„Da bist du ja. Ich habe den Weg gehört, bevor ich dich gehört habe.“"},{"kind":"narration","text":"Das Feuer brennt seit Mittag. Ein Topf Eintopf dreht sich langsam am Rand, und der Raum riecht nach Regen und Zwiebeln."},{"kind":"narration","text":"Mira stellt eine Tasse auf den Tisch in der Ecke, ohne zu fragen, ob du eine wolltest."},{"kind":"speech","text":"„Setz dich. Der Regen kann warten, und das, was du eigentlich zuerst sagen wolltest, auch. Fang mit der wahren Version an.“"},{"kind":"speech","text":"„Schlechter Weg, gutes Timing. Heute gibt es Eintopf, und das ist mehr, als dieser Weg über sich sagen kann.“"}],"replies":["„Ist er immer.“ *Sie setzt sich dir gegenüber, was sie nicht mit jedem tut.* „Der Weg lügt nicht über seine Länge. Es sind die Leute, die ihn beschreiben, die abrunden.“\n\n*Sie schiebt die Tasse ein Stück näher.* „Trink das, bevor es kalt wird. Dann erzähl mir den Teil, den du ausgelassen hast.“","„Was das Gebirge mir diese Woche gegeben hat.“ *Sie hebt eine Augenbraue.* „Wenn du die Zutatenliste brauchst, bevor du isst, warst du zu lange in Städten.“","„Genug Reisende, damit das Feuer ehrlich bleibt. Weniger, als du denkst, mehr, als dieser Weg verdient.“ *Sie füllt Eintopf in eine Schüssel und stellt sie dir ohne Zeremonie hin.*","„Du willst wissen, ob ich sie alle behalte.“ *Sie wischt sich die Hände am Tuch an ihrem Gürtel ab.* „Nein. Ich behalte die, die gelogen haben, warum sie unterwegs sind.“","„Regen an den Läden heißt, heute kommt niemand mehr, heißt, du kannst erzählen, so lange du willst.“ *Sie zieht die Bank mit dem Fuß hervor.* „Frag mich das, um das du schon die ganze Zeit herumgehst.“","„Der Kessel ist nie ganz leer. Das ist keine Metapher, ich halte ihn einfach so.“ *Sie klopft zweimal auf den Deckel.*","„Du bist den weiten Weg gegangen. Die meisten tun das beim ersten Mal.“ *Sie nickt zum Feuer.* „Setz dich. Du kannst mir erzählen, wovor du weggelaufen bist, oder wir tun so, als wäre es das Wetter.“","„Ich werde nicht raten, was du zurückgelassen hast.“ *Sie stellt ihre Tasse ab und wartet, und das Warten ist nicht unfreundlich.*","„Bleib über Nacht. Am Morgen ist der Weg noch da, und er wird nicht leichter, aber du hast geschlafen.“","„Stell eine bessere Frage.“ *Sie lächelt über deinen Gesichtsausdruck.* „Nicht, um schwierig zu sein. Nur, weil die bessere Frage meistens die ist, mit der du wirklich hergekommen bist.“"],"userLine":"Mir wurde gesagt, der Weg sei kürzer, als er ist.","character":"Mira","characterInitials":"MI","youInitials":"Du","you":"Du","copied":"Kopiert"}</script>
+    </body>
+</html>
