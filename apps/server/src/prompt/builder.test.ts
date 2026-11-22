@@ -1,3 +1,4 @@
+import type { WorldInfoPrompt } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -7,8 +8,6 @@ import {
     type PromptOrderEntry,
 } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
-
-import type { WorldInfoPrompt } from '../worldinfo/types.js';
 import { buildPrompt } from './builder.js';
 import { substituteMacros } from './macros.js';
 import type { PromptSettings } from './manager.js';

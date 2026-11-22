@@ -1,3 +1,4 @@
+import type { GenerationType, WorldInfoPrompt } from '@catcup/compat-st';
 import type {
     CharacterDetail,
     ChatMessage,
@@ -7,10 +8,7 @@ import type {
     PersonaSettings,
     RegexScript,
 } from '@catcup/shared';
-
-import type { WorldInfoPrompt } from '../worldinfo/types.js';
 import { type AssembleResult, assemblePrompt, type SummaryInjection } from './assemble.js';
-import type { GenerationType } from './definitions.js';
 import type { PromptSettings } from './manager.js';
 import type { GroupMacroMembers } from './worldInfoTurn.js';
 

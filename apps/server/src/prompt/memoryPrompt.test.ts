@@ -1,3 +1,4 @@
+import { IDENTIFIER, ST_DEFAULT_PROMPTS } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -6,9 +7,7 @@ import {
     type PromptEntry,
 } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
-
 import { buildPrompt } from './builder.js';
-import { IDENTIFIER, ST_DEFAULT_PROMPTS } from './definitions.js';
 
 const speaker = {
     id: 'Seraphina',

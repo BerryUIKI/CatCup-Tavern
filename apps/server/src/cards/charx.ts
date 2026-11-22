@@ -1,9 +1,7 @@
+import { mutateCardPayload, normalizeCard, type ParsedCard } from '@catcup/compat-st';
 import { isRecord } from '@catcup/shared';
 import { strFromU8, strToU8, unzipSync, type Zippable, zipSync } from 'fflate';
-
 import { safeFileName } from '../storage/paths.js';
-import { normalizeCard, type ParsedCard } from './parse.js';
-import { mutateCardPayload } from './write.js';
 
 /**
  * CharX package support.

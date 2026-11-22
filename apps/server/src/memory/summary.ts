@@ -2,6 +2,7 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
+import { RESERVED_TOKENS } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -13,8 +14,6 @@ import {
     type PersonaSettings,
     substituteMacros,
 } from '@catcup/shared';
-
-import { RESERVED_TOKENS } from '../prompt/definitions.js';
 import { createMacroContext, type GroupMacroMembers } from '../prompt/worldInfoTurn.js';
 import type { PromptMessage } from '../providers/types.js';
 

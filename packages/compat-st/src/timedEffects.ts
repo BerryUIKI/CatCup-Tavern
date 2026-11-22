@@ -2,7 +2,13 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
-import type { ScanEntry, TimedEffectRecord, TimedEffectsView, TimedEffectType, TimedWorldInfo } from './types.js';
+import type {
+    ScanEntry,
+    TimedEffectRecord,
+    TimedEffectsView,
+    TimedEffectType,
+    TimedWorldInfo,
+} from './worldinfo-types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);

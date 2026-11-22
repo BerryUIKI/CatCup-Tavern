@@ -1,9 +1,6 @@
+import { buildCardPayload, encodePng, parsePngCard, withTextChunks, writePngCard } from '@catcup/compat-st';
 import extract from 'png-chunks-extract';
 import { describe, expect, it } from 'vitest';
-
-import { parsePngCard } from './parse.js';
-import { encodePng, withTextChunks } from './png.js';
-import { buildCardPayload, writePngCard } from './write.js';
 
 /** A valid 1×1 PNG: IHDR, IDAT, IEND and nothing else. */
 const TINY_PNG = new Uint8Array(

@@ -2,6 +2,7 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -9,10 +10,8 @@ import {
     type PersonaSettings,
     type SummarizeResponse,
 } from '@catcup/shared';
-
 import { badRequest, HttpError } from '../http/errors.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import type { GroupMacroMembers } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import type { MessagePatch } from '../storage/chats.js';

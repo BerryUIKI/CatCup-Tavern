@@ -29,6 +29,9 @@ importers:
       '@agnai/web-tokenizers':
         specifier: 0.1.6-pre3
         version: 0.1.6-pre3
+      '@catcup/compat-st':
+        specifier: workspace:*
+        version: link:../../packages/compat-st
       '@catcup/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -56,12 +59,6 @@ importers:
       js-tiktoken:
         specifier: ^1.0.21
         version: 1.0.21
-      png-chunk-text:
-        specifier: ^1.0.0
-        version: 1.0.0
-      png-chunks-extract:
-        specifier: ^1.0.0
-        version: 1.0.0
       sanitize-filename:
         specifier: ^1.6.5
         version: 1.6.5
@@ -90,6 +87,12 @@ importers:
       pino-pretty:
         specifier: ^13.2.0
         version: 13.2.0
+      png-chunk-text:
+        specifier: ^1.0.0
+        version: 1.0.0
+      png-chunks-extract:
+        specifier: ^1.0.0
+        version: 1.0.0
       tsup:
         specifier: ^9.0.0
         version: 9.0.0(jiti@2.7.0)(postcss@8.5.32)(tsx@4.23.15)(typescript@7.0.2)
@@ -160,6 +163,34 @@ importers:
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+
+  packages/compat-st:
+    dependencies:
+      '@agnai/web-tokenizers':
+        specifier: 0.1.6-pre3
+        version: 0.1.6-pre3
+      '@catcup/shared':
+        specifier: workspace:*
+        version: link:../shared
+      js-tiktoken:
+        specifier: ^1.0.21
+        version: 1.0.21
+      png-chunk-text:
+        specifier: ^1.0.0
+        version: 1.0.0
+      png-chunks-extract:
+        specifier: ^1.0.0
+        version: 1.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.1.0
+        version: 5.1.0(@types/node@26.6.6)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   packages/shared:
     dependencies:

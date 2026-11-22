@@ -280,7 +280,7 @@ describe('a run against a stub provider', () => {
 describe('resuming a run', () => {
     it('keeps a proposal whose entry has not changed and replans the one that did', async () => {
         const { replanned } = await import('../worldinfo/aliasRun.js');
-        const { getStringHash } = await import('../worldinfo/hash.js');
+        const { getStringHash } = await import('@catcup/compat-st');
 
         const same = 'the same content';
         const rows = [
@@ -431,7 +431,7 @@ describe('applying a run', () => {
 
     it('reports a stale set once the entry content moves past it', async () => {
         const { readWorldAliases, writeWorldAliases } = await import('../storage/worlds.js');
-        const { getStringHash } = await import('../worldinfo/hash.js');
+        const { getStringHash } = await import('@catcup/compat-st');
         const { readEntriesForEditor } = await import('../worldinfo/entries.js');
         const { writeJsonFile, readJsonFile } = await import('../storage/jsonFile.js');
         const raw = await readJsonFile<Record<string, unknown>>(fixturePath(root, 'worlds', 'eldoria.json'), {});

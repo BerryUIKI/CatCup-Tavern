@@ -4,7 +4,7 @@
 
 import { CATCUP_MODEL_EXTENSION, type CharacterPatch, isRecord } from '@catcup/shared';
 
-import { withTextChunks } from './png.js';
+import { withTextChunks } from './card-png.js';
 
 function applyPatch(data: Record<string, unknown>, patch: CharacterPatch): Record<string, unknown> {
     const merged = { ...data };

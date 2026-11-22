@@ -98,7 +98,7 @@ describe('POST /api/characters/import-path', () => {
     });
 
     it('imports a PNG card from an absolute path', async () => {
-        const { buildCardPayload, writePngCard } = await import('../cards/write.js');
+        const { buildCardPayload, writePngCard } = await import('@catcup/compat-st');
         const file = path.join(cards, 'path-import.png');
         const png = writePngCard(new Uint8Array(basePng), buildCardPayload(card, {}));
         await writeFile(file, Buffer.from(png));

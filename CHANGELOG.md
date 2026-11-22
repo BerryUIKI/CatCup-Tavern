@@ -84,6 +84,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   A chat with no `director` key produces the same prompt and the same file it always did, which is the compatibility promise this rests on.
 
+- **The code ported from SillyTavern has its own package.** `packages/compat-st` now holds the card parser and writer, the world info scanner and its helpers, the prompt definitions and history shaping, and the tokenizer's model map — 22 files that used to be scattered through `apps/server/src` and `packages/shared/src` with only a header to mark them.
+
+  **This is a boundary for legibility, not a licence change.** The app imports the package and is built with it, so the result is still one AGPL-3.0 program; what a recipient of the installer may do has not changed. What it buys is a list of what is derived that cannot drift as files are added, and the one boundary a genuine licence change would start from. `docs/REUSE-ISOLATION.md` records the reasoning and what a real separation would require.
+
+  Three things stayed where they were, and the reasons are the interesting part: the loader's file I/O, prompt assembly and the memory service all need storage, providers or the app's own modules, and a package that imports its own consumer is not a boundary. The key-splitting helper stayed for a different reason — the browser needs it, and pulling this package into the web bundle would drag Node code along. Where a dependency pointed the wrong way, it was inverted: the scanner now takes its lexical index as an argument instead of importing the app's cache, and the tokenizer takes its vocabulary path.
+
 ### Changed
 
 - The README leads with what the product is and the Windows download, before the install notes, and

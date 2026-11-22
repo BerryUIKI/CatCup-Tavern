@@ -1,6 +1,5 @@
+import { DEFAULT_FORMATS, DEFAULT_MESSAGES } from '@catcup/compat-st';
 import { type GenerationSettings, isRecord, stOpenAiPresetSchema } from '@catcup/shared';
-
-import { DEFAULT_FORMATS, DEFAULT_MESSAGES } from './definitions.js';
 import type { PromptSettings } from './manager.js';
 
 export interface ResolvedPreset {

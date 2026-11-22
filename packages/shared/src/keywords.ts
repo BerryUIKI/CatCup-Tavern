@@ -92,7 +92,7 @@ export function splitKeywordsAndRegexes(input: string): string[] {
     return keywords;
 }
 
-/** Render a key list the way SillyTavern's editor displays it. */
+/** Render a key list the way the editor displays it. */
 export function formatKeywords(keys: readonly string[]): string {
     return keys.join(', ');
 }

@@ -1,3 +1,4 @@
+import { createTokenCounter, ESTIMATE_COUNTER } from '@catcup/compat-st';
 import {
     type ContextPreview,
     type GroupDepthPrompt,
@@ -10,13 +11,11 @@ import {
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
 import { notFound } from '../http/errors.js';
 import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { buildPrompt } from '../prompt/builder.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter, ESTIMATE_COUNTER } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { chatPersonaId, readChat } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';

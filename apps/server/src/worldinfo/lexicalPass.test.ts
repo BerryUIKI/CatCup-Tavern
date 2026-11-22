@@ -1,8 +1,7 @@
+import type { ScanEntry, ScanInput, ScanMessage } from '@catcup/compat-st';
+import { scanWorldInfo } from '@catcup/compat-st';
 import { beforeEach, describe, expect, it } from 'vitest';
-
-import { clearIndexCache } from './lexicalIndex.js';
-import { scanWorldInfo } from './scanner.js';
-import type { ScanEntry, ScanInput, ScanMessage } from './types.js';
+import { clearIndexCache, getEntryIndex } from './lexicalIndex.js';
 
 let nextUid = 0;
 
@@ -67,6 +66,8 @@ function scan(entries: ScanEntry[], messages: ScanMessage[], extra: Partial<Scan
         entries,
         chat: messages,
         maxContext: 8192,
+        // The lexical index is the app's; the scan only needs a builder.
+        lexicalIndex: (candidates) => getEntryIndex(candidates),
         settings: { depth: 10, lexicalMatch: true, ...(extra.settings ?? {}) },
         ...extra,
     });

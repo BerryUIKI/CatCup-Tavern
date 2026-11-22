@@ -1,13 +1,12 @@
-import type { PromptEntry, PromptOrder, PromptOrderEntry } from '@catcup/shared';
-import { GLOBAL_PROMPT_ORDER_ID } from '@catcup/shared';
-
 import {
     DEFAULT_INJECTION_ORDER,
     defaultPromptOrder,
     type GenerationType,
     IDENTIFIER,
     ST_DEFAULT_PROMPTS,
-} from './definitions.js';
+} from '@catcup/compat-st';
+import type { PromptEntry, PromptOrder, PromptOrderEntry } from '@catcup/shared';
+import { GLOBAL_PROMPT_ORDER_ID } from '@catcup/shared';
 
 export interface PromptSettings {
     prompts: PromptEntry[];

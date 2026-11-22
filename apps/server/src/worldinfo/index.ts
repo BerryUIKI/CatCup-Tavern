@@ -1,30 +1,3 @@
-export { getStringHash } from './hash.js';
-export { clearIndexCache, getEntryIndex, indexFingerprint } from './lexicalIndex.js';
-export type { WorldInfoBook, WorldInfoBookSummary } from './loader.js';
-export {
-    listWorldInfoBooks,
-    loadWorldInfoEntries,
-    parseWorldInfoBook,
-    readWorldInfoBook,
-    worldInfoBookPath,
-} from './loader.js';
-export { matchesKey, parseDecorators, parseRegexFromString } from './matching.js';
-export {
-    buildWorldInfoPrompt,
-    composeAuthorNote,
-    depthPromptText,
-    formatWorldInfo,
-    outletText,
-} from './prompt.js';
-export {
-    DEFAULT_DEPTH,
-    DEFAULT_WEIGHT,
-    DEFAULT_WORLD_INFO_SETTINGS,
-    MAX_SCAN_DEPTH,
-    scanWorldInfo,
-} from './scanner.js';
-export type { TimedEffects, TimedEffectsContext } from './timedEffects.js';
-export { createTimedEffects, ensureTimedWorldInfo } from './timedEffects.js';
 export type {
     ActivationReason,
     ActiveCharacter,
@@ -41,11 +14,40 @@ export type {
     ScanTrace,
     SkipReason,
     TimedEffectRecord,
+    TimedEffects,
+    TimedEffectsContext,
     TimedEffectsView,
     TimedEffectType,
     TimedWorldInfo,
     WorldInfoPrompt,
     WorldInfoPromptOptions,
     WorldInfoSettings,
-} from './types.js';
-export { SCAN_STATE } from './types.js';
+} from '@catcup/compat-st';
+export {
+    buildWorldInfoPrompt,
+    composeAuthorNote,
+    createTimedEffects,
+    DEFAULT_DEPTH,
+    DEFAULT_WEIGHT,
+    DEFAULT_WORLD_INFO_SETTINGS,
+    depthPromptText,
+    ensureTimedWorldInfo,
+    formatWorldInfo,
+    getStringHash,
+    MAX_SCAN_DEPTH,
+    matchesKey,
+    outletText,
+    parseDecorators,
+    parseRegexFromString,
+    SCAN_STATE,
+    scanWorldInfo,
+} from '@catcup/compat-st';
+export { clearIndexCache, getEntryIndex, indexFingerprint } from './lexicalIndex.js';
+export type { WorldInfoBook, WorldInfoBookSummary } from './loader.js';
+export {
+    listWorldInfoBooks,
+    loadWorldInfoEntries,
+    parseWorldInfoBook,
+    readWorldInfoBook,
+    worldInfoBookPath,
+} from './loader.js';

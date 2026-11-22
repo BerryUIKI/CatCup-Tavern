@@ -1,6 +1,6 @@
 import { isRecord } from '@catcup/shared';
 
-import type { ParsedCard } from './parse.js';
+import type { ParsedCard } from './card-parse.js';
 
 /**
  * Read SillyTavern's favorite flag from a parsed card.

@@ -1,7 +1,6 @@
+import type { ScanEntry } from '@catcup/compat-st';
 import { beforeEach, describe, expect, it } from 'vitest';
-
 import { clearIndexCache, getEntryIndex, indexFingerprint } from './lexicalIndex.js';
-import type { ScanEntry } from './types.js';
 
 function entry(over: Partial<ScanEntry> = {}): ScanEntry {
     return {

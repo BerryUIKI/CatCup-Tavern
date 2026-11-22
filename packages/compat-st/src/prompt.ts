@@ -2,7 +2,7 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
-import type { AuthorNotePrompt, ScanResult, WorldInfoPrompt, WorldInfoPromptOptions } from './types.js';
+import type { AuthorNotePrompt, ScanResult, WorldInfoPrompt, WorldInfoPromptOptions } from './worldinfo-types.js';
 
 /**
  * Apply SillyTavern's `wi_format` to a joined before/after bucket.

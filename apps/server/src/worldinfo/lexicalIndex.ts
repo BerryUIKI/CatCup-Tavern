@@ -21,8 +21,8 @@
  * truth is always the JSON on disk.
  */
 
+import type { ScanEntry } from '@catcup/compat-st';
 import { type Bm25Index, type Bm25Options, buildEntryIndex } from '../retrieval/bm25.js';
-import type { ScanEntry } from './types.js';
 
 /** How many books to keep indexed at once. */
 const MAX_CACHED_INDEXES = 16;

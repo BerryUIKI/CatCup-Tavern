@@ -132,11 +132,12 @@ packages/shared/
 pnpm test                       # everything
 pnpm --filter @catcup/server test
 pnpm --filter @catcup/shared test
-pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
+pnpm --filter @catcup/compat-st test
 ```
 
 Current coverage:
 
+- compat-st: the ported card parser, writer and PNG chunk handling;
 - shared: schema defaults and the character library request schemas, macros, keywords, memory lookup, personas, regex scripts, the quick reply script parser, speech text preparation;
 - server: character card normalization, CharX import/export, card write-back and favorites, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, the TTS adapter/routes against a local speech stub, and the desktop open-session auth model.
 

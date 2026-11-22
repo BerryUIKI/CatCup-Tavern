@@ -2,6 +2,23 @@
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/openai.js
 // Ported to TypeScript without DOM or global state. See docs/REUSE.md.
 
+import type { WorldInfoPrompt } from '@catcup/compat-st';
+import {
+    ChatCompletion,
+    type CompletionMessage,
+    type CompletionRole,
+    DEFAULT_FORMATS,
+    DEFAULT_MESSAGES,
+    type ExampleMessage,
+    estimateTokens,
+    formatWorldInfo,
+    type GenerationType,
+    IDENTIFIER,
+    INJECTION_POSITION,
+    parseExampleBlocks,
+    RESERVED_TOKENS,
+    toHistoryEntries,
+} from '@catcup/compat-st';
 import {
     applyRegexScripts,
     type CharacterDetail,
@@ -13,19 +30,7 @@ import {
     type RegexScript,
     regexPlacementForMessage,
 } from '@catcup/shared';
-
 import type { PromptMessage } from '../providers/types.js';
-import { formatWorldInfo } from '../worldinfo/prompt.js';
-import type { WorldInfoPrompt } from '../worldinfo/types.js';
-import {
-    DEFAULT_FORMATS,
-    DEFAULT_MESSAGES,
-    type GenerationType,
-    IDENTIFIER,
-    INJECTION_POSITION,
-    RESERVED_TOKENS,
-} from './definitions.js';
-import { type ExampleMessage, parseExampleBlocks, toHistoryEntries } from './history.js';
 import { type MacroContext, substituteMacros } from './macros.js';
 import {
     buildPromptCollection,
@@ -34,8 +39,6 @@ import {
     type PromptSettings,
     sanitizePromptSettings,
 } from './manager.js';
-import { ChatCompletion, type CompletionMessage, type CompletionRole } from './messages.js';
-import { estimateTokens } from './tokenizer.js';
 import type { GroupMacroMembers } from './worldInfoTurn.js';
 
 export interface AssembleInput {

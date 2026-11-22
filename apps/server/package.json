@@ -14,6 +14,7 @@
     },
     "dependencies": {
         "@agnai/web-tokenizers": "0.1.6-pre3",
+        "@catcup/compat-st": "workspace:*",
         "@catcup/shared": "workspace:*",
         "@fastify/cookie": "^11.1.5",
         "@fastify/multipart": "^10.1.8",
@@ -23,8 +24,6 @@
         "fastify": "^5.12.8",
         "fflate": "^0.8.3",
         "js-tiktoken": "^1.0.21",
-        "png-chunk-text": "^1.0.0",
-        "png-chunks-extract": "^1.0.0",
         "sanitize-filename": "^1.6.5",
         "write-file-atomic": "^8.0.0",
         "zod": "^4.6.7"
@@ -36,6 +35,8 @@
         "@types/sanitize-filename": "^1.6.3",
         "@types/write-file-atomic": "^4.0.3",
         "pino-pretty": "^13.2.0",
+        "png-chunk-text": "^1.0.0",
+        "png-chunks-extract": "^1.0.0",
         "tsup": "^9.0.0",
         "tsx": "^4.23.15",
         "typescript": "^7.0.2",

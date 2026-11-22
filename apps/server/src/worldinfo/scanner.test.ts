@@ -1,10 +1,7 @@
+import type { ScanEntry, ScanInput, ScanMessage, TimedWorldInfo } from '@catcup/compat-st';
+import { composeAuthorNote, formatWorldInfo, parseDecorators, scanWorldInfo } from '@catcup/compat-st';
 import { PROMPT_ROLE, WI_ANCHOR_POSITION, WORLD_INFO_LOGIC, WORLD_INFO_POSITION } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
-
-import { parseDecorators } from './matching.js';
-import { composeAuthorNote, formatWorldInfo } from './prompt.js';
-import { scanWorldInfo } from './scanner.js';
-import type { ScanEntry, ScanInput, ScanMessage, TimedWorldInfo } from './types.js';
 
 let nextUid = 0;
 

@@ -188,8 +188,8 @@ M0 also passed a live smoke test covering: password setup, character import, cha
 
 ### Delivered so far
 
-- **World info loader** (`apps/server/src/worldinfo/loader.ts`): wrapped `{ entries }` and bare uid maps, uid fallback from the record key, decorator parsing, per-record validation, `null`-tolerant field handling and a SillyTavern-compatible entry hash.
-- **World info scanner** (`apps/server/src/worldinfo/scanner.ts`): the full SillyTavern evaluation pipeline — activation, `INITIAL`/`RECURSION`/`MIN_ACTIVATIONS` scan states, inclusion groups with scoring and weighted rolls, timed effects, the budget latch, and every position bucket including example messages and outlets.
+- **World info loader** (`apps/server/src/worldinfo/loader.ts`, parsing in `packages/compat-st`): wrapped `{ entries }` and bare uid maps, uid fallback from the record key, decorator parsing, per-record validation, `null`-tolerant field handling and a SillyTavern-compatible entry hash.
+- **World info scanner** (`packages/compat-st/src/scanner.ts`): the full SillyTavern evaluation pipeline — activation, `INITIAL`/`RECURSION`/`MIN_ACTIVATIONS` scan states, inclusion groups with scoring and weighted rolls, timed effects, the budget latch, and every position bucket including example messages and outlets.
 - **Timed effects** (`apps/server/src/worldinfo/timedEffects.ts`): `sticky`, `cooldown` and stateless `delay`, persisted as `chat_metadata.timedWorldInfo` and matched by entry hash.
 - **Prompt helper** (`apps/server/src/worldinfo/prompt.ts`): `buildWorldInfoPrompt`, `wi_format`, and Author's Note composition.
 - **Shared world info schema** extended to SillyTavern's full field set, with `null` accepted wherever SillyTavern writes it.

@@ -9,10 +9,8 @@
 // the index instead of reproducing that data loss.
 
 import { PROMPT_ROLE, WI_ANCHOR_POSITION, WORLD_INFO_LOGIC, WORLD_INFO_POSITION } from '@catcup/shared';
-
-import { estimateTokens } from '../prompt/tokenizer.js';
-import { getEntryIndex } from './lexicalIndex.js';
 import { type KeyMatchOptions, matchesKey } from './matching.js';
+import { estimateTokens } from './prompt-tokenizer.js';
 import { createTimedEffects, ensureTimedWorldInfo, type TimedEffects } from './timedEffects.js';
 import {
     type ActivationReason,
@@ -27,7 +25,7 @@ import {
     type ScanTrace,
     type SkipReason,
     type WorldInfoSettings,
-} from './types.js';
+} from './worldinfo-types.js';
 
 /** SillyTavern's defaults, used when a caller does not override them. */
 export const DEFAULT_WORLD_INFO_SETTINGS: WorldInfoSettings = {
@@ -752,7 +750,16 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             // `probability`, `role`, the timed effects — would otherwise go
             // unnoticed until the process restarted.
             const carried = activatedNow;
-            const { index } = getEntryIndex(sorted);
+            // The index builder is supplied by the caller: it lives in the app
+            // (it caches per book and depends on the app's BM25 module), and a
+            // package that imported its own consumer would not be a boundary.
+            // Absent means no lexical pass was configured. A caller that turns
+            // `lexicalMatch` on must supply one; asking for a scan it cannot
+            // score would otherwise throw instead of simply not broadening.
+            if (!input.lexicalIndex) {
+                break;
+            }
+            const { index } = input.lexicalIndex(sorted);
             const byId = new Map<string, ScanEntry>();
             for (const candidate of sorted) {
                 byId.set(candidate.id, candidate);
