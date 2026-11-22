@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/endpoints/stable-diffusion.js
+// The `/sdapi/v1/txt2img` request shape and seed extraction, rewritten.
+// See docs/REUSE.md.
+
 import type { ImageGenerationSettings } from '@catcup/shared';
 
 import { joinUrl } from '../providers/http.js';

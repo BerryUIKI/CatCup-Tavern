@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/stable-diffusion/index.js
+// A smaller settings model; field names follow the reference client where a
+// value has a counterpart, so an import can map them. See docs/REUSE.md.
+
 import { z } from 'zod';
 
 /**

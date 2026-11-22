@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/stable-diffusion/index.js
+// The `/prompt`, `/history`, `/view` and `/interrupt` flow and the
+// placeholder set. The client is CatCup's. See docs/REUSE.md.
+
 import { randomInt, randomUUID } from 'node:crypto';
 
 import type { ImageGenerationSettings } from '@catcup/shared';

@@ -139,15 +139,16 @@ Conclusion: **extension compatibility is delivered in layers L1→L4.** Nail dat
 
 ## 7. Where things live now
 
-Files marked **format** implement a published specification and owe nothing to
-another client's source. Everything else was adapted from one, and those keep a
-header.
+Every file here carries a header saying which of two things it is. **format**
+means it implements a published specification and owes nothing to another
+client's source. Everything else was adapted from one, and the header names the
+upstream file.
 
 | Location                                       | Basis                                                                  | What it does                                                              |
 | ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `packages/compat-st/src/card-parse.ts`         | ST `src/character-card-parser.js`                                      | PNG `tEXt` reading and v2/v3 precedence                                   |
+| `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG                                  | `tEXt` chunk reading, `ccv3` before `chara`                               |
 | `packages/compat-st/src/card-write.ts`         | ST `src/character-card-parser.js`                                      | Card write-back: `chara` + `ccv3` chunks, legacy promotion                |
-| `packages/compat-st/src/card-favorite.ts`      | ST `src/endpoints/characters.js` (`readFromV2`, `charaFormatData`)     | Favorite location and the legacy string-`'true'` rule, rewritten          |
+| `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                                     | The favourite flag and the legacy string-`'true'` rule                    |
 | `packages/compat-st/src/card-png.ts`           | ST `src/png/encode.js`                                                 | PNG chunk serialization and text-chunk replacement (MIT origin)           |
 | `apps/server/src/cards/charx.ts`               | RisuAI `src/ts/process/processzip.ts` + `src/ts/characterCards.ts`     | CharX ZIP layout, `card.json` + `assets/**` and asset URIs                |
 | `apps/server/src/storage/characterAssets.ts`   | RisuAI `src/ts/process/processzip.ts`                                  | Per-character asset storage and round-trip, with CatCup paths and caps    |

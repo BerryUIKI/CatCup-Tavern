@@ -1,3 +1,8 @@
+// Adapted from RisuAI (GPL-3.0)
+// https://github.com/kwaroran/RisuAI/blob/main/src/ts/process/processzip.ts
+// for the per-character asset layout. Paths, caps and validation are
+// CatCup's. See docs/REUSE.md.
+
 import type { Dirent } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';

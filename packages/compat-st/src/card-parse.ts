@@ -1,3 +1,7 @@
+// Implements the Character Card V2/V3 PNG format: the `chara` and `ccv3` tEXt
+// chunks, with `ccv3` winning when both are present. Card parsing is a format
+// obligation, not an adaptation — see docs/REUSE.md.
+
 import {
     type CharacterCardData,
     type CharacterSpec,
@@ -12,12 +16,8 @@ import extract from 'png-chunks-extract';
 /**
  * Character card parsing.
  *
- * Derived from SillyTavern (AGPL-3.0):
- *   src/character-card-parser.js
- *   https://github.com/SillyTavern/SillyTavern
- *
- * The v3 chunk (`ccv3`) takes precedence over the v2 chunk (`chara`), matching
- * SillyTavern's behavior.
+ * The v3 chunk (`ccv3`) takes precedence over the v2 chunk (`chara`), which is
+ * what the Character Card V3 specification requires.
  */
 
 export interface ParsedCard {

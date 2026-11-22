@@ -1,3 +1,7 @@
+// Implements the chat JSONL format the tavern clients share: one header
+// line, then one message per line. The field names and the header shape
+// are the standard; see docs/DATA-FORMATS.md.
+
 import { z } from 'zod';
 
 /**

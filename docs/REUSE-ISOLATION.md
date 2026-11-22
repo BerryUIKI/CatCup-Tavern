@@ -29,22 +29,25 @@ licence it wants is the derived column below.
 
 ## What is actually in the tree
 
-The inventory is less tidy than it looks, and that is the first finding.
+The inventory is less tidy than it looks, and that is the first finding — and it
+was resolved in phase 0, which is why the table below now reads differently from
+the one this document opened with.
 
 `docs/REUSE.md` §7 lists **48 files, 9,948 lines**, as coming from another client
-or implementing one of its formats. Their provenance is recorded three different
-ways:
+or implementing one of its formats. When phase 0 began, their provenance was
+recorded three different ways:
 
-| How the provenance is recorded                             | Files | Lines |
-| ---------------------------------------------------------- | ----- | ----- |
-| A `// Derived from …` / `// Adapted from …` line header    | 22    | 4,995 |
-| A mention inside a doc comment only                        | 4     | 457   |
-| Nothing in the file; the REUSE.md table is the only record | 22    | 4,496 |
+| How the provenance was recorded                          | Files | Lines |
+| -------------------------------------------------------- | ----- | ----- |
+| A `// Derived from …` / `// Adapted from …` line header  | 22    | 4,995 |
+| A mention inside a doc comment only                      | 4     | 457   |
+| Nothing in the file; the REUSE.md table was the only one | 22    | 4,496 |
 
-That last row is the problem. **A header grep undercounts the real figure by about
-4,500 lines**, so any number quoted from headers — including the 5,300 lines this
-document's previous revision quoted — is too low. The table is the authority, and
-phase 0 is what makes the two agree.
+That last row was the problem: **a header grep undercounted the real figure by
+about 4,500 lines**, so any number quoted from headers — including the 5,300
+lines this document's first revision quoted — was too low. Phase 0 closed it.
+Every one of the 48 now carries a line header that states what is true of that
+file: the specification it implements, or the upstream file it was adapted from.
 
 The buckets, counted from the table:
 
@@ -58,9 +61,8 @@ Bucket C overlaps B rather than sitting beside it: the prompt strings live insid
 `prompt-definitions.ts` and `memory.ts`, which also contain ordinary code. It is
 separated because it is the part with a different fix and a different priority.
 
-Plus one dead file: `packages/compat-st/src/keywords.ts`, a duplicate of the
-`@catcup/shared` copy that nothing imports. It is deleted in phase 0 rather than
-counted.
+`packages/compat-st/src/keywords.ts` was a duplicate of the `@catcup/shared` copy
+that nothing imported. It was deleted in phase 0.
 
 ### The finding that changes the order of work
 
@@ -72,11 +74,11 @@ instruction. Copyright protects _expression_; a short creative instruction is
 exactly what it protects. An algorithm, by contrast, sits much closer to the
 idea/expression line — and the scanner is an algorithm.
 
-The same logic removes one item from the "irreducible" list entirely.
-`hash.ts` is cyrb53, published by bryc as MIT. The algorithm is free to use; what
-makes the file derived today is that it was copied out of another project's
-utility module. Taking cyrb53 from its own source, with its own credit, leaves
-nothing derived in those 29 lines. Its header already says as much.
+The same logic removed one item from the "irreducible" list entirely, and that
+one is already done. `hash.ts` is cyrb53, published by bryc as MIT. The algorithm
+was free to use; what made the file derived was that it had been copied out of
+another project's utility module. Re-sourced from bryc's own repository in phase
+0, it owes nothing to anyone but its author.
 
 ### What genuinely resists
 
@@ -118,39 +120,43 @@ makes that cheaper, and none of it substitutes for it.
 Five phases, ordered by value per hour. Each one is independently mergeable and
 gated by the existing test suite.
 
-### Phase 0 — make the inventory true (a day, not an hour)
+### Phase 0 — make the inventory true — **done**
 
-- Delete `packages/compat-st/src/keywords.ts`: a duplicate of the copy in
-  `@catcup/shared` with nothing importing it.
-- Re-source `hash.ts` from cyrb53's own publication, credit bryc, drop the
-  derived header. The algorithm was never the other project's.
-- **Give the 22 files that carry no provenance comment one**, per
-  `CONTRIBUTING.md`'s rule — or, for the six format schemas among them, a line
-  saying which specification they implement. This is the bulk of the phase, and
-  it is what makes every later number trustworthy.
+- ~~Delete `packages/compat-st/src/keywords.ts`~~: it was a duplicate of the copy
+  in `@catcup/shared` with nothing importing it. Gone.
+- ~~Re-source `hash.ts` from cyrb53's own publication~~, credit bryc, drop the
+  derived header. The algorithm was never the other project's; the file now cites
+  bryc's own repository and says what about it CatCup depends on.
+- ~~Give the files with no provenance comment one~~, per `CONTRIBUTING.md`'s rule
+  — or, for the format implementations among them, a line saying which
+  specification the file implements. All 48 files that `REUSE.md` lists now carry
+  a header that states which of the two is true.
 
-**Buys:** a baseline that is correct. The header count understates the real
-figure by about 4,500 lines, and phase 1's scope is only knowable once that is
-fixed.
+**Bought:** a baseline that is correct. The header count used to understate the
+real figure by about 4,500 lines; it does not any more, and phase 1's scope is
+now knowable.
+
+One thing the sweep turned up: `card-parse.ts` and `card-favorite.ts` were already
+implementing the card format and said "derived" because the first version was
+written by reading a reference implementation of it. They are re-labelled rather
+than rewritten, which is the same judgement phase 1 applies to the rest.
 
 ### Phase 1 — re-sort the format bucket (half a day)
 
-Bucket A is already small — 860 lines, six schema files — because the schemas were
-written from the specification to begin with. So the work here is to find what
-belongs in A and was filed under B by mistake: card parsing, world info entry
-parsing, and PNG chunk handling all implement published formats, and their
-headers say "derived" because the first version was written by reading a
-reference implementation of that format.
+Bucket A is small — 860 lines, six schema files — because the schemas were written
+from the specification to begin with. So the work here is to find what belongs in
+A and was filed under B by mistake. Two candidates are already settled: card
+parsing and the favourite flag. The remaining ones are world info entry parsing,
+PNG chunk handling and the sidecar-ish helpers around them.
 
-Sorting them honestly is a small piece of work with a disproportionate effect:
-it moves a few hundred lines out of the column that needs rewriting, and it
-corrects a factual error in `README.md` and `NOTICE`, both of which currently say
-the _formats_ follow another client's licence. They follow a standard.
+Sorting them honestly has a disproportionate effect: it moves a few hundred lines
+out of the column that needs rewriting, and it keeps `README.md` and `NOTICE`
+accurate about which parts follow a standard.
 
 **Risk:** low, but it needs care. Calling a file "format" is a claim of fact, and
 the test is whether the behaviour it encodes is written down in a specification
-or only in another client's source. `docs/REUSE-ISOLATION.md` §"Can bucket B
-actually be rewritten?" is the yardstick.
+or only in another client's source. §"Can bucket B actually be rewritten?" below
+is the yardstick.
 
 ### Phase 2 — write CatCup's own default prompts (a day)
 

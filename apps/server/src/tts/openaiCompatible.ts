@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/tts/openai.js
+// The request shape and error handling, written against the OpenAI speech
+// API. See docs/REUSE.md.
+
 import type { TtsSettings } from '@catcup/shared';
 
 import { HttpError } from '../http/errors.js';

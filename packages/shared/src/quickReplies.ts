@@ -1,3 +1,8 @@
+// Adapted from SillyTavern (AGPL-3.0)
+// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/slash-commands/SlashCommandParser.js
+// Command split, quoting, aliases and named-argument semantics. The parser
+// itself is a smaller one written for CatCup. See docs/REUSE.md.
+
 // Semantics follow SillyTavern's Quick Replies extension and the small set of
 // slash commands CatCup supports. This is a new, deliberately smaller parser,
 // not a port of SillyTavern's SlashCommandParser. See docs/ST-COMPATIBILITY.md.

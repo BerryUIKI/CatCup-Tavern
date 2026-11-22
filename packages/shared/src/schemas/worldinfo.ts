@@ -1,3 +1,7 @@
+// Implements the World Info (lorebook) JSON format: entries keyed by uid,
+// with the field set, positions and logic constants the format defines.
+// See docs/DATA-FORMATS.md.
+
 import { z } from 'zod';
 
 /**

@@ -1,3 +1,8 @@
+// Adapted from RisuAI (GPL-3.0)
+// https://github.com/kwaroran/RisuAI/blob/main/src/ts/process/processzip.ts
+// and src/ts/characterCards.ts, for the CharX ZIP layout. The card and
+// asset handling is CatCup's. See docs/REUSE.md.
+
 import { mutateCardPayload, normalizeCard, type ParsedCard } from '@catcup/compat-st';
 import { isRecord } from '@catcup/shared';
 import { strFromU8, strToU8, unzipSync, type Zippable, zipSync } from 'fflate';
