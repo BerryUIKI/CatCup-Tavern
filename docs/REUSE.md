@@ -149,10 +149,10 @@ Conclusion: **extension compatibility is delivered in layers L1→L4.** Nail dat
 
 ## 7. Where things live now
 
-Every file here carries a header saying which of two things it is. **format**
+Every file here carries a header saying which of three things it is. **format**
 means it implements a published specification and owes nothing to another
-client's source. Everything else was adapted from one, and the header names the
-upstream file.
+client's source. A dash means CatCup wrote it. Everything else was adapted from
+another client, and the header names the upstream file.
 
 | Location                                       | Basis                                                                  | What it does                                                              |
 | ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
@@ -171,7 +171,7 @@ upstream file.
 | `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                      | Book shapes and uid resolution are the format; the hash payload is ST's   |
 | `apps/server/src/worldinfo/loader.ts`          | —                                                                      | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`    |
 | `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                                   | `getStringHash`, the timed-effect identity                                |
-| `packages/compat-st/src/matching.ts`           | ST `public/scripts/world-info.js`                                      | Key matching, regex keys, decorator parsing                               |
+| `packages/compat-st/src/matching.ts`           | —                                                                      | Key matching, regex keys and decorators, rewritten for CatCup             |
 | `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                      | Scan states, groups, budget, positions                                    |
 | `packages/compat-st/src/timedEffects.ts`       | ST `public/scripts/world-info.js`                                      | Sticky, cooldown, delay, hand-off                                         |
 | `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                      | Entry template defaults, free-uid allocation, patch merge, order          |
