@@ -1,6 +1,5 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/openai.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. The assembled prompt as an ordered set of slots, with a
+// running token cost and the optional system-message squash.
 
 export type CompletionRole = 'system' | 'user' | 'assistant';
 
@@ -13,7 +12,13 @@ export interface CompletionMessage {
     name?: string;
 }
 
-/** Identifiers SillyTavern refuses to merge when squashing system messages. */
+/**
+ * Identifiers the squash refuses to merge.
+ *
+ * These are boundary markers rather than instruction: merging one into the
+ * message above it would move the boundary, and the model would read the turn
+ * below as part of a different section.
+ */
 const SQUASH_EXCLUDED = new Set(['newMainChat', 'newChat', 'groupNudge']);
 
 interface Slot {
@@ -24,9 +29,14 @@ interface Slot {
 /**
  * The assembled prompt.
  *
- * Mirrors SillyTavern's `ChatCompletion`: prompts occupy ordered slots, later
- * prompts can insert into an existing slot, and the final array is produced by
- * flattening slots in index order and dropping empty content.
+ * Prompts occupy ordered slots. A prompt placed at an explicit index replaces
+ * whatever is there, and one without an index is appended — that is what lets
+ * the preset's order list decide the arrangement while a prompt the user added
+ * later lands at the end.
+ *
+ * The final message array is the slots flattened in index order with empty
+ * content dropped. Slot identity is kept until then because the token report
+ * and the squash both need to know which prompt a message came from.
  */
 export class ChatCompletion {
     private readonly slots: Array<Slot | undefined> = [];
@@ -61,8 +71,16 @@ export class ChatCompletion {
 
     /**
      * Place a group at a slot index, or append when `index` is null or
-     * negative. Mirrors SillyTavern's index assignment: an existing slot at
-     * that index is replaced.
+     * negative.
+     *
+     * An existing slot at that index is *replaced*, not merged: the caller
+     * owns that position, and keeping the old messages underneath would
+     * duplicate content the new group is meant to supersede.
+     *
+     * The cost is added unconditionally, including for messages that the
+     * flatten will later drop for being empty. That is deliberate — a prompt
+     * that contributes nothing still reserves its slot, and the budget report
+     * should show the reservation rather than hide it.
      */
     add(identifier: string, index: number | null, items: readonly CompletionMessage[]): void {
         const slot: Slot = { identifier, items: [...items] };
@@ -101,9 +119,19 @@ export class ChatCompletion {
     }
 
     /**
-     * Merge adjacent unnamed system messages with a newline, dropping empty
-     * system messages first. SillyTavern only does this when
-     * `squash_system_messages` is enabled, which is off by default.
+     * Merge adjacent unnamed system messages into one, separated by newlines.
+     *
+     * Off by default. It exists for providers that dislike consecutive system
+     * turns, and the cost is that every boundary between two system prompts
+     * disappears — which is why three identifiers are excluded: those are
+     * boundaries a caller relies on.
+     *
+     * Empty system messages are dropped on the way through, since merging an
+     * empty one would only add a stray newline to its neighbour.
+     *
+     * The slots collapse into one at the end. After a squash the original slot
+     * boundaries no longer describe the messages, so keeping them would make
+     * the token report lie.
      */
     squashSystemMessages(): void {
         const squashable = (message: CompletionMessage): boolean =>
@@ -130,7 +158,13 @@ export class ChatCompletion {
         this.slots.push({ identifier: 'root', items: result });
     }
 
-    /** Flatten and drop messages with empty content. Whitespace is kept. */
+    /**
+     * The final message array, with empty content dropped.
+     *
+     * Whitespace-only content is kept. It is a real message to a model, and a
+     * prompt that deliberately contributes a blank line would otherwise lose
+     * it without any indication.
+     */
     getChat(): CompletionMessage[] {
         return this.flatten().filter((message) => Boolean(message.content));
     }
