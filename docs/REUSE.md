@@ -177,13 +177,13 @@ another client, and the header names the upstream file.
 | `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                      | Entry template defaults, free-uid allocation, patch merge, order          |
 | `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                      | `convertCharacterBook`: card lorebook to world info entries               |
 | `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes` and `/pattern/flags` validation                 |
-| `packages/compat-st/src/prompt.ts`             | ST `world-info.js` + `openai.js`                                       | Prompt buckets, `wi_format`, Author's Note composition                    |
+| `packages/compat-st/src/prompt.ts`             | —                                                                      | Prompt buckets, `wi_format` and Author's Note composition, rewritten      |
 | `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Identifiers, order and markers from ST; the instruction text is CatCup's  |
 | `apps/server/src/prompt/manager.ts`            | ST `PromptManager.js`                                                  | Sanitize, order lookup and prompt collection                              |
 | `packages/compat-st/src/prompt-messages.ts`    | ST `openai.js`                                                         | `ChatCompletion` slots, budget and system-message squashing               |
 | `apps/server/src/prompt/assemble.ts`           | ST `openai.js`                                                         | Marker merge, card overrides, injection and population                    |
 | `packages/compat-st/src/prompt-history.ts`     | ST `openai.js`                                                         | History conversion and example-dialogue parsing                           |
-| `packages/shared/src/macros.ts`                | ST `macros.js`                                                         | Macro subset used by the built-in prompts and message display             |
+| `packages/shared/src/macros.ts`                | —                                                                      | The macro subset, rewritten for CatCup                                    |
 | `packages/compat-st/src/prompt-tokenizer.ts`   | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js`      | Model to tiktoken-encoding mapping, the byte estimate and Claude counting |
 | `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                        |
 | `packages/shared/src/regex.ts`                 | ST `public/scripts/extensions/regex/engine.js`                         | Placement gate, replacement syntax, trim strings and the depth window     |

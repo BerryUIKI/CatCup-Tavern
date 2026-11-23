@@ -250,16 +250,16 @@ and should never have been the last thing left unchecked.
 Bucket B, about 9,050 lines across 40 files. It is done one module at a time, in
 this order:
 
-| #   | Module                                             | Lines  | Status                                 |
-| --- | -------------------------------------------------- | ------ | -------------------------------------- |
-| 1   | `compat-st/src/matching.ts`                        | 97     | **done** — key matching and decorators |
-| 2   | `compat-st/src/prompt.ts` + `shared/src/macros.ts` | 176    | next: the small pure ones              |
-| 3   | `compat-st/src/timedEffects.ts`                    | 268    |                                        |
-| 4   | `memory/{summary,service,inject}`                  | 714    |                                        |
-| 5   | `compat-st/src/scanner.ts`                         | 1,034  | the substantial one                    |
-| 6   | `apps/server/src/prompt/assemble.ts`               | 786    | the other substantial one              |
-| 7   | the adapters — images, TTS, quick replies, CharX   | ~2,400 |                                        |
-| 8   | `packages/shared/src/regex.ts`                     | 230    |                                        |
+| #   | Module                                             | Lines  | Status                                        |
+| --- | -------------------------------------------------- | ------ | --------------------------------------------- |
+| 1   | `compat-st/src/matching.ts`                        | 97     | **done** — key matching and decorators        |
+| 2   | `compat-st/src/prompt.ts` + `shared/src/macros.ts` | 176    | **done** — prompt buckets and macro expansion |
+| 3   | `compat-st/src/timedEffects.ts`                    | 268    |                                               |
+| 4   | `memory/{summary,service,inject}`                  | 714    |                                               |
+| 5   | `compat-st/src/scanner.ts`                         | 1,034  | the substantial one                           |
+| 6   | `apps/server/src/prompt/assemble.ts`               | 786    | the other substantial one                     |
+| 7   | the adapters — images, TTS, quick replies, CharX   | ~2,400 |                                               |
+| 8   | `packages/shared/src/regex.ts`                     | 230    |                                               |
 
 Two rules keep it honest:
 

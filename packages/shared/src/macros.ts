@@ -1,15 +1,14 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/macros.js
-// The macro expansion rules, narrowed to the subset the built-in prompts
-// and cards use. See docs/REUSE.md.
+// Written for CatCup. The macro vocabulary CatCup expands, and nothing more:
+// a name that is not in the table below is left exactly as the author typed it.
 
 /**
  * The macro subset CatCup expands in prompts and when it displays stored
  * messages.
  *
- * SillyTavern's macro engine is much larger; this covers the macros that the
- * built-in prompts and character cards use. Unknown macros are left untouched
- * so user content is never silently lost.
+ * A macro is `{{name}}`, case-insensitive, with optional spaces inside the
+ * braces. Unknown names are left untouched rather than blanked: a card written
+ * for a richer engine loses nothing visible, and the author can see which
+ * macros this client does not know.
  */
 export interface MacroContext {
     char: string;
@@ -18,8 +17,10 @@ export interface MacroContext {
     personality: string;
     scenario: string;
     /**
-     * Text the current prompt replaces, for `{{original}}`. SillyTavern
-     * expands it once and yields an empty string for later occurrences.
+     * Text the current prompt replaces, for `{{original}}`.
+     *
+     * Expanded once and then empty, so a card that wraps the default prompt in
+     * its own text cannot splice the same paragraph in twice.
      */
     original?: string;
     /** Group chats: every member name, including muted members. */
@@ -32,6 +33,7 @@ export interface MacroContext {
     words?: number;
 }
 
+/** `{{name}}`, with a name that starts with a letter or underscore. */
 const MACRO_PATTERN = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
 
 export interface MacroOptions {
@@ -39,12 +41,23 @@ export interface MacroOptions {
      * Applied to each expanded value rather than to the whole string.
      *
      * Regex scripts use this to escape a macro's value for `substituteRegex:
-     * ESCAPED`; escaping the finished pattern would also escape its `/`
-     * delimiters.
+     * ESCAPED`. Escaping the finished pattern instead would escape its `/`
+     * delimiters too, which is the bug this option exists to avoid.
      */
     escapeValue?: (value: string) => string;
 }
 
+/**
+ * Expand the macros in one string.
+ *
+ * Values are resolved lazily, which matters for `{{original}}` — it tracks
+ * whether it has been used, so resolution cannot happen up front.
+ *
+ * `{{charIfNotGroup}}` is the odd one: in a group it is the member list,
+ * because a group prompt has no single character to name, and outside one it is
+ * the character. `{{notChar}}` is everyone else, muted members included,
+ * followed by the user.
+ */
 export function substituteMacros(text: string, context: MacroContext, options: MacroOptions = {}): string {
     if (!text) {
         return '';
@@ -53,6 +66,7 @@ export function substituteMacros(text: string, context: MacroContext, options: M
     const now = new Date();
     let originalUsed = false;
 
+    const members = context.group ?? [];
     const values: Record<string, () => string> = {
         char: () => context.char,
         user: () => context.user,
@@ -60,12 +74,10 @@ export function substituteMacros(text: string, context: MacroContext, options: M
         description: () => context.description,
         personality: () => context.personality,
         scenario: () => context.scenario,
-        // In a group, `{{charIfNotGroup}}` is the member list; otherwise the
-        // character name, as SillyTavern's group macros do.
-        charifnotgroup: () => (context.group?.length ? context.group.join(', ') : context.char),
-        group: () => (context.group ?? []).join(', '),
-        groupnotmuted: () => (context.groupNotMuted ?? context.group ?? []).join(', '),
-        notchar: () => [...(context.group ?? []).filter((name) => name !== context.char), context.user].join(', '),
+        charifnotgroup: () => (members.length > 0 ? members.join(', ') : context.char),
+        group: () => members.join(', '),
+        groupnotmuted: () => (context.groupNotMuted ?? members).join(', '),
+        notchar: () => [...members.filter((name) => name !== context.char), context.user].join(', '),
         summary: () => context.summary ?? '',
         words: () => (context.words === undefined ? '' : String(context.words)),
         original: () => {
@@ -75,9 +87,12 @@ export function substituteMacros(text: string, context: MacroContext, options: M
             originalUsed = true;
             return context.original ?? '';
         },
-        time: () => now.toLocaleTimeString('en-GB', { hour12: false }),
+        hour: () => now.toLocaleTimeString('en-GB', { hour12: false }),
         date: () => now.toLocaleDateString('en-GB'),
     };
+    // `{{time}}` predates `{{hour}}` in the presets people share; both names are
+    // accepted so an imported preset keeps working.
+    values.time = values.hour;
 
     return text.replace(MACRO_PATTERN, (match, name: string) => {
         const resolve = values[name.toLowerCase()];
