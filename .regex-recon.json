@@ -1,0 +1,434 @@
+{
+    "module": "packages/shared/src/regex.ts (SillyTavern regex-script engine: placement gate, slash-regex parser, replacement syntax, trim filter, depth window)",
+    "summary": "Decides whether a stored regex script runs for a given placement/context (disabled, markdown-vs-prompt three-way gate, isEdit/runOnEdit, min/max depth window, placement membership) and, when it does, how `/pattern/flags` is parsed and how `$N` / `$<name>` / `{{match}}` are expanded — with capture values passed through the trim-string filter and the whole replacement macro-substituted last.",
+    "exportedApi": [
+        {
+            "name": "parseRegexFromString",
+            "signature": "export function parseRegexFromString(input: string): RegExp | null",
+            "callers": "packages/shared/src/regex.ts:172 (internal); packages/compat-st/src/matching.ts:109 (via re-export at packages/compat-st/src/matching.ts:8, imported at :6); apps/server/src/worldinfo/index.ts:41 re-exports it from compat-st"
+        },
+        {
+            "name": "sanitizeRegexMacro",
+            "signature": "export function sanitizeRegexMacro(value: string): string",
+            "callers": "apps/server/src/routes/chats.ts:88, :117, :235; apps/server/src/routes/context.ts:58; apps/server/src/routes/generate.ts:229, :302; apps/server/src/routes/groupGenerate.ts:385, :436; apps/server/src/routes/groups.ts:239, :519; apps/server/src/quickreplies/execute.ts:452; packages/shared/src/regex.test.ts:104"
+        },
+        {
+            "name": "RegexContext",
+            "signature": "export interface RegexContext { isMarkdown?: boolean; isPrompt?: boolean; isEdit?: boolean; depth?: number; substitute?: (text: string, escapeValues: boolean) => string; }",
+            "callers": "packages/shared/src/regex.ts:93, :158, :212 (parameter type only); no external construction site names the type — all call sites build the object inline"
+        },
+        {
+            "name": "shouldRunRegexScript",
+            "signature": "export function shouldRunRegexScript(script: RegexScript, placement: number, options: RegexContext = {}): boolean",
+            "callers": "packages/shared/src/regex.ts:220 (only production caller); tests at packages/shared/src/regex.test.ts:124-165"
+        },
+        {
+            "name": "runRegexScript",
+            "signature": "export function runRegexScript(script: RegexScript, raw: string, options: RegexContext = {}): string",
+            "callers": "packages/shared/src/regex.ts:221 (internal); apps/web/src/components/RegexSettings.tsx:263 (editor preview)"
+        },
+        {
+            "name": "applyRegexScripts",
+            "signature": "export function applyRegexScripts(\n    scripts: readonly RegexScript[],\n    raw: string,\n    placement: number,\n    options: RegexContext = {},\n): string",
+            "callers": "apps/server/src/prompt/assemble.ts:515; apps/server/src/prompt/worldInfoTurn.ts:182; apps/server/src/quickreplies/execute.ts:304; apps/server/src/routes/chats.ts:94, :123, :240; apps/server/src/routes/generate.ts:126, :129, :251; apps/server/src/routes/groupGenerate.ts:163, :169, :398; apps/server/src/routes/groups.ts:241, :524; apps/web/src/components/ChatView.tsx:169; apps/web/src/components/GroupChatView.tsx:279"
+        },
+        {
+            "name": "regexPlacementForMessage",
+            "signature": "export function regexPlacementForMessage(isUser: boolean): number",
+            "callers": "apps/server/src/prompt/assemble.ts:518; apps/server/src/routes/chats.ts:243; apps/server/src/routes/groups.ts:527; apps/web/src/components/ChatView.tsx:172; apps/web/src/components/GroupChatView.tsx:282"
+        },
+        {
+            "name": "identity (module-private)",
+            "signature": "const identity = (text: string) => text;",
+            "callers": "packages/shared/src/regex.ts:163 (default substitute only)"
+        },
+        {
+            "name": "filterString (module-private)",
+            "signature": "function filterString(\n    raw: string,\n    trimStrings: readonly string[],\n    substitute: (text: string, escapeValues: boolean) => string,\n): string",
+            "callers": "packages/shared/src/regex.ts:194 (only caller)"
+        },
+        {
+            "name": "REGEX_PLACEMENT (from ./schemas/regex.js, consumed here)",
+            "signature": "export const REGEX_PLACEMENT = { MD_DISPLAY: 0, USER_INPUT: 1, AI_OUTPUT: 2, SLASH_COMMAND: 3, WORLD_INFO: 5, REASONING: 6 } as const;",
+            "callers": "packages/shared/src/regex.ts:229; apps/web/src/components/ChatView.tsx:172; apps/web/src/components/GroupChatView.tsx:282; apps/web/src/components/RegexSettings.tsx:28-32, :57; apps/server/src/routes/{generate,groupGenerate,chats,groups}.ts and prompt/{assemble,worldInfoTurn}.ts, quickreplies/execute.ts"
+        },
+        {
+            "name": "SUBSTITUTE_REGEX (from ./schemas/regex.js, consumed here)",
+            "signature": "export const SUBSTITUTE_REGEX = { NONE: 0, RAW: 1, ESCAPED: 2 } as const;",
+            "callers": "packages/shared/src/regex.ts:166, :168; apps/web/src/components/RegexSettings.tsx:62, :416-420"
+        }
+    ],
+    "behaviours": [
+        {
+            "rule": "parseRegexFromString requires the WHOLE string to be delimited: the regex is anchored `^\\/([\\w\\W]+?)\\/([gimsuy]*)$`. The pattern group is lazy `+?` (so at least one char — an empty pattern `//` does not parse) and the flags group only admits the exact set `gimsuy`. Anything else — `/a/d`, `/a/v`, `/a/gg`, `/a/0`, leading or trailing space, a trailing newline — returns null.",
+            "evidence": "packages/shared/src/regex.ts:14",
+            "pinnedBy": "packages/shared/src/regex.test.ts:32 (parses a delimited pattern and its flags); packages/shared/src/regex.test.ts:48 (rejects text that is not delimited and patterns that do not compile — only covers the bare word 'dragon')",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "A second guard rejects the string when the captured pattern contains a `/` that is NOT immediately preceded by a backslash: `pattern.match(/(^|[^\\\\])\\//)` → null. A slash at the very start of the pattern counts as unescaped. This guard exists because `new RegExp('a/b')` compiles fine, so without it `/a/b/i` would parse with pattern `a/b` rather than going to the flags branch.",
+            "evidence": "packages/shared/src/regex.ts:22-24",
+            "pinnedBy": "packages/shared/src/regex.test.ts:44 (rejects an unescaped delimiter inside the pattern); packages/shared/src/regex.test.ts:40 (unescapes an escaped delimiter inside the pattern)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "The pre-backslash test is purely one-character lookback, so a `/` preceded by `\\\\` (an escaped backslash, i.e. two backslashes) is also accepted, even though it is not escaped. `/a\\\\/b/` parses to source `a\\/b`.",
+            "evidence": "packages/shared/src/regex.ts:22",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Exactly ONE `\\/` → `/` unescape is performed (`String.prototype.replace` with a string pattern, first occurrence only), not a global replace. This is safe only because a surviving `\\/` inside a RegExp source is still a literal `/`; `/x\\/y\\/z/` matches `x/y/z` correctly despite only the first pair being rewritten.",
+            "evidence": "packages/shared/src/regex.ts:27",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "A pattern that fails to compile returns null instead of throwing; the `new RegExp` call is the only statement wrapped in try/catch in the module. No other operation is guarded — `substitute` exceptions and TypeErrors on null input propagate.",
+            "evidence": "packages/shared/src/regex.ts:26-30",
+            "pinnedBy": "packages/shared/src/regex.test.ts:48 (rejects text that is not delimited and patterns that do not compile — asserts `/(/` → null)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "parseRegexFromString returns a FRESH RegExp per call and never caches. This is load-bearing: the engine creates a new regex inside every runRegexScript call, so `lastIndex` state can never leak between messages or between two applications of the same script.",
+            "evidence": "packages/shared/src/regex.ts:27",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "parseRegexFromString throws a TypeError on null/undefined input (`input.match` on a non-object). Callers only ever pass strings (a world-info key, or `script.findRegex`, itself guarded non-empty), so this is not reachable in production.",
+            "evidence": "packages/shared/src/regex.ts:14",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "sanitizeRegexMacro escapes EXACTLY this set and nothing else: the five control characters \\n \\r \\t \\v \\f and NUL each become their two-character escape (`\\n`, `\\r`, `\\t`, `\\v`, `\\f`, `\\0`), and `. ^ $ * + ? { } [ ] \\ / | ( )` each get a leading backslash. Notably NOT escaped: `-`, space, `_`, `#`, `'`, `!`, `\"`, `%`, `&`, `=`, `<`, `>`, `,`, `:`, `;`, `@`, backtick, `~`.",
+            "evidence": "packages/shared/src/regex.ts:40-57",
+            "pinnedBy": "packages/shared/src/regex.test.ts:185 (escapes every regex metacharacter — asserts only `a.b*c` and `line\\nbreak`)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Not escaping `-` is deliberate (a `-` outside a character class needs no escape, and `\\-` would throw under the `u` flag). A rewrite that escapes `-` for symmetry would break every `/u` script whose macro value contains a hyphen, with no test failing.",
+            "evidence": "packages/shared/src/regex.ts:40 (character class omits `-`)",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Escaping `/` is what lets an ESCAPED macro value be injected into a slash-delimited pattern without terminating it early; dropping `/` from the class would make any macro value containing a slash silently produce an unparseable pattern, which runRegexScript then treats as a no-op.",
+            "evidence": "packages/shared/src/regex.ts:40",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "sanitizeRegexMacro throws on null/undefined (`value.replaceAll` on a non-object). It is only ever called through `substituteMacros(..., { escapeValue: sanitizeRegexMacro })`, so the value is always a string.",
+            "evidence": "packages/shared/src/regex.ts:40",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "shouldRunRegexScript checks `script.disabled` FIRST and returns false before reading any option. A disabled script never consults placement, depth or context.",
+            "evidence": "packages/shared/src/regex.ts:94-96",
+            "pinnedBy": "packages/shared/src/regex.test.ts:164 (skips disabled scripts)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "The three-way scope gate uses strict `=== true` on the context flags: (markdownOnly && isMarkdown === true) OR (promptOnly && isPrompt === true) OR (neither flag && isMarkdown !== true && isPrompt !== true). Concretely: a script with BOTH flags runs in either context and never at the source; a plain script runs only when NEITHER flag is the boolean true.",
+            "evidence": "packages/shared/src/regex.ts:100-107",
+            "pinnedBy": "packages/shared/src/regex.test.ts:122 (runs a plain script only at the source, not for prompts or markdown); :129 (runs a promptOnly script only for prompts); :136 (runs a markdownOnly script only when rendering)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "Because the comparison is `=== true`, a truthy non-boolean (e.g. `isMarkdown: 1`) does NOT activate a markdownOnly script, and does NOT suppress a plain script — the plain branch tests `isMarkdown !== true`, which is satisfied. Loosening this to truthiness inverts behaviour for any caller passing a non-boolean, and no test covers it.",
+            "evidence": "packages/shared/src/regex.ts:101-103",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The isEdit gate is `isEdit === true && !script.runOnEdit` → false. Also strict: `isEdit: 1` (non-boolean) does not gate. An explicit `isEdit: false` is identical to omitting it.",
+            "evidence": "packages/shared/src/regex.ts:109-111",
+            "pinnedBy": "packages/shared/src/regex.test.ts:146 (skips scripts that do not run on edit)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "The isEdit gate is evaluated AFTER the scope gate. Not observable today (both produce `false` with no side effect), but a rewrite must not move it inside runRegexScript or before the disabled check without re-deriving the interaction: a promptOnly+runOnEdit:false script during an edit is skipped by the isEdit gate even though the prompt has nothing to do with editing.",
+            "evidence": "packages/shared/src/regex.ts:109-111 (after 100-107)",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Depth checks are entered ONLY when `typeof depth === 'number'`. A null, undefined, missing or string-typed depth skips the whole window, so a script with minDepth 5 / maxDepth 6 still runs when no depth is supplied. This is what makes the module usable from paths that have no conversation (the editor preview, quick replies, world-info transformContent without a depth).",
+            "evidence": "packages/shared/src/regex.ts:113",
+            "pinnedBy": "packages/shared/src/regex.test.ts:160 (ignores depth limits when no depth is given)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "minDepth is honoured only when all three hold: not null, Number.isFinite, and `minDepth >= -1`; then `depth < minDepth` blocks. The `>= -1` rail means the sentinel -1 IS active (it permits every non-negative depth and therefore gates nothing in practice), while -1.5, -2, NaN, ±Infinity and null are all silently ignored rather than over-blocking.",
+            "evidence": "packages/shared/src/regex.ts:115-121",
+            "pinnedBy": "packages/shared/src/regex.test.ts:153 (honors the depth window — uses minDepth 1 only); no test for the -1 / non-finite rails",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The minDepth comparison is strict `<`: depth exactly equal to minDepth is ALLOWED. Off-by-one here changes which messages a script touches by one at the boundary.",
+            "evidence": "packages/shared/src/regex.ts:118",
+            "pinnedBy": "packages/shared/src/regex.test.ts:153 (honors the depth window — asserts depth 1 is excluded for minDepth 1 and depth 2 is included; the exactly-equal case minDepth === depth is NOT asserted)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "maxDepth is honoured only when not null, Number.isFinite, and `maxDepth >= 0`; then `depth > maxDepth` blocks. The `>= 0` rail means maxDepth 0 IS active (only depth 0 and negatives pass) while -1 and below, NaN and Infinity are silently ignored. A naive `Number(maxDepth) >= 0`-less rewrite would let `maxDepth: -1` block every real message.",
+            "evidence": "packages/shared/src/regex.ts:122-129",
+            "pinnedBy": "packages/shared/src/regex.test.ts:153 (honors the depth window); no test for the rail or for maxDepth 0",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The maxDepth comparison is strict `>`: depth exactly equal to maxDepth is ALLOWED. depth 0 with maxDepth 0 runs; depth 1 with maxDepth 0 does not.",
+            "evidence": "packages/shared/src/regex.ts:126",
+            "pinnedBy": "packages/shared/src/regex.test.ts:153 (honors the depth window — asserts depth 4 excluded for maxDepth 3; the exactly-equal maxDepth === depth case is NOT asserted)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The depth undefined-vs-number distinction is not academic: apps/server/src/prompt/assemble.ts:512-521 computes `rawHistory.length - index - depthOffset` with depthOffset 2 in continue mode, so the message being continued is handed depth -1. The web paths also reach -1 (GroupChatView.tsx:891 passes index = messages.length for the optimistic user message). Negative depths must stay legal.",
+            "evidence": "packages/shared/src/regex.ts:113-130; apps/server/src/prompt/assemble.ts:512, :521; apps/web/src/components/GroupChatView.tsx:275, :891",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Placement membership is `script.placement.includes(placement)` with strict equality — a placement array of `['2']` does not match the number 2, and an empty placement array makes the script permanently inert (the schema default is `[]`). The module imposes no whitelist: 0, 4 and any other number pass if both sides agree. The placement test is the LAST check, after disabled, scope, edit and depth.",
+            "evidence": "packages/shared/src/regex.ts:132",
+            "pinnedBy": "packages/shared/src/regex.test.ts:142 (skips scripts whose placement does not match — covers only a 1-vs-2 mismatch); empty-placement inertness and the 0/4 passthrough are NOT asserted",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "filterString applied to a trim string is a PLAIN substring removal (`String.prototype.replaceAll` with a string needle), not a regex and not case-insensitive. A trim string containing `a.b` removes the literal four characters `a.b`; a trim string `ab` does not remove `AB`.",
+            "evidence": "packages/shared/src/regex.ts:145",
+            "pinnedBy": "packages/shared/src/regex.test.ts:76 (removes trim strings from inserted groups — needle 'think:' only); case sensitivity and regex-metacharacter-ness are NOT asserted",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Each trim string is macro-substituted with escapeValues = FALSE immediately before it becomes a needle, and only then is it tested for emptiness. A trim string that expands to '' is skipped entirely rather than being used (an empty needle would otherwise match between every character).",
+            "evidence": "packages/shared/src/regex.ts:143-147",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Trim strings are applied sequentially in array order, each seeing the previous one's output, and the needle is recomputed (re-substituted) for every match and every group. Removing `ab` then `b` from `abc` yields `c`.",
+            "evidence": "packages/shared/src/regex.ts:141-148",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Trim filtering applies ONLY to inserted capture values — `$N`, `$<name>`, and `$0`/`{{match}}` — never to the literal replacement text. A replacement of `ab` with trim string `ab` is inserted unchanged; only the group insertions are filtered.",
+            "evidence": "packages/shared/src/regex.ts:194 (inside the group replacer only); :197 substitutes the assembled text without filtering",
+            "pinnedBy": "packages/shared/src/regex.test.ts:76 (removes trim strings from inserted groups); the negative case (literal text untouched) is NOT asserted",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "`{{match}}` in replaceString is rewritten to `$0` with a case-insensitive GLOBAL pattern (`/{{match}}/gi`). `{{Match}}`, `{{MATCH}}` and two occurrences in one replacement all work.",
+            "evidence": "packages/shared/src/regex.ts:177",
+            "pinnedBy": "packages/shared/src/regex.test.ts:59 (supports capture groups, named groups and {{match}} — lowercase, single occurrence only)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The `$0` written by the {{match}} rewrite is NOT itself expanded by String.prototype.replace, because the replacement argument is a plain string and `$0` is not a special replacement pattern. It stays as the two characters `$0` until the later `/$\\d+|$<...>/g` pass turns it into args[0]. A rewrite that used a function replacer or a `$&` shortcut here changes the trim-filter behaviour of {{match}}.",
+            "evidence": "packages/shared/src/regex.ts:177, :180",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Replacement uses a FUNCTION replacer over `raw.replace(regex, fn)`, so global-ness comes entirely from the script's own `g` flag: a `/foo/g` script replaces every match, a `/foo/` script replaces only the first. No implicit globalisation.",
+            "evidence": "packages/shared/src/regex.ts:179",
+            "pinnedBy": "packages/shared/src/regex.test.ts:55 (replaces every match of a global pattern); :59 (single-match cases)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "Inside the replacer, `$N` (one or more digits) resolves to `args[Number(N)]`. The args array from String.replace is [match, ...captures, offset, inputString] and, when the pattern has named groups, [...that, groupsObject]. Therefore `$(captures+1)` is the OFFSET (a number, always rendered as '') and `$(captures+2)` is the WHOLE INPUT STRING — which IS a non-empty string and gets inserted, after trim filtering. This leak is observable: `/(A)/` with replacement `[$3]` over `xxAyy` yields `xx[xxAyy]yy`, and with trimStrings ['x'] yields `xx[Ayy]yy`.",
+            "evidence": "packages/shared/src/regex.ts:181-183",
+            "pinnedBy": "NONE — packages/shared/src/regex.test.ts:72 asserts only that a NON-participating group ($1 on `(x)?`) becomes '', which is a different path",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "`$<name>` resolves from the LAST element of args only when it is a non-null object; otherwise undefined. A named-group reference against a pattern with no named groups therefore yields '' (not the literal text, not a throw). The name class is `[^>]+`, so `$<a$1>` looks up a group literally named `a$1` and `$<>` (empty name) does not match the expansion pattern at all and stays literal.",
+            "evidence": "packages/shared/src/regex.ts:180, :184-188",
+            "pinnedBy": "packages/shared/src/regex.test.ts:59 (supports capture groups, named groups and {{match}} — happy path only)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "A resolved value is inserted only when it is a non-empty STRING: `typeof value !== 'string' || !value` → ''. A participating-but-empty group, a non-participating group, an undefined index and a number all collapse to the empty string. `undefined` and `null` never reach the output text.",
+            "evidence": "packages/shared/src/regex.ts:190-192",
+            "pinnedBy": "packages/shared/src/regex.test.ts:72 (drops a missing group instead of writing undefined)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "`$` sequences that are NOT `$<digits>` and not `$<name>` are left completely literal — `$&`, `` $` ``, `$'`, `$$`, `$x`, a lone `$` — because the replacer never lets JS expand them and the module's own expansion pattern does not match them. A rewrite that delegates to native String.replace semantics would silently start honouring `$&` and `$'`.",
+            "evidence": "packages/shared/src/regex.ts:179-180 (function replacer + narrow expansion pattern)",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Expansion is single-pass: a `$1` that arrives inside a capture value, or inside the substituted replacement text, is never re-expanded.",
+            "evidence": "packages/shared/src/regex.ts:180-197",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The full assembled replacement (`withGroups`, after all `$N`/`$<name>`/{{match}} expansion) is macro-substituted LAST with escapeValues = FALSE. So macros in replaceString expand, and they see the text after group insertion. For substituteRegex NONE the find pattern is never substituted, so a macro left in it is matched literally.",
+            "evidence": "packages/shared/src/regex.ts:197, :165-170",
+            "pinnedBy": "packages/shared/src/regex.test.ts:94 (expands macros in the replacement)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "The find-pattern substitution happens BEFORE parse validation, so a `substitute` with side effects runs even when the resulting pattern is unparseable and the text is ultimately returned unchanged. For NONE the substitute is not called for the pattern at all — only for trim strings and the replacement.",
+            "evidence": "packages/shared/src/regex.ts:165-175",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "substituteRegex dispatch is: RAW → substitute(pattern, false); ESCAPED → substitute(pattern, true); ANYTHING ELSE (including 0/NONE and any out-of-schema value such as 3) → the raw findRegex, with substitute not called. The escapeValues flag is true only for the ESCAPED pattern, never for trim strings or the final replacement.",
+            "evidence": "packages/shared/src/regex.ts:165-170, :143, :197",
+            "pinnedBy": "packages/shared/src/regex.test.ts:101 (substitutes and escapes the pattern for substituteRegex ESCAPED — covers RAW vs ESCAPED, not NONE)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "runRegexScript short-circuits and returns `raw` BY REFERENCE (not a copy) when `script.disabled || !script.findRegex || !raw`. The `!raw` test catches '' as well as null/undefined — a non-string raw is passed straight through rather than throwing.",
+            "evidence": "packages/shared/src/regex.ts:159-161",
+            "pinnedBy": "packages/shared/src/regex.test.ts:88 (leaves the text alone when the script is disabled or empty — values only, identity/null not asserted)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The editor preview calls runRegexScript directly, so the `script.disabled` guard applies to it: previewing a disabled script shows the input unchanged, not the transformed text. The preview also supplies no `substitute`, so macros in the pattern/replacement are NOT expanded there.",
+            "evidence": "packages/shared/src/regex.ts:159, :163; apps/web/src/components/RegexSettings.tsx:263; apps/web/src/components/RegexSettings.tsx:94-105 (toScript carries `disabled`)",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The default substitute is `options.substitute ?? ((text: string) => identity(text))` — an identity that silently ignores the escapeValues argument. Omitting substitute is the browser-render path when no character context exists; macros are left verbatim.",
+            "evidence": "packages/shared/src/regex.ts:83, :163",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "A pattern that does not parse makes runRegexScript return the input unchanged — no throw, no partial rewrite. This is the fallback that makes a malformed imported script inert rather than fatal to a generation.",
+            "evidence": "packages/shared/src/regex.ts:172-175",
+            "pinnedBy": "packages/shared/src/regex.test.ts:84 (leaves the text alone when the pattern is invalid)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "applyRegexScripts returns `raw` by reference when `typeof raw !== 'string' || raw === ''` — so null and undefined pass through untouched rather than throwing.",
+            "evidence": "packages/shared/src/regex.ts:214-216",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "applyRegexScripts applies the scripts strictly in array order, threading each result into the next; order is behaviour, not presentation. It presupposes the caller has already ordered global→preset→character; this module does no scoping of its own.",
+            "evidence": "packages/shared/src/regex.ts:218-224",
+            "pinnedBy": "packages/shared/src/regex.test.ts:170 (chains scripts in order — also asserts the reverse order would differ)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "applyRegexScripts only calls runRegexScript for scripts that pass shouldRunRegexScript, and passes the SAME options object to both — so the depth gate and the substitute come from one source and cannot diverge.",
+            "evidence": "packages/shared/src/regex.ts:220-222",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "When no script matches, applyRegexScripts returns the original reference (result starts as `raw` and runRegexScript returns the input unchanged).",
+            "evidence": "packages/shared/src/regex.ts:218-224",
+            "pinnedBy": "packages/shared/src/regex.test.ts:178 (returns the input when no script matches — value only, not identity)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "regexPlacementForMessage maps true → USER_INPUT (1) and false → AI_OUTPUT (2). This single line decides which placement every edit path and every prompt-history entry is gated on; swapping the branches would make user scripts run on AI text and vice versa with the tests still green.",
+            "evidence": "packages/shared/src/regex.ts:228-230",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The persisted placement numbers must not be renumbered: MD_DISPLAY 0 (retired, accepted so old files round-trip), USER_INPUT 1, AI_OUTPUT 2, SLASH_COMMAND 3, WORLD_INFO 5, REASONING 6; 4 is a retired sendAs slot that is skipped. These integers are written into settings files by other clients, so changing one silently rewrites the meaning of every stored script — and no test asserts the literal numbers (tests use the constants).",
+            "evidence": "packages/shared/src/schemas/regex.ts:14-22; packages/shared/src/regex.ts:229",
+            "pinnedBy": "NONE (packages/shared/src/regex.test.ts:19, :124-165 all reference the constants, never the integers); prose only in docs/DATA-FORMATS.md:676",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "SUBSTITUTE_REGEX must keep NONE 0 / RAW 1 / ESCAPED 2: the value is persisted in regex.json and the patch schema validates min(0).max(2), so renumbering would either invalidate stored files or silently change behaviour.",
+            "evidence": "packages/shared/src/schemas/regex.ts:25-29, :46, :64",
+            "pinnedBy": "packages/shared/src/regex.test.ts:192 (fills the SillyTavern defaults for a bare script — asserts the value via the constant)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "Every RegexScript field has a Zod default so a bare `{id, findRegex, replaceString}` parses into a complete script: scriptName '', trimStrings [], placement [], disabled/markdownOnly/promptOnly/runOnEdit false, substituteRegex 0, minDepth/maxDepth null. `id` is the only required field (min length 1).",
+            "evidence": "packages/shared/src/schemas/regex.ts:32-49",
+            "pinnedBy": "packages/shared/src/regex.test.ts:192 (fills the SillyTavern defaults for a bare script)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "Unknown fields on a script survive a read/parse round trip (`.passthrough()`), and on write they are appended AFTER the known fields in their original input order. A rewrite that switched to `.strict()` or rebuilt the object by hand would drop a newer client's fields — the project's stated data-format constraint.",
+            "evidence": "packages/shared/src/schemas/regex.ts:50; packages/shared/src/regex.test.ts:205 (keeps unknown fields from a newer SillyTavern)",
+            "pinnedBy": "packages/shared/src/regex.test.ts:205 (keeps unknown fields from a newer SillyTavern)",
+            "silentIfBroken": false
+        },
+        {
+            "rule": "The slash-delimited grammar implemented in parseRegexFromString is DUPLICATED in packages/shared/src/keywords.ts:6-25 (`isValidRegex`), which decides whether a world-info key is treated as a regex or split on commas. The two must stay in lockstep; a rewrite of one alone makes `/a/b/i` a valid world-info key but an inert regex script (or vice versa) with no test in either suite failing.",
+            "evidence": "packages/shared/src/regex.ts:14-30 vs packages/shared/src/keywords.ts:6-25",
+            "pinnedBy": "packages/shared/src/keywords.test.ts:21 (splits a closed slash token that is not a valid regex); packages/shared/src/keywords.test.ts:33 (treats an escaped slash inside a regex as content); apps/server/src/worldinfo/scanner.test.ts:168 (treats slash-delimited keys as regular expressions)",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "The module reads only these script fields: disabled, findRegex, replaceString, trimStrings, placement, markdownOnly, promptOnly, runOnEdit, substituteRegex, minDepth, maxDepth. `id` and `scriptName` are never consulted — so a rewrite may not start keying caches or dedupe off `id` without changing behaviour.",
+            "evidence": "packages/shared/src/regex.ts:94, :101-103, :115-129, :132, :159, :166-170, :177, :194",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        },
+        {
+            "rule": "No function in the module mutates its arguments, and nothing shared between calls survives: the RegExp is rebuilt per invocation, trimStrings/placement are only read, and the returned string is either the input reference or a new string. Concurrent scripts in one request cannot interfere.",
+            "evidence": "packages/shared/src/regex.ts:179 (new RegExp inside each call via parseRegexFromString at :172); :141-148 (reads only); :218-224 (local accumulator)",
+            "pinnedBy": "NONE",
+            "silentIfBroken": true
+        }
+    ],
+    "formatObligations": [
+        "`data/regex.json` (profile scope) and `data/shared/regex.json` (shared scope) each hold `{\"scripts\": [...]}` — a single ordered array, because order is behaviour. Written by writeJsonFile as `JSON.stringify(value, null, 2) + \"\\n\"`, UTF-8, mode 0600 (apps/server/src/storage/jsonFile.ts:21-26 via apps/server/src/storage/regex.ts:38-40). Paths: apps/server/src/storage/paths.ts:82-84 (profile) and :129-131 (shared).",
+        "On-disk key order per script is the Zod parse order, then passthrough extras appended in input order: `id, scriptName, findRegex, replaceString, trimStrings, placement, disabled, markdownOnly, promptOnly, runOnEdit, substituteRegex, minDepth, maxDepth, <unknown...>`. Verified: a parsed script with `somethingNew` serializes with `somethingNew` last.",
+        "A file whose top level is not an object with a `scripts` array reads as an EMPTY list (no throw): `if (!isRecord(raw) || !Array.isArray(raw.scripts)) return [];` (apps/server/src/storage/regex.ts:35-38). A single unparseable script is skipped, not fatal, and the rest of the list still loads (:41-48).",
+        "Export download (`GET /api/regex/export`) is a DIFFERENT serialization from the storage file: `JSON.stringify({ scripts }, null, 4)` — 4-space indent — plus a trailing newline, `Content-Type: application/json; charset=utf-8`, `Content-Disposition: attachment; filename=\"catcup-regex.json\"` (apps/server/src/routes/regex.ts:51-59).",
+        "Import accepts four shapes (apps/server/src/storage/regex.ts:118-134): a bare array of scripts; `{scripts: [...]}`; `{regex: [...]}` (a SillyTavern settings backup); or a single script object recognized by a string `findRegex` OR a string `scriptName`. Anything else imports nothing.",
+        "Import assigns ids: keep `record.id` when non-empty else a UUID; a duplicate within the payload gets a fresh UUID; and an id already used in the OTHER scope is replaced with a fresh UUID so a collision cannot hide a rule (apps/server/src/storage/regex.ts:150-184). `mode: 'replace'` only replaces the target scope's list.",
+        "`placement` integers are persisted: 0 MD_DISPLAY (retired, kept for round-trip), 1 USER_INPUT, 2 AI_OUTPUT, 3 SLASH_COMMAND, 5 WORLD_INFO, 6 REASONING; 4 is retired and skipped (packages/shared/src/schemas/regex.ts:14-22, docs/DATA-FORMATS.md:676).",
+        "`substituteRegex` is persisted as 0/1/2 (NONE/RAW/ESCAPED) and validated by the patch schema as `z.number().int().min(0).max(2)` (packages/shared/src/schemas/regex.ts:25-29, :46, :64).",
+        "`minDepth` / `maxDepth` are persisted as `number | null` with default `null` — never as a sentinel like -1 or '' (packages/shared/src/schemas/regex.ts:47-48). The editor converts '' to null on save (apps/web/src/components/RegexSettings.tsx:84-88).",
+        "`trimStrings` is persisted as `string[]`; the editor splits the textarea on newlines, trims each line and drops empties, so an empty trim string can only arrive via import, where filterString skips it (packages/shared/src/regex.ts:144; apps/web/src/components/RegexSettings.tsx:96-99).",
+        "The module's OUTPUT is what gets persisted verbatim and is therefore a format obligation: stored `mes` for an AI reply (apps/server/src/routes/generate.ts:126), `extra.reasoning` (:129), group replies (groupGenerate.ts:163, :169), stored user text (generate.ts:251, groupGenerate.ts:398, quickreplies/execute.ts:304), edited messages (chats.ts:240, groups.ts:524), greeting swipes (chats.ts:94, :123; groups.ts:241), and world-info entry content placed in the prompt (prompt/worldInfoTurn.ts:182). Any change to `$N` semantics, trim filtering or the fallbacks silently changes bytes already on disk and in every future chat JSONL."
+    ],
+    "untestedSurface": [
+        "regexPlacementForMessage — zero tests anywhere. Its isUser→USER_INPUT/AI_OUTPUT mapping is unverified.",
+        "applyRegexScripts input guard: null, undefined and non-string raw values passing through by reference (only non-empty strings and one empty list are tested).",
+        "applyRegexScripts passes the same options object to shouldRunRegexScript and runRegexScript — no test asserts the wiring of `depth` or `substitute` through applyRegexScripts (both tests call it with no options).",
+        "shouldRunRegexScript: minDepth/maxDepth values exactly equal to depth (the strict `<` / `>` boundary) — only one side of each boundary is tested.",
+        "shouldRunRegexScript depth rails: minDepth -1 and -1.5/-2/NaN/±Infinity, maxDepth -1/NaN/±Infinity being ignored, maxDepth 0 being active.",
+        "shouldRunRegexScript negative depth (reachable: assemble.ts:521 yields -1 in continue mode and GroupChatView.tsx:891 yields -1 for the optimistic message).",
+        "shouldRunRegexScript empty `placement` array making a script inert; and placement values 0 and 4 passing through the includes check.",
+        "shouldRunRegexScript strict `=== true` behaviour with truthy non-booleans for isMarkdown/isPrompt/isEdit (e.g. 1), which inverts the gate vs truthiness.",
+        "shouldRunRegexScript with BOTH markdownOnly and promptOnly set (runs in either context, never at source).",
+        "The `$N` args-index leak: `$(captures+1)` resolving to the offset and `$(captures+2)` to the whole input string, which is then inserted and trim-filtered. No test pins this, and 'fixing' it would change output for any stored script using a high `$N`.",
+        "`$<name>` against a pattern with no named groups; `$<>` and `$<a$1>` staying literal / resolving to ''.",
+        "`$&`, `` $` ``, `$'`, `$$`, `$x` and a lone `$` remaining literal in replaceString.",
+        "`$00` / `$01` numeric parsing with leading zeros.",
+        "A group value containing `$1` not being re-expanded (single-pass expansion).",
+        "Trim strings applied to `$0` / `{{match}}` (only a `$1` is tested).",
+        "Trim strings matching literally (regex metacharacters not interpreted) and case-sensitively.",
+        "An empty or macro-expanding-to-empty trim string being skipped rather than used as a needle.",
+        "Trim strings applied across multiple matches of a `g` pattern, with the needle re-substituted per match.",
+        "The literal replacement text NOT being trim-filtered (only inserted groups are).",
+        "sanitizeRegexMacro's full escaped set: `-`, space, `_`, `#`, `'`, `!`, `\"`, `%`, `&`, `=`, `<`, `>`, `,`, `:`, `;`, `@`, backtick, `~` all pass through unchanged; and `\\r`, `\\t`, `\\v`, `\\f`, `\\0`, backslash, `/` being escaped.",
+        "sanitizeRegexMacro throwing on null/undefined.",
+        "parseRegexFromString: the empty pattern `//`, disallowed flags (`/a/d`, `/a/v`, `/a/gg`, `/a/0`), leading/trailing whitespace, a trailing newline, and multiple escaped delimiters in one pattern.",
+        "parseRegexFromString accepting a `/` preceded by `\\\\` (escaped backslash) even though it is not escaped.",
+        "parseRegexFromString throwing a TypeError on null/undefined input.",
+        "parseRegexFromString returning a fresh RegExp per call (no cached instance, so no lastIndex leakage between messages).",
+        "substituteRegex NONE not calling `substitute` at all for the pattern; and any out-of-schema value (e.g. 3) behaving as NONE.",
+        "The find-pattern `substitute` running before parse validation, so its side effects happen even when the pattern turns out invalid.",
+        "The default (identity) substitute leaving macros verbatim when options.substitute is omitted — the browser render path with no character context.",
+        "runRegexScript returning the input by reference (identity, not just equality) for disabled / empty findRegex / empty raw / invalid pattern / no match.",
+        "The editor preview path: a disabled script previews as unchanged text, and macros are not expanded because no substitute is supplied (RegexSettings.tsx:263).",
+        "The duplicated delimiter grammar: packages/shared/src/keywords.ts:6-25 must stay in lockstep with parseRegexFromString; nothing asserts the two agree.",
+        "The persisted placement integers (0/1/2/3/5/6, 4 skipped) and substituteRegex integers (0/1/2) as literals — every test goes through the constants, so renumbering is invisible to the suite while rewriting the meaning of every stored file."
+    ]
+}

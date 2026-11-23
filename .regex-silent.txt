@@ -1,0 +1,82 @@
+- parseRegexFromString requires the WHOLE string to be delimited: the regex is anchored `^\/([\w\W]+?)\/([gimsuy]*)$`. The pattern group is lazy `+?` (so at least one char — an empty pattern `//` does n
+   @ packages/shared/src/regex.ts:14 | packages/shared/src/regex.test.ts:32 (parses a delimited pattern and its flags);
+- The pre-backslash test is purely one-character lookback, so a `/` preceded by `\\` (an escaped backslash, i.e. two backslashes) is also accepted, even though it is not escaped. `/a\\/b/` parses to sou
+   @ packages/shared/src/regex.ts:22 | NONE
+- Exactly ONE `\/` → `/` unescape is performed (`String.prototype.replace` with a string pattern, first occurrence only), not a global replace. This is safe only because a surviving `\/` inside a RegExp
+   @ packages/shared/src/regex.ts:27 | NONE
+- parseRegexFromString returns a FRESH RegExp per call and never caches. This is load-bearing: the engine creates a new regex inside every runRegexScript call, so `lastIndex` state can never leak betwee
+   @ packages/shared/src/regex.ts:27 | NONE
+- parseRegexFromString throws a TypeError on null/undefined input (`input.match` on a non-object). Callers only ever pass strings (a world-info key, or `script.findRegex`, itself guarded non-empty), so 
+   @ packages/shared/src/regex.ts:14 | NONE
+- sanitizeRegexMacro escapes EXACTLY this set and nothing else: the five control characters \n \r \t \v \f and NUL each become their two-character escape (`\n`, `\r`, `\t`, `\v`, `\f`, `\0`), and `. ^ $
+   @ packages/shared/src/regex.ts:40-57 | packages/shared/src/regex.test.ts:185 (escapes every regex metacharacter — asser
+- Not escaping `-` is deliberate (a `-` outside a character class needs no escape, and `\-` would throw under the `u` flag). A rewrite that escapes `-` for symmetry would break every `/u` script whose m
+   @ packages/shared/src/regex.ts:40 (character class omits `-`) | NONE
+- Escaping `/` is what lets an ESCAPED macro value be injected into a slash-delimited pattern without terminating it early; dropping `/` from the class would make any macro value containing a slash sile
+   @ packages/shared/src/regex.ts:40 | NONE
+- sanitizeRegexMacro throws on null/undefined (`value.replaceAll` on a non-object). It is only ever called through `substituteMacros(..., { escapeValue: sanitizeRegexMacro })`, so the value is always a 
+   @ packages/shared/src/regex.ts:40 | NONE
+- Because the comparison is `=== true`, a truthy non-boolean (e.g. `isMarkdown: 1`) does NOT activate a markdownOnly script, and does NOT suppress a plain script — the plain branch tests `isMarkdown !==
+   @ packages/shared/src/regex.ts:101-103 | NONE
+- The isEdit gate is evaluated AFTER the scope gate. Not observable today (both produce `false` with no side effect), but a rewrite must not move it inside runRegexScript or before the disabled check wi
+   @ packages/shared/src/regex.ts:109-111 (after 100-107) | NONE
+- minDepth is honoured only when all three hold: not null, Number.isFinite, and `minDepth >= -1`; then `depth < minDepth` blocks. The `>= -1` rail means the sentinel -1 IS active (it permits every non-n
+   @ packages/shared/src/regex.ts:115-121 | packages/shared/src/regex.test.ts:153 (honors the depth window — uses minDepth 1
+- The minDepth comparison is strict `<`: depth exactly equal to minDepth is ALLOWED. Off-by-one here changes which messages a script touches by one at the boundary.
+   @ packages/shared/src/regex.ts:118 | packages/shared/src/regex.test.ts:153 (honors the depth window — asserts depth 1
+- maxDepth is honoured only when not null, Number.isFinite, and `maxDepth >= 0`; then `depth > maxDepth` blocks. The `>= 0` rail means maxDepth 0 IS active (only depth 0 and negatives pass) while -1 and
+   @ packages/shared/src/regex.ts:122-129 | packages/shared/src/regex.test.ts:153 (honors the depth window); no test for the
+- The maxDepth comparison is strict `>`: depth exactly equal to maxDepth is ALLOWED. depth 0 with maxDepth 0 runs; depth 1 with maxDepth 0 does not.
+   @ packages/shared/src/regex.ts:126 | packages/shared/src/regex.test.ts:153 (honors the depth window — asserts depth 4
+- The depth undefined-vs-number distinction is not academic: apps/server/src/prompt/assemble.ts:512-521 computes `rawHistory.length - index - depthOffset` with depthOffset 2 in continue mode, so the mes
+   @ packages/shared/src/regex.ts:113-130; apps/server/src/prompt/assemble.ts:512, :521; apps/web/src/components/GroupChatView.tsx:275, :891 | NONE
+- Placement membership is `script.placement.includes(placement)` with strict equality — a placement array of `['2']` does not match the number 2, and an empty placement array makes the script permanentl
+   @ packages/shared/src/regex.ts:132 | packages/shared/src/regex.test.ts:142 (skips scripts whose placement does not ma
+- filterString applied to a trim string is a PLAIN substring removal (`String.prototype.replaceAll` with a string needle), not a regex and not case-insensitive. A trim string containing `a.b` removes th
+   @ packages/shared/src/regex.ts:145 | packages/shared/src/regex.test.ts:76 (removes trim strings from inserted groups 
+- Each trim string is macro-substituted with escapeValues = FALSE immediately before it becomes a needle, and only then is it tested for emptiness. A trim string that expands to '' is skipped entirely r
+   @ packages/shared/src/regex.ts:143-147 | NONE
+- Trim strings are applied sequentially in array order, each seeing the previous one's output, and the needle is recomputed (re-substituted) for every match and every group. Removing `ab` then `b` from 
+   @ packages/shared/src/regex.ts:141-148 | NONE
+- Trim filtering applies ONLY to inserted capture values — `$N`, `$<name>`, and `$0`/`{{match}}` — never to the literal replacement text. A replacement of `ab` with trim string `ab` is inserted unchange
+   @ packages/shared/src/regex.ts:194 (inside the group replacer only); :197 substitutes the assembled text without filtering | packages/shared/src/regex.test.ts:76 (removes trim strings from inserted groups)
+- `{{match}}` in replaceString is rewritten to `$0` with a case-insensitive GLOBAL pattern (`/{{match}}/gi`). `{{Match}}`, `{{MATCH}}` and two occurrences in one replacement all work.
+   @ packages/shared/src/regex.ts:177 | packages/shared/src/regex.test.ts:59 (supports capture groups, named groups and 
+- The `$0` written by the {{match}} rewrite is NOT itself expanded by String.prototype.replace, because the replacement argument is a plain string and `$0` is not a special replacement pattern. It stays
+   @ packages/shared/src/regex.ts:177, :180 | NONE
+- Inside the replacer, `$N` (one or more digits) resolves to `args[Number(N)]`. The args array from String.replace is [match, ...captures, offset, inputString] and, when the pattern has named groups, [.
+   @ packages/shared/src/regex.ts:181-183 | NONE — packages/shared/src/regex.test.ts:72 asserts only that a NON-participatin
+- `$<name>` resolves from the LAST element of args only when it is a non-null object; otherwise undefined. A named-group reference against a pattern with no named groups therefore yields '' (not the lit
+   @ packages/shared/src/regex.ts:180, :184-188 | packages/shared/src/regex.test.ts:59 (supports capture groups, named groups and 
+- `$` sequences that are NOT `$<digits>` and not `$<name>` are left completely literal — `$&`, `` $` ``, `$'`, `$$`, `$x`, a lone `$` — because the replacer never lets JS expand them and the module's ow
+   @ packages/shared/src/regex.ts:179-180 (function replacer + narrow expansion pattern) | NONE
+- Expansion is single-pass: a `$1` that arrives inside a capture value, or inside the substituted replacement text, is never re-expanded.
+   @ packages/shared/src/regex.ts:180-197 | NONE
+- The find-pattern substitution happens BEFORE parse validation, so a `substitute` with side effects runs even when the resulting pattern is unparseable and the text is ultimately returned unchanged. Fo
+   @ packages/shared/src/regex.ts:165-175 | NONE
+- substituteRegex dispatch is: RAW → substitute(pattern, false); ESCAPED → substitute(pattern, true); ANYTHING ELSE (including 0/NONE and any out-of-schema value such as 3) → the raw findRegex, with sub
+   @ packages/shared/src/regex.ts:165-170, :143, :197 | packages/shared/src/regex.test.ts:101 (substitutes and escapes the pattern for s
+- runRegexScript short-circuits and returns `raw` BY REFERENCE (not a copy) when `script.disabled || !script.findRegex || !raw`. The `!raw` test catches '' as well as null/undefined — a non-string raw i
+   @ packages/shared/src/regex.ts:159-161 | packages/shared/src/regex.test.ts:88 (leaves the text alone when the script is d
+- The editor preview calls runRegexScript directly, so the `script.disabled` guard applies to it: previewing a disabled script shows the input unchanged, not the transformed text. The preview also suppl
+   @ packages/shared/src/regex.ts:159, :163; apps/web/src/components/RegexSettings.tsx:263; apps/web/src/components/RegexSettings.tsx:94-105 (toScript carries `disabled`) | NONE
+- The default substitute is `options.substitute ?? ((text: string) => identity(text))` — an identity that silently ignores the escapeValues argument. Omitting substitute is the browser-render path when 
+   @ packages/shared/src/regex.ts:83, :163 | NONE
+- applyRegexScripts returns `raw` by reference when `typeof raw !== 'string' || raw === ''` — so null and undefined pass through untouched rather than throwing.
+   @ packages/shared/src/regex.ts:214-216 | NONE
+- applyRegexScripts only calls runRegexScript for scripts that pass shouldRunRegexScript, and passes the SAME options object to both — so the depth gate and the substitute come from one source and canno
+   @ packages/shared/src/regex.ts:220-222 | NONE
+- When no script matches, applyRegexScripts returns the original reference (result starts as `raw` and runRegexScript returns the input unchanged).
+   @ packages/shared/src/regex.ts:218-224 | packages/shared/src/regex.test.ts:178 (returns the input when no script matches 
+- regexPlacementForMessage maps true → USER_INPUT (1) and false → AI_OUTPUT (2). This single line decides which placement every edit path and every prompt-history entry is gated on; swapping the branche
+   @ packages/shared/src/regex.ts:228-230 | NONE
+- The persisted placement numbers must not be renumbered: MD_DISPLAY 0 (retired, accepted so old files round-trip), USER_INPUT 1, AI_OUTPUT 2, SLASH_COMMAND 3, WORLD_INFO 5, REASONING 6; 4 is a retired 
+   @ packages/shared/src/schemas/regex.ts:14-22; packages/shared/src/regex.ts:229 | NONE (packages/shared/src/regex.test.ts:19, :124-165 all reference the constants
+- SUBSTITUTE_REGEX must keep NONE 0 / RAW 1 / ESCAPED 2: the value is persisted in regex.json and the patch schema validates min(0).max(2), so renumbering would either invalidate stored files or silentl
+   @ packages/shared/src/schemas/regex.ts:25-29, :46, :64 | packages/shared/src/regex.test.ts:192 (fills the SillyTavern defaults for a bare
+- The slash-delimited grammar implemented in parseRegexFromString is DUPLICATED in packages/shared/src/keywords.ts:6-25 (`isValidRegex`), which decides whether a world-info key is treated as a regex or 
+   @ packages/shared/src/regex.ts:14-30 vs packages/shared/src/keywords.ts:6-25 | packages/shared/src/keywords.test.ts:21 (splits a closed slash token that is not
+- The module reads only these script fields: disabled, findRegex, replaceString, trimStrings, placement, markdownOnly, promptOnly, runOnEdit, substituteRegex, minDepth, maxDepth. `id` and `scriptName` a
+   @ packages/shared/src/regex.ts:94, :101-103, :115-129, :132, :159, :166-170, :177, :194 | NONE
+- No function in the module mutates its arguments, and nothing shared between calls survives: the RegExp is rebuilt per invocation, trimStrings/placement are only read, and the returned string is either
+   @ packages/shared/src/regex.ts:179 (new RegExp inside each call via parseRegexFromString at :172); :141-148 (reads only); :218-224 (local accumulator) | NONE
