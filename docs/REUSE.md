@@ -173,7 +173,7 @@ another client, and the header names the upstream file.
 | `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                                   | `getStringHash`, the timed-effect identity                                    |
 | `packages/compat-st/src/matching.ts`           | —                                                                      | Key matching, regex keys and decorators, rewritten for CatCup                 |
 | `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                      | Scan states, groups, budget, positions                                        |
-| `packages/compat-st/src/timedEffects.ts`       | ST `public/scripts/world-info.js`                                      | Sticky, cooldown, delay, hand-off                                             |
+| `packages/compat-st/src/timedEffects.ts`       | —                                                                      | Sticky, cooldown, delay and the hand-off, rewritten                           |
 | `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                      | Entry template defaults, free-uid allocation, patch merge, order              |
 | `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                      | `convertCharacterBook`: card lorebook to world info entries                   |
 | `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes`; the `/pattern/flags` check delegates to `regex.ts` |
@@ -188,9 +188,9 @@ another client, and the header names the upstream file.
 | `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                            |
 | `packages/shared/src/regex.ts`                 | —                                                                      | Placement gate, replacement syntax, trim strings and the depth window         |
 | `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory`; the default prompts are CatCup's            |
-| `apps/server/src/memory/summary.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Update schedule, transcript window and the summary request                    |
-| `apps/server/src/memory/inject.ts`             | ST `public/scripts/extensions/memory/index.js`                         | Injection template and position formatting                                    |
-| `apps/server/src/memory/service.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Summary request lifecycle and storage                                         |
+| `apps/server/src/memory/summary.ts`            | —                                                                      | Update schedule, transcript window and the summary request                    |
+| `apps/server/src/memory/inject.ts`             | —                                                                      | Which summaries reach a prompt, and how they are formatted                    |
+| `apps/server/src/memory/service.ts`            | —                                                                      | Summary lifecycle: the per-chat lock, the call, the write-back                |
 | `packages/shared/src/quickReplies.ts`          | ST `public/scripts/slash-commands/SlashCommandParser.js`               | Command split, quoting, aliases and named-argument semantics                  |
 | `apps/server/src/quickreplies/execute.ts`      | ST `public/scripts/slash-commands.js` + quick-reply `QuickReplySet.js` | `/send`, `/sys`, `/echo`, `/trigger` and `/run` behaviour                     |
 | `apps/server/src/storage/quickReplies.ts`      | ST `src/endpoints/quick-replies.js`                                    | One file per set, named after the set, with import and export                 |
