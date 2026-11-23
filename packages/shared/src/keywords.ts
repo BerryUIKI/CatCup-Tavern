@@ -1,27 +1,18 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. The `/pattern/flags` grammar this module needs lives in
+// `regex.ts`; there is one implementation and this is a caller of it.
 
-/** Does `input` parse as a `/pattern/flags` regular expression? */
+import { parseRegexParts } from './regex.js';
+
+/**
+ * Does `input` parse as a `/pattern/flags` regular expression?
+ *
+ * Delegates to the regex engine's own parser rather than carrying a second copy
+ * of the grammar. The two have to agree: a key the splitter treats as a regex
+ * and the engine then refuses to parse would silently become literal text, and
+ * the only way to keep them agreeing is to have one implementation of it.
+ */
 export function isValidRegex(input: string): boolean {
-    const match = input.match(/^\/([\w\W]+?)\/([gimsuy]*)$/);
-    if (!match) {
-        return false;
-    }
-
-    const pattern = match[1] as string;
-    // An unescaped delimiter inside the pattern would not be a regex to any
-    // other engine, so SillyTavern rejects it too.
-    if (/(^|[^\\])\//.test(pattern)) {
-        return false;
-    }
-
-    try {
-        new RegExp(pattern.replace('\\/', '/'), match[2]);
-        return true;
-    } catch {
-        return false;
-    }
+    return parseRegexParts(input) !== null;
 }
 
 /**

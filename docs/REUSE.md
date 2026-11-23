@@ -154,56 +154,56 @@ means it implements a published specification and owes nothing to another
 client's source. A dash means CatCup wrote it. Everything else was adapted from
 another client, and the header names the upstream file.
 
-| Location                                       | Basis                                                                  | What it does                                                              |
-| ---------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG                                  | `tEXt` chunk reading, `ccv3` before `chara`                               |
-| `packages/compat-st/src/card-write.ts`         | **format** — Character Card V2/V3 PNG                                  | Card write-back: `chara` + `ccv3` chunks, legacy promotion                |
-| `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                                     | The favourite flag and the legacy string-`'true'` rule                    |
-| `packages/compat-st/src/card-png.ts`           | **format** — PNG container                                             | Chunk serialization with CRC, and `tEXt` replacement                      |
-| `apps/server/src/cards/charx.ts`               | RisuAI `src/ts/process/processzip.ts` + `src/ts/characterCards.ts`     | CharX ZIP layout, `card.json` + `assets/**` and asset URIs                |
-| `apps/server/src/storage/characterAssets.ts`   | RisuAI `src/ts/process/processzip.ts`                                  | Per-character asset storage and round-trip, with CatCup paths and caps    |
-| `packages/shared/src/schemas/character.ts`     | **format** — Character Card V2/V3                                      | Field names and `character_book` structure                                |
-| `packages/shared/src/schemas/chat.ts`          | **format** — chat JSONL and `MediaAttachment`                          | Header and message fields, `extra.media` shape                            |
-| `packages/shared/src/schemas/worldinfo.ts`     | **format** — World Info JSON                                           | Entry field set, positions, logic and role constants                      |
-| `packages/shared/src/schemas/preset.ts`        | **format** — preset JSON                                               | Preset fields, `prompts` / `prompt_order`                                 |
-| `packages/shared/src/schemas/regex.ts`         | **format** — regex script data                                         | Script field names, placements and substitution modes                     |
-| `packages/shared/src/schemas/quickreplies.ts`  | **format** — Quick Replies v2 set                                      | Version 2 set and quick reply field names and defaults                    |
-| `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                      | Book shapes and uid resolution are the format; the hash payload is ST's   |
-| `apps/server/src/worldinfo/loader.ts`          | —                                                                      | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`    |
-| `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                                   | `getStringHash`, the timed-effect identity                                |
-| `packages/compat-st/src/matching.ts`           | —                                                                      | Key matching, regex keys and decorators, rewritten for CatCup             |
-| `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                      | Scan states, groups, budget, positions                                    |
-| `packages/compat-st/src/timedEffects.ts`       | ST `public/scripts/world-info.js`                                      | Sticky, cooldown, delay, hand-off                                         |
-| `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                      | Entry template defaults, free-uid allocation, patch merge, order          |
-| `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                      | `convertCharacterBook`: card lorebook to world info entries               |
-| `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes` and `/pattern/flags` validation                 |
-| `packages/compat-st/src/prompt.ts`             | —                                                                      | Prompt buckets, `wi_format` and Author's Note composition, rewritten      |
-| `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Identifiers, order and markers from ST; the instruction text is CatCup's  |
-| `apps/server/src/prompt/manager.ts`            | ST `PromptManager.js`                                                  | Sanitize, order lookup and prompt collection                              |
-| `packages/compat-st/src/prompt-messages.ts`    | ST `openai.js`                                                         | `ChatCompletion` slots, budget and system-message squashing               |
-| `apps/server/src/prompt/assemble.ts`           | ST `openai.js`                                                         | Marker merge, card overrides, injection and population                    |
-| `packages/compat-st/src/prompt-history.ts`     | ST `openai.js`                                                         | History conversion and example-dialogue parsing                           |
-| `packages/shared/src/macros.ts`                | —                                                                      | The macro subset, rewritten for CatCup                                    |
-| `packages/compat-st/src/prompt-tokenizer.ts`   | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js`      | Model to tiktoken-encoding mapping, the byte estimate and Claude counting |
-| `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                        |
-| `packages/shared/src/regex.ts`                 | ST `public/scripts/extensions/regex/engine.js`                         | Placement gate, replacement syntax, trim strings and the depth window     |
-| `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory`; the default prompts are CatCup's        |
-| `apps/server/src/memory/summary.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Update schedule, transcript window and the summary request                |
-| `apps/server/src/memory/inject.ts`             | ST `public/scripts/extensions/memory/index.js`                         | Injection template and position formatting                                |
-| `apps/server/src/memory/service.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Summary request lifecycle and storage                                     |
-| `packages/shared/src/quickReplies.ts`          | ST `public/scripts/slash-commands/SlashCommandParser.js`               | Command split, quoting, aliases and named-argument semantics              |
-| `apps/server/src/quickreplies/execute.ts`      | ST `public/scripts/slash-commands.js` + quick-reply `QuickReplySet.js` | `/send`, `/sys`, `/echo`, `/trigger` and `/run` behaviour                 |
-| `apps/server/src/storage/quickReplies.ts`      | ST `src/endpoints/quick-replies.js`                                    | One file per set, named after the set, with import and export             |
-| `packages/shared/src/schemas/tts.ts`           | ST `public/scripts/extensions/tts/index.js`                            | A smaller TTS settings model; field names are CatCup's                    |
-| `packages/shared/src/tts.ts`                   | ST `public/scripts/extensions/tts/index.js`                            | Own text cleaner and chunker                                              |
-| `apps/server/src/tts/openaiCompatible.ts`      | ST `public/scripts/extensions/tts/openai.js` + OpenAI speech API       | Request shape and error handling                                          |
-| `apps/web/src/hooks/useTts.ts`                 | ST `public/scripts/extensions/tts/system.js`                           | Browser voice selection and chunked utterances, rewritten for React       |
-| `packages/shared/src/schemas/images.ts`        | ST `stable-diffusion/index.js` + `Default_Comfy_Workflow.json`         | Settings model and starter graph; drafting templates are CatCup's         |
-| `apps/server/src/images/automatic1111.ts`      | ST `src/endpoints/stable-diffusion.js` + `stable-diffusion/index.js`   | `/sdapi/v1/txt2img` request shape and seed extraction                     |
-| `apps/server/src/images/comfyui.ts`            | ST `stable-diffusion.js` + `generateComfyImageCommon`                  | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders     |
-| `apps/server/src/images/openaiCompatible.ts`   | ST `stable-diffusion/index.js` (`generateOpenAiImage`)                 | `/images/generations` body, size mapping and base64/URL handling          |
-| `apps/server/src/images/prompt.ts`             | ST `stable-diffusion/index.js` (`processReply`, `generationMode.NOW`)  | Draft-from-chat instruction and comma-tag cleanup                         |
-| `apps/server/src/storage/images.ts`            | ST `src/endpoints/images.js` + `saveBase64AsFile`                      | `user/images/<folder>` layout and base64 upload semantics                 |
+| Location                                       | Basis                                                                  | What it does                                                                  |
+| ---------------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG                                  | `tEXt` chunk reading, `ccv3` before `chara`                                   |
+| `packages/compat-st/src/card-write.ts`         | **format** — Character Card V2/V3 PNG                                  | Card write-back: `chara` + `ccv3` chunks, legacy promotion                    |
+| `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                                     | The favourite flag and the legacy string-`'true'` rule                        |
+| `packages/compat-st/src/card-png.ts`           | **format** — PNG container                                             | Chunk serialization with CRC, and `tEXt` replacement                          |
+| `apps/server/src/cards/charx.ts`               | RisuAI `src/ts/process/processzip.ts` + `src/ts/characterCards.ts`     | CharX ZIP layout, `card.json` + `assets/**` and asset URIs                    |
+| `apps/server/src/storage/characterAssets.ts`   | RisuAI `src/ts/process/processzip.ts`                                  | Per-character asset storage and round-trip, with CatCup paths and caps        |
+| `packages/shared/src/schemas/character.ts`     | **format** — Character Card V2/V3                                      | Field names and `character_book` structure                                    |
+| `packages/shared/src/schemas/chat.ts`          | **format** — chat JSONL and `MediaAttachment`                          | Header and message fields, `extra.media` shape                                |
+| `packages/shared/src/schemas/worldinfo.ts`     | **format** — World Info JSON                                           | Entry field set, positions, logic and role constants                          |
+| `packages/shared/src/schemas/preset.ts`        | **format** — preset JSON                                               | Preset fields, `prompts` / `prompt_order`                                     |
+| `packages/shared/src/schemas/regex.ts`         | **format** — regex script data                                         | Script field names, placements and substitution modes                         |
+| `packages/shared/src/schemas/quickreplies.ts`  | **format** — Quick Replies v2 set                                      | Version 2 set and quick reply field names and defaults                        |
+| `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                      | Book shapes and uid resolution are the format; the hash payload is ST's       |
+| `apps/server/src/worldinfo/loader.ts`          | —                                                                      | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`        |
+| `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                                   | `getStringHash`, the timed-effect identity                                    |
+| `packages/compat-st/src/matching.ts`           | —                                                                      | Key matching, regex keys and decorators, rewritten for CatCup                 |
+| `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                      | Scan states, groups, budget, positions                                        |
+| `packages/compat-st/src/timedEffects.ts`       | ST `public/scripts/world-info.js`                                      | Sticky, cooldown, delay, hand-off                                             |
+| `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                      | Entry template defaults, free-uid allocation, patch merge, order              |
+| `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                      | `convertCharacterBook`: card lorebook to world info entries                   |
+| `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes`; the `/pattern/flags` check delegates to `regex.ts` |
+| `packages/compat-st/src/prompt.ts`             | —                                                                      | Prompt buckets, `wi_format` and Author's Note composition, rewritten          |
+| `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Identifiers, order and markers from ST; the instruction text is CatCup's      |
+| `apps/server/src/prompt/manager.ts`            | ST `PromptManager.js`                                                  | Sanitize, order lookup and prompt collection                                  |
+| `packages/compat-st/src/prompt-messages.ts`    | ST `openai.js`                                                         | `ChatCompletion` slots, budget and system-message squashing                   |
+| `apps/server/src/prompt/assemble.ts`           | ST `openai.js`                                                         | Marker merge, card overrides, injection and population                        |
+| `packages/compat-st/src/prompt-history.ts`     | ST `openai.js`                                                         | History conversion and example-dialogue parsing                               |
+| `packages/shared/src/macros.ts`                | —                                                                      | The macro subset, rewritten for CatCup                                        |
+| `packages/compat-st/src/prompt-tokenizer.ts`   | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js`      | Model to tiktoken-encoding mapping, the byte estimate and Claude counting     |
+| `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                            |
+| `packages/shared/src/regex.ts`                 | —                                                                      | Placement gate, replacement syntax, trim strings and the depth window         |
+| `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory`; the default prompts are CatCup's            |
+| `apps/server/src/memory/summary.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Update schedule, transcript window and the summary request                    |
+| `apps/server/src/memory/inject.ts`             | ST `public/scripts/extensions/memory/index.js`                         | Injection template and position formatting                                    |
+| `apps/server/src/memory/service.ts`            | ST `public/scripts/extensions/memory/index.js`                         | Summary request lifecycle and storage                                         |
+| `packages/shared/src/quickReplies.ts`          | ST `public/scripts/slash-commands/SlashCommandParser.js`               | Command split, quoting, aliases and named-argument semantics                  |
+| `apps/server/src/quickreplies/execute.ts`      | ST `public/scripts/slash-commands.js` + quick-reply `QuickReplySet.js` | `/send`, `/sys`, `/echo`, `/trigger` and `/run` behaviour                     |
+| `apps/server/src/storage/quickReplies.ts`      | ST `src/endpoints/quick-replies.js`                                    | One file per set, named after the set, with import and export                 |
+| `packages/shared/src/schemas/tts.ts`           | ST `public/scripts/extensions/tts/index.js`                            | A smaller TTS settings model; field names are CatCup's                        |
+| `packages/shared/src/tts.ts`                   | ST `public/scripts/extensions/tts/index.js`                            | Own text cleaner and chunker                                                  |
+| `apps/server/src/tts/openaiCompatible.ts`      | ST `public/scripts/extensions/tts/openai.js` + OpenAI speech API       | Request shape and error handling                                              |
+| `apps/web/src/hooks/useTts.ts`                 | ST `public/scripts/extensions/tts/system.js`                           | Browser voice selection and chunked utterances, rewritten for React           |
+| `packages/shared/src/schemas/images.ts`        | ST `stable-diffusion/index.js` + `Default_Comfy_Workflow.json`         | Settings model and starter graph; drafting templates are CatCup's             |
+| `apps/server/src/images/automatic1111.ts`      | ST `src/endpoints/stable-diffusion.js` + `stable-diffusion/index.js`   | `/sdapi/v1/txt2img` request shape and seed extraction                         |
+| `apps/server/src/images/comfyui.ts`            | ST `stable-diffusion.js` + `generateComfyImageCommon`                  | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders         |
+| `apps/server/src/images/openaiCompatible.ts`   | ST `stable-diffusion/index.js` (`generateOpenAiImage`)                 | `/images/generations` body, size mapping and base64/URL handling              |
+| `apps/server/src/images/prompt.ts`             | ST `stable-diffusion/index.js` (`processReply`, `generationMode.NOW`)  | Draft-from-chat instruction and comma-tag cleanup                             |
+| `apps/server/src/storage/images.ts`            | ST `src/endpoints/images.js` + `saveBase64AsFile`                      | `user/images/<folder>` layout and base64 upload semantics                     |
 
 ## 8. Related documentation
 
