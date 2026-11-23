@@ -1,27 +1,39 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. The key-matching rules are CatCup's own reading of the
+// world info format: see docs/DATA-FORMATS.md and docs/ST-COMPATIBILITY.md,
+// and the tests in apps/server/src/worldinfo/scanner.test.ts for the behaviour
+// this has to keep.
 
 import { parseRegexFromString } from '@catcup/shared';
 
 export { parseRegexFromString };
 
-/** Decorators SillyTavern recognises at the top of an entry's content. */
-const KNOWN_DECORATORS = ['@@activate', '@@dont_activate'] as const;
+/**
+ * Decorator lines the format defines.
+ *
+ * A decorator sits on its own line at the very top of an entry's content and
+ * says whether the entry should fire. Anything else beginning with `@@` is not
+ * part of the vocabulary and is left in the content.
+ */
+const DECORATORS = new Set(['@@activate', '@@dont_activate']);
 
-function isKnownDecorator(line: string): boolean {
-    const candidate = line.startsWith('@@@') ? line.slice(1) : line;
-    return KNOWN_DECORATORS.some((decorator) => candidate.startsWith(decorator));
-}
+/** How far a decorator line may be indented before it stops being a decorator. */
+const ESCAPED_PREFIX = '@@@';
 
 /**
- * Split leading `@@decorator` lines from an entry's content.
+ * Split leading decorator lines from an entry's content.
  *
- * Mirrors SillyTavern's `parseDecorators`: a run of known decorator lines is
- * consumed and only a line that does not start with `@@` ends the run. An
- * `@@@`-prefixed line is skipped rather than consumed, and is left in the
- * content only when no later line breaks the run, because the original string
- * is kept in that case.
+ * The rules, in order:
+ *
+ * - Content that does not start with `@@` has no decorators at all.
+ * - A run of `@@` lines at the top is the decorator region; the first line that
+ *   does not start with `@@` ends it, and everything from that line on is the
+ *   content.
+ * - `@@@activate` is the *escaped* form: it means "this is text that looks like
+ *   a decorator, not one". It contributes no decorator, and it only stays in
+ *   the content when nothing after it ends the run — in that case the original
+ *   string is returned untouched, because there was no region to strip.
+ * - An unrecognised `@@something` line ends the decorator region rather than
+ *   being consumed, so a card that opens with `@@author` keeps its text.
  */
 export function parseDecorators(content: string): { decorators: string[]; content: string } {
     if (!content.startsWith('@@')) {
@@ -30,30 +42,34 @@ export function parseDecorators(content: string): { decorators: string[]; conten
 
     const lines = content.split('\n');
     const decorators: string[] = [];
-    let remaining = content;
-    let fallbacked = false;
+    let body = content;
+    /** Set once an escaped or unknown line has been seen, so the next one is not skipped. */
+    let sawNonDecorator = false;
 
     for (let index = 0; index < lines.length; index += 1) {
         const line = lines[index] ?? '';
+
         if (!line.startsWith('@@')) {
-            remaining = lines.slice(index).join('\n');
+            body = lines.slice(index).join('\n');
             break;
         }
 
-        if (line.startsWith('@@@') && !fallbacked) {
+        if (line.startsWith(ESCAPED_PREFIX) && !sawNonDecorator) {
+            // Escaped on its own: not a decorator, and not yet a reason to stop.
             continue;
         }
 
-        if (isKnownDecorator(line)) {
-            decorators.push(line.startsWith('@@@') ? line.slice(1) : line);
-            fallbacked = false;
+        const candidate = line.startsWith(ESCAPED_PREFIX) ? line.slice(1) : line;
+        if (DECORATORS.has(candidate)) {
+            decorators.push(candidate);
+            sawNonDecorator = false;
             continue;
         }
 
-        fallbacked = true;
+        sawNonDecorator = true;
     }
 
-    return { decorators, content: remaining };
+    return { decorators, content: body };
 }
 
 /** Escape a string so it can be embedded in a regular expression. */
@@ -66,11 +82,28 @@ export interface KeyMatchOptions {
     matchWholeWords: boolean;
 }
 
+/** A boundary is any non-word character; a key must not be glued to a letter. */
+function wholeWordPattern(key: string): RegExp {
+    return new RegExp(`(?:^|\\W)${escapeRegex(key)}(?:$|\\W)`);
+}
+
 /**
  * Test one world info key against the scan buffer.
  *
- * A key written as `/regex/flags` is applied as a regular expression and
- * overrides the plain-text options, exactly as SillyTavern does.
+ * A key written as `/pattern/flags` is a regular expression and ignores the
+ * case and whole-word options — the pattern carries its own flags, and a
+ * regex key that was silently lowercased would not match what its author
+ * wrote.
+ *
+ * A plain key is a substring, which means an empty key matches everything.
+ * That is deliberate: an entry whose keys were all blank after trimming still
+ * fires, and treating it as "matches nothing" would make it inert without
+ * saying so.
+ *
+ * With whole-word matching on, a single word gets boundary checks on both
+ * sides, while a multi-word key is compared as a substring. A phrase is
+ * already bounded by its own spaces, so wrapping it in `\W` would only add
+ * failure modes at the ends.
  */
 export function matchesKey(haystack: string, needle: string, options: KeyMatchOptions): boolean {
     const pattern = parseRegexFromString(needle);
@@ -81,17 +114,9 @@ export function matchesKey(haystack: string, needle: string, options: KeyMatchOp
     const hay = options.caseSensitive ? haystack : haystack.toLowerCase();
     const key = options.caseSensitive ? needle : needle.toLowerCase();
 
-    // An empty key matches everything, exactly as `String.includes('')` does.
-    // SillyTavern relies on this for whitespace-only keys after trimming.
-    if (!options.matchWholeWords) {
+    if (!options.matchWholeWords || /\s/.test(key)) {
         return hay.includes(key);
     }
 
-    // Multi-word keys are matched as a plain substring; single words get
-    // boundary checks that include punctuation and other non-word characters.
-    if (/\s/.test(key)) {
-        return hay.includes(key);
-    }
-
-    return new RegExp(`(?:^|\\W)(${escapeRegex(key)})(?:$|\\W)`).test(hay);
+    return wholeWordPattern(key).test(hay);
 }

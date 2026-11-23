@@ -245,21 +245,23 @@ header now says which half is which.
 also defensible on product grounds — those defaults were another client's voice,
 and should never have been the last thing left unchecked.
 
-### Phase 3 — rewrite the behaviour (the real work)
+### Phase 3 — rewrite the behaviour (the real work) — in progress
 
-Bucket B, now 8,745 lines across 37 files. Priority order by size and by how much
-of the claim each carries:
+Bucket B, about 9,050 lines across 40 files. It is done one module at a time, in
+this order:
 
-1. `compat-st/src/scanner.ts` (1,034) — recursion states, inclusion groups, the
-   budget latch.
-2. `apps/server/src/prompt/assemble.ts` (786) — marker merge, card overrides,
-   injection.
-3. `compat-st/src/timedEffects.ts` (268), `memory/{service,summary}` (525),
-   `compat-st/src/matching.ts` (97), `compat-st/src/prompt-{history,messages,
-   tokenizer}.ts` and the rest.
+| #   | Module                                             | Lines  | Status                                        |
+| --- | -------------------------------------------------- | ------ | --------------------------------------------- |
+| 1   | `compat-st/src/matching.ts`                        | 97     | **done** — key matching and decorators        |
+| 2   | `compat-st/src/prompt.ts` + `shared/src/macros.ts` | 176    | **done** — prompt buckets and macro expansion |
+| 3   | `compat-st/src/timedEffects.ts`                    | 268    |                                               |
+| 4   | `memory/{summary,service,inject}`                  | 714    |                                               |
+| 5   | `compat-st/src/scanner.ts`                         | 1,034  | the substantial one                           |
+| 6   | `apps/server/src/prompt/assemble.ts`               | 786    | the other substantial one                     |
+| 7   | the adapters — images, TTS, quick replies, CharX   | ~2,400 |                                               |
+| 8   | `packages/shared/src/regex.ts`                     | 230    |                                               |
 
-This is weeks, not days, and it is the phase where "good enough" is easy to
-accept prematurely. Two rules keep it honest:
+Two rules keep it honest:
 
 - **Each module lands on its own.** Nothing here has to be done in one change,
   and a half-rewritten bucket is still a larger claim than the one today.
