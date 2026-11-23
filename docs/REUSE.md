@@ -194,15 +194,15 @@ another client, and the header names the upstream file.
 | `packages/shared/src/quickReplies.ts`          | ST `public/scripts/slash-commands/SlashCommandParser.js`               | Command split, quoting, aliases and named-argument semantics                  |
 | `apps/server/src/quickreplies/execute.ts`      | ST `public/scripts/slash-commands.js` + quick-reply `QuickReplySet.js` | `/send`, `/sys`, `/echo`, `/trigger` and `/run` behaviour                     |
 | `apps/server/src/storage/quickReplies.ts`      | ST `src/endpoints/quick-replies.js`                                    | One file per set, named after the set, with import and export                 |
-| `packages/shared/src/schemas/tts.ts`           | ST `public/scripts/extensions/tts/index.js`                            | A smaller TTS settings model; field names are CatCup's                        |
-| `packages/shared/src/tts.ts`                   | ST `public/scripts/extensions/tts/index.js`                            | Own text cleaner and chunker                                                  |
-| `apps/server/src/tts/openaiCompatible.ts`      | ST `public/scripts/extensions/tts/openai.js` + OpenAI speech API       | Request shape and error handling                                              |
+| `packages/shared/src/schemas/tts.ts`           | —                                                                      | The text-to-speech settings model                                             |
+| `packages/shared/src/tts.ts`                   | —                                                                      | Speech text preparation and chunking                                          |
+| `apps/server/src/tts/openaiCompatible.ts`      | —                                                                      | `/audio/speech` request and format mapping                                    |
 | `apps/web/src/hooks/useTts.ts`                 | ST `public/scripts/extensions/tts/system.js`                           | Browser voice selection and chunked utterances, rewritten for React           |
-| `packages/shared/src/schemas/images.ts`        | ST `stable-diffusion/index.js` + `Default_Comfy_Workflow.json`         | Settings model and starter graph; drafting templates are CatCup's             |
-| `apps/server/src/images/automatic1111.ts`      | ST `src/endpoints/stable-diffusion.js` + `stable-diffusion/index.js`   | `/sdapi/v1/txt2img` request shape and seed extraction                         |
+| `packages/shared/src/schemas/images.ts`        | —                                                                      | Image generation settings and request shapes                                  |
+| `apps/server/src/images/automatic1111.ts`      | —                                                                      | `/sdapi/v1/txt2img` request body and seed read-back                           |
 | `apps/server/src/images/comfyui.ts`            | ST `stable-diffusion.js` + `generateComfyImageCommon`                  | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders         |
-| `apps/server/src/images/openaiCompatible.ts`   | ST `stable-diffusion/index.js` (`generateOpenAiImage`)                 | `/images/generations` body, size mapping and base64/URL handling              |
-| `apps/server/src/images/prompt.ts`             | ST `stable-diffusion/index.js` (`processReply`, `generationMode.NOW`)  | Draft-from-chat instruction and comma-tag cleanup                             |
+| `apps/server/src/images/openaiCompatible.ts`   | —                                                                      | `/images/generations` body, size mapping and responses                        |
+| `apps/server/src/images/prompt.ts`             | —                                                                      | Draft-from-chat instruction and comma-tag cleanup                             |
 | `apps/server/src/storage/images.ts`            | ST `src/endpoints/images.js` + `saveBase64AsFile`                      | `user/images/<folder>` layout and base64 upload semantics                     |
 
 ## 8. Related documentation

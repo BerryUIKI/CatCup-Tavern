@@ -1,7 +1,4 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/tts/index.js
-// A smaller settings model; the field names are CatCup's own.
-// See docs/REUSE.md.
+// Written for CatCup. The text-to-speech settings model and its defaults.
 
 import { z } from 'zod';
 

@@ -1,7 +1,5 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/src/endpoints/stable-diffusion.js
-// The `/sdapi/v1/txt2img` request shape and seed extraction, rewritten.
-// See docs/REUSE.md.
+// Written for CatCup against the Automatic1111 HTTP API: the `/sdapi/v1/txt2img`
+// request body, the response shape and seed read-back.
 
 import type { ImageGenerationSettings } from '@catcup/shared';
 

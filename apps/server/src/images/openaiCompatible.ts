@@ -1,7 +1,5 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/stable-diffusion/index.js
-// The `/images/generations` body, size mapping and response handling.
-// See docs/REUSE.md.
+// Written for CatCup against the OpenAI images API: the `/images/generations`
+// body, the size mapping and both response shapes (base64 and URL).
 
 import type { ImageGenerationSettings } from '@catcup/shared';
 import { isRecord } from '@catcup/shared';
