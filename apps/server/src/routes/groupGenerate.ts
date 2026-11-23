@@ -74,8 +74,8 @@ function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
 }
 
 function groupNewChatPrompt(): string {
-    // ST's default `new_group_chat_prompt`; `{{group}}` expands to every member.
-    return '[Start a new group chat. Group members: {{group}}]';
+    // `{{group}}` expands to every member.
+    return '[New group scene. Present: {{group}}]';
 }
 
 interface PersistContext {

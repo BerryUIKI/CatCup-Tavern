@@ -1,6 +1,8 @@
-// Derived from SillyTavern (AGPL-3.0)
+// Adapted from SillyTavern (AGPL-3.0)
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/PromptManager.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// The identifier list, the order and the marker flags are the preset format.
+// The two instruction strings and the message templates are CatCup's own
+// wording. See docs/REUSE.md.
 
 import { DEFAULT_PROMPT_ORDER, type PromptEntry, type PromptOrderEntry } from '@catcup/shared';
 
@@ -48,14 +50,21 @@ export const MERGEABLE_IDENTIFIERS: readonly string[] = [
     IDENTIFIER.PERSONA_DESCRIPTION,
 ];
 
-/** SillyTavern's built-in prompt definitions, in declaration order. */
+/**
+ * The default prompt definitions, in declaration order.
+ *
+ * The order, the identifiers and the marker flags are the exchange format
+ * — a preset stores them and a client has to agree on what they mean. The
+ * two instruction strings below are CatCup's own wording.
+ */
 export const ST_DEFAULT_PROMPTS: PromptEntry[] = [
     {
         identifier: IDENTIFIER.MAIN,
         name: 'Main Prompt',
         system_prompt: true,
         role: 'system',
-        content: "Write {{char}}'s next reply in a fictional chat between {{char}} and {{user}}.",
+        content:
+            'Continue the scene as {{char}}, replying to {{user}} in a fictional chat. Stay in character and in the scene.',
         injection_position: 0,
         injection_depth: 4,
         injection_order: 100,
@@ -137,7 +146,7 @@ export const ST_DEFAULT_PROMPTS: PromptEntry[] = [
         marker: false,
         role: 'system',
         content:
-            "If you have more knowledge of {{char}}, add to the character's lore and personality to enhance them but keep the Character Sheet's definitions absolute.",
+            'Anything you know about {{char}} beyond this sheet may inform tone and detail, but the fields above are canonical: where they disagree, they win.',
         injection_position: 0,
         injection_depth: 4,
         injection_order: 100,
@@ -214,13 +223,20 @@ export function defaultPromptOrder(): PromptOrderEntry[] {
     return DEFAULT_PROMPT_ORDER.map((entry) => ({ ...entry }));
 }
 
-/** Template strings SillyTavern inserts around injected content. */
+/**
+ * Template strings inserted around injected content.
+ *
+ * The two bracketed placeholders are labels rather than instruction — a model
+ * reading `[Start a new Chat]` needs no help with what it means, and a preset
+ * that carries its own text replaces either of them. The two prompts below are
+ * CatCup's own wording.
+ */
 export const DEFAULT_MESSAGES = {
     newChat: '[Start a new Chat]',
     newExampleChat: '[Example Chat]',
-    continueNudge: '[Continue your last message without repeating its original content.]',
+    continueNudge: '[Keep going from where that reply stopped. Do not repeat what it already said.]',
     impersonation:
-        "[Write your next reply from the point of view of {{user}}, using the chat history so far as a guideline for the writing style of {{user}}. Don't write as {{char}} or system. Don't describe actions of {{char}}.]",
+        '[Reply as {{user}}: carry on the scene in their voice and their style, drawn from the history so far. Never speak as {{char}} or as the system, and never narrate what {{char}} does.]',
 } as const;
 
 /** Formats applied to card fields and world info before assembly. */

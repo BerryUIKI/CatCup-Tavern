@@ -1,6 +1,8 @@
-// Derived from SillyTavern (AGPL-3.0)
+// Adapted from SillyTavern (AGPL-3.0)
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// The book shapes and uid resolution are the format; the hash payload and
+// its key order are this client's, kept because a chat keys its
+// `timedWorldInfo` records by that value. See docs/REUSE.md.
 
 import { type WorldInfoAliasMap, worldInfoEntrySchema } from '@catcup/shared';
 

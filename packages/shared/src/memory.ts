@@ -1,30 +1,32 @@
-// Derived from SillyTavern (AGPL-3.0)
+// Adapted from SillyTavern (AGPL-3.0)
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// The storage model — one summary per covered message on `extra.memory`, and
+// the lookup over it — is the format. The default prompts are CatCup's own
+// wording. See docs/REUSE.md.
 
 import type { ChatMessage } from './schemas/chat.js';
 
 /**
- * SillyTavern's default summarize prompt, from the Memory extension.
+ * The default summarize prompt.
  *
  * `{{words}}` is replaced with the configured target length; the other macros
  * expand through the normal macro context.
  */
 export const DEFAULT_MEMORY_PROMPT =
-    'Ignore previous instructions. Summarize the most important facts and events in the story so far. If a summary already exists in your memory, use that as a base and expand with new facts. Limit the summary to {{words}} words or less. Your response should include nothing but the summary.';
+    'Summarize the story so far: the facts and events that matter later. If a summary is already in your memory, build on it rather than starting over. Keep it to {{words}} words or fewer, and reply with the summary alone.';
 
 /**
  * The default prompt when summaries are append-only.
  *
- * Every sentence of the SillyTavern prompt that presumes a rewrite had to go:
- * "use that as a base and expand with new facts" *is* the destructive chain.
- * What remains asks for the new range only, which is what makes a summary a
+ * Every sentence of the rewriting prompt that presumes a rewrite had to go:
+ * "build on it rather than starting over" *is* the destructive chain. What
+ * remains asks for the passage below only, which is what makes a summary a
  * stable unit rather than a lossy fold of everything before it.
  */
 export const DEFAULT_APPEND_ONLY_MEMORY_PROMPT =
-    'Ignore previous instructions. Summarize the most important facts and events in the passage below. Limit the summary to {{words}} words or less. Your response should include nothing but the summary.';
+    'Summarize the passage below: the facts and events that matter later. Keep it to {{words}} words or fewer, and reply with the summary alone.';
 
-/** SillyTavern's default injection template. */
+/** The default injection template. */
 export const DEFAULT_MEMORY_TEMPLATE = '[Summary: {{summary}}]';
 
 /** A summary stored on a chat message, as SillyTavern's Memory extension does. */

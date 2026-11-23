@@ -1,7 +1,8 @@
 // Adapted from SillyTavern (AGPL-3.0)
 // https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/stable-diffusion/index.js
 // A smaller settings model; field names follow the reference client where a
-// value has a counterpart, so an import can map them. See docs/REUSE.md.
+// value has a counterpart, so an import can map them. The drafting templates
+// are CatCup's own wording. See docs/REUSE.md.
 
 import { z } from 'zod';
 
@@ -90,15 +91,15 @@ export const DEFAULT_COMFY_WORKFLOW = `{
 
 export const DEFAULT_IMAGE_PROMPT_PREFIX = 'best quality, absurdres, aesthetic,';
 
-/** SillyTavern's default negative prompt for Stable Diffusion. */
+/** The default negative prompt: the artefacts these models produce most. */
 export const DEFAULT_IMAGE_NEGATIVE_PROMPT =
     'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry';
 
 /**
- * Instruction used when drafting a prompt from the chat. It follows ST's
- * "Now" prompt: only visible details, no dialogue or inner thoughts.
+ * Instruction used when drafting a prompt from the chat: only what a camera
+ * could see, never dialogue or inner thoughts.
  */
-export const DEFAULT_IMAGE_PROMPT_TEMPLATE = `Ignore previous instructions. Reply with a single comma-separated list of visual keywords that describe the last chat message. Start with the location, then the number of characters and their relative positions, then each character's visible appearance and actions. Use pronouns or neutral nouns instead of names. Do not include thoughts, feelings, dialogue, or anything that would not be visible in a still image. Do not write in full sentences.`;
+export const DEFAULT_IMAGE_PROMPT_TEMPLATE = `Describe the last chat message as a still image, using one comma-separated list of visual keywords. Lead with the setting, then how many figures there are and where they stand, then each one's appearance and what they are doing. Call them by pronoun or by role, not by name. Leave out anything a photograph could not show: thoughts, feelings, speech, and full sentences.`;
 
 /**
  * Instruction for drafting a character portrait from a card.
@@ -107,7 +108,7 @@ export const DEFAULT_IMAGE_PROMPT_TEMPLATE = `Ignore previous instructions. Repl
  * to describe, only a person's appearance and bearing, and it must read as a
  * stand-alone character sheet image rather than as a moment from a story.
  */
-export const DEFAULT_PORTRAIT_PROMPT_TEMPLATE = `Ignore previous instructions. You are given a character card: a description and a personality. Reply with a single comma-separated list of visual keywords that would make a portrait of this character. Describe only what is visible: apparent age, build, face, hair, clothing and defining features first, then expression and pose. Use the character's own name only if it appears in the description; otherwise use pronouns. Do not include thoughts, feelings, dialogue, scenery or other characters. Do not write in full sentences.`;
+export const DEFAULT_PORTRAIT_PROMPT_TEMPLATE = `Turn this character card into a portrait prompt: one comma-separated list of visual keywords. Work from appearance outward — apparent age, build, face, hair, clothing, distinguishing features — then expression and pose. If the description gives the character a name, use it; otherwise use a pronoun. Keep it to the person alone: no thoughts, no feelings, no dialogue, no background, no other figures, no full sentences.`;
 
 export const imageGenerationSettingsSchema = z.object({
     enabled: z.boolean().default(false),
