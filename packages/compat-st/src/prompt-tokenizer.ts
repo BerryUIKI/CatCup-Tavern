@@ -1,6 +1,5 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/tokenizers.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. Counting tokens for a model, with an estimate when no
+// real vocabulary applies.
 
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -53,12 +52,13 @@ export function estimateAnthropicTokens(text: string): number {
 }
 
 /**
- * SillyTavern's bundled Claude vocabulary.
+ * The bundled Claude vocabulary.
  *
- * Anthropic ships no tokenizer package, so SillyTavern includes the Claude
- * byte-level BPE vocabulary (65k tokens) and counts with it. Reading it is
- * asynchronous, so the server warms it at startup and every counter stays
- * synchronous; `countTokens` runs once per message in a hot loop.
+ * Anthropic ships no tokenizer package, so a 65k-token byte-level BPE
+ * vocabulary is bundled and counting uses it. Reading a 1.7 MB file is
+ * asynchronous while counting is not — `countTokens` runs once per message in a
+ * hot loop — so the server warms this at startup and every counter stays
+ * synchronous afterwards.
  */
 let claudeTokenizer: Tokenizer | null = null;
 
@@ -88,9 +88,15 @@ export async function warmTokenizers(vocabularyPath?: string): Promise<void> {
 /**
  * Which tiktoken encoding a model id uses.
  *
- * The order matters: `gpt-4o` must be tested before `gpt-4`, and
- * `text-davinci-003` before `davinci`. Ids are compared after the last `/`, so
- * an OpenRouter id such as `openai/gpt-4o` resolves like `gpt-4o`.
+ * **Order is the whole correctness of this table.** The list is scanned top to
+ * bottom and the first match wins, so a more specific prefix must come before a
+ * more general one: `gpt-4o` before `gpt-4`, `text-davinci-003` before
+ * `davinci`, `o1`/`o3`/`o4` before the `gpt-4` family. Re-sorting the table
+ * alphabetically would silently give several models the wrong vocabulary, and
+ * the only symptom would be a token count that is slightly off.
+ *
+ * Ids are compared after the last `/`, so an OpenRouter id such as
+ * `openai/gpt-4o` resolves like `gpt-4o`.
  */
 const ENCODING_PATTERNS: Array<{ pattern: RegExp; encoding: TiktokenEncoding }> = [
     { pattern: /^gpt-5/, encoding: 'o200k_base' },
@@ -193,11 +199,15 @@ export const ESTIMATE_COUNTER: TokenCounter = {
 /**
  * Pick a counter for a provider and model.
  *
- * Claude models use the bundled Claude vocabulary. OpenAI and OpenAI-compatible
- * providers use the matching tiktoken encoding when the model id is recognised,
- * which covers GPT and OpenRouter ids. A local model such as `llama3` has its
- * own tokenizer, so it falls back to the estimate rather than pretending either
- * vocabulary is right.
+ * Anthropic providers always use the Claude vocabulary, whatever the model id
+ * says — the provider is the authority on which tokenizer it counts with.
+ *
+ * Everything else uses the tiktoken encoding the id resolves to, which covers
+ * OpenAI ids and OpenRouter ids that carry an OpenAI model name. An id that
+ * resolves to nothing — a local `llama3`, a DeepSeek model, anything new —
+ * falls back to the labelled estimate rather than borrowing an OpenAI
+ * vocabulary. A confidently wrong exact count is worse than a count that says
+ * it is an estimate.
  */
 export function createTokenCounter(kind: ProviderKind, model: string): TokenCounter {
     if (kind === 'anthropic') {

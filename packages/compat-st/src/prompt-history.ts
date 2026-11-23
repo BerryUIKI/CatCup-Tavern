@@ -1,6 +1,5 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/openai.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. Turning stored chat messages and a card's example
+// dialogue into the turns a prompt carries.
 
 import type { ChatMessage } from '@catcup/shared';
 
@@ -11,15 +10,22 @@ export interface HistoryEntry {
     name?: string;
 }
 
-/** SillyTavern's `system_message_types.NARRATOR`. */
+/** The `extra.type` a slash-command narration carries. */
 const NARRATOR = 'narrator';
 
 /**
  * Convert stored chat messages into prompt history.
  *
- * `is_system` messages are skipped, matching ST's `coreChat` filter. Narrator
- * messages are sent as system turns, and `\r` is stripped. Content is never
- * trimmed: ST keeps whitespace-only messages.
+ * Three rules, each of which changes what a model sees:
+ *
+ * - **System messages are skipped.** They are the app's own bookkeeping — a
+ *   branch marker, a prompt note — not part of the conversation being continued.
+ * - **Narrator messages become system turns.** A narration written by a slash
+ *   command is prose the model should react to, but it is not the character
+ *   speaking, so it must not arrive as an assistant turn and be continued.
+ * - **Content is not trimmed, only `\r` is stripped.** A whitespace-only
+ *   message is a real beat in some chats, and trimming it would silently delete
+ *   a turn the user can see.
  */
 export function toHistoryEntries(messages: readonly ChatMessage[]): HistoryEntry[] {
     const entries: HistoryEntry[] = [];
@@ -49,27 +55,41 @@ export interface ExampleMessage {
 
 export interface ParseExampleOptions {
     /**
-     * Every other group member's name. A line starting with one belongs to that
-     * character, not to the persona — this is what makes a joined card's
-     * examples parse at all, since the merged text carries every member's
-     * `Name:` lines. SillyTavern reads the same list from `getGroupNames()`.
+     * Every other group member's name.
+     *
+     * A line starting with one of these belongs to that character rather than
+     * to the persona. It is what makes a joined card's examples parse at all,
+     * because the merged `mes_example` text carries every member's `Name:` lines.
      */
     otherNames?: readonly string[];
     /**
-     * Prefix each turn with its speaker, as SillyTavern does for group chats
-     * (`appendNamesForGroup` in `parseExampleIntoIndividual`), so the model can
-     * tell three characters' examples apart.
+     * Prefix each turn with its speaker.
+     *
+     * Group chats need it so the model can tell three characters' examples
+     * apart. A single-character chat does not, and the prefix would only
+     * duplicate what the card already says.
      */
     appendNames?: boolean;
 }
 
 /**
- * Split a card's `mes_example` into SillyTavern's example blocks.
+ * Split a card's `mes_example` into its example conversations.
  *
- * The text before the first `<START>` is a description and is discarded, the
- * first line of each block is skipped, and each speaker turn becomes one
- * message whose `name` is the literal `example_user` or `example_assistant`,
- * not the speaker's name.
+ * The format is loose, so the rules are conventions rather than a grammar:
+ *
+ * - Blocks are separated by `<START>`, case-insensitively. Anything before the
+ *   first marker is a description of the examples, not dialogue, and is
+ *   discarded.
+ * - Inside a block, the first line is that block's own description and is
+ *   skipped.
+ * - A line beginning `Name:` switches the speaker. The persona is recognised by
+ *   the caller's user name; any other recognised name is a character, which is
+ *   why `otherNames` matters in a group.
+ * - Each run of lines between two switches is one turn. The turn's `name` is
+ *   the literal `example_user` or `example_assistant` rather than the speaker's
+ *   name, because that is what the format says an example turn is called.
+ *
+ * Returns one array per block, in the order they appear.
  */
 export function parseExampleBlocks(
     mesExample: string,
@@ -87,6 +107,20 @@ export function parseExampleBlocks(
         .map((block) => parseExampleBlock(block, charName, userName, options));
 }
 
+/**
+ * Turn one `<START>` block into its alternating turns.
+ *
+ * Two details are easy to lose:
+ *
+ * - **Longest name first.** `Bram Wyrd:` has to win over `Bram:`, or a
+ *   character whose name is a prefix of another's swallows their lines.
+ * - **The speaker prefix is removed once, from the start of the turn only.**
+ *   Later lines keep whatever prefix they arrived with, because a line that
+ *   repeats the name is the author quoting something, not another switch.
+ *
+ * A turn that is only whitespace is still emitted. Dropping it would change the
+ * rhythm of the example, and the model reads the rhythm.
+ */
 function parseExampleBlock(
     block: string,
     charName: string,
@@ -100,14 +134,11 @@ function parseExampleBlock(
     let inBot = false;
     let botName = charName;
 
-    // Longest first, so "Bram Wyrd:" wins over "Bram:".
     const otherNames = [...(options.otherNames ?? [])]
         .filter((name) => name && name !== charName)
         .sort((a, b) => b.length - a.length);
 
     const flush = (speaker: string, name: ExampleMessage['name']): void => {
-        // SillyTavern removes the speaker prefix once, from the start of the
-        // turn; every later line keeps whatever prefix it arrived with.
         const joined = current.join('\n').trim();
         const stripped = joined.startsWith(`${speaker}:`) ? joined.slice(speaker.length + 1).trim() : joined;
         result.push({
@@ -118,7 +149,7 @@ function parseExampleBlock(
         current = [];
     };
 
-    // Line 0 is always the block's description.
+    // Line 0 describes the block; dialogue starts at line 1.
     for (let index = 1; index < lines.length; index += 1) {
         const line = lines[index] ?? '';
 
@@ -129,13 +160,7 @@ function parseExampleBlock(
             }
             inBot = false;
         } else if (line.startsWith(`${charName}:`) || otherNames.some((name) => line.startsWith(`${name}:`))) {
-            // A line for another member switches the speaker, exactly as a line
-            // for the card's own character does.
-            if (!line.startsWith(`${charName}:`)) {
-                botName = line.slice(0, line.indexOf(':'));
-            } else {
-                botName = charName;
-            }
+            botName = line.startsWith(`${charName}:`) ? charName : line.slice(0, line.indexOf(':'));
             inBot = true;
             if (inUser) {
                 flush(userName, 'example_user');
@@ -146,6 +171,8 @@ function parseExampleBlock(
         current.push(line);
     }
 
+    // Whatever is open when the block ends is a turn; user first, because a
+    // block cannot end mid-bot-turn without having started one.
     if (inUser) {
         flush(userName, 'example_user');
     } else if (inBot) {

@@ -179,12 +179,12 @@ another client, and the header names the upstream file.
 | `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                      | `splitKeywordsAndRegexes`; the `/pattern/flags` check delegates to `regex.ts` |
 | `packages/compat-st/src/prompt.ts`             | —                                                                      | Prompt buckets, `wi_format` and Author's Note composition, rewritten          |
 | `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                                  | Identifiers, order and markers from ST; the instruction text is CatCup's      |
-| `apps/server/src/prompt/manager.ts`            | ST `PromptManager.js`                                                  | Sanitize, order lookup and prompt collection                                  |
-| `packages/compat-st/src/prompt-messages.ts`    | ST `openai.js`                                                         | `ChatCompletion` slots, budget and system-message squashing                   |
+| `apps/server/src/prompt/manager.ts`            | —                                                                      | Sanitize, order lookup and prompt collection                                  |
+| `packages/compat-st/src/prompt-messages.ts`    | —                                                                      | Completion slots, budget and system-message squashing                         |
 | `apps/server/src/prompt/assemble.ts`           | ST `openai.js`                                                         | Marker merge, card overrides, injection and population                        |
-| `packages/compat-st/src/prompt-history.ts`     | ST `openai.js`                                                         | History conversion and example-dialogue parsing                               |
+| `packages/compat-st/src/prompt-history.ts`     | —                                                                      | History conversion and example-dialogue parsing                               |
 | `packages/shared/src/macros.ts`                | —                                                                      | The macro subset, rewritten for CatCup                                        |
-| `packages/compat-st/src/prompt-tokenizer.ts`   | ST `public/scripts/tokenizers.js` + `src/endpoints/tokenizers.js`      | Model to tiktoken-encoding mapping, the byte estimate and Claude counting     |
+| `packages/compat-st/src/prompt-tokenizer.ts`   | —                                                                      | Model to tiktoken-encoding mapping and the Claude counter                     |
 | `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                        | Claude byte-level BPE vocabulary, shipped verbatim                            |
 | `packages/shared/src/regex.ts`                 | —                                                                      | Placement gate, replacement syntax, trim strings and the depth window         |
 | `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                         | Summary lookup on `extra.memory`; the default prompts are CatCup's            |
