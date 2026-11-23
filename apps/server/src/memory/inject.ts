@@ -1,15 +1,21 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. Which stored summaries reach a prompt, and how they are
+// formatted once chosen.
 
 import { type MacroContext, type MemorySettings, type StoredSummary, substituteMacros } from '@catcup/shared';
 
 import type { SummaryInjection } from '../prompt/assemble.js';
 
 /**
- * Format the stored summary for display or scanning, regardless of whether it
- * is injected. SillyTavern keeps the formatted memory available to the world
- * info scan even when its position is "None".
+ * Format one stored summary for display or for the world info scan.
+ *
+ * Independent of whether the summary is injected, because both other uses
+ * exist: `{{summary}}` expands to it, and a summary can be scanned for world
+ * info even while its injection position is "none".
+ *
+ * A blank or whitespace-only template falls back to a labelled default rather
+ * than dropping the label — an unlabelled paragraph in the prompt reads as
+ * narration. A summary that formats to nothing returns `null`, so the caller
+ * omits the block instead of emitting an empty one.
  */
 export function formatMemoryText(
     settings: MemorySettings,
@@ -112,14 +118,17 @@ export function selectSummaries(
 /**
  * Pick the summaries to inject, without the caller having to know the rule.
  *
- * Every generation path — single, group and the context inspector — has to make
- * the same choice, so it is made here once. With `appendOnly` off this returns
- * the latest summary alone, which is exactly what SillyTavern injects and what
- * this app injected before.
+ * Every generation path — single, group and the context inspector — makes the
+ * same choice, so it is made here once.
  *
- * The budget is generous by design rather than tight: it is expressed in tokens
- * and only bounds the pathological case of a chat carrying dozens of summaries.
- * A caller with a precise allowance can call `selectSummaries` directly.
+ * With append-only off this is the latest summary alone, which is the classic
+ * behaviour and costs nothing to a chat that never turned the setting on.
+ *
+ * The budget is a cap on absurdity, not a tight allowance: it only bounds a
+ * chat that has accumulated dozens of summaries. A low cap would quietly defeat
+ * the feature — the point is that the beginning survives — so it is set well
+ * above what a normal chat reaches. A caller with a precise allowance calls
+ * `selectSummaries` directly.
  */
 export function summariesForTurn(
     settings: MemorySettings,
@@ -134,12 +143,7 @@ export function summariesForTurn(
         return latest ? [latest] : [];
     }
 
-    /**
-     * 1,200 tokens is roughly six 200-word summaries. It is a cap on absurdity,
-     * not a budget a normal chat reaches: the point of append-only mode is that
-     * the beginning survives, and a cap low enough to drop it would defeat the
-     * feature.
-     */
+    // Roughly six 200-word summaries; see the note on `summariesForTurn`.
     return selectSummaries(summaries, cost, APPEND_ONLY_BUDGET);
 }
 
@@ -147,16 +151,16 @@ export function summariesForTurn(
 export const APPEND_ONLY_BUDGET = 1200;
 
 /**
- * Format a stored summary for the prompt.
+ * Build the injection block for a prompt.
  *
- * SillyTavern stores the summary raw and wraps it in the injection template
- * when it is about to be sent. `position: -1` keeps the summary out of the
- * prompt while leaving it available to the `{{summary}}` macro and to the
- * world info scan.
+ * The stored summary is kept raw and wrapped in the template here, on the way
+ * into a prompt. `position: -1` keeps it out of the prompt while still leaving
+ * it available to `{{summary}}` and to the world info scan — those read the
+ * stored value, not this block.
  *
- * `summaries` is the list the two-sided budget selected, oldest or newest order
- * irrelevant — `formatSummaryList` sorts by recency. Passing just the latest
- * reproduces SillyTavern's single-summary behaviour exactly.
+ * Accepts one summary or several. The order they arrive in does not matter:
+ * they are sorted newest first, because the most recent settled state is what a
+ * turn acts on and the earliest follows as background.
  */
 export function buildMemoryInjection(
     settings: MemorySettings,
