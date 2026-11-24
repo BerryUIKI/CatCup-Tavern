@@ -6,7 +6,7 @@ body:
     - type: markdown
       attributes:
           value: |
-              Check [LIMITATIONS.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/LIMITATIONS.md) and [MILESTONES.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/MILESTONES.md) first — the missing feature may already be planned.
+              Check [LIMITATIONS.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/LIMITATIONS.md) and [MILESTONES.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/MILESTONES.md) first — the missing feature may already be planned.
     - type: textarea
       id: problem
       attributes:

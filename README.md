@@ -16,7 +16,7 @@ A **local-first AI roleplay client**: one Fastify server, three shapes — a bro
 Windows desktop app — with every character card, chat, lorebook and prompt preset kept as an ordinary
 file under `data/`.
 
-> **Status: early access.** `0.3.2` released 2026-11-16. `dev` carries the next release.
+> **Status: early access.** `0.3.2` released 2026-11-16. `main` carries the next release.
 > The gaps worth knowing are in [What is not there yet](#what-is-not-there-yet) below, and in full in
 > [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
@@ -267,7 +267,7 @@ is compromised.
 
 Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the full rules. The short version:
 
-- `main` is the release baseline, `dev` is integration; feature branches are cut from `dev` and target it.
+- Trunk-based: `main` is the only long-lived branch. Cut a short-lived branch from it, open a PR against it, squash-merge.
 - Atomic commits, small pull requests, merge commits.
 - Run `pnpm typecheck && pnpm lint && pnpm test && pnpm build` before pushing.
 - Update the relevant `docs/` page and `CHANGELOG.md` in the same change.

@@ -4,6 +4,12 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Changed
+
+- **The project moved to trunk-based development.** `main` is now the only long-lived branch: there is no `dev` integration branch, every PR targets `main`, and PRs are **squash-merged** so the trunk stays a linear list of changes. Branch protection moved with it — `main` keeps the required check and now requires the branch to be current with its base, because CI only watches the trunk. `release/<version>` and `hotfix/<version>` still exist, cut from `main` and merged back, but only when a release or a fix genuinely needs stabilising; a version bump is an ordinary PR. CI, the PR template, the issue-template doc links, `CLAUDE.md`, `CONTRIBUTING.md`, `README.md` and the docs that described the old two-branch flow were all updated.
+
+  This exists because the old flow had the failure this session hit twice: work sitting on a branch the trunk had not seen, so a `git checkout` to another branch silently put unreviewed files back on disk. With one trunk that class of mistake disappears — there is nothing to be "ahead of" except `main` itself.
+
 ### Fixed
 
 - **The Telegram bot no longer answers into a group.** Only a private conversation is answered; a group, supergroup, channel or a chat whose type this code does not recognise is dropped silently, the same way a message from a stranger is. RFC 0004 §8 always said groups should be ignored — the check was simply never written, so a message the owner sent in any group they were in was answered there, and the reply is public and cannot be taken back. Silent rather than a refusal, because a refusal posted into a group would announce that the bot exists.

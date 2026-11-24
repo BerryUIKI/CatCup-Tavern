@@ -44,7 +44,7 @@ A milestone item is not done until all of the following are true:
 4. **Changelog** has an entry if the change is user-facing.
 5. `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` pass.
 6. No secret, `data/` file or `.ref/` content is committed.
-7. The work reaches `dev` through a small PR (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
+7. The work reaches `main` through a small PR (see [CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 A milestone is complete when all of its acceptance criteria pass and its status table here is updated.
 
@@ -104,7 +104,7 @@ Released after the MVP, before M2:
 - Macros in greetings, chat history and typed messages expand in the prompt and in the chat view; sent and edited messages are stored expanded, as SillyTavern does.
 - A card's embedded lorebook can be imported into the world info library and linked to the card, matching ST's Import Card Lore.
 - A chat's opening greeting can be switched from the chat header or by swiping the first message.
-- GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `dev` and `main`.
+- GitHub Actions runs typecheck, lint, test and build on every pull request and on pushes to `main`.
 
 ### Release automation (2026-11-11, updated 2026-11-13)
 
@@ -431,7 +431,7 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 
 - [ ] The app is usable on a phone-sized viewport without horizontal scrolling.
 - [ ] English and zh-CN UI can be selected at runtime.
-- [x] CI runs all quality gates on every PR into `dev`.
+- [x] CI runs all quality gates on every PR into the trunk.
 - [ ] The v1.0 release checklist and upgrade notes are published.
 
 ## M6 — Game mode (Planned)

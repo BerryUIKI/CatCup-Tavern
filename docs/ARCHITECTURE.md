@@ -1,6 +1,6 @@
 # Architecture
 
-> Last updated: 2026-11-13 · M0, M1 and M2 complete; M4 implemented on `dev`; M3 and M5 remain
+> Last updated: 2026-11-13 · M0, M1 and M2 complete; M4 implemented on `main`; M3 and M5 remain
 
 ## 1. Goals and principles
 

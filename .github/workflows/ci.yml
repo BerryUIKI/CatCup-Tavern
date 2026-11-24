@@ -1,10 +1,12 @@
 name: CI
 
 on:
+    # Trunk-based: pull requests target `main`, and every push to it is the
+    # trunk moving. There is no integration branch to watch any more.
     pull_request:
-        branches: [dev, main]
+        branches: [main]
     push:
-        branches: [dev, main]
+        branches: [main]
 
 concurrency:
     group: ci-${{ github.ref }}

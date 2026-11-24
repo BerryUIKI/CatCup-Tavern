@@ -155,7 +155,7 @@ Use this checklist for a typical vertical slice:
 4. **Tests**: unit tests for logic; a manual smoke test for UI paths.
 5. **Docs**: update the relevant `docs/` page, `CHANGELOG.md` and, if scope changed, `MILESTONES.md`.
 6. **Quality gates**: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
-7. **PR**: branch from `dev`, keep it small, target `dev`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
+7. **PR**: branch from `main`, keep it short-lived, target `main`, squash-merge; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Adding a provider
 
@@ -187,13 +187,13 @@ Do not commit any file under `data/`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
+`.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `main` and on every push to `main`, so a merged pull request is verified again on the trunk without anyone re-running the gates by hand.
 
 A second job, `Desktop shell`, compiles the Tauri crate on `windows-latest`, `ubuntu-latest` and `macos-latest` with `cargo check --locked`, caching the Rust build per platform and failing independently on each. It builds the server bundle, the SPA and the Node sidecar first, because `cargo check` runs the Tauri build script, which copies those into the target directory — a placeholder would only prove that a placeholder compiles. This is the only place a Rust compile error is caught before a release, and the only place the macOS and Linux build is exercised at all; until it is added to the required checks, it reports on the pull request without blocking the merge.
 
-The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither accepts a force push or deletion, and both change through a pull request — with `dev` keeping an admin override for merging stacked PRs in order. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
+The `Typecheck, lint, test and build` job is a required status check on `main`; it accepts no force push or deletion, and changes only through a pull request. The branch must also be up to date with its base before merging, so a green check always describes the commit that would land. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
 
-The release workflow, `.github/workflows/release.yml`, is separate. It runs when a `dev` → `main` merge lands: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. When `TAURI_SIGNING_PRIVATE_KEY` is set in the repository secrets it also produces the signed updater archive and a `latest.json` manifest, which is what lets an installed app update itself; without the secret the release is built and published exactly as before, minus that capability, and the run summary says so. A push whose version already has a tag is skipped, so an ordinary merge into `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
+The release workflow, `.github/workflows/release.yml`, is separate. It runs when a PR lands on `main`: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. When `TAURI_SIGNING_PRIVATE_KEY` is set in the repository secrets it also produces the signed updater archive and a `latest.json` manifest, which is what lets an installed app update itself; without the secret the release is built and published exactly as before, minus that capability, and the run summary says so. A push whose version already has a tag is skipped, so an ordinary PR landing on `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
 The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 Run the same gates locally before pushing — CI is a backstop, not a substitute:
