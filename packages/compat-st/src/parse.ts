@@ -1,14 +1,30 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// The book shapes and uid resolution are the format; the hash payload and
-// its key order are this client's, kept because a chat keys its
-// `timedWorldInfo` records by that value. See docs/REUSE.md.
+// Written for CatCup. Reading a world info book: the entry map shapes, uid
+// resolution, and the entry hash a chat's timed-effect records are keyed by.
 
 import { type WorldInfoAliasMap, worldInfoEntrySchema } from '@catcup/shared';
 
 import { getStringHash } from './hash.js';
 import { parseDecorators } from './matching.js';
 import type { ScanEntry } from './worldinfo-types.js';
+
+/**
+ * The world info file, as this app reads it.
+ *
+ * The shapes are the published ones — an `entries` map, or a bare `uid -> entry`
+ * map from an older export — and `docs/DATA-FORMATS.md` records both. Two rules
+ * here exist because getting them wrong produces no error and no failing test,
+ * only an entry whose sticky or cooldown quietly stops working:
+ *
+ * - **The hash covers the raw record, not the parsed one.** Its payload is
+ *   `{ uid, world, ...entry, decorators, content }`, with the decorators and the
+ *   stripped content *appended* and the key order exactly as written. A chat's
+ *   `timedWorldInfo` records are matched by that number, so an entry hashed from
+ *   a re-serialized object — different key order, or a field dropped by the
+ *   schema — would no longer find the records it wrote.
+ * - **Unknown fields stay on the entry.** A newer client's field survives
+ *   because the hash is taken from the source object rather than from what the
+ *   schema kept.
+ */
 
 const ENTRY_HINTS = ['key', 'keysecondary', 'content', 'comment', 'uid'];
 
@@ -24,7 +40,7 @@ function looksLikeEntryMap(value: Record<string, unknown>): boolean {
     return values.length > 0 && values.every(looksLikeEntry);
 }
 
-/** Pull the entries map out of the shapes SillyTavern and its exporters produce. */
+/** Pull the entries map out of either shape a book file may use. */
 export function extractEntries(raw: unknown): Record<string, unknown> | null {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
         return null;
@@ -48,10 +64,11 @@ export function extractEntries(raw: unknown): Record<string, unknown> | null {
 /**
  * Resolve the uid an entry is known by.
  *
- * SillyTavern writes `uid` on every entry it saves; older and hand-written
- * files key the entry map by uid instead. The editor resolves uids through the
- * same function as the loader, so the entry a `PATCH` targets is the entry the
- * scanner read.
+ * The entry's own `uid` wins; a file that keys its map by uid instead is the
+ * older shape and falls back to the record key. The editor resolves uids
+ * through this same function as the loader, so the entry a `PATCH` targets is
+ * always the entry the scanner read — even in a hand-written file where the
+ * record key and the `uid` field disagree.
  */
 export function resolveUid(raw: Record<string, unknown>, key: string, fallback: number): number {
     const candidate = raw.uid;
@@ -88,10 +105,10 @@ export function parseWorldInfoBook(id: string, raw: unknown): ScanEntry[] {
         const uid = resolveUid(source, key, index);
         const { decorators, content } = parseDecorators(parsed.data.content);
 
-        // SillyTavern hashes `{ uid, world, ...entry }` with `decorators` and
-        // the stripped `content` appended, then uses that hash to match timed
-        // effects stored in imported chats. Key order is part of the payload,
-        // so build it the same way instead of hashing the parsed object.
+        // Hashing the *raw* record, with the decorators and stripped content
+        // appended, is what lets an imported chat's timed-effect records keep
+        // matching. Key order is part of the payload, so this is built in this
+        // order deliberately rather than spread from a parsed object.
         const { uid: _sourceUid, ...rest } = source;
         const hash = getStringHash(JSON.stringify({ uid, world: id, ...rest, decorators, content }));
 

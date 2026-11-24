@@ -1,17 +1,26 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/slash-commands/SlashCommandParser.js
-// Command split, quoting, aliases and named-argument semantics. The parser
-// itself is a smaller one written for CatCup. See docs/REUSE.md.
+// Written for CatCup. The small slash-command grammar the Quick Replies subset
+// understands: `/`-commands, `|` pipelines, quoting and named arguments.
 
-// Semantics follow SillyTavern's Quick Replies extension and the small set of
-// slash commands CatCup supports. This is a new, deliberately smaller parser,
-// not a port of SillyTavern's SlashCommandParser. See docs/ST-COMPATIBILITY.md.
+/**
+ * A deliberately small slash-command parser.
+ *
+ * It is not a general command language and does not try to be one. The command
+ * set is fixed and short, every argument a command accepts is named, and a
+ * `key=value` token whose key is not on the list is left as message text — which
+ * is what keeps ordinary prose such as `2+2=4` from being read as an argument.
+ *
+ * The *surface* — which commands exist, what their short forms are, and what a
+ * Quick Reply set means by a `|` — is the published behaviour a set exported
+ * from another client has to keep working under, so it is a compatibility
+ * constraint. The implementation below is this app's own and is free to change
+ * as long as that surface does not.
+ */
 
 /** The slash commands the Quick Replies subset can run. */
 export const QUICK_REPLY_COMMAND_NAMES = ['send', 'sys', 'echo', 'trigger', 'continue', 'regenerate', 'run'] as const;
 export type QuickReplyCommandName = (typeof QUICK_REPLY_COMMAND_NAMES)[number];
 
-/** SillyTavern's aliases for the supported commands. */
+/** The short forms a set may use for the commands above. */
 const COMMAND_ALIASES: Record<string, QuickReplyCommandName> = {
     send: 'send',
     sys: 'sys',
@@ -72,12 +81,18 @@ export type QuickReplyParseResult =
     | { kind: 'error'; message: string };
 
 /**
- * Read a quick reply message the way SillyTavern does.
+ * Read one quick reply message as text or as a command pipeline.
  *
- * A message that does not start with `/` is plain text and is placed in the
- * message box. Otherwise it is a `|`-separated command list; quotes protect
- * pipes and spaces, and `\|` escapes a pipe. Leading whitespace before the
- * first slash makes the message plain text, matching ST's check.
+ * A message that does not *start* with `/` is plain text for the composer.
+ * Leading whitespace therefore makes it text too — a person who typed a space
+ * before the slash meant a message, and silently running it instead would send
+ * something they did not write.
+ *
+ * Otherwise the message is a `|`-separated list. Quoting protects pipes and
+ * spaces inside an argument and `\|` escapes a pipe outright. An unclosed quote
+ * or an empty segment is an error rather than a best guess, because either one
+ * means the author's intent cannot be recovered and a partially-run pipeline
+ * would leave the chat half-changed.
  */
 export function parseQuickReplyScript(message: string): QuickReplyParseResult {
     if (message[0] !== '/') {

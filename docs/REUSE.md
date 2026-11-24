@@ -46,19 +46,36 @@ Two things are worth being clear about, now and later:
 | Fact                                                     | Consequence                                        |
 | -------------------------------------------------------- | -------------------------------------------------- |
 | The data formats are a shared standard, implemented here | No obligation attaches to reading and writing them |
-| The adapted files are a shrinking, itemised list         | The project knows exactly what it owes and to whom |
+| No file in the tree is another project's code any more   | The only third-party material left is one wordlist |
 
 The licence is not a decision this page is working towards. It is the project's
-current choice, and `docs/REUSE-ISOLATION.md` records the plan for the code —
-which is what would keep a later change of terms in the project's own hands
+current choice, and `docs/REUSE-ISOLATION.md` records what the code rewrite was
+— which is what would keep a later change of terms in the project's own hands
 rather than anyone else's.
 
-Requirements that do follow from the adapted files:
+What remains from other projects, after phase 3:
 
-1. Keep `LICENSE` (AGPL-3.0 text), `NOTICE`, and copyright headers in adapted source files.
-2. Note the origin and modification in files adapted from another project.
-3. When the software is used over a network by others, provide the corresponding source.
-4. Do not use adapted code in a closed-source distribution.
+1. **`apps/server/assets/tokenizers/claude.json`** — a byte-level BPE vocabulary,
+   shipped verbatim (1.7 MB). It is data rather than code, and the alternative is
+   a materially worse token estimate; keeping it costs an attribution and nothing
+   else.
+2. **`packages/compat-st/src/hash.ts`** — cyrb53 by bryc, used as published under
+   MIT. It is a hash function, and its output has to match what a chat file
+   already stores.
+3. **`@agnai/web-tokenizers`** and **`js-tiktoken`** — dependencies, Apache-2.0 and
+   MIT, used as libraries rather than copied.
+
+Requirements that still apply to those:
+
+1. Keep `LICENSE` (AGPL-3.0 text) and `NOTICE`.
+2. Note the origin of anything copied in; nothing currently qualifies except the
+   vocabulary and the hash, and both say so.
+3. When the software is used over a network by others, provide the corresponding
+   source.
+
+The AGPL obligations in `NOTICE` that came from adapted files no longer have
+adapted files behind them. They are kept anyway, because AGPL-3.0 is this
+project's own choice and §13 still applies to it on its own terms.
 
 ## 1. Overall conclusion
 
@@ -67,13 +84,13 @@ Requirements that do follow from the adapted files:
 - **Neither UI is directly reusable.** The reference clients are jQuery/vanilla and Svelte; this project is React. Borrow interaction and visual lessons only.
 - **Their core cannot be lifted wholesale.** `openai.js`, `world-info.js`, `PromptManager.js` and `slash-commands.js` are tightly coupled to DOM/global state and anything taken from them had to be rewritten into pure TypeScript.
 
-## 2. Where code was taken from a reference client
+## 2. What was read, and what came of it
 
 | Source | File                                          | Size       | What CatCup has                                                                                                       |
 | ------ | --------------------------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| ST     | `src/character-card-parser.js`                | 98 lines   | Card read/write, now in `packages/compat-st/src/card-{parse,write}.ts`                                                |
+| ST     | `src/character-card-parser.js`                | 98 lines   | Card read/write, implemented from the V2/V3 spec in `packages/compat-st/src/card-{parse,write}.ts`                    |
 | ST     | `src/png/encode.js`                           | 68 lines   | PNG chunk re-encoding in `packages/compat-st/src/card-png.ts` (MIT origin; note kept)                                 |
-| ST     | `src/charx.js`                                | 399 lines  | CharX ZIP + v3 card + assets adapted into `apps/server/src/cards/charx.ts`; CatCup keeps assets per character         |
+| ST     | `src/charx.js`                                | 399 lines  | CharX ZIP container read/written in `apps/server/src/cards/charx.ts`, from the container spec                         |
 | ST     | `src/prompt-converters.js`                    | 1451 lines | Not adopted; the provider adapters convert for themselves                                                             |
 | ST     | `src/endpoints/backends/chat-completions.js`  | 2995 lines | Parameter and edge-case reference; each provider adapter is written against its own API                               |
 | ST     | `src/endpoints/backends/text-completions.js`  | 646 lines  | Not adopted; text-completion backends are out of scope                                                                |
@@ -84,7 +101,7 @@ Requirements that do follow from the adapted files:
 | RisuAI | `src/ts/process/request/anthropic.ts`         | 1218 lines | Reference, especially thinking and tool use                                                                           |
 | RisuAI | `src/ts/process/request/google.ts`            | 1306 lines | Reference for future providers                                                                                        |
 | RisuAI | `src/ts/process/request/openAI/requests.ts`   | large      | Reference for parameter compatibility                                                                                 |
-| RisuAI | `src/ts/characterCards.ts`                    | 2075 lines | CharX import/export implemented in M2                                                                                 |
+| RisuAI | `src/ts/characterCards.ts`                    | 2075 lines | CharX import/export, implemented from the container spec                                                              |
 | RisuAI | `src/ts/plugins/` + `plugins.md`              | medium     | Reference for the M3 extension host                                                                                   |
 | RisuAI | `server/node/server.cjs`                      | large      | Security design reference (CatCup uses scrypt + HMAC cookies)                                                         |
 | RisuAI | `src-tauri/tauri.conf.json` + `capabilities/` | config     | M4 reference                                                                                                          |
@@ -92,9 +109,15 @@ Requirements that do follow from the adapted files:
 
 ## 3. Behaviour taken as a starting point
 
-These were read and then re-expressed in TypeScript, because the originals are coupled to the DOM or
-to global state. `docs/REUSE-ISOLATION.md` holds the plan for re-deriving them from the
-specifications instead.
+These were read while this project was being written — as a reference for what
+the formats have to do, and as a second opinion on semantics. The code that came
+out of that reading lives in this repository and is CatCup's; phase 3 (§7 and
+`docs/REUSE-ISOLATION.md`) is the record of each module being rewritten against
+the documentation rather than the port.
+
+This table stays because reading someone else's implementation is worth
+recording even when nothing of it remains in the tree — it is the difference
+between "we looked" and "we claim we never looked".
 
 | Source | File                                                   | What was taken                                                            |
 | ------ | ------------------------------------------------------ | ------------------------------------------------------------------------- |
@@ -151,59 +174,66 @@ Conclusion: **extension compatibility is delivered in layers L1→L4.** Nail dat
 
 Every file here carries a header saying which of three things it is. **format**
 means it implements a published specification and owes nothing to another
-client's source. A dash means CatCup wrote it. Everything else was adapted from
-another client, and the header names the upstream file.
+client's source. A dash means CatCup wrote it. Everything else is third-party
+data or a dependency that is kept as published, and the header names it.
 
-| Location                                       | Basis                                                              | What it does                                                                  |
-| ---------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG                              | `tEXt` chunk reading, `ccv3` before `chara`                                   |
-| `packages/compat-st/src/card-write.ts`         | **format** — Character Card V2/V3 PNG                              | Card write-back: `chara` + `ccv3` chunks, legacy promotion                    |
-| `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                                 | The favourite flag and the legacy string-`'true'` rule                        |
-| `packages/compat-st/src/card-png.ts`           | **format** — PNG container                                         | Chunk serialization with CRC, and `tEXt` replacement                          |
-| `apps/server/src/cards/charx.ts`               | RisuAI `src/ts/process/processzip.ts` + `src/ts/characterCards.ts` | CharX ZIP layout, `card.json` + `assets/**` and asset URIs                    |
-| `apps/server/src/storage/characterAssets.ts`   | RisuAI `src/ts/process/processzip.ts`                              | Per-character asset storage and round-trip, with CatCup paths and caps        |
-| `packages/shared/src/schemas/character.ts`     | **format** — Character Card V2/V3                                  | Field names and `character_book` structure                                    |
-| `packages/shared/src/schemas/chat.ts`          | **format** — chat JSONL and `MediaAttachment`                      | Header and message fields, `extra.media` shape                                |
-| `packages/shared/src/schemas/worldinfo.ts`     | **format** — World Info JSON                                       | Entry field set, positions, logic and role constants                          |
-| `packages/shared/src/schemas/preset.ts`        | **format** — preset JSON                                           | Preset fields, `prompts` / `prompt_order`                                     |
-| `packages/shared/src/schemas/regex.ts`         | **format** — regex script data                                     | Script field names, placements and substitution modes                         |
-| `packages/shared/src/schemas/quickreplies.ts`  | **format** — Quick Replies v2 set                                  | Version 2 set and quick reply field names and defaults                        |
-| `packages/compat-st/src/parse.ts`              | ST `public/scripts/world-info.js`                                  | Book shapes and uid resolution are the format; the hash payload is ST's       |
-| `apps/server/src/worldinfo/loader.ts`          | —                                                                  | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`        |
-| `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                               | `getStringHash`, the timed-effect identity                                    |
-| `packages/compat-st/src/matching.ts`           | —                                                                  | Key matching, regex keys and decorators, rewritten for CatCup                 |
-| `packages/compat-st/src/scanner.ts`            | ST `public/scripts/world-info.js`                                  | Scan states, groups, budget, positions                                        |
-| `packages/compat-st/src/timedEffects.ts`       | —                                                                  | Sticky, cooldown, delay and the hand-off, rewritten                           |
-| `apps/server/src/worldinfo/entries.ts`         | ST `public/scripts/world-info.js`                                  | Entry template defaults, free-uid allocation, patch merge, order              |
-| `apps/server/src/worldinfo/characterBook.ts`   | ST `public/scripts/world-info.js`                                  | `convertCharacterBook`: card lorebook to world info entries                   |
-| `packages/shared/src/keywords.ts`              | ST `public/scripts/world-info.js`                                  | `splitKeywordsAndRegexes`; the `/pattern/flags` check delegates to `regex.ts` |
-| `packages/compat-st/src/prompt.ts`             | —                                                                  | Prompt buckets, `wi_format` and Author's Note composition, rewritten          |
-| `packages/compat-st/src/prompt-definitions.ts` | ST `PromptManager.js`                                              | Identifiers, order and markers from ST; the instruction text is CatCup's      |
-| `apps/server/src/prompt/manager.ts`            | —                                                                  | Sanitize, order lookup and prompt collection                                  |
-| `packages/compat-st/src/prompt-messages.ts`    | —                                                                  | Completion slots, budget and system-message squashing                         |
-| `apps/server/src/prompt/assemble.ts`           | —                                                                  | Marker merge, card overrides, injection and population                        |
-| `packages/compat-st/src/prompt-history.ts`     | —                                                                  | History conversion and example-dialogue parsing                               |
-| `packages/shared/src/macros.ts`                | —                                                                  | The macro subset, rewritten for CatCup                                        |
-| `packages/compat-st/src/prompt-tokenizer.ts`   | —                                                                  | Model to tiktoken-encoding mapping and the Claude counter                     |
-| `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                                    | Claude byte-level BPE vocabulary, shipped verbatim                            |
-| `packages/shared/src/regex.ts`                 | —                                                                  | Placement gate, replacement syntax, trim strings and the depth window         |
-| `packages/shared/src/memory.ts`                | ST `public/scripts/extensions/memory/index.js`                     | Summary lookup on `extra.memory`; the default prompts are CatCup's            |
-| `apps/server/src/memory/summary.ts`            | —                                                                  | Update schedule, transcript window and the summary request                    |
-| `apps/server/src/memory/inject.ts`             | —                                                                  | Which summaries reach a prompt, and how they are formatted                    |
-| `apps/server/src/memory/service.ts`            | —                                                                  | Summary lifecycle: the per-chat lock, the call, the write-back                |
-| `packages/shared/src/quickReplies.ts`          | ST `public/scripts/slash-commands/SlashCommandParser.js`           | Command split, quoting, aliases and named-argument semantics                  |
-| `apps/server/src/quickreplies/execute.ts`      | —                                                                  | The supported command subset and `/run` expansion                             |
-| `apps/server/src/storage/quickReplies.ts`      | ST `src/endpoints/quick-replies.js`                                | One file per set, named after the set, with import and export                 |
-| `packages/shared/src/schemas/tts.ts`           | —                                                                  | The text-to-speech settings model                                             |
-| `packages/shared/src/tts.ts`                   | —                                                                  | Speech text preparation and chunking                                          |
-| `apps/server/src/tts/openaiCompatible.ts`      | —                                                                  | `/audio/speech` request and format mapping                                    |
-| `apps/web/src/hooks/useTts.ts`                 | ST `public/scripts/extensions/tts/system.js`                       | Browser voice selection and chunked utterances, rewritten for React           |
-| `packages/shared/src/schemas/images.ts`        | —                                                                  | Image generation settings and request shapes                                  |
-| `apps/server/src/images/automatic1111.ts`      | —                                                                  | `/sdapi/v1/txt2img` request body and seed read-back                           |
-| `apps/server/src/images/comfyui.ts`            | ST `stable-diffusion.js` + `generateComfyImageCommon`              | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders         |
-| `apps/server/src/images/openaiCompatible.ts`   | —                                                                  | `/images/generations` body, size mapping and responses                        |
-| `apps/server/src/images/prompt.ts`             | —                                                                  | Draft-from-chat instruction and comma-tag cleanup                             |
-| `apps/server/src/storage/images.ts`            | ST `src/endpoints/images.js` + `saveBase64AsFile`                  | `user/images/<folder>` layout and base64 upload semantics                     |
+**No file carries an `Adapted from` or `Derived from` header any more.**
+`docs/REUSE-ISOLATION.md` records how that happened and what replaced each one;
+the short version is that a header came off only when the behaviour underneath
+was written down in a specification this project implements, never because the
+header had become inconvenient. Bucket B — code written by reading another
+client's source — finished in phase 3.
+
+| Location                                       | Basis                                               | What it does                                                                  |
+| ---------------------------------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `packages/compat-st/src/card-parse.ts`         | **format** — Character Card V2/V3 PNG               | `tEXt` chunk reading, `ccv3` before `chara`                                   |
+| `packages/compat-st/src/card-write.ts`         | **format** — Character Card V2/V3 PNG               | Card write-back: `chara` + `ccv3` chunks, legacy promotion                    |
+| `packages/compat-st/src/card-favorite.ts`      | **format** — card `extensions.fav`                  | The favourite flag and the legacy string-`'true'` rule                        |
+| `packages/compat-st/src/card-png.ts`           | **format** — PNG container                          | Chunk serialization with CRC, and `tEXt` replacement                          |
+| `apps/server/src/cards/charx.ts`               | **format** — CharX ZIP container                    | `card.json` + `assets/**`, icon selection and asset URIs                      |
+| `apps/server/src/storage/characterAssets.ts`   | —                                                   | Per-character asset storage and round-trip, with CatCup paths and caps        |
+| `packages/shared/src/schemas/character.ts`     | **format** — Character Card V2/V3                   | Field names and `character_book` structure                                    |
+| `packages/shared/src/schemas/chat.ts`          | **format** — chat JSONL and `MediaAttachment`       | Header and message fields, `extra.media` shape                                |
+| `packages/shared/src/schemas/worldinfo.ts`     | **format** — World Info JSON                        | Entry field set, positions, logic and role constants                          |
+| `packages/shared/src/schemas/preset.ts`        | **format** — preset JSON                            | Preset fields, `prompts` / `prompt_order`                                     |
+| `packages/shared/src/schemas/regex.ts`         | **format** — regex script data                      | Script field names, placements and substitution modes                         |
+| `packages/shared/src/schemas/quickreplies.ts`  | **format** — Quick Replies v2 set                   | Version 2 set and quick reply field names and defaults                        |
+| `packages/compat-st/src/parse.ts`              | **format** — World Info JSON, incl. the entry hash  | Book shapes, uid resolution and the hash payload the timed records key on     |
+| `apps/server/src/worldinfo/loader.ts`          | —                                                   | CatCup's file I/O; the parsing it used to hold now lives in `parse.ts`        |
+| `packages/compat-st/src/hash.ts`               | cyrb53 by bryc (MIT)                                | `getStringHash`, the timed-effect identity                                    |
+| `packages/compat-st/src/matching.ts`           | —                                                   | Key matching, regex keys and decorators, rewritten for CatCup                 |
+| `packages/compat-st/src/scanner.ts`            | —                                                   | The scan: passes, groups, budget, positions; rewritten in phase 3             |
+| `packages/compat-st/src/timedEffects.ts`       | —                                                   | Sticky, cooldown, delay and the hand-off, rewritten                           |
+| `apps/server/src/worldinfo/entries.ts`         | —                                                   | Entry template defaults, free-uid allocation, patch merge, order              |
+| `apps/server/src/worldinfo/characterBook.ts`   | —                                                   | Card `character_book` to world info entries, field by field                   |
+| `packages/shared/src/keywords.ts`              | —                                                   | `splitKeywordsAndRegexes`; the `/pattern/flags` check delegates to `regex.ts` |
+| `packages/compat-st/src/prompt.ts`             | —                                                   | Prompt buckets, `wi_format` and Author's Note composition, rewritten          |
+| `packages/compat-st/src/prompt-definitions.ts` | **format** — preset prompt identifiers              | Identifiers, declaration order and marker flags; the text is CatCup's own     |
+| `apps/server/src/prompt/manager.ts`            | —                                                   | Sanitize, order lookup and prompt collection                                  |
+| `packages/compat-st/src/prompt-messages.ts`    | —                                                   | Completion slots, budget and system-message squashing                         |
+| `apps/server/src/prompt/assemble.ts`           | —                                                   | Marker merge, card overrides, injection and population                        |
+| `packages/compat-st/src/prompt-history.ts`     | —                                                   | History conversion and example-dialogue parsing                               |
+| `packages/shared/src/macros.ts`                | —                                                   | The macro subset, rewritten for CatCup                                        |
+| `packages/compat-st/src/prompt-tokenizer.ts`   | —                                                   | Model to tiktoken-encoding mapping and the Claude counter                     |
+| `apps/server/assets/tokenizers/claude.json`    | ST `src/tokenizers/claude.json`                     | Claude byte-level BPE vocabulary, shipped verbatim                            |
+| `packages/shared/src/regex.ts`                 | —                                                   | Placement gate, replacement syntax, trim strings and the depth window         |
+| `packages/shared/src/memory.ts`                | **format** — summary storage on `extra.memory`      | Summary lookup; the default prompts are CatCup's own                          |
+| `apps/server/src/memory/summary.ts`            | —                                                   | Update schedule, transcript window and the summary request                    |
+| `apps/server/src/memory/inject.ts`             | —                                                   | Which summaries reach a prompt, and how they are formatted                    |
+| `apps/server/src/memory/service.ts`            | —                                                   | Summary lifecycle: the per-chat lock, the call, the write-back                |
+| `packages/shared/src/quickReplies.ts`          | —                                                   | The small slash-command grammar: split, quoting, aliases, named arguments     |
+| `apps/server/src/quickreplies/execute.ts`      | —                                                   | The supported command subset and `/run` expansion                             |
+| `apps/server/src/storage/quickReplies.ts`      | **format** — Quick Replies v2 set file              | One file per set, named after the set, with import and export                 |
+| `packages/shared/src/schemas/tts.ts`           | —                                                   | The text-to-speech settings model                                             |
+| `packages/shared/src/tts.ts`                   | —                                                   | Speech text preparation and chunking                                          |
+| `apps/server/src/tts/openaiCompatible.ts`      | —                                                   | `/audio/speech` request and format mapping                                    |
+| `apps/web/src/hooks/useTts.ts`                 | —                                                   | Browser voice selection and chunked utterances                                |
+| `packages/shared/src/schemas/images.ts`        | —                                                   | Image generation settings and request shapes                                  |
+| `apps/server/src/images/automatic1111.ts`      | —                                                   | `/sdapi/v1/txt2img` request body and seed read-back                           |
+| `apps/server/src/images/comfyui.ts`            | —                                                   | `/prompt`, `/history` polling, `/view`, `/interrupt` and placeholders         |
+| `apps/server/src/images/openaiCompatible.ts`   | —                                                   | `/images/generations` body, size mapping and responses                        |
+| `apps/server/src/images/prompt.ts`             | —                                                   | Draft-from-chat instruction and comma-tag cleanup                             |
+| `apps/server/src/storage/images.ts`            | **format** — `user/images/<folder>/` gallery layout | Image and sidecar storage, with the file-name rules that keep it contained    |
 
 ## 8. Related documentation
 
