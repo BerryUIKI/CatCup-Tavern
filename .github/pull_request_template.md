@@ -6,7 +6,7 @@
 
 <!-- One concern per PR. Link the milestone or issue if applicable. -->
 
-- Base branch: `dev`
+- Base branch: `main`
 - Milestone:
 - Related PRs (for stacked changes):
 

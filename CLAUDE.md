@@ -13,7 +13,7 @@ Compatibility is **two rules, not one**:
 - **Data formats are a hard constraint.** Character cards (PNG/JSON V2/V3), chat JSONL, world info JSON, prompt presets and STscript/slash commands must import, export and round-trip without loss, and every file we write must stay readable by the other tavern clients. Field names, the JSONL header shape and unknown-field preservation are not negotiable. These are a shared standard, not one product's file layout — implement the specification.
 - **Runtime semantics are a default, not a mandate.** How world info is matched, how memory is stored and how a reply is assembled follows the reference implementations unless a divergence measurably improves the experience. A divergence is allowed when it is opt-in, leaves imported data readable by every client, and is recorded in `docs/ST-COMPATIBILITY.md` with the reason and the setting that controls it. Following another client's _algorithms_ is a compatibility convenience; reproducing its _limitations_ is not.
 
-Current status: **0.3.2 released (2026-11-16)**; `dev` carries the next batch, not yet released. 0.3.2 turns the provider form's Type list into a request protocol with a first-class custom-provider entry, replaces every native dropdown with CatCup's own `Select`/`Combobox`, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out on an install with no password. M0, M1, M2 and the 0.2.x MVP are complete. 0.3.1 adds profiles — a profile is a data scope, with an opt-in per-item shared layer — a multi-model provider list with per-character and per-profile model choice, group generation handling modes, and book distillation from `.txt`/`.md`/`.epub`. The desktop scope also landed in it — tray icon, window-state restore, self-update with signed artifacts, `.catcup` file associations, packaged macOS/Linux builds and a CI job that compiles the shell on all three platforms — plus CatCup's own `.catcup` package format, a password-change screen for web and LAN, impersonation and drag-and-drop import. Windows code signing is deliberately deferred. M3 (STscript, full Quick Replies, the extension API) and M5 (mobile, i18n, accessibility, UX stages C–E) are still ahead. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (stage A: Settings and Providers landed 2026-11-12; stage B: app shell and chat chrome landed 2026-11-13); follow `docs/DESIGN.md` for interface work.
+Current status: **0.3.2 released (2026-11-16)**; `main` carries the next batch, not yet released. 0.3.2 turns the provider form's Type list into a request protocol with a first-class custom-provider entry, replaces every native dropdown with CatCup's own `Select`/`Combobox`, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out on an install with no password. M0, M1, M2 and the 0.2.x MVP are complete. 0.3.1 adds profiles — a profile is a data scope, with an opt-in per-item shared layer — a multi-model provider list with per-character and per-profile model choice, group generation handling modes, and book distillation from `.txt`/`.md`/`.epub`. The desktop scope also landed in it — tray icon, window-state restore, self-update with signed artifacts, `.catcup` file associations, packaged macOS/Linux builds and a CI job that compiles the shell on all three platforms — plus CatCup's own `.catcup` package format, a password-change screen for web and LAN, impersonation and drag-and-drop import. Windows code signing is deliberately deferred. M3 (STscript, full Quick Replies, the extension API) and M5 (mobile, i18n, accessibility, UX stages C–E) are still ahead. The authoritative scope and acceptance criteria live in `docs/MILESTONES.md`; the user-facing gaps are listed in `docs/LIMITATIONS.md`. A full-app UX overhaul is in progress (stage A: Settings and Providers landed 2026-11-12; stage B: app shell and chat chrome landed 2026-11-13); follow `docs/DESIGN.md` for interface work.
 
 ## Commands
 
@@ -38,7 +38,7 @@ cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml   # what CI runs, 
 cargo test  --manifest-path apps/desktop/src-tauri/Cargo.toml   # shell unit tests
 ```
 
-Releases are cut by merging `dev` into `main` after bumping the version: `.github/workflows/release.yml` notices the untagged `package.json` version, creates the `v<version>` tag on that commit and attaches the Windows installer to the GitHub release. When `TAURI_SIGNING_PRIVATE_KEY` is in the repository secrets it also publishes the signed updater archive and `latest.json`, which is what lets an installed app update itself. The release body comes from that version's `CHANGELOG.md` section. See `CONTRIBUTING.md#releases`.
+Releases are cut by landing a version bump on `main` as a normal squash-merged PR: `.github/workflows/release.yml` notices the untagged `package.json` version, creates the `v<version>` tag on that commit and attaches the Windows installer to the GitHub release. When `TAURI_SIGNING_PRIVATE_KEY` is in the repository secrets it also publishes the signed updater archive and `latest.json`, which is what lets an installed app update itself. The release body comes from that version's `CHANGELOG.md` section. See `CONTRIBUTING.md#releases`.
 
 ## Layout
 
@@ -104,10 +104,19 @@ Read before changing behaviour:
 
 ## Git workflow
 
-- `main` is the release baseline.
-- `dev` is the integration branch.
-- Feature branches are cut from `dev`; PRs target `dev`.
-- Use merge commits, not squash, for stacked PRs.
+Trunk-based development. `main` is the trunk and the only long-lived branch.
+
+- Every change lands on `main` through a short-lived branch and a pull request
+  that targets `main`. Nothing merges into a branch other than `main`.
+- **Squash merge.** One PR becomes one commit on `main`, so the trunk reads as a
+  linear list of changes and `git log` on `main` is the history that matters.
+- Keep branches small and short-lived — hours to a couple of days. A branch that
+  lives a week is a branch that will conflict; split the work instead.
+- Branch from `main`, and rebase on `main` rather than merging it back in.
+- Delete the branch after it merges, locally and on the remote.
+- `release/<version>` and `hotfix/<version>` are cut from `main` when a release
+  or a fix genuinely needs stabilising, and merge back into `main` — they are
+  exceptions, not a second trunk.
 - Small PRs, atomic commits; see `CONTRIBUTING.md`.
 
 ## Conventions

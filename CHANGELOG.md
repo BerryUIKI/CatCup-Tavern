@@ -14,6 +14,10 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ### Changed
 
+- **The project moved to trunk-based development.** `main` is now the only long-lived branch: there is no `dev` integration branch, every PR targets `main`, and PRs are **squash-merged** so the trunk stays a linear list of changes. Branch protection moved with it — `main` keeps the required check and now requires the branch to be current with its base, because CI only watches the trunk. `release/<version>` and `hotfix/<version>` still exist, cut from `main` and merged back, but only when a release or a fix genuinely needs stabilising; a version bump is an ordinary PR. CI, the PR template, the issue-template doc links, `CLAUDE.md`, `CONTRIBUTING.md`, `README.md` and the docs that described the old two-branch flow were all updated.
+
+  This exists because the old flow had the failure this session hit twice: work sitting on a branch the trunk had not seen, so a `git checkout` to another branch silently put unreviewed files back on disk. With one trunk that class of mistake disappears — there is nothing to be "ahead of" except `main` itself.
+
 - **No file in the tree carries a `Derived from` header any more.** The last twelve went in this batch, which completes phase 3 of `docs/REUSE-ISOLATION.md`: the card and world info adapters (`charx.ts`, `characterBook.ts`, `entries.ts`), the storage layer (`images.ts`, `quickReplies.ts`, `characterAssets.ts`), the ComfyUI client, the shared quick-reply parser and memory module, the browser speech hook, and — the substantial one — the 1,034-line world info scanner. Behaviour is unchanged and no assertion was weakened; `pnpm test` passes 873 in the server.
 
   The rule the batch followed is the one the document set out: **a header comes off when the behaviour underneath is written down in a specification**, never because the header became inconvenient. That is why `parse.ts` could be rewritten — `docs/DATA-FORMATS.md` records the entry hash's payload exactly — and why `prompt-definitions.ts` keeps its identifier table described as the preset format even though the instruction text in it is CatCup's own.

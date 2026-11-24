@@ -6,7 +6,7 @@ body:
     - type: markdown
       attributes:
           value: |
-              Thanks for the report. Before filing, check [TROUBLESHOOTING.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/dev/docs/TROUBLESHOOTING.md) and search the open issues.
+              Thanks for the report. Before filing, check [TROUBLESHOOTING.md](https://github.com/BerryUIKI/CatCup-Tavern/blob/main/docs/TROUBLESHOOTING.md) and search the open issues.
 
               **Do not paste API keys, session cookies, `data/secrets.json` or private chat content.** Remove them from logs before pasting.
     - type: dropdown
