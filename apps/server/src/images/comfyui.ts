@@ -1,7 +1,4 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/stable-diffusion/index.js
-// The `/prompt`, `/history`, `/view` and `/interrupt` flow and the
-// placeholder set. The client is CatCup's. See docs/REUSE.md.
+// Written for CatCup, against ComfyUI's published HTTP API.
 
 import { randomInt, randomUUID } from 'node:crypto';
 
@@ -20,7 +17,28 @@ import {
 } from './http.js';
 import type { GeneratedImageData, ImageRequest } from './types.js';
 
-/** A workflow with a cold model load can take minutes; SillyTavern waits too. */
+/**
+ * ComfyUI, driven through its published HTTP API.
+ *
+ * Four endpoints do the whole job: `POST /prompt` queues an API-format graph and
+ * answers its id, `GET /history/<id>` reports when it finished, `GET /view`
+ * downloads the result and `POST /interrupt` stops a job nobody is waiting for.
+ * The sequence, the placeholders and the error shapes are documented in
+ * `docs/PROVIDERS.md`; what is here is this app's implementation of it.
+ *
+ * Two behaviours are worth reading the code for, because both exist to avoid
+ * leaving a backend busy on work whose result nobody will see:
+ *
+ * - **An abandoned job is interrupted, not forgotten.** A client that
+ *   disconnects or a poll that times out posts `/interrupt` for the job this
+ *   adapter queued — never for one that has already finished, which would stop
+ *   somebody else's render.
+ * - **A cold model load is minutes, not seconds.** Five minutes rather than the
+ *   180 s the other adapters use, because ComfyUI loads a checkpoint on the
+ *   first job and that is slower than anything that happens afterwards.
+ */
+
+/** How long a queued job may take before the adapter gives up on it. */
 const REQUEST_TIMEOUT_MS = 300_000;
 const INTERRUPT_TIMEOUT_MS = 5_000;
 const POLL_INTERVAL_MS = 500;

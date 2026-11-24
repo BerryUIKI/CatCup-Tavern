@@ -1,10 +1,23 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/PromptManager.js
-// The identifier list, the order and the marker flags are the preset format.
-// The two instruction strings and the message templates are CatCup's own
-// wording. See docs/REUSE.md.
+// Written for CatCup. The identifiers a prompt preset refers to, and the
+// default prompt list a preset with none starts from.
 
 import { DEFAULT_PROMPT_ORDER, type PromptEntry, type PromptOrderEntry } from '@catcup/shared';
+
+/**
+ * The preset's prompt vocabulary.
+ *
+ * A preset stores a list of `{ identifier, enabled }` and a client has to agree
+ * on what each identifier *means*, or a preset exported here reads differently
+ * in another client. The field list is in `docs/DATA-FORMATS.md`; this file is
+ * where the identifiers themselves live, and they are the exchange format —
+ * renaming one would silently reorder every imported preset.
+ *
+ * Two things here are **not** format and are CatCup's own: the instruction text
+ * inside `MAIN`, `ENHANCE_DEFINITIONS` and the rest, and the message templates.
+ * A preset always carries its own text, so these are only what a fresh install
+ * or an empty preset starts from — which is exactly why they can be written for
+ * this project without breaking anything that came from elsewhere.
+ */
 
 /** Identifiers with behaviour attached. Everything else is plain content. */
 export const IDENTIFIER = {
@@ -30,7 +43,13 @@ export const IDENTIFIER = {
     DIRECTOR_RULES: 'directorRules',
 } as const;
 
-/** The fixed system prompts SillyTavern merges into the collection by identifier. */
+/**
+ * Identifiers whose content the caller supplies rather than the preset.
+ *
+ * These are merged into the collection by their identifier: the card, the
+ * persona and the world info scan fill them, and a preset that omits one still
+ * gets it.
+ */
 export const SYSTEM_PROMPT_IDENTIFIERS: readonly string[] = [
     IDENTIFIER.WORLD_INFO_BEFORE,
     IDENTIFIER.WORLD_INFO_AFTER,
@@ -255,7 +274,13 @@ export const INJECTION_POSITION = {
 /** `injection_order` default. */
 export const DEFAULT_INJECTION_ORDER = 100;
 
-/** Tokens SillyTavern reserves for the assistant priming. */
+/**
+ * Tokens held back from the budget for the assistant priming.
+ *
+ * A provider that takes a trailing assistant turn spends tokens on it that the
+ * prompt's own estimate does not see, so the budget reserves room rather than
+ * discovering the overrun at request time.
+ */
 export const RESERVED_TOKENS = 3;
 
 /** Generation types an entry can be limited to through `injection_trigger`. */
