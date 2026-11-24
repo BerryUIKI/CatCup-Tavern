@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1, M2 and M4's shell are complete**, most recently released as `0.3.2` on 2026-11-16; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch, `0.3.0` the M2 feature release and `0.3.1` profiles and book distillation. M4's remaining acceptance criteria are open; M3 and M5 are planned.
+> Current status: **M0, M1, M2 and M4's shell are complete**, most recently released as `0.3.2` on 2026-11-16; M6 (game mode) was scoped 2026-11-24 as RFC 0005 and RFC 0006 and is not started; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch, `0.3.0` the M2 feature release and `0.3.1` profiles and book distillation. M4's remaining acceptance criteria are open; M3 and M5 are planned.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -31,6 +31,7 @@ timeline
         M3 : STscript, full Quick Replies, getContext and the extension sandbox
         M4 : Authenticode signing; macOS and Linux releases
         M5 : mobile, i18n, accessibility audit, performance, v1.0
+        M6 : game mode, the declarative plugin host, workspaces
 ```
 
 ## Definition of done
@@ -121,6 +122,7 @@ Released after the MVP, before M2:
 | **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
 | **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | In progress | M0, M1     |
 | **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
+| **M6**    | Game mode: three modes, a declarative plugin host, workspaces              | Planned     | M1, M2     |
 
 ## M0 — Runnable foundation (Complete)
 
@@ -432,6 +434,78 @@ The MVP takes the shell, the sidecar, the first-run path and the installer. Sign
 - [x] CI runs all quality gates on every PR into `dev`.
 - [ ] The v1.0 release checklist and upgrade notes are published.
 
+## M6 — Game mode (Planned)
+
+**Goal:** a conversation can be a story or a game, and a game can be installed as a package.
+
+Design is [RFC 0005](RFC/0005-game-mode.md) and [RFC 0006](RFC/0006-workspaces.md). Proposed 2026-11-24 against issues [#169](https://github.com/BerryUIKI/CatCup-Tavern/issues/169), [#170](https://github.com/BerryUIKI/CatCup-Tavern/issues/170) and [#168](https://github.com/BerryUIKI/CatCup-Tavern/issues/168).
+
+### Scope
+
+Three modes on the front — **Chat / Story / Game** — and two independent switches behind them: `chat_metadata.director` (a chat is a story) and `chat_metadata.game.gameId` (a chat belongs to a save). They compose, and a game with no chat still runs.
+
+- **A declarative plugin host.** A game is a `.catcupgame` ZIP — manifest, state declarations, tool declarations, view declarations, content JSON, media. **It carries no code.** Tools are declarations the host executes through five effect kinds; views are nine host components. The director ships as a built-in plugin so first-party and third-party load through one path.
+- **Saves under a profile.** `games/<gameId>/` with automatic checkpoints (task completed, entity unlocked, story beat) plus manual saves, a ring that keeps the newest N automatic saves and never evicts a manual one, and two rollback behaviours — state only, or state and chat via the existing branch machinery.
+- **Actions without tool calling.** A line-oriented sentinel block per reply, stripped before storage, validated against the plugin's declarations, applied in one state write, and rejected whole if any line is bad. Native tool calling is **not** a dependency of this milestone.
+- **Media from the package.** `media/index.json` verified at install, served read-only from one plugin's folder, never copied out.
+- **Workspaces** (RFC 0006): writing a manuscript from a chat or a whole save, authoring cards and packs, and a developer panel showing each turn's proposed actions, rejections and state diff.
+
+### Explicitly out of scope
+
+- **Device bridges** — intimate-hardware integrations. Hardware with a physical-failure story the app would have to own.
+- **Plugin code of any kind.** No sandbox, no `eval`, no `csp` change. Arbitrary UI is M3's extension host, which is a separate system.
+- **Third-party game content in this repository.** A pack is a file a person installs; the licence boundary falls on the pack. CI fixtures are authored here.
+
+### Acceptance criteria
+
+The full list lives in RFC 0005 and RFC 0006. The exit criteria for the milestone:
+
+- [ ] A chat with no `director` and no `game` key produces the same prompt and the same file as today.
+- [ ] A `.catcupgame` installs, runs its views, and uninstalls; an incompatible `formatVersion` or `engine.min` is refused with both versions named.
+- [ ] Two plugins declaring the same id or state key both work, because both are namespaced.
+- [ ] A profile holds several saves; automatic checkpoints evict oldest-first; manual saves are never evicted.
+- [ ] "State only" rollback leaves the chat byte-identical; "state and chat" branches from the anchor and leaves the original intact.
+- [ ] An action block is stripped from stored text, and one bad line changes no state.
+- [ ] A game with no chat in it runs its curriculum with no provider configured.
+- [ ] A chat exports to a reviewed manuscript as Markdown and EPUB.
+- [ ] A character card can be created from nothing in the app (#168).
+- [ ] `docs/API.md`, `docs/DATA-FORMATS.md`, `docs/LIMITATIONS.md`, `docs/SECURITY.md` and `CHANGELOG.md` are updated.
+
+### Sequencing
+
+Slices are ordered so each one ships something usable, and so the state layer exists before anything writes to it. The numbers are PR groups, not releases.
+
+1. **Blank card creation** (#168) — independent of everything below, and the smallest thing in the milestone. Ships as a release of its own.
+2. **Plugin format, loader and install** — `.catcupgame` parsing, `formatVersion` and `engine.min` checks, install/uninstall, and the Games tab listing what is installed. Nothing renders yet.
+3. **State, saves and checkpoints** — `games/<gameId>/`, the state write path, automatic checkpoints and the eviction ring.
+4. **Views and the Games surface** — `entity_list`, `entity_detail`, `gallery`, `progress`, `schedule`, `meter`, `feed`, `wardrobe`. A pack becomes browsable.
+5. **The task runner** — `instant`, `duration`, `timed`, `sequence`, `rhythm`, `counter`, `composite`. A pack becomes completable, with no model involved.
+6. **Tools, the sentinel block, and the director** — action parsing and validation, the five effect kinds, and Story mode as the built-in plugin. The AI starts changing state.
+7. **Media** — `media/index.json` verification and the read-only route, so packs carry pictures and audio.
+8. **Rollback** — both behaviours in the UI.
+9. **Writing** (RFC 0006) — manuscript generation, the review sheet, Markdown and EPUB export.
+10. **Authoring and the developer panel** (RFC 0006) — templates, in-place lorebook editing, card assets, pack authoring, and the Tools/State tabs.
+
+Slices 2–5 are model-free by design, so the game is playable before any of the AI work lands. Slice 1 has no dependency on the rest of M6 at all.
+
+### Where M6 sits against the other milestones
+
+| Question                                  | Answer                                                                                                                                                                           |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Does M6 need M3 (STscript)?               | **No.** The effect kinds are declarative and do not need a script engine. When M3 lands, its command registry and these effects should be unified, but neither blocks the other. |
+| Does M6 need M5 (i18n, mobile)?           | **No, and the order matters.** M6 adds a large amount of UI. Running M5's i18n and accessibility passes _before_ M6 would mean redoing them; they belong after.                  |
+| Does M6 need M4 (signing, macOS/Linux)?   | **No.** The desktop remainder is independent of everything in M6 and can be picked up at any point.                                                                              |
+| Does anything already in flight block M6? | No. M6 touches `chat_metadata` keys nobody reads, a new folder, and one new sidebar tab.                                                                                         |
+
+### Risks
+
+| Risk                                                  | Impact                           | Mitigation                                                                                       |
+| ----------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------ |
+| The nine view types turn out not to cover a real pack | A pack needs code the host lacks | Add a host view type; never widen to plugin code                                                 |
+| The sentinel block is unreliable on a weak model      | Actions silently not applied     | Rejected blocks surface in the developer panel; the game must stay playable with no model at all |
+| Rhythm and sequence tasks need audio sync             | Two host components are hard     | Written once as host code; no plugin can replace them                                            |
+| Format churn after a pack exists                      | A pack stops loading             | `formatVersion` is a compatibility promise; new fields are optional                              |
+
 ## Cross-cutting tracks
 
 ### Interface design
@@ -485,4 +559,5 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 - 2026-11-13: M2 marked complete and released as `0.3.0`; M4 marked in progress.
 - 2026-11-14: M2 remainder closed — group card modes, card depth prompts and auto mode. UX stage B (app shell and chat chrome) delivered. RFC 0001 (profiles) accepted and added to M5. RFC 0002 (book distillation) accepted and added to M5; its first slice, book parsing and storage, landed on `dev`.
 - 2026-11-15: Book distillation's second slice landed — sections mode runs end to end, from the upload through the review sheet to a written world info book and linked cards. The run registry is separate from generations because a distill run deliberately survives a closed tab. The third slice closed the same day: the model draft reads the book per chunk, merges the entities in plain code with one batched request for near-identical names, and spends an outline request only where a character or place recurs. All six acceptance criteria are met.
+- 2026-11-24: M6 scoped but not started. RFC 0005 ([#169](https://github.com/BerryUIKI/CatCup-Tavern/issues/169)) and RFC 0006 ([#170](https://github.com/BerryUIKI/CatCup-Tavern/issues/170)) define game mode as three front-end modes over two independent switches — a per-chat director and a per-save game — with a declarative plugin host that carries no code. Blank character card creation ([#168](https://github.com/BerryUIKI/CatCup-Tavern/issues/168)) is the first slice and is not a plugin feature: the app still cannot create a card from nothing — `routes/characters.ts` has no create endpoint and `CharacterEditor` renders only once a card exists. Re-verified against `dev` on 2026-11-24. Native tool calling is deliberately not a dependency; actions ride a sentinel block, whose truncation-tolerance rule is already proven by the shipped director (`apps/server/src/director/choices.ts`, #151).
 - 2026-11-15: The distilled result became usable. The pipeline exports as a prompt-only Claude Skill generated from the runtime's own prompt constants, with a drift test between the two. A card turns into a persona carrying its description, personality, scenario and examples — but not its opening line — and a persona's new optional fields leave every existing one producing the same prompt. A portrait can be drafted from a card with no chat involved, and made the character's picture, including for a JSON card that becomes a PNG one.
