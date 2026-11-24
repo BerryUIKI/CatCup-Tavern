@@ -198,7 +198,10 @@ independent and can be done by anyone at any time.
 - **Group chats are ambiguous over IM.** A Telegram group has several humans; a
   CatCup group chat has several characters. Mapping one to the other is
   confusing. Owner-only means "ignore group messages", which is the safe
-  default.
+  default. **Implemented** as a `chat.type !== 'private'` check in the
+  transport, dropped silently like a message from a stranger — and failing
+  closed, so a chat type this code does not recognise is not answered either.
+  See #174.
 - **Streaming does not survive the trip.** SSE is a browser protocol. Over IM
   the reply arrives whole. The CLI-side behaviour (stop mid-stream) can be
   offered as `/stop` only while the generation is running, which is honest.

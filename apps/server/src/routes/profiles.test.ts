@@ -183,6 +183,41 @@ describe('profile routes', () => {
         }
     });
 
+    it('tears the IM transport down when the new profile does not want one', async () => {
+        // The token is machine-wide and the two switches are per profile. A
+        // profile with the notification switch on builds a transport; switching
+        // to one with it off must remove that transport, or the bot keeps
+        // answering the previous profile's allowlist — while the notification
+        // path reads the new profile's, so the two disagree.
+        const { setTelegramToken, updateSettings } = await import('../storage/settings.js');
+        const { getTransport } = await import('../im/service.js');
+
+        await setTelegramToken('123:abc');
+        await updateSettings({ im: { enabled: false, notifyOnReply: true, ownerId: '111' } });
+        await call('PATCH', '/api/im/settings', { notifyOnReply: true });
+        expect(getTransport()).not.toBeNull();
+
+        const created = await call('POST', '/api/profiles', { name: 'No bot here' });
+        const profile = (created.json() as { profile: { id: string } }).profile;
+        try {
+            // A new profile starts with every IM switch off.
+            expect((await call('PUT', '/api/profiles/active', { id: profile.id })).statusCode).toBe(200);
+            expect(getTransport()).toBeNull();
+
+            // Back to the profile that does want it.
+            await call('PUT', '/api/profiles/active', { id: 'default' });
+            expect(getTransport()).not.toBeNull();
+        } finally {
+            await setTelegramToken('');
+            await updateSettings({ im: { enabled: false, notifyOnReply: false, ownerId: '' } });
+            // A live extra profile would change what "archive the last one"
+            // means for the tests below, so it goes whatever happened above.
+            await call('PUT', '/api/profiles/active', { id: 'default' });
+            await call('POST', `/api/profiles/${profile.id}/archive`);
+            await call('DELETE', `/api/profiles/${profile.id}`);
+        }
+    });
+
     it('archives a profile, then restores it with its name intact', async () => {
         const created = await call('POST', '/api/profiles', { name: 'Archive me' });
         const profile = (created.json() as { profile: { id: string } }).profile;

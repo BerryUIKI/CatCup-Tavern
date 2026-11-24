@@ -239,6 +239,67 @@ describe('talking to the bound character', () => {
         await first;
     });
 
+    it('hands `/stop` a signal that reaches generation', async () => {
+        const { handleMessage } = await load();
+        const sink = recorder();
+        await handleMessage(message('/chat Aurelia'), { transport: sink.transport, generate: async () => 'never' });
+
+        let signal: AbortSignal | undefined;
+        let reached: () => void = () => {};
+        const started = new Promise<void>((resolve) => {
+            reached = resolve;
+        });
+
+        // The fake generation only finishes when it is aborted — the same shape
+        // as a real provider call. Before the fix the signal was never handed
+        // over, so this request could not be interrupted at all.
+        const first = handleMessage(message('A long one.'), {
+            transport: sink.transport,
+            generate: async (input) => {
+                signal = input.signal;
+                reached();
+                await new Promise<void>((resolve) => input.signal.addEventListener('abort', () => resolve()));
+                throw new Error('aborted');
+            },
+        });
+        await started;
+
+        await handleMessage(message('/stop'), { transport: sink.transport, generate: async () => 'never' });
+        await first;
+
+        expect(signal?.aborted).toBe(true);
+    });
+
+    it('does not blame the provider for a stop', async () => {
+        const { handleMessage } = await load();
+        const sink = recorder();
+        await handleMessage(message('/chat Aurelia'), { transport: sink.transport, generate: async () => 'never' });
+
+        let reached: () => void = () => {};
+        const started = new Promise<void>((resolve) => {
+            reached = resolve;
+        });
+
+        const first = handleMessage(message('A long one.'), {
+            transport: sink.transport,
+            generate: async (input) => {
+                reached();
+                await new Promise<void>((resolve) => input.signal.addEventListener('abort', () => resolve()));
+                // What a real aborted request surfaces as.
+                throw new Error('The reply was stopped');
+            },
+        });
+        await started;
+
+        await handleMessage(message('/stop'), { transport: sink.transport, generate: async () => 'never' });
+        await first;
+
+        // "Something went wrong: the reply was stopped" would send the person
+        // looking for a problem that does not exist.
+        expect(sink.text().at(-1)).toContain('Stopped');
+        expect(sink.text().at(-1)).not.toContain('went wrong');
+    });
+
     it('reports a chat deleted from the app and unbinds, rather than recreating it', async () => {
         const { handleMessage, readBinding, setBinding } = await load();
         const sink = recorder();

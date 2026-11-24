@@ -1025,6 +1025,8 @@ A profile is a data scope: its own characters, chats, groups, world info, preset
 
 `PUT /api/profiles/active` answers `409 PROFILE_BUSY` while a generation is running — finish or stop the reply first. After a switch the client must refetch every scoped collection: characters, chats, groups, world info, presets, regex, quick replies, images and settings.
 
+**The switch restarts the IM transport**, in that order: the bot is stopped before the scope moves and rebuilt afterwards from the new profile's settings. Its token is machine-wide (`data/secrets.json`) while its allowlist, switches and bindings are per profile, so without this the bot would keep answering the previous profile's owner id — silently, because the notification path reads the new profile's id and the two would simply disagree. The busy check above covers generations and runs; a transport reply in flight is not one of them, which is why the transport is stopped outright rather than waited on.
+
 ### The shared scope
 
 An item the library shows can live in the profile or in `data/shared/`, where every profile sees it. The rule is one sentence: **the profile's copy wins**, and the row that wins is marked.

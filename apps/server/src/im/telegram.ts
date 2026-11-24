@@ -38,6 +38,7 @@ interface TelegramUser {
 
 interface TelegramChat {
     id?: number;
+    /** `private`, `group`, `supergroup` or `channel`. */
     type?: string;
 }
 
@@ -153,6 +154,26 @@ export class TelegramTransport implements Transport {
         return userId === this.ownerId;
     }
 
+    /**
+     * Whether this message belongs in a private conversation.
+     *
+     * Only private ones are answered. RFC 0004 §8 settles why: a Telegram group
+     * has several humans and a CatCup group chat has several characters, so
+     * mapping one to the other is confusing — and the failure is public. A
+     * message in a group would be answered *into that group*, where the owner
+     * cannot take it back.
+     *
+     * Silent, like the allowlist: a refusal posted into a group would announce
+     * that the bot exists.
+     *
+     * A missing `type` is **not** private. Failing open here would mean a
+     * payload this code does not understand gets the public answer, and the
+     * mistake cannot be taken back once Telegram has delivered it.
+     */
+    private isPrivateChat(chat: TelegramChat | undefined): boolean {
+        return chat?.type === 'private';
+    }
+
     private announce(): void {
         this.hooks.onStatusChange?.(this.status());
     }
@@ -235,6 +256,13 @@ export class TelegramTransport implements Transport {
         const chatId = message.chat?.id;
         const userId = message.from?.id;
         if (!text || chatId === undefined || userId === undefined) {
+            return;
+        }
+
+        // Checked before anything else that costs work, and before the binding
+        // can see it: a group message must not create a binding for the group
+        // either, or the next message there would have a history to write to.
+        if (!this.isPrivateChat(message.chat)) {
             return;
         }
 
