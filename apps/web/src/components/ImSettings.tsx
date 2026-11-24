@@ -97,6 +97,10 @@ export function ImSettings() {
                 replies <strong className="text-parchment-dim">do travel through Telegram</strong> when this is on. See
                 the security page.
             </p>
+            <p className="text-[11px] leading-relaxed text-muted">
+                The owner id is also where notifications go — a private chat with the bot, which works before you have
+                ever messaged it. Leave it empty and there is nowhere to send them.
+            </p>
 
             <div>
                 <label className="label-text" htmlFor="im-token">
@@ -179,8 +183,8 @@ export function ImSettings() {
                 <span>
                     Tell me when a reply finishes
                     <span className="mt-0.5 block text-[11px] text-muted">
-                        The character&apos;s name and the first sentence — not the reply. Separate from the switch
-                        above, so the bot can stay quiet.
+                        Only for a reply you were not watching. Works with receiving off above — a notification needs
+                        the token, not the poll loop.
                     </span>
                 </span>
             </label>

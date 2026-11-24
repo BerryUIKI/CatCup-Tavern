@@ -74,6 +74,16 @@ export interface GenerateRequest {
     chatId: string;
     action: GenerateAction;
     message?: string;
+    /**
+     * Ask the server to notify the owner over IM when this generation ends.
+     *
+     * The client sets it, and only when its window was out of sight at the
+     * moment of sending — that is not something the server can tell, since an IM
+     * message and a background tab reach it the same way. Absent is "no", which
+     * is also what keeps the IM loopback path from notifying a conversation the
+     * reply is already in.
+     */
+    notifyWhenDone?: boolean;
 }
 
 /** One member speaking in a group chat. */
@@ -95,6 +105,8 @@ export interface GroupGenerateRequest {
      * it as an override.
      */
     speaker?: string;
+    /** See `GenerateRequest.notifyWhenDone`. */
+    notifyWhenDone?: boolean;
 }
 
 export type GenerationEvent =

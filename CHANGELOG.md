@@ -100,7 +100,11 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
   The binding lives in `im-telegram.json` beside the profile, never in a chat file: it is wiring about which phone reaches which story, and it means nothing to SillyTavern.
 
-- **Tell me when a reply finishes** (`im.notifyOnReply`, off by default). The character's name and the first sentence — not the reply, which is the point. Separate from the bot's own switch, because a bot someone talks to is not necessarily one they want buzzing at them, and a notification is the one part of this feature that carries almost no message content.
+- **Tell me when a reply finishes — when you are looking somewhere else** (`im.notifyOnReply`, off by default). A Telegram message with the character's name and the first sentence, never the reply itself.
+
+  It is for the case the app cannot cover by itself: a generation started from the browser or desktop and then left. The client reports whether its window was out of sight at the moment the request went out, because that is the one thing the server cannot tell — an IM message and a background tab arrive the same way. A reply someone is watching sends nothing, a reply they **stopped** sends nothing (they were watching it, and they pressed the button), and a reply that came over IM sends nothing, since it is already in the conversation a notification would go to.
+
+  **A failure does notify**, because silence is most expensive exactly there: without it a stopped reply and a slow reply look identical from another room. The target is the allowlisted owner id rather than a bound chat, so it works before anyone has messaged the bot and never lands in a stranger's conversation. A delivery that fails is logged and dropped — a "reply finished" message twenty minutes late is noise.
 
 - **A chat can be a directed scene.** A per-chat director, off by default, that decides who may speak, keeps the character you play in the prompt without letting the model write them, and offers a short list of options after a reply. Settled by [RFC 0003](docs/RFC/0003-guided-roleplay.md); story mode's graph is reserved but not built, because it needs a plot distillation that has no design yet.
 

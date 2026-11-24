@@ -30,6 +30,7 @@ import { type ResolvedMember, resolveMembers } from '../group/members.js';
 import { cleanGroupReply, stForceAvatarUrl } from '../group/output.js';
 import { findCurrentSpeaker, isNarratorMessage, lastAssistantSpeaker, selectGroupSpeaker } from '../group/selection.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { notifyTurn } from '../im/notify.js';
 import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
@@ -61,6 +62,14 @@ const generateSchema = z.object({
     action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
     message: z.string().max(200000).optional(),
     speaker: z.string().min(1).max(300).optional(),
+    /**
+     * Tell the owner over IM when this generation ends.
+     *
+     * Same contract as the single-character route: the client sets it, and only
+     * when its window was out of sight. Group auto mode is the case it exists
+     * for — those turns happen while nobody is looking, by definition.
+     */
+    notifyWhenDone: z.boolean().optional(),
 });
 
 function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
@@ -603,7 +612,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             ...(director?.choices && body.action === 'send' ? { directorChoices: director.choiceCount } : {}),
         };
 
-        await runGenerationStream({
+        const outcome = await runGenerationStream({
             reply,
             provider,
             model: resolved.model,
@@ -615,6 +624,14 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             generationId,
             speaker: toGenerationSpeaker(speaker),
             persist: (text, reasoning, stopped) => persistGroupReply(context, text, reasoning, stopped),
+        });
+
+        // Fire-and-forget and after persistence. The speaker is named rather
+        // than the group, because "who said it" is what a notification from a
+        // group chat is for.
+        void notifyTurn(outcome, {
+            characterName: speaker.name,
+            background: body.notifyWhenDone === true,
         });
 
         // Fire-and-forget: the memory service re-reads the chat, so a summary
