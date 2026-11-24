@@ -1,10 +1,22 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
-// The storage model — one summary per covered message on `extra.memory`, and
-// the lookup over it — is the format. The default prompts are CatCup's own
-// wording. See docs/REUSE.md.
+// Written for CatCup. Where a chat's rolling summaries are stored, how they are
+// found again, and the wording a summary request starts from.
 
 import type { ChatMessage } from './schemas/chat.js';
+
+/**
+ * Summary memory, as the chat file carries it.
+ *
+ * A summary lives on the message whose range it covers, as `extra.memory` —
+ * that is the format, recorded in `docs/DATA-FORMATS.md`, and it is why a chat
+ * copied elsewhere keeps its summaries and why deleting the newest one brings
+ * an older summary back into effect. Nothing here writes anything: this file is
+ * the read side plus the default wording.
+ *
+ * The two prompts below are CatCup's own. They are what a summary request uses
+ * when the settings carry no prompt, so a profile that never opened the memory
+ * settings still gets a result — and a profile that wrote its own is never
+ * overridden.
+ */
 
 /**
  * The default summarize prompt.
@@ -29,7 +41,7 @@ export const DEFAULT_APPEND_ONLY_MEMORY_PROMPT =
 /** The default injection template. */
 export const DEFAULT_MEMORY_TEMPLATE = '[Summary: {{summary}}]';
 
-/** A summary stored on a chat message, as SillyTavern's Memory extension does. */
+/** A summary stored on a chat message's `extra.memory`. */
 export interface StoredSummary {
     value: string;
     /** Index of the message whose `extra.memory` holds the summary. */
@@ -39,9 +51,14 @@ export interface StoredSummary {
 /**
  * Find the latest summary in a chat.
  *
- * SillyTavern walks backwards over the message list and skips the newest
- * message; CatCup looks at every message so a summary that ended up last after
- * a deletion still counts. The stored shape is unchanged.
+ * Every message is considered, including the newest. Skipping the last one
+ * would look right for a summary the app just wrote and be wrong after a
+ * deletion or a branch, where the newest message is the one carrying it — the
+ * summary would silently stop applying.
+ *
+ * An empty or whitespace-only value does not count: a cleared summary is
+ * stored as an empty string rather than removed, and treating it as a summary
+ * would inject an empty bracket into the prompt.
  */
 export function getLatestSummary(messages: readonly ChatMessage[]): StoredSummary | null {
     for (let index = messages.length - 1; index >= 0; index -= 1) {
@@ -56,16 +73,14 @@ export function getLatestSummary(messages: readonly ChatMessage[]): StoredSummar
 /**
  * Every summary in a chat, oldest first.
  *
- * SillyTavern's format already keeps them: each summary is written onto the
- * message whose range it covers, and nothing ever clears an older anchor. Only
- * the *read* path forgets them, because `getLatestSummary` stops at the first
- * hit. Append-only mode turns the chain from a rolling rewrite into a list, and
- * this is the list.
+ * The format already keeps them all — each summary is written onto the message
+ * whose range it covers, and nothing clears an older anchor — so only the
+ * *read* path ever forgot them, by stopping at the first hit.
  *
- * A chat that was summarized the default way still yields several entries — one
- * per update — but they are successive rewrites of the same story rather than
- * disjoint ranges, so a caller treating them as append-only history would
- * repeat itself. That is why the setting, not the file, decides.
+ * A chat summarized the rewrite way still yields several entries, one per
+ * update, but they are successive rewrites of the same story rather than
+ * disjoint ranges: reading them as append-only history would repeat the story.
+ * That is why the setting, not the file, decides which reading applies.
  */
 export function getSummaries(messages: readonly ChatMessage[]): StoredSummary[] {
     const summaries: StoredSummary[] = [];

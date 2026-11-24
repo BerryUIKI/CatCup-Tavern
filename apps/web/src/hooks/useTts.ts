@@ -1,7 +1,5 @@
-// Adapted from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/tts/system.js
-// Browser voice selection and chunked utterances, rewritten for React.
-// See docs/REUSE.md.
+// Written for CatCup. Speaking a reply in the browser: voices, chunking and
+// the queue that keeps an utterance from being cut off.
 
 import { splitSpeechText } from '@catcup/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -98,7 +96,9 @@ export function useTts() {
             const synth = window.speechSynthesis;
             synth.cancel();
             // Chrome can drop an utterance queued in the same task as a
-            // cancel; ST defers its speak call for the same reason.
+            // cancel — the queue has not been flushed yet when `speak` runs, so
+            // the utterance is discarded along with the cancelled one. Yielding
+            // to the event loop first lets the cancel land.
             await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
             if (runId !== runRef.current) {
                 return;

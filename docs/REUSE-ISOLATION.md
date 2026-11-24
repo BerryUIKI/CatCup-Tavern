@@ -245,7 +245,7 @@ header now says which half is which.
 also defensible on product grounds — those defaults were another client's voice,
 and should never have been the last thing left unchecked.
 
-### Phase 3 — rewrite the behaviour (the real work) — in progress
+### Phase 3 — rewrite the behaviour (the real work) — complete
 
 Bucket B, about 9,050 lines across 40 files. It is done one module at a time, in
 this order:
@@ -254,12 +254,40 @@ this order:
 | --- | -------------------------------------------------- | ------ | --------------------------------------------- |
 | 1   | `compat-st/src/matching.ts`                        | 97     | **done** — key matching and decorators        |
 | 2   | `compat-st/src/prompt.ts` + `shared/src/macros.ts` | 176    | **done** — prompt buckets and macro expansion |
-| 3   | `compat-st/src/timedEffects.ts`                    | 268    |                                               |
-| 4   | `memory/{summary,service,inject}`                  | 714    |                                               |
-| 5   | `compat-st/src/scanner.ts`                         | 1,034  | the substantial one                           |
-| 6   | `apps/server/src/prompt/assemble.ts`               | 786    | the other substantial one                     |
-| 7   | the adapters — images, TTS, quick replies, CharX   | ~2,400 |                                               |
-| 8   | `packages/shared/src/regex.ts`                     | 230    |                                               |
+| 3   | `compat-st/src/timedEffects.ts`                    | 268    | **done** — sticky, cooldown, delay, hand-off  |
+| 4   | `memory/{summary,service,inject}`                  | 714    | **done** — scheduling, request, injection     |
+| 5   | `compat-st/src/scanner.ts`                         | 1,034  | **done** — the scan pipeline                  |
+| 6   | `apps/server/src/prompt/assemble.ts`               | 786    | **done** — the nine assembly phases           |
+| 7   | the adapters — images, TTS, quick replies, CharX   | ~2,400 | **done** — see the note below                 |
+| 8   | `packages/shared/src/regex.ts`                     | 230    | **done** — the regex engine                   |
+
+Phase 3 is complete: no file in the tree carries a `Derived from` or `Adapted
+from` header any more. The remaining files `docs/REUSE.md` lists are either
+implementations of a published format (bucket A) or written against a documented
+HTTP API, and they say so in their own headers.
+
+Three things the last batch taught, recorded because they are the kind of fact
+that only shows up when a rewrite is attempted:
+
+- **`scanner.ts` needed its tests first, and the tests were wrong the first
+  time.** Six assertions were written against the existing behaviour before the
+  rewrite; five of them described what the reader expected rather than what the
+  code did, and each failure was a real fact about the scan — a rewind rule that
+  drops a sticky record, a group of one that is not a decision, a `0` total
+  weight that picks the first member instead of failing open, a multi-group entry
+  that never locks a group because its `group` field is the whole CSV. The
+  rewrite then dropped a state transition (a `minActivations` pass handing off to
+  recursion) that only those assertions caught.
+- **The scanner's own tests depended on an unseeded `Math.random`.** Two of the
+  new assertions decided an inclusion group by weighted draw, so they passed or
+  failed at random until the roll was seeded. An existing test in the same file
+  had the same flaw and had been passing by luck.
+- **`parse.ts` was safe to rewrite only because the hash payload is documented.**
+  Its old header said the key order was "this client's"; `docs/DATA-FORMATS.md`
+  records the payload exactly, which is what turns it from borrowed code into an
+  implemented format. The distinction is the whole method: a header comes off
+  when the behaviour underneath is written down in a specification, not when
+  matching the reference happens to be convenient.
 
 Two rules keep it honest:
 
