@@ -8,6 +8,8 @@ Proposals for features that are large enough to need agreement before code. An R
 | [0002](0002-book-distillation.md) | Distil world info and characters from a book           | [#77](https://github.com/BerryUIKI/CatCup-Tavern/issues/77)   | Accepted                                    |
 | [0003](0003-guided-roleplay.md)   | Guided roleplay: a director layer, story mode on top   | [#104](https://github.com/BerryUIKI/CatCup-Tavern/issues/104) | Accepted — Layer 1 shipped, Layer 2 blocked |
 | [0004](0004-im-integration.md)    | Talk to a character from an IM client (Telegram first) | —                                                             | Accepted                                    |
+| [0005](0005-game-mode.md)         | Game mode: three modes, a declarative plugin host      | [#169](https://github.com/BerryUIKI/CatCup-Tavern/issues/169) | Proposed                                    |
+| [0006](0006-workspaces.md)        | Workspaces: writing, authoring, developer panel        | [#170](https://github.com/BerryUIKI/CatCup-Tavern/issues/170) | Proposed                                    |
 
 ## How an RFC moves
 
