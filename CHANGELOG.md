@@ -4,6 +4,14 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Added
+
+- **Two more IM commands, and the bot stops repeating itself after a restart.** `/status` says whether a reply is being written and what this conversation is bound to; `/provider` names the provider and model a generation would call, so a misconfigured install and a provider that is down stop looking identical from a failed reply. Both appear in `/help`.
+
+  The **poll offset is persisted** in `im-telegram-offset.json` beside the profile. Telegram keeps an update until a `getUpdates` call acknowledges it — about 24 hours — so with the offset only in memory every restart re-answered everything that had arrived since the last acknowledged batch. The libraries that do not persist it either accept that replay or drop the backlog on start; this keeps neither loss. The offset is written _after_ a batch is handled, so a crash mid-message repeats that batch rather than losing it: at-least-once, with the window as small as the platform allows. A corrupt sidecar reads as zero rather than stopping the bot.
+
+  **Replies are sent as Telegram HTML**, so a character's `*she smiles*` renders as emphasis instead of visible asterisks. It is conservative by design: `<`, `&` and `>` are escaped first, only `*`/`**`/`***` and `__` are converted, a span that crosses a line break or contains only whitespace is left alone, and a single `_` is never touched because it lives inside ordinary words. If the conversion ever produced unbalanced tags the message goes out unformatted instead — Telegram rejects a whole message on a parse error, and a reply nobody sees is worse than one with a stray asterisk.
+
 ### Fixed
 
 - **The Telegram bot no longer answers into a group.** Only a private conversation is answered; a group, supergroup, channel or a chat whose type this code does not recognise is dropped silently, the same way a message from a stranger is. RFC 0004 §8 always said groups should be ignored — the check was simply never written, so a message the owner sent in any group they were in was answered there, and the reply is public and cannot be taken back. Silent rather than a refusal, because a refusal posted into a group would announce that the bot exists.

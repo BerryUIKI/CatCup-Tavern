@@ -12,6 +12,8 @@ export type ImCommand =
     | { kind: 'new' }
     | { kind: 'stop' }
     | { kind: 'who' }
+    | { kind: 'status' }
+    | { kind: 'provider' }
     | { kind: 'help' }
     /** Anything that is not a command: talk to the bound character. */
     | { kind: 'message'; text: string };
@@ -53,6 +55,10 @@ export function parseCommand(raw: string): ImCommand {
             return { kind: 'stop' };
         case 'who':
             return { kind: 'who' };
+        case 'status':
+            return { kind: 'status' };
+        case 'provider':
+            return { kind: 'provider' };
         case 'start':
         case 'help':
             // `/start` is what Telegram sends when someone opens a bot, so it

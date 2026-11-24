@@ -50,6 +50,27 @@ describe('parseCommand', () => {
     });
 });
 
+describe('the commands about the instance rather than the story', () => {
+    it('reads /status and /provider, with or without the bot suffix', () => {
+        // Telegram appends `@botname` in a group; the parser strips it, and
+        // these two go through the same rule as every other command.
+        expect(parseCommand('/status')).toEqual({ kind: 'status' });
+        expect(parseCommand('/status@catcup_bot')).toEqual({ kind: 'status' });
+        expect(parseCommand('/provider')).toEqual({ kind: 'provider' });
+    });
+
+    it('is case-insensitive, like the rest', () => {
+        expect(parseCommand('/STATUS')).toEqual({ kind: 'status' });
+        expect(parseCommand('/Provider')).toEqual({ kind: 'provider' });
+    });
+
+    it('does not take an argument for either', () => {
+        // An argument is dropped rather than rejected: both answer from state,
+        // and refusing would lose the command over a stray word.
+        expect(parseCommand('/status now please')).toEqual({ kind: 'status' });
+    });
+});
+
 describe('splitForTelegram', () => {
     it('leaves a short reply alone', () => {
         expect(splitForTelegram('A short line.')).toEqual(['A short line.']);
