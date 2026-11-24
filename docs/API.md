@@ -1858,6 +1858,8 @@ Three cases send nothing regardless of the flag: a reply the person stopped (the
 
 The IM loopback path calls `POST /api/generate` too and never sets the flag, which is what keeps a reply from being announced in the conversation it was delivered to.
 
+The bot's own commands are not API routes — they are handled inside the Telegram conversation — but the surface is small enough to state here. `/chat`, `/new`, `/stop`, `/who` and `/help` are described in `docs/RFC/0004-im-integration.md`; `/status` reports whether a reply is being written and which chat this conversation is bound to, and `/provider` names the provider and model a generation would call. Replies are sent with `parse_mode: 'HTML'`, falling back to plain text if the conversion would produce unbalanced tags.
+
 ## Notes and limits
 
 - Request bodies are limited to 25 MB; uploads to 20 MB per file and 50 files.

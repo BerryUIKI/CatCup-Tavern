@@ -316,7 +316,17 @@ describe('talking to the bound character', () => {
     });
 });
 
-describe('the other commands', () => {
+/**
+ * These drive real files: bindings, chat JSONL and the offset sidecar. Five
+ * seconds is generous for one test in isolation and tight when the suite runs
+ * its files concurrently, so the whole block gets room rather than each test
+ * growing its own timeout.
+ */
+// These drive real files — bindings, chat JSONL and the offset sidecar — and
+// five seconds is generous in isolation and tight when the suite runs its files
+// concurrently. The timeout is on the block rather than on one test because any
+// of them can be the one that queues.
+describe('the other commands', { timeout: 20_000 }, () => {
     it('/who names the character and the chat', async () => {
         const { handleMessage } = await load();
         const sink = recorder();

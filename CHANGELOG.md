@@ -4,6 +4,14 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Added
+
+- **Two more IM commands, and the bot stops repeating itself after a restart.** `/status` says whether a reply is being written and what this conversation is bound to; `/provider` names the provider and model a generation would call, so a misconfigured install and a provider that is down stop looking identical from a failed reply. Both appear in `/help`.
+
+  The **poll offset is persisted** in `im-telegram-offset.json` beside the profile. Telegram keeps an update until a `getUpdates` call acknowledges it — about 24 hours — so with the offset only in memory every restart re-answered everything that had arrived since the last acknowledged batch. The libraries that do not persist it either accept that replay or drop the backlog on start; this keeps neither loss. The offset is written _after_ a batch is handled, so a crash mid-message repeats that batch rather than losing it: at-least-once, with the window as small as the platform allows. A corrupt sidecar reads as zero rather than stopping the bot.
+
+  **Replies are sent as Telegram HTML**, so a character's `*she smiles*` renders as emphasis instead of visible asterisks. It is conservative by design: `<`, `&` and `>` are escaped first, only `*`/`**`/`***` and `__` are converted, a span that crosses a line break or contains only whitespace is left alone, and a single `_` is never touched because it lives inside ordinary words. If the conversion ever produced unbalanced tags the message goes out unformatted instead — Telegram rejects a whole message on a parse error, and a reply nobody sees is worse than one with a stray asterisk.
+
 ### Changed
 
 - **No file in the tree carries a `Derived from` header any more.** The last twelve went in this batch, which completes phase 3 of `docs/REUSE-ISOLATION.md`: the card and world info adapters (`charx.ts`, `characterBook.ts`, `entries.ts`), the storage layer (`images.ts`, `quickReplies.ts`, `characterAssets.ts`), the ComfyUI client, the shared quick-reply parser and memory module, the browser speech hook, and — the substantial one — the 1,034-line world info scanner. Behaviour is unchanged and no assertion was weakened; `pnpm test` passes 873 in the server.

@@ -3,6 +3,7 @@ import type { CharacterSummary } from '@catcup/shared';
 import { requireCharacter } from '../routes/helpers.js';
 import { getCharacter, listCharacters } from '../storage/characters.js';
 import { createChat, listChats, readChat } from '../storage/chats.js';
+import { getActiveProvider } from '../storage/settings.js';
 import { clearBinding, type ImBinding, readBinding, setBinding } from './bindings.js';
 import { parseCommand, splitForTelegram } from './commands.js';
 import type { IncomingMessage, Transport } from './transport.js';
@@ -102,6 +103,12 @@ export async function handleMessage(message: IncomingMessage, deps: Conversation
         case 'stop':
             await reply(stopGeneration(message.chatId));
             return sent;
+        case 'status':
+            await reply(await statusText(message.chatId));
+            return sent;
+        case 'provider':
+            await reply(await providerText());
+            return sent;
         case 'new':
             await reply(await startNewChat(message.chatId, deps));
             return sent;
@@ -123,6 +130,8 @@ function helpText(): string {
         '/new — start a fresh chat with the same character',
         '/stop — interrupt the reply being written',
         '/who — what this conversation is bound to',
+        '/status — whether a reply is being written',
+        '/provider — which provider the app will call',
     ].join('\n');
 }
 
@@ -134,6 +143,51 @@ async function describeBinding(imChatId: string): Promise<string> {
     const character = await getCharacter(binding.characterId);
     const busy = inFlight.has(imChatId) ? '\nA reply is being written now.' : '';
     return `Talking to ${character?.name ?? binding.characterId} in “${binding.chatId}”.${busy}`;
+}
+
+/**
+ * What the instance is doing right now.
+ *
+ * The one fact a person cannot get from the app while they are looking at their
+ * phone instead: whether a reply they started in the browser is still being
+ * written. Reported as a sentence rather than a boolean because "no" and "this
+ * conversation is idle but another one is not" are different answers.
+ */
+async function statusText(imChatId: string): Promise<string> {
+    const binding = await readBinding(imChatId);
+    const talking = inFlight.has(imChatId);
+    const bot = runningSummary();
+
+    const lines = [talking ? 'This conversation is writing a reply.' : 'This conversation is idle.'];
+    if (binding) {
+        const character = await getCharacter(binding.characterId);
+        lines.push(`Bound to ${character?.name ?? binding.characterId} in “${binding.chatId}”.`);
+    }
+    lines.push(bot);
+    return lines.join('\n');
+}
+
+/** A one-line summary of how many conversations are mid-reply. */
+function runningSummary(): string {
+    if (inFlight.size === 0) {
+        return 'No reply is being written anywhere.';
+    }
+    return inFlight.size === 1 ? 'One conversation is mid-reply.' : `${inFlight.size} conversations are mid-reply.`;
+}
+
+/**
+ * Which provider a generation would call.
+ *
+ * Named so a person on their phone can tell a misconfigured install from a
+ * provider that is down — the two look identical from a failed reply.
+ */
+async function providerText(): Promise<string> {
+    const provider = await getActiveProvider();
+    if (!provider) {
+        return 'No provider is configured. Set one up in the app under Settings → Providers.';
+    }
+    const model = provider.defaultModel || 'no default model';
+    return `Generating with ${provider.name} (${provider.kind}), model ${model}.`;
 }
 
 /** Abort whatever is generating for this conversation. */

@@ -1,5 +1,8 @@
 import { errorMessage } from '@catcup/shared';
 
+import { formatForTelegram, hasBalancedTags } from './format.js';
+import { readOffset, writeOffset } from './offset.js';
+
 import {
     backoffMs,
     type IncomingMessage,
@@ -112,6 +115,10 @@ export class TelegramTransport implements Transport {
 
         this.running = true;
         this.stopping = new AbortController();
+        // Resumed from the sidecar, so a restart does not re-deliver everything
+        // Telegram still holds. Read before the loop starts, or the first poll
+        // would ask for offset 0 and the stored value would arrive too late.
+        this.offset = await readOffset();
         this.loop = this.pollUntilStopped(this.stopping.signal);
         this.announce();
     }
@@ -131,10 +138,22 @@ export class TelegramTransport implements Transport {
     }
 
     async send(chatId: string, text: string): Promise<void> {
+        // Sent as HTML so a reply's emphasis renders instead of showing its
+        // markers. The fallback is deliberate: Telegram rejects a whole message
+        // on a parse error, and a reply nobody sees is worse than one with a
+        // visible asterisk — so an unbalanced conversion goes out as plain text.
+        const html = formatForTelegram(text);
+        const useHtml = hasBalancedTags(html);
+
         const response = await fetch(`${this.apiBase}/bot${this.token}/sendMessage`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+            body: JSON.stringify({
+                chat_id: chatId,
+                text: useHtml ? html : text,
+                ...(useHtml ? { parse_mode: 'HTML' } : {}),
+                disable_web_page_preview: true,
+            }),
             signal: AbortSignal.timeout(20_000),
         });
 
@@ -198,6 +217,13 @@ export class TelegramTransport implements Transport {
 
                 for (const update of updates) {
                     this.handle(update);
+                }
+                // Written after the batch is handled, not before: a crash in
+                // the middle of a batch then repeats that batch rather than
+                // losing it. At-least-once, with the window as small as the
+                // platform allows.
+                if (updates.length > 0) {
+                    await writeOffset(this.offset);
                 }
             } catch (error) {
                 if (signal.aborted) {

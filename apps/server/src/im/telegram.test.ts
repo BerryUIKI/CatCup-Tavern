@@ -1,7 +1,10 @@
+import { mkdtemp, rm } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { TelegramTransport } from './telegram.js';
 import { backoffMs, type IncomingMessage } from './transport.js';
@@ -18,6 +21,34 @@ import { backoffMs, type IncomingMessage } from './transport.js';
 
 let server: Server | null = null;
 const originalFetch = globalThis.fetch;
+
+/**
+ * A scratch data directory.
+ *
+ * The transport now persists its poll offset, which is correct in production and
+ * wrong in a test that shares `./data` with everything else: one test's offset
+ * becomes the next test's starting point, and a test that expects a message is
+ * handed silence instead. Each run gets its own directory.
+ */
+let dataDir: string;
+
+/**
+ * A fresh scope per test.
+ *
+ * The offset sidecar is a real file, so two tests sharing one directory means
+ * the second starts from the first's offset and is handed silence where it
+ * expects a message. Resetting before each test keeps every one of them
+ * independent — which is what a test file is supposed to be.
+ */
+beforeEach(async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'catcup-im-transport-'));
+    const { setActiveScope } = await import('../storage/paths.js');
+    setActiveScope(dataDir);
+});
+
+afterEach(async () => {
+    await rm(dataDir, { recursive: true, force: true });
+});
 
 afterEach(async () => {
     globalThis.fetch = originalFetch;

@@ -562,6 +562,17 @@ Which CatCup chat a Telegram conversation drives lives in `im-telegram.json` at 
 - **A corrupt or hand-edited file reads as no bindings**, which costs one `/chat` command rather than a bot that will not start.
 - **A chat deleted in the app is reported, not recreated.** The binding is cleared and the next message says so; recreating would fork the story without telling anyone.
 
+How far the poll loop has got lives beside it in `im-telegram-offset.json`:
+
+```jsonc
+{ "version": 1, "transport": "telegram", "offset": 98765432 }
+```
+
+- **`offset` is the next `update_id` to ask for**, one past the highest handled. Telegram keeps an unacknowledged update for about 24 hours and delivers it again on the next poll, so without this file every restart re-answered everything that had arrived since the last acknowledged batch.
+- **Written after a batch is handled, not before.** A crash in the middle of a batch therefore repeats that batch rather than losing it — at-least-once, with the window as small as the platform allows. Exactly-once is not something the platform offers.
+- **A corrupt or missing file reads as `0`**, which asks Telegram for everything it still holds. That is the same behaviour as no persistence, and a duplicate reply is a cheaper failure than a bot that will not start.
+- **Never travels.** It is a position in one transport's update stream and means nothing to another client.
+
 ### Scan status
 
 `packages/compat-st/src/scanner.ts` now covers SillyTavern's full evaluation pipeline:
