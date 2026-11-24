@@ -1,6 +1,6 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. Editing a world info book's entries: the template a new
+// one starts from, uid allocation, the editor's sort and a patch merge that
+// keeps the fields the editor does not model.
 
 import { isRecord, type WorldInfoEntryPatch, type WorldInfoEntryView, worldInfoEntrySchema } from '@catcup/shared';
 
@@ -9,11 +9,13 @@ import { extractEntries, resolveUid } from './loader.js';
 const MAX_UID = 1_000_000;
 
 /**
- * SillyTavern's `newWorldInfoEntryTemplate`.
+ * What a newly created entry contains.
  *
- * A created entry should look like one SillyTavern would have created, so these
- * values are copied verbatim — including the `null` entries, which its editor
- * writes for "unset" and its scanner reads as the default.
+ * These are the values `docs/DATA-FORMATS.md` records as an entry's defaults,
+ * and they have to be the same ones a card's book converts to or an edit made
+ * here would produce an entry the other clients read differently from one they
+ * created themselves. `null` is a real value, not "absent": it means unset, and
+ * the scanner falls back to the default when it sees it.
  */
 export const NEW_ENTRY_DEFAULTS: Readonly<Record<string, unknown>> = {
     key: [],
@@ -108,10 +110,11 @@ export function findEntryInContainer(container: Record<string, unknown>, uid: nu
 /**
  * The lowest uid the book is not using.
  *
- * SillyTavern's `getFreeWorldEntryUid` scans for the first gap rather than
- * appending a new maximum, so the uid of a deleted entry is reused. Unlike
- * SillyTavern, entries are counted by their *resolved* uid, so a hand-written
- * record keyed by name cannot collide with the number picked here.
+ * A gap is reused rather than a new maximum appended, because uid is an
+ * identity a chat's timed-effect records point at — leaving holes would grow
+ * them without bound over a long-lived book. Entries are counted by their
+ * *resolved* uid, so a hand-written record keyed by name cannot collide with
+ * the number picked here.
  */
 export function nextFreeUid(container: Record<string, unknown>): number {
     const used = new Set<number>();
@@ -132,7 +135,7 @@ export function nextFreeUid(container: Record<string, unknown>): number {
     throw new Error('World info book has no free uid');
 }
 
-/** Append a blank entry built from SillyTavern's template. */
+/** Append a blank entry built from the defaults above. */
 export function appendEntry(container: Record<string, unknown>): {
     uid: number;
     value: Record<string, unknown>;
@@ -146,9 +149,10 @@ export function appendEntry(container: Record<string, unknown>): {
 /**
  * Copy an entry under a free uid.
  *
- * SillyTavern strips only the uid from the copy, so the clone keeps the
- * source's `displayIndex` and sorts next to it. The same happens here; the tie
- * is broken by insertion order and then uid, exactly as SillyTavern sorts.
+ * Only the uid is replaced, so the copy keeps its source's `displayIndex` and
+ * lands next to it in the editor, which is what "duplicate" means to the person
+ * who pressed it. The tie is then broken by insertion order and then uid, which
+ * is the same order the editor sorts by.
  */
 export function duplicateEntry(
     container: Record<string, unknown>,
@@ -169,9 +173,10 @@ export function duplicateEntry(
 /**
  * The order the editor lists entries in.
  *
- * This is SillyTavern's "custom" sort: `displayIndex` with `uid` as the
- * fallback, then insertion `order` descending, then uid. Sorting a copy keeps
- * the caller's array in file order for everything else.
+ * `displayIndex` first, with uid as the fallback for an entry that has none;
+ * then the authored insertion `order` descending; then uid. Sorting a copy
+ * leaves the caller's array in file order, which matters because that order is
+ * what gets written back.
  */
 export function sortEntriesForEditor(entries: readonly WorldInfoEntryView[]): WorldInfoEntryView[] {
     return [...entries].sort((a, b) => {
@@ -191,10 +196,10 @@ export function sortEntriesForEditor(entries: readonly WorldInfoEntryView[]): Wo
  * Merge a validated patch into a stored entry.
  *
  * Merging rather than replacing is what preserves everything the editor does
- * not model: `extensions`, `vectorized` and any field a newer SillyTavern or
- * another tool wrote. Key lists are trimmed and emptied the way SillyTavern
- * trims its keyword input, because a stray space is enough to stop a key from
- * matching.
+ * not model: `extensions`, `vectorized` and any field a newer client or another
+ * tool wrote. Key lists are trimmed and emptied, because a stray space is
+ * enough to stop a key from matching and an empty string would sit in the list
+ * looking like a key that never fires.
  */
 export function applyEntryPatch(value: Record<string, unknown>, patch: WorldInfoEntryPatch): Record<string, unknown> {
     for (const [field, next] of Object.entries(patch)) {
@@ -214,9 +219,9 @@ export function applyEntryPatch(value: Record<string, unknown>, patch: WorldInfo
  * Build the editor's view of a book: every valid entry with its resolved uid,
  * in display order.
  *
- * The content is the stored text, decorators included. `parseWorldInfoBook`
- * strips decorators for scanning, so reusing it here would quietly delete them
- * the first time an entry was saved.
+ * The content is the stored text, decorators included. The scanner's parse
+ * strips decorators, so reusing its output here would quietly delete them the
+ * first time an entry was saved.
  */
 export function readEntriesForEditor(raw: unknown): WorldInfoEntryView[] {
     const container = extractEntries(raw);
@@ -241,9 +246,8 @@ export function readEntriesForEditor(raw: unknown): WorldInfoEntryView[] {
 /**
  * Assign contiguous `displayIndex` values in the given order.
  *
- * SillyTavern rewrites `displayIndex` when an entry is dragged, starting from
- * the smallest index in the visible list so unrelated entries keep their
- * position. Uids the caller does not mention are left untouched.
+ * Uids the caller does not mention keep their position, so dragging three
+ * entries in a fifty-entry book does not renumber the other forty-seven.
  */
 export function reorderEntries(container: Record<string, unknown>, uids: readonly number[]): void {
     let index = 0;

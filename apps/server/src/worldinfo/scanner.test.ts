@@ -609,6 +609,127 @@ describe('world info scanner — timed effects', () => {
     });
 });
 
+describe('world info scanner — edges the rewrite must not move', () => {
+    /**
+     * Behaviour that produces no error and no failed assertion when it changes:
+     * an entry is silently absent, or a trace reason names the wrong thing. Each
+     * of these was written down by running the scanner as it is, before the
+     * module was rewritten, so they describe what it does rather than what it
+     * was supposed to do.
+     */
+
+    it('lets a sticky winner survive beside its group and skip the roll', () => {
+        const state = newTimedState();
+        const sticky = makeEntry({ uid: 0, key: ['dragon'], content: 'S', group: 'g', sticky: 3 });
+        const rival = makeEntry({ uid: 1, constant: true, content: 'R', group: 'g' });
+
+        // Both scans seed the roll: the *first* one is where the group is
+        // decided, so leaving it unseeded makes this test pass or fail at
+        // random — which it did, until this was noticed.
+        scan([sticky, rival], chat('dragon'), { timed: { state }, random: () => 0 });
+
+        // The chat must *grow* for the record to survive: a shorter one is read
+        // as a rewind and drops the record (that rule has its own test in the
+        // timed-effects suite). Two messages leaves the window open.
+        const second = scan([sticky, rival], chat('nothing', 'else'), { timed: { state }, random: () => 0 });
+
+        expect(second.activated.map((entry) => entry.content)).toEqual(['S']);
+        expect(second.trace.find((line) => line.uid === 1)?.reason).toBe('group-loser');
+    });
+
+    it('leaves a lone group member alone once the sticky winner is cooling down', () => {
+        const state = newTimedState();
+        // Sticky 1, cooldown 5. The rival loses to the sticky member while the
+        // window is open; when it closes, the sticky member is skipped as
+        // cooling down and the rival is the only candidate left.
+        const entry = makeEntry({ uid: 0, key: ['dragon'], content: 'S', group: 'g', sticky: 1, cooldown: 5 });
+        const rival = makeEntry({ uid: 1, constant: true, content: 'R', group: 'g' });
+
+        // A fixed roll, because the first scan decides the group by weighted
+        // draw and an unseeded one makes this test pass or fail at random.
+        scan([entry, rival], chat('dragon'), { timed: { state }, random: () => 0 });
+        const second = scan([entry, rival], chat('a', 'b', 'c'), { timed: { state }, random: () => 0 });
+
+        // A group of one is not a decision: the cooldown removed the sticky
+        // member's candidacy before grouping, so R is not "a survivor" — it is
+        // the whole group, and it activates.
+        expect(second.activated.map((candidate) => candidate.content)).toEqual(['R']);
+        // The cooling-down entry is reported as such, because that gate runs
+        // before the key match is even attempted.
+        expect(second.trace.find((line) => line.uid === 0)?.reason).toBe('timed-cooldown');
+    });
+
+    it('compares the whole group string, so a multi-group entry locks nothing', () => {
+        const entries = [
+            // Active, but its `group` is the CSV `g,g2` — not the name `g`.
+            makeEntry({ uid: 0, constant: true, content: 'A', group: 'g,g2', order: 300 }),
+            makeEntry({ uid: 1, constant: true, content: 'B', group: 'g', order: 200, groupOverride: true }),
+        ];
+
+        const result = scan(entries, []);
+
+        // A wins `g` as an ordinary member, then B's override removes it, so
+        // only B is left — A's group string matched no group by name.
+        expect(result.activated.map((entry) => entry.content)).toEqual(['B']);
+        expect(result.trace.find((line) => line.uid === 0)?.reason).toBe('group-loser');
+    });
+
+    it('picks a winner even when every weight is zero', () => {
+        const entries = [
+            makeEntry({ uid: 0, constant: true, content: 'A', group: 'g', groupWeight: 0 }),
+            makeEntry({ uid: 1, constant: true, content: 'B', group: 'g', groupWeight: 0 }),
+        ];
+
+        // Total weight 0 makes the roll 0, and `0 <= 0` picks the first member
+        // — so a degenerate weight removes the others rather than failing open.
+        // Written down because "zero weight means no preference" would be the
+        // intuitive reading, and it is not what happens.
+        const result = scan(entries, [], { random: () => 0.5 });
+
+        expect(result.activated.map((entry) => entry.content)).toEqual(['A']);
+        expect(result.trace.find((line) => line.uid === 1)?.reason).toBe('group-loser');
+    });
+
+    it('does not treat an empty key as a match', () => {
+        // The matcher itself would say `''` is a substring of anything, but the
+        // scanner rejects a falsy key before asking — which is what keeps an
+        // entry whose keys were all emptied from becoming permanently active.
+        const entry = makeEntry({ key: [''], content: 'Lore' });
+
+        expect(scan([entry], chat('anything at all')).activated).toHaveLength(0);
+    });
+
+    it('does not scan across a message boundary', () => {
+        const entry = makeEntry({ key: ['dragon fire'], content: 'Lore' });
+        const result = scan([entry], chat('dragon', 'fire'));
+
+        // The joiner is a control character, so a two-word key cannot span two
+        // messages even when they are adjacent in the buffer.
+        expect(result.activated).toHaveLength(0);
+    });
+
+    it('reports an alias hit with the alias in the trace, not the authored key', () => {
+        const entry = makeEntry({ key: ['princess'], autoKeys: ['王女'], content: 'Lore' });
+        const result = scan([entry], chat('王女 enters.'));
+
+        expect(result.activated).toHaveLength(1);
+        expect(result.trace[0]?.detail).toContain('王女');
+    });
+
+    it('counts an ignoreBudget entry against nothing', () => {
+        const entries = [
+            makeEntry({ uid: 0, key: ['dragon'], content: 'A'.repeat(400), ignoreBudget: true }),
+            makeEntry({ uid: 1, key: ['dragon'], content: 'B'.repeat(4000) }),
+        ];
+
+        // A tiny context forces the budget to bite; the ignored entry still gets
+        // in, and the other is dropped for exceeding what is left.
+        const result = scan(entries, chat('dragon'), { maxContext: 200 });
+
+        expect(result.activated.map((entry) => entry.content[0])).toEqual(['A']);
+    });
+});
+
 describe('world info prompt helpers', () => {
     it('composes the author note with exactly one newline trimmed', () => {
         expect(composeAuthorNote([], '', [])).toBe('');

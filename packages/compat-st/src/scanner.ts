@@ -1,12 +1,5 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/world-info.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
-//
-// Deliberate divergence: SillyTavern's `removeEntry` is
-// `newEntries.splice(newEntries.indexOf(entry), 1)`. When the entry is already
-// absent (multi-group membership, or a second group pass), `indexOf` returns
-// -1 and the last unrelated candidate is silently dropped. This port guards
-// the index instead of reproducing that data loss.
+// Written for CatCup. The world info scan: which entries fire on this turn, in
+// what order they consume the budget, and where each one lands in the prompt.
 
 import { PROMPT_ROLE, WI_ANCHOR_POSITION, WORLD_INFO_LOGIC, WORLD_INFO_POSITION } from '@catcup/shared';
 import { type KeyMatchOptions, matchesKey } from './matching.js';
@@ -27,7 +20,41 @@ import {
     type WorldInfoSettings,
 } from './worldinfo-types.js';
 
-/** SillyTavern's defaults, used when a caller does not override them. */
+/**
+ * The world info scanner.
+ *
+ * One scan answers three questions about a turn: which entries are relevant,
+ * which of those fit the budget, and where in the prompt each one goes. The
+ * pipeline runs in passes:
+ *
+ * 1. Timed effects are evaluated against the chat's length. This happens first
+ *    because sticky and cooldown decide *candidacy* — an entry on cooldown must
+ *    not be considered at all.
+ * 2. The keyword pass walks entries by descending `order` and stops at the
+ *    first gate that rejects each one. Everything an entry is subject to —
+ *    disabled, wrong trigger, wrong character, cooling down, no key match, a
+ *    secondary-key rule — is decided here.
+ * 3. Lexical matching, when enabled, may *add* candidates that the keyword pass
+ *    missed. It never removes one: a similarity hit is a suggestion, and an
+ *    authored key is an instruction.
+ * 4. Inclusion groups keep one winner per group.
+ * 5. Probability is rolled, then the token budget is spent in order.
+ * 6. The pass decides whether another one follows — for recursion, for
+ *    `minActivations` depth seeking, or for a deeper `delayUntilRecursion`
+ *    level — and repeats.
+ * 7. Whatever activated is bucketed by `position` for the prompt builder.
+ *
+ * The ordering inside each pass is load-bearing in several places, and each is
+ * called out where it happens rather than summarised here.
+ */
+
+/**
+ * Settings a scan uses when the caller supplies none.
+ *
+ * `depth: 2` means the two newest messages; `budgetPercent: 25` means a quarter
+ * of the context window. Both are the values a book written elsewhere expects,
+ * so changing them here would change what an imported book does.
+ */
 export const DEFAULT_WORLD_INFO_SETTINGS: WorldInfoSettings = {
     depth: 2,
     budgetPercent: 25,
@@ -44,27 +71,38 @@ export const DEFAULT_WORLD_INFO_SETTINGS: WorldInfoSettings = {
     lexicalLimit: 10,
 };
 
-/** Upper bound SillyTavern applies to `scanDepth` and the chat buffer. */
+/** Upper bound on `scanDepth` and on how much chat is buffered at all. */
 export const MAX_SCAN_DEPTH = 1000;
 
-/** Depth used by an `atDepth` entry that does not set one. */
+/** Depth an `atDepth` entry uses when it names none. */
 export const DEFAULT_DEPTH = 4;
 
-/** Default weight for an inclusion-group entry. */
+/** Weight an inclusion-group entry gets when it names none. */
 export const DEFAULT_WEIGHT = 100;
 
 /**
- * Separator injected between scanned messages. It is a control character so a
- * key can never match across a message boundary.
+ * The separator between scanned messages.
+ *
+ * A control character rather than a newline, so a key can never match across a
+ * message boundary: `dragon` at the end of one message and `fire` at the start
+ * of the next must not satisfy a two-word key.
  */
 const MATCHER = '\u0001';
 const JOINER = `\n${MATCHER}`;
 
+/**
+ * How many tokens a scan may spend, from a context size and the settings.
+ *
+ * A percentage with an optional absolute ceiling, and never zero: a book whose
+ * budget rounds to nothing would silently contribute nothing at all, which
+ * reads as "no entries matched" rather than "the budget is misconfigured".
+ */
 function computeBudget(maxContext: number, settings: WorldInfoSettings): number {
     const raw = Math.round((settings.budgetPercent * maxContext) / 100) || 1;
     return settings.budgetCap > 0 && raw > settings.budgetCap ? settings.budgetCap : raw;
 }
 
+/** Append optional scanned text for an `entry.matchX` flag. */
 function optIn(enabled: boolean, value: string | undefined): string {
     return enabled && value ? JOINER + value : '';
 }
@@ -72,37 +110,34 @@ function optIn(enabled: boolean, value: string | undefined): string {
 interface ScanBuffer {
     /** Current default scan depth: the configured depth plus the skew. */
     depth(): number;
-    /** Advance the minimum-activations depth window by one message. */
+    /** Widen the window by one message, for `minActivations` depth seeking. */
     advanceScan(): void;
     /** Add one pass worth of activated text to the recursion buffer. */
     addRecurse(text: string): void;
     hasRecurse(): boolean;
     /** Text an entry is matched against for the given pass kind. */
     text(entry: ScanEntry, state: ScanState): string;
-    /**
-     * The chat window at the default depth, with no per-entry opt-ins.
-     *
-     * The lexical pass has no single entry to read flags from — its whole point
-     * is to consider entries the keyword loop rejected — so it works from one
-     * shared query instead of a per-entry haystack. Two consequences, both
-     * deliberate and both divergences from a keyword hit:
-     *
-     * - `entry.scanDepth` is not honoured. A lexical hit for an entry that
-     *   asked to scan 50 messages is decided on the default window, so an
-     *   entry can be surfaced on less text than its author configured, or
-     *   miss text the keyword pass would have seen.
-     * - The `match*` opt-ins (`matchScenario`, `matchPersonaDescription` and
-     *   the rest) are not included either, and neither are `injections` — the
-     *   summary text scanned alongside the chat. A keyword hit can fire on the
-     *   scenario; a lexical one cannot.
-     *
-     * Sharing one window is what makes a single index query possible at all,
-     * and it keeps the pass from growing a per-entry haystack walk. The gap is
-     * recorded here rather than silently reproduced.
-     */
+    /** Text an inclusion-group score is computed against. */
     window(state: ScanState): string;
 }
-
+/**
+ * The haystack a scan matches against.
+ *
+ * Built once per scan from the newest `MAX_SCAN_DEPTH` messages, then sliced
+ * per entry, because the alternative — walking the message list once per entry
+ * per pass — is the scan's whole cost on a large book.
+ *
+ * Three things are appended beyond the chat, and each is opt-in per entry so an
+ * entry that does not ask for them cannot match on them:
+ *
+ * - the persona and card fields, which is how an entry keyed on a persona's
+ *   name fires;
+ * - the caller's injected text, which is scanned but does not advance the
+ *   chat-length clock — the clock is what timed effects count;
+ * - the recursion buffer, which is excluded from a `minActivations` pass on
+ *   purpose: depth seeking must not be satisfied by text recursion produced,
+ *   or it would stop as soon as it found itself.
+ */
 function createScanBuffer(
     chat: readonly ScanMessage[],
     global: GlobalScanData,
@@ -151,13 +186,10 @@ function createScanBuffer(
             result += optIn(entry.matchScenario, global.scenario);
             result += optIn(entry.matchCreatorNotes, global.creatorNotes);
 
-            // Extra scanned text does not shift the chat depth clock.
             if (injections.length > 0) {
                 result += JOINER + injections.join(JOINER);
             }
 
-            // Minimum-activation passes deliberately exclude the recursion
-            // buffer so that depth seeking cannot be satisfied by recursion.
             if (recurseBuffer.length > 0 && state !== SCAN_STATE.MIN_ACTIVATIONS) {
                 result += JOINER + recurseBuffer.join(JOINER);
             }
@@ -178,6 +210,27 @@ function createScanBuffer(
     };
 }
 
+/*
+ * The lexical pass uses `window()` rather than `text()`, and two consequences
+ * follow. Both are true of the behaviour this app ships, and both are written
+ * down rather than fixed, because a single index query needs one shared haystack
+ * and walking it per entry would cost a pass over the book per candidate.
+ *
+ * - **`entry.scanDepth` is not honoured.** A lexical hit for an entry that asked
+ *   to scan fifty messages is decided on the default window, so it can be
+ *   surfaced on less text than its author configured — or miss text the keyword
+ *   pass would have matched.
+ * - **The `match*` opt-ins and the injected summary text are not included.** A
+ *   keyword hit can fire on the scenario or the persona description; a lexical
+ *   one cannot.
+ *
+ * The first means a lexical hit is never *more* permissive than a keyword hit
+ * for the same entry; the second means it is sometimes less. Neither widens a
+ * door the author closed, which is why it is recorded rather than treated as a
+ * bug to fix in this pass.
+ */
+
+/** Roll an entry's activation chance. `>= 100` short-circuits, so most entries never call `random`. */
 function passesProbability(entry: ScanEntry, random: () => number): boolean {
     if (!entry.useProbability || entry.probability >= 100) {
         return true;
@@ -187,15 +240,24 @@ function passesProbability(entry: ScanEntry, random: () => number): boolean {
 
 interface SecondaryResult {
     ok: boolean;
-    /** Key that satisfied the logic, when there is one to report. */
+    /** The key that satisfied the rule, when there is one worth reporting. */
     key?: string;
 }
 
 /**
- * Apply `selectiveLogic` to the secondary keys.
+ * Apply `selectiveLogic` to an entry's secondary keys.
  *
- * The four modes map to SillyTavern's `AND_ANY`, `NOT_ALL`, `NOT_ANY` and
- * `AND_ALL`, including their short-circuit order.
+ * Four modes, and each has its own short circuit because the modes are not
+ * variations of one rule:
+ *
+ * - **AND_ANY** — one hit is enough, so it returns at the first.
+ * - **NOT_ALL** — one *miss* is enough, so it returns at the first too.
+ * - **NOT_ANY** — needs every key to miss, so it can only answer at the end.
+ * - **AND_ALL** — needs every key to hit, so it can only answer at the end.
+ *
+ * An empty secondary list under NOT_ANY succeeds and under AND_ALL does not:
+ * `allMatch` starts at `keys.length > 0`, so "all of nothing" is false while
+ * "none of nothing" is true. That asymmetry is the format's, not a bug here.
  */
 function matchSecondaryKeys(
     entry: ScanEntry,
@@ -239,9 +301,13 @@ function matchSecondaryKeys(
 }
 
 /**
- * SillyTavern's `getScore`: the number of matching keys, used to rank entries
- * inside an inclusion group. Keys are matched raw - no macro expansion and no
- * trimming - which is why an entry can score differently from how it activated.
+ * How relevant an entry is, for ranking the members of an inclusion group.
+ *
+ * The count of matching keys. Keys are matched **raw** — no macro expansion and
+ * no trimming — which means an entry can score differently from the way it
+ * activated. That is deliberate and worth knowing: scoring ranks candidates
+ * against each other, and expanding macros here would make the ranking depend
+ * on which pass happened to run.
  */
 function scoreEntry(entry: ScanEntry, haystack: string, settings: WorldInfoSettings): number {
     if (entry.key.length === 0) {
@@ -290,14 +356,34 @@ interface GroupFilterContext {
 }
 
 /**
- * Inclusion groups: keep one winner per group, with sticky entries winning
- * unconditionally and `groupOverride` beating the weighted roll.
+ * Keep one winner per inclusion group.
+ *
+ * Two entries in the same group are alternatives — "which of these two ways of
+ * describing the tavern" — so at most one may reach the prompt. Three passes,
+ * in an order that decides the outcome:
+ *
+ * 1. **Timed effects.** A sticky member wins the group outright and takes the
+ *    other members with it, because a sticky entry is one the story is
+ *    currently relying on. Members already cooling down or waiting out a delay
+ *    leave, which can empty a group entirely.
+ * 2. **Scoring.** Every member's score sets the bar, but only members that opt
+ *    in are compared against it. `useGroupScoring: false` is immunity; `null`
+ *    follows the global setting. A sticky group skips this pass, having already
+ *    decided.
+ * 3. **The decision**, for groups that still hold more than one member:
+ *    - an entry already activated whose `group` string equals this group's name
+ *      locks the group, and nobody else gets in;
+ *    - otherwise the highest-`order` `groupOverride` member wins;
+ *    - otherwise a weighted roll picks one.
+ *
+ * The group map is a plain object rather than a `Map`, and that matters: object
+ * keys that look like integers are enumerated first, so a group named `"5"` is
+ * decided before one named `"alpha"`. That order is what a book written
+ * elsewhere expects, and a `Map` would silently change it.
  */
 function filterByInclusionGroups(context: GroupFilterContext): void {
     const { candidates, allActivated, settings, timed, random, scoreFor, onRemove } = context;
 
-    // A plain object, not a Map: SillyTavern's key order puts integer-like
-    // group names first, and that order decides which group vetoes first.
     const grouped: Record<string, ScanEntry[]> = {};
     let groupCount = 0;
 
@@ -338,9 +424,8 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
         }
     };
 
-    // Pass 1: timed effects. Sticky winners survive together and skip the
-    // group decision entirely; a sticky entry that also has an active cooldown
-    // is removed right after, which can empty the group.
+    // Pass 1: timed effects decide first, and a sticky winner settles the group
+    // before anything else is consulted.
     const hasSticky = new Map<string, boolean>();
     for (const [name, group] of Object.entries(grouped)) {
         hasSticky.set(name, false);
@@ -357,6 +442,9 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
             hasSticky.set(name, true);
         }
 
+        // A sticky member that is also cooling down is removed right here, even
+        // though it just won: the sticky window closing is what put it on
+        // cooldown, and an entry that is cooling down cannot speak.
         for (const entry of group.filter((candidate) => timed.isActive('cooldown', candidate))) {
             removeEntry(entry);
             onRemove(entry, 'group-loser', name);
@@ -368,9 +456,7 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
         }
     }
 
-    // Pass 2: scoring. Every member's score sets the bar, but only entries
-    // that opt in are compared - `false` is immunity, `null` follows the
-    // global setting.
+    // Pass 2: scoring, from whichever members opted in.
     for (const [name, group] of Object.entries(grouped)) {
         if (!settings.useGroupScoring && !group.some((entry) => entry.useGroupScoring)) {
             continue;
@@ -403,15 +489,17 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
         }
     }
 
-    // Pass 3: the decision.
+    // Pass 3: one winner, or none.
     for (const [name, group] of Object.entries(grouped)) {
         if (hasSticky.get(name)) {
             continue;
         }
 
-        // An entry already activated with the exact same `group` string locks
-        // the group for this scan. Multi-group entries never lock any group
-        // because the comparison is against the whole CSV string.
+        // An entry already activated whose `group` is exactly this name locks
+        // the group. A member of several groups carries the whole CSV in its
+        // `group` field, so it never equals one name and never locks anything —
+        // multi-group membership vetoes itself, which is what lets another
+        // group remove it without freezing this one.
         if ([...allActivated.values()].some((entry) => entry.group === name)) {
             removeAllBut(group, null, name);
             continue;
@@ -428,6 +516,10 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
             continue;
         }
 
+        // The roll. `roll <= cumulative` picks the first member when the total
+        // weight is zero, so degenerate weights do not fail open — they pick a
+        // winner that had no weight. Recorded because the intuitive reading
+        // ("zero weight means no preference") is not what happens.
         const totalWeight = group.reduce((sum, entry) => sum + (entry.groupWeight ?? DEFAULT_WEIGHT), 0);
         const roll = random() * totalWeight;
         let cumulative = 0;
@@ -441,8 +533,6 @@ function filterByInclusionGroups(context: GroupFilterContext): void {
             }
         }
 
-        // Fail open when weights are degenerate (zero, negative or NaN):
-        // nobody is removed and every member proceeds.
         if (!winner) {
             continue;
         }
@@ -462,6 +552,16 @@ interface TraceStore extends TraceWriter {
     entries: () => ScanTrace[];
 }
 
+/**
+ * What the context inspector shows: one line per entry, naming the reason it
+ * activated or did not.
+ *
+ * One record per entry, not one per decision. A later pass would re-skip an
+ * entry an earlier pass explained, and a later skip would overwrite a real
+ * activation — so the first activation is final, and a plain skip cannot
+ * replace one unless it asks to (`force`), which is how a group decision
+ * overrules an ordinary match.
+ */
 function createTraceStore(): TraceStore {
     const map = new Map<ScanEntry, ScanTrace>();
     let loop = 1;
@@ -486,8 +586,6 @@ function createTraceStore(): TraceStore {
             loop = next;
         },
         activate(entry, reason, detail) {
-            // The first successful activation is authoritative: a later pass
-            // would only re-skip it through the already-activated gate.
             if (map.get(entry)?.activated) {
                 return;
             }
@@ -506,9 +604,11 @@ function createTraceStore(): TraceStore {
 /**
  * Run a world info scan.
  *
- * Implements SillyTavern's full pipeline: timed effects, the recursion /
- * minimum-activation scan-state machine, inclusion groups, probability, the
- * token budget, and the position buckets consumed by the prompt builder.
+ * Pure with respect to its inputs apart from `input.timed.state`, which it
+ * writes when the caller supplies a live state — that is how a sticky window
+ * carries between turns. Everything else returns rather than mutates, so the
+ * context inspector can run the same scan as a dry run and see what a
+ * generation would have done.
  */
 export function scanWorldInfo(input: ScanInput): ScanResult {
     const settings: WorldInfoSettings = { ...DEFAULT_WORLD_INFO_SETTINGS, ...input.settings };
@@ -519,6 +619,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
     const globalScanData = input.globalScanData ?? {};
     const trigger = globalScanData.trigger ?? 'normal';
 
+    // `order` descending decides who consumes the budget first, so this sort is
+    // not cosmetic: a lower-order entry can be dropped for budget while a
+    // higher-order one that arrived later in the file gets in.
     const sorted = [...input.entries].sort((a, b) => b.order - a.order);
     const sourceIndex = new Map<ScanEntry, number>();
     for (let index = 0; index < sorted.length; index += 1) {
@@ -535,9 +638,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         chatLength: input.chat.length,
         entries: sorted,
         state: input.timed?.state ?? ensureTimedWorldInfo({}),
-        // Without an injected state there is nothing to persist, so behave
-        // like a dry run. A supplied state is live unless the caller says
-        // otherwise.
+        // Without an injected state there is nothing to persist, so behave like
+        // a dry run. A supplied state is live unless the caller says otherwise.
         dryRun: input.timed ? (input.timed.dryRun ?? false) : true,
     });
     timed.check();
@@ -554,6 +656,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         };
     }
 
+    // `delayUntilRecursion` levels are visited in ascending order, one per
+    // recursion pass. An entry asking for level 2 waits until the pass that
+    // follows level 1, not until any recursion at all.
     const delayLevels = [
         ...new Set(
             sorted
@@ -585,6 +690,7 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         const activatedNow: ScanEntry[] = [];
 
         for (const entry of sorted) {
+            // Already decided this scan, one way or the other.
             if (failedProbability.has(entry.id) || allActivated.has(entry.id)) {
                 continue;
             }
@@ -607,8 +713,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                     continue;
                 }
             }
-            // ST skips the tag check entirely when it has no tag map, which
-            // here means "no active character".
+            // The tag check is skipped entirely with no active character, since
+            // there are no tags to compare against — not "no tags means match".
             if (filter && filter.tags.length > 0 && input.activeCharacter !== undefined) {
                 const assigned = input.activeCharacter.tagIds ?? [];
                 const intersects = assigned.some((tag) => filter.tags.includes(tag));
@@ -626,13 +732,17 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 trace.skip(entry, 'timed-delay', `${entry.delay}`);
                 continue;
             }
+            // Sticky beats cooldown: an entry can be on both buffers at once
+            // when its cooldown outlives its sticky window, and while the
+            // sticky is still open the entry speaks.
             if (isCooldown && !isSticky) {
                 trace.skip(entry, 'timed-cooldown');
                 continue;
             }
 
-            // `delayUntilRecursion` is not "delay until later": it means only
-            // during a RECURSION pass, and never during MIN_ACTIVATIONS.
+            // `delayUntilRecursion` means "only during a recurrence pass at or
+            // past this level" — never during the first pass, and never during
+            // a minimum-activations pass.
             if (scanState !== SCAN_STATE.RECURSION && entry.delayUntilRecursion && !isSticky) {
                 trace.skip(entry, 'delay-until-recursion');
                 continue;
@@ -651,8 +761,10 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 continue;
             }
 
-            // SillyTavern checks the activation decorator before the
-            // suppression one, so an entry carrying both is activated.
+            // The activation decorator is checked before the suppression one,
+            // so an entry carrying both activates. Written down because the
+            // ordering is invisible and the opposite choice would look equally
+            // reasonable.
             if (entry.decorators.includes('@@activate')) {
                 trace.activate(entry, 'decorator-activate');
                 activatedNow.push(entry);
@@ -670,7 +782,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 continue;
             }
 
-            // A sticky entry activates without any key match.
+            // A sticky entry activates without any key match: the window is
+            // still open from the turn that opened it.
             if (isSticky) {
                 trace.activate(entry, 'sticky');
                 activatedNow.push(entry);
@@ -688,10 +801,10 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 matchWholeWords: entry.matchWholeWords ?? settings.matchWholeWords,
             };
 
-            // An alias is an additional primary key, not a separate mechanism:
-            // it uses the same matcher, the same per-entry options, and it
-            // feeds the same gates below. Only the trace detail names it, so a
-            // hit that came from an alias is visible in the inspector.
+            // An alias is an additional primary key, not a second mechanism: it
+            // uses the same matcher, the same per-entry options and feeds the
+            // same gates below. Only the trace detail distinguishes it, so a hit
+            // that came from an alias is visible in the inspector.
             const authored = entry.key
                 .map((key) => substitute(key))
                 .find((key) => Boolean(key) && matchesKey(haystack, key.trim(), matchOptions));
@@ -729,33 +842,21 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             activatedNow.push(entry);
         }
 
-        // Lexical pass: surface entries whose substring keys missed but whose
-        // text is about what the chat is about.
+        // Lexical matching, when enabled, may add entries whose keys missed but
+        // whose text is about the same thing.
         //
-        // This runs after the keyword loop and before inclusion groups, so a
-        // lexical candidate is subject to exactly the same downstream gates as
-        // a keyword one — groups, probability, the budget, timed effects. It
-        // only ever ADDS candidates; nothing that matched by key is removed.
-        // SillyTavern's Vector Storage does the same with
-        // `WORLDINFO_FORCE_ACTIVATE`, for the same reason: a lexical hit is a
-        // suggestion, never an override of authored intent.
+        // It runs after the keyword loop and before groups, so a lexical
+        // candidate faces exactly the same downstream gates as a keyword one.
+        // It only ever adds: a similarity score is a suggestion, and an authored
+        // key is an instruction.
         if (settings.lexicalMatch && scanState === SCAN_STATE.INITIAL) {
             const query = buffer.window(scanState);
 
-            // One index per scan, built once per book revision. Only the index
-            // is cached: a hit resolves against `sorted`, the entries this scan
-            // was handed, never against objects captured when the index was
-            // built. The fingerprint covers the scored fields only, so an edit
-            // to a field it excludes — `disable`, `position`, `order`,
-            // `probability`, `role`, the timed effects — would otherwise go
-            // unnoticed until the process restarted.
             const carried = activatedNow;
-            // The index builder is supplied by the caller: it lives in the app
-            // (it caches per book and depends on the app's BM25 module), and a
-            // package that imported its own consumer would not be a boundary.
-            // Absent means no lexical pass was configured. A caller that turns
-            // `lexicalMatch` on must supply one; asking for a scan it cannot
-            // score would otherwise throw instead of simply not broadening.
+            // The index builder is the caller's: it caches per book and depends
+            // on the app's own retrieval module, and a package that imported its
+            // own consumer would not be a boundary. Absent means no lexical pass
+            // was configured, which is why this breaks rather than throws.
             if (!input.lexicalIndex) {
                 break;
             }
@@ -765,11 +866,11 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 byId.set(candidate.id, candidate);
             }
 
-            // The threshold is relative. A BM25 score has no absolute meaning —
-            // it depends on corpus size, term rarity and document length — so
-            // a fixed cutoff would behave differently on every book. Taking a
-            // fraction of this scan's best hit means "good for this book, for
-            // this query", which is the only comparable thing available.
+            // The threshold is relative to this scan's best hit. A relevance
+            // score has no absolute meaning — it moves with corpus size, term
+            // rarity and document length — so a fixed cutoff would behave
+            // differently on every book. A fraction of the best hit means "good
+            // for this book, for this query", which is comparable.
             const hits = index.query(query, settings.lexicalLimit);
             const best = hits[0]?.score ?? 0;
             const floor = best * settings.lexicalThreshold;
@@ -793,9 +894,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                     continue;
                 }
 
-                // SillyTavern's other gates are honoured here too. An entry the
-                // author excluded from this character, this trigger or this
-                // moment must stay excluded no matter which pass noticed it.
+                // Every gate the keyword path honours is honoured here too: an
+                // entry the author excluded stays excluded no matter which pass
+                // noticed it.
                 if (entry.triggers.length > 0 && !entry.triggers.includes(trigger)) {
                     continue;
                 }
@@ -830,8 +931,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         }
 
         // Sticky entries float to the front; everything else keeps the
-        // `order`-descending source order, which drives budget consumption and
-        // the order of contents inside one recursion-buffer element.
+        // `order`-descending source order. This drives both budget consumption
+        // and the order of contents inside one recursion-buffer element.
         const newEntries = [...activatedNow].sort((a, b) => {
             const stickyA = timed.isActive('sticky', a) ? 1 : 0;
             const stickyB = timed.isActive('sticky', b) ? 1 : 0;
@@ -859,6 +960,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             onRemove: (entry, reason, detail) => trace.skip(entry, reason, detail, true),
         });
 
+        // Budget. Counted in order, and an entry that does not fit stops the
+        // pass — a lower-priority entry may not jump a higher-priority one just
+        // because it happens to be shorter.
         let remainingIgnoreBudget = newEntries.filter((entry) => entry.ignoreBudget).length;
         let newContent = '';
         const passBaseline = countTokens(allActivatedText);
@@ -868,8 +972,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 remainingIgnoreBudget -= 1;
             }
 
-            // Once the budget is exhausted only `ignoreBudget` entries may
-            // still activate. SillyTavern breaks out after the last of them.
+            // Once the budget is exhausted only `ignoreBudget` entries may still
+            // activate, and the loop stops after the last of them.
             if (overflowed && !entry.ignoreBudget) {
                 if (remainingIgnoreBudget > 0) {
                     trace.skip(entry, 'budget-exceeded', `${budgetUsed}/${budgetLimit}`, true);
@@ -900,6 +1004,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
 
         budgetUsed = passBaseline + countTokens(newContent);
 
+        // A probability failure is permanent for the scan: re-rolling it on the
+        // next pass would turn "10%" into "at least 10%" across passes.
         const successful = newEntries.filter((entry) => !failedProbability.has(entry.id));
         const successfulForRecursion = successful.filter((entry) => !entry.preventRecursion);
 
@@ -909,8 +1015,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             nextState = SCAN_STATE.RECURSION;
         }
 
-        // A minimum-activations pass is always followed by a recursion pass
-        // once a recursion buffer exists, so the two states alternate.
+        // Depth seeking. A `minActivations` pass is always followed by a
+        // recursion pass once a recursion buffer exists, so the two states
+        // alternate rather than one replacing the other.
         if (settings.recursive && !overflowed && scanState === SCAN_STATE.MIN_ACTIVATIONS && buffer.hasRecurse()) {
             nextState = SCAN_STATE.RECURSION;
         }
@@ -927,8 +1034,9 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
             }
         }
 
-        // Delay-level advancement is the only transition that survives a
-        // budget overflow.
+        // A deeper delay level is the one transition that survives a budget
+        // overflow: an entry that asked to wait for a later level still gets
+        // its chance, even if the budget is already spent.
         if (nextState === SCAN_STATE.NONE && delayLevels.length > 0) {
             nextState = SCAN_STATE.RECURSION;
             currentDelayLevel = delayLevels.shift() ?? currentDelayLevel;
@@ -946,17 +1054,22 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
         }
     }
 
+    // Persist the timed records for what activated. Done once, after the loop,
+    // so an entry that only activated on the last pass still records its
+    // window — and so a dry run writes nothing.
     timed.set([...allActivated.values()]);
 
     const positions = emptyPositions();
 
-    // Highest `order` first, unshifted, so each bucket ends up ascending.
+    // Highest `order` first, unshifted per bucket, so each bucket ends up
+    // ascending — the order the prompt reads top to bottom.
     for (const entry of [...allActivated.values()].sort((a, b) => b.order - a.order)) {
         const depth = entry.position === WORLD_INFO_POSITION.AT_DEPTH ? (entry.depth ?? DEFAULT_DEPTH) : null;
         const raw = resolvedContent.get(entry.id) ?? entry.content;
         const content = transformContent(entry, raw, depth);
 
-        // Only an exactly empty string is skipped; whitespace is content.
+        // Only an exactly empty string is skipped. Whitespace is content: a
+        // script that reduced an entry to a newline still meant to insert it.
         if (!content) {
             continue;
         }
@@ -981,6 +1094,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 positions.authorNoteBottom.unshift(content);
                 break;
             case WORLD_INFO_POSITION.AT_DEPTH: {
+                // Entries sharing a depth and a role share one bucket, so the
+                // prompt gets one injection there rather than several.
                 const bucketDepth = entry.depth ?? DEFAULT_DEPTH;
                 const role = entry.role ?? PROMPT_ROLE.SYSTEM;
                 const bucket = positions.atDepth.find(
@@ -994,6 +1109,8 @@ export function scanWorldInfo(input: ScanInput): ScanResult {
                 break;
             }
             case WORLD_INFO_POSITION.OUTLET: {
+                // An outlet entry with no name goes nowhere: the position only
+                // means something if a prompt slot claims it.
                 if (!entry.outletName) {
                     break;
                 }

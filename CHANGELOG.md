@@ -4,6 +4,16 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Changed
+
+- **No file in the tree carries a `Derived from` header any more.** The last twelve went in this batch, which completes phase 3 of `docs/REUSE-ISOLATION.md`: the card and world info adapters (`charx.ts`, `characterBook.ts`, `entries.ts`), the storage layer (`images.ts`, `quickReplies.ts`, `characterAssets.ts`), the ComfyUI client, the shared quick-reply parser and memory module, the browser speech hook, and — the substantial one — the 1,034-line world info scanner. Behaviour is unchanged and no assertion was weakened; `pnpm test` passes 873 in the server.
+
+  The rule the batch followed is the one the document set out: **a header comes off when the behaviour underneath is written down in a specification**, never because the header became inconvenient. That is why `parse.ts` could be rewritten — `docs/DATA-FORMATS.md` records the entry hash's payload exactly — and why `prompt-definitions.ts` keeps its identifier table described as the preset format even though the instruction text in it is CatCup's own.
+
+- **The scanner was rewritten only after its tests were.** Six assertions were added first, describing what the existing code did; five of them were initially written from what the reader _expected_ rather than what the code did, and every failure was a real fact — a chat that shrinks drops a sticky record by design, a group of one is not a decision, a total group weight of zero picks the first member rather than failing open, a multi-group entry never locks a group because its `group` field is the whole CSV. Two of the new assertions also turned out to depend on an unseeded `Math.random`, which is why they passed or failed at random until the roll was seeded; an existing test in the same file had the same flaw and had been passing by luck.
+
+  The rewrite then dropped a state transition — a `minActivations` pass handing off to recursion — that only those assertions caught. That is the argument for writing them first, made concretely rather than in the abstract.
+
 ### Fixed
 
 - **The Telegram bot no longer answers into a group.** Only a private conversation is answered; a group, supergroup, channel or a chat whose type this code does not recognise is dropped silently, the same way a message from a stranger is. RFC 0004 §8 always said groups should be ignored — the check was simply never written, so a message the owner sent in any group they were in was answered there, and the reply is public and cannot be taken back. Silent rather than a refusal, because a refusal posted into a group would announce that the bot exists.
