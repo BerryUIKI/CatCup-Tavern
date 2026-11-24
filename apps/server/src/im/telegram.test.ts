@@ -77,9 +77,28 @@ async function stubApi(options: StubOptions): Promise<string> {
     return `http://127.0.0.1:${port}`;
 }
 
-/** A message update, shaped like Telegram's. */
+/**
+ * A message update, shaped like Telegram's.
+ *
+ * The chat is a private one, because Telegram always sends a `type` and a
+ * private conversation is what these tests are about. `updateIn` is the escape
+ * hatch for the tests that care which kind of chat it is.
+ */
 function update(id: number, from: number, text: string, chat = from): unknown {
-    return { update_id: id, message: { message_id: id, from: { id: from, is_bot: false }, chat: { id: chat }, text } };
+    return {
+        update_id: id,
+        message: {
+            message_id: id,
+            from: { id: from, is_bot: false },
+            chat: { id: chat, type: 'private' },
+            text,
+        },
+    };
+}
+
+/** A message update in a chat of a given kind. */
+function updateIn(id: number, from: number, text: string, chat: { id: number; type?: string }): unknown {
+    return { update_id: id, message: { message_id: id, from: { id: from, is_bot: false }, chat, text } };
 }
 
 /** Wait until `predicate` holds, or give up — the loop is asynchronous. */
@@ -133,6 +152,58 @@ describe('the Telegram allowlist', () => {
         await transport.start();
         await new Promise((resolve) => setTimeout(resolve, 200));
         await transport.stop();
+
+        expect(received).toEqual([]);
+    });
+});
+
+describe('which chats are answered', () => {
+    /** Run one batch of updates through a real poll and report what got through. */
+    async function through(chats: Array<{ id: number; type?: string }>): Promise<IncomingMessage[]> {
+        const apiBase = await stubApi({
+            updates: [chats.map((chat, index) => updateIn(index + 1, 999, `in ${chat.type ?? 'untyped'}`, chat))],
+        });
+
+        const received: IncomingMessage[] = [];
+        const transport = new TelegramTransport({
+            token: 'token',
+            ownerId: '999',
+            apiBase,
+            hooks: { onMessage: (message) => received.push(message) },
+        });
+
+        await transport.start();
+        // A fixed wait rather than a predicate: the interesting case is "nothing
+        // arrived", which no `until` can wait for. The offset stops the loop
+        // from redelivering the same batch, so the count is stable afterwards.
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await transport.stop();
+        return received;
+    }
+
+    it('answers a private chat', async () => {
+        const received = await through([{ id: 999, type: 'private' }]);
+
+        expect(received).toHaveLength(1);
+        expect(received[0]?.chatId).toBe('999');
+    });
+
+    it('drops a group, a supergroup and a channel', async () => {
+        // The failure is public and cannot be taken back: Telegram delivers the
+        // reply to everyone in the group before anyone can do anything about it.
+        const received = await through([
+            { id: -1001, type: 'group' },
+            { id: -1002, type: 'supergroup' },
+            { id: -1003, type: 'channel' },
+        ]);
+
+        expect(received).toEqual([]);
+    });
+
+    it('drops a chat with no type at all', async () => {
+        // Failing open here would give the public answer to a payload this code
+        // does not understand, which is the one mistake that cannot be undone.
+        const received = await through([{ id: 4242 }]);
 
         expect(received).toEqual([]);
     });

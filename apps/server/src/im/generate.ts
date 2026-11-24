@@ -78,15 +78,30 @@ export function loopbackGenerate(options: LoopbackOptions): GenerateFn {
             headers.cookie = `${SESSION_COOKIE}=${createSessionToken(auth.sessionSecret)}`;
         }
 
+        // The signal closes the socket, and the route's own close handler is
+        // what aborts the generation (`generation/stream.ts`). Sending the
+        // stop endpoint instead would need the id the stream has not told us
+        // yet, so closing the connection is the honest path — and it is the
+        // same one a browser tab closing takes.
         const response = await fetch(`${base}/api/generate`, {
             method: 'POST',
             headers,
+            signal: input.signal,
             body: JSON.stringify({
                 characterId: input.characterId,
                 chatId: input.chatId,
                 action: 'send',
                 message: input.message,
             }),
+        }).catch((error: unknown) => {
+            // An abort surfaces as a `fetch` rejection with the signal's reason.
+            // The caller reads the signal rather than the error, so this only
+            // has to be distinguishable from a network failure — a network
+            // failure is rethrown unchanged.
+            if (input.signal.aborted) {
+                throw new Error('the reply was stopped');
+            }
+            throw error;
         });
 
         if (!response.ok) {

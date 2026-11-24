@@ -26,6 +26,15 @@ export interface GenerateInput {
     characterId: string;
     chatId: string;
     message: string;
+    /**
+     * Aborts the generation. `/stop` trips it, and what had been written is
+     * kept — the same partial-reply behaviour a browser stop gets.
+     *
+     * Required, not optional: an implementation that ignores it would answer
+     * "Stopped." and then deliver the whole reply anyway, which is worse than
+     * having no `/stop` at all.
+     */
+    signal: AbortSignal;
 }
 
 /** The generation seam. Throws to report failure; the caller turns it into text. */
@@ -49,6 +58,8 @@ const MESSAGES = {
     busy: 'Still writing the last reply. Send /stop to interrupt it.',
     failed: (reason: string) => `Something went wrong: ${reason}`,
     empty: 'The model returned nothing.',
+    /** What the stopping turn itself says after an abort, replacing a reply. */
+    stopped: 'Stopped. What had been written is in the chat.',
 } as const;
 
 /** A character list short enough for one message. */
@@ -233,6 +244,7 @@ async function talk(imChatId: string, text: string, deps: ConversationDeps): Pro
             characterId: character.id,
             chatId: binding.chatId,
             message: text,
+            signal: controller.signal,
         });
         if (!reply.trim()) {
             return MESSAGES.empty;
@@ -242,6 +254,12 @@ async function talk(imChatId: string, text: string, deps: ConversationDeps): Pro
         // the same chat as the reply itself — see `notify.ts`.
         return reply;
     } catch (error) {
+        // A stop is not a failure. The generation core stores what it had and
+        // reports it as stopped, so blaming the provider for an abort would
+        // send the person looking for a problem that does not exist.
+        if (controller.signal.aborted) {
+            return MESSAGES.stopped;
+        }
         return MESSAGES.failed(error instanceof Error ? error.message : 'the reply failed');
     } finally {
         inFlight.delete(imChatId);
