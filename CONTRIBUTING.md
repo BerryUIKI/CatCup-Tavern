@@ -128,7 +128,9 @@ pnpm --filter @catcup/server test
 pnpm --filter @catcup/server build
 ```
 
-CI runs the same four gates on every PR into `main` and on every push to `main` (`.github/workflows/ci.yml`). The job name is the required status check on the protected trunk, so a PR cannot merge while it is red. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on Windows, macOS and Linux — that is the only place the shell is compiled before a release, so treat a red result there as blocking even though it is not a required check yet.
+CI runs the same four gates on every PR into `main` and on every push to `main` (`.github/workflows/ci.yml`). The job name is the required status check on the protected trunk, so a PR cannot merge while it is red.
+
+`dev` stays in the workflow's `pull_request` list for exactly one commit — the one that lands this migration, whose own PR is based on it. A trigger that no longer matches its own base would leave that PR with no checks at all. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on Windows, macOS and Linux — that is the only place the shell is compiled before a release, so treat a red result there as blocking even though it is not a required check yet.
 
 ## Code style
 
