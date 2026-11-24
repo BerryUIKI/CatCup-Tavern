@@ -1,24 +1,33 @@
+import type { ChatMessage } from '@catcup/shared';
+
 import { getSettings } from '../storage/settings.js';
-import { readBindings } from './bindings.js';
 import { splitForTelegram } from './commands.js';
 import { getTransport } from './service.js';
 
 /**
  * Telling the owner that something finished.
  *
- * Off by default and separate from the bot's own switch, because the two are
+ * The point is the case the app cannot cover by itself: a generation was
+ * started and then the window went away — another app, another desktop, a
+ * sleeping lid. A reply that finishes while nobody is looking is otherwise
+ * silent, and so is a reply that *fails*, which is worse, because a failure and
+ * a slow answer look identical.
+ *
+ * Off by default and separate from the bot's switch, because the two are
  * different asks: a bot someone talks to is not necessarily a bot they want
  * buzzing at them, and a notification is the one part of this feature that
  * carries almost no message content — a character name and one sentence.
  *
- * Three rules, all of them about not being annoying:
+ * Four rules, all of them about not being annoying:
  *
  * - **After persistence, never before.** A notification must not delay or
  *   endanger a reply.
+ * - **Only when the app was not in front.** The browser says so when it starts
+ *   the generation; a reply someone is watching needs no second telling.
+ * - **Never for a reply that came over IM.** That reply is in the same
+ *   conversation, so notifying would deliver it twice.
  * - **A failure is dropped, not retried.** A "the reply is ready" message
  *   delivered ten minutes late is noise.
- * - **One sentence, not the reply.** The point is "it is done", not a second
- *   copy of the story in another chat.
  */
 
 /** How much of a reply a notification carries. */
@@ -40,34 +49,74 @@ export function previewOf(text: string): string {
     return sentence.length > PREVIEW_LENGTH ? `${sentence.slice(0, PREVIEW_LENGTH - 1)}…` : sentence;
 }
 
+/** How a generation ended, as far as a notification is concerned. */
+export type GenerationOutcome = { type: 'done'; message: ChatMessage } | { type: 'error'; message: string };
+
+export interface NotificationContext {
+    characterName: string;
+    /** Whether the app was out of sight when the generation started. */
+    background: boolean;
+}
+
+/**
+ * The line to send, or `null` when there is nothing to say.
+ *
+ * Pure, and separate from sending, because the decisions here are the feature:
+ * a stopped reply is not news, a foreground reply is not news, and a missing
+ * outcome is not news. Keeping them out of the transport makes them testable
+ * without a bot or a settings file.
+ *
+ * The text is plain — no `**bold**` — because the transport sends without a
+ * `parse_mode`, so markers would arrive as literal asterisks, and because
+ * Telegram's Markdown modes break on a character name containing `_` or `*`.
+ */
+export function notificationFor(outcome: GenerationOutcome | null, context: NotificationContext): string | null {
+    if (!outcome || !context.background) {
+        return null;
+    }
+
+    if (outcome.type === 'error') {
+        // Silence is most expensive exactly here: without this, a stopped reply
+        // and a slow reply look the same from another room.
+        return `The reply from ${context.characterName} failed: ${outcome.message}`;
+    }
+
+    // A reply the person stopped is one they were watching. Telling them it
+    // finished — after they pressed the button that ended it — is noise.
+    if (outcome.message.extra?.stopped) {
+        return null;
+    }
+
+    const preview = previewOf(outcome.message.mes);
+    return preview ? `${context.characterName} replied: ${preview}` : null;
+}
+
 /**
  * Where a notification goes.
  *
- * A bound conversation is the natural target: it is the chat the person is
- * already looking at, and it is a private chat with the owner because only the
- * owner could have bound it. With no binding there is nowhere safe to send — a
- * notification must never go to a stranger's chat id — so it is skipped rather
- * than guessed at.
+ * The owner's own chat, which in a private Telegram conversation has the same
+ * id as the user — so this needs no binding and works before anyone has ever
+ * sent the bot a message. An empty allowlist means nobody, which is the same
+ * answer the transport gives to an incoming message.
  */
 async function ownerChatId(): Promise<string | null> {
-    const bindings = await readBindings();
-    const [first] = Object.keys(bindings);
-    return first ?? null;
+    const settings = await getSettings();
+    const ownerId = settings.im.ownerId.trim();
+    return ownerId || null;
 }
 
 /**
- * Notify that a generation finished.
+ * Notify that a generation finished or failed.
  *
  * Called after persistence. Never throws: a notification that fails must not
  * turn a successful reply into an error, so the failure is logged and dropped.
+ * Deliberately not awaited by its callers for the same reason.
  */
-export async function notifyReply(event: { characterName: string; text: string }): Promise<void> {
-    await send(`**${event.characterName}** replied:\n${previewOf(event.text)}`);
-}
-
-/** Notify that a generation failed. Silence is worst exactly here. */
-export async function notifyFailure(characterName: string, reason: string): Promise<void> {
-    await send(`The reply from **${characterName}** failed: ${reason}`);
+export async function notifyTurn(outcome: GenerationOutcome | null, context: NotificationContext): Promise<void> {
+    const text = notificationFor(outcome, context);
+    if (text) {
+        await send(text);
+    }
 }
 
 async function send(text: string): Promise<void> {

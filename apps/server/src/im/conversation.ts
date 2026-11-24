@@ -36,11 +36,6 @@ export interface ConversationDeps {
     generate: GenerateFn;
     /** Overridable so a test does not need the real profile storage. */
     resolveCharacter?: (id: string) => Promise<{ id: string; name: string } | null>;
-    /**
-     * Called after a successful reply so #146 can notify. Kept as a hook rather
-     * than imported so this file stays free of the notification path.
-     */
-    onReply?: (event: { characterName: string; text: string }) => void;
 }
 
 /** The chats in flight, by IM chat id. One per conversation. */
@@ -242,7 +237,9 @@ async function talk(imChatId: string, text: string, deps: ConversationDeps): Pro
         if (!reply.trim()) {
             return MESSAGES.empty;
         }
-        deps.onReply?.({ characterName: character.name, text: reply });
+        // No notification hook here on purpose. This reply is delivered in the
+        // conversation it came from, so a "it is ready" message would arrive in
+        // the same chat as the reply itself — see `notify.ts`.
         return reply;
     } catch (error) {
         return MESSAGES.failed(error instanceof Error ? error.message : 'the reply failed');

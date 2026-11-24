@@ -642,9 +642,12 @@ Starts a generation and returns an SSE stream. Except for `impersonate`, the ser
     "characterId": "Seraphina",
     "chatId": "Seraphina - 2026-11-09_18-42-29",
     "action": "send",
-    "message": "I'm feeling better, thank you. What is this place?"
+    "message": "I'm feeling better, thank you. What is this place?",
+    "notifyWhenDone": true
 }
 ```
+
+`notifyWhenDone` is optional and described under [the IM notifications](#notifywhendone-on-the-generation-endpoints); absent means no.
 
 | Action        | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1839,9 +1842,19 @@ Stores the bot token in `data/secrets.json`, beside the provider keys and never 
 { "enabled": true, "ownerId": "99999999", "notifyOnReply": false }
 ```
 
-Every field is optional and a missing one keeps its stored value. `notifyOnReply` is separate from `enabled` on purpose: a bot used for conversation is not necessarily one wanted as a notification channel. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody.
+Every field is optional and a missing one keeps its stored value. `notifyOnReply` is separate from `enabled` on purpose: a bot used for conversation is not necessarily one wanted as a notification channel. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody — and with `notifyOnReply` on, it also means there is nowhere to send a notification.
 
 Both write endpoints call the transport sync, so a change takes effect without a restart. Response: `{ "settings": ImSettings, "status": ImStatusView }`.
+
+### `notifyWhenDone` on the generation endpoints
+
+`POST /api/generate` and `POST /api/groups/:groupId/chats/:chatId/generate` accept an optional `notifyWhenDone: boolean`. When it is `true` and `im.notifyOnReply` is on, the server sends the owner a Telegram message once the generation ends — the character's name and the first sentence, or the failure.
+
+The client sets it, and only when its window was out of sight when the request went out: that is the one fact the server cannot reconstruct, because an IM message and a background tab arrive identically. It is an accepted field on both schemas rather than ignored, so a client that does not send it gets silence.
+
+Three cases send nothing regardless of the flag: a reply the person stopped (they were watching it), an impersonation draft (it is a draft, and nothing was stored), and a generation that produced no terminal event. A notification is never awaited by the route, so a slow Telegram does not hold the reply; a failed delivery is logged and dropped, never retried.
+
+The IM loopback path calls `POST /api/generate` too and never sets the flag, which is what keeps a reply from being announced in the conversation it was delivered to.
 
 ## Notes and limits
 

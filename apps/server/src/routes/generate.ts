@@ -23,6 +23,7 @@ import { choiceLanguage, directorBlock, readDirector } from '../director/config.
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
+import { notifyTurn } from '../im/notify.js';
 import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
@@ -40,6 +41,15 @@ const generateSchema = z.object({
     chatId: z.string().min(1).max(300),
     action: z.enum(['send', 'regenerate', 'continue', 'trigger', 'impersonate']),
     message: z.string().max(200000).optional(),
+    /**
+     * Tell the owner over IM when this generation ends.
+     *
+     * Set by the client, not inferred here, because only the browser knows
+     * whether its window was in front when the request went out. Absent means
+     * no — which is what keeps the IM loopback path (it calls this same route)
+     * from notifying a conversation the reply is already sitting in.
+     */
+    notifyWhenDone: z.boolean().optional(),
 });
 
 const stopParamsSchema = z.object({
@@ -418,7 +428,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const personaName = persona.name;
         const prefill = impersonationPrefill(personaName);
 
-        await runGenerationStream({
+        const outcome = await runGenerationStream({
             reply,
             provider,
             model: resolved.model,
@@ -449,6 +459,16 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         if (draftOnly) {
             return;
         }
+
+        // Fire-and-forget and after persistence, in that order: a notification
+        // must never delay or endanger the reply it describes. `notifyTurn`
+        // decides whether there is anything to say — a foreground generation, a
+        // reply the person stopped, and one that produced no text are all
+        // silent.
+        void notifyTurn(outcome, {
+            characterName: character.name,
+            background: body.notifyWhenDone === true,
+        });
 
         // Fire-and-forget: a due summary never delays the reply. The memory
         // service reads the chat again, so only a persisted reply counts.

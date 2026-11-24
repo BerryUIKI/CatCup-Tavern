@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { api } from '../lib/api';
 import { streamGeneration } from '../lib/sse';
+import { isWindowHidden } from '../lib/visibility';
 import { queryKeys } from './data';
 
 /** Who the generation belongs to: one character chat, or one group chat. */
@@ -131,6 +132,10 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                 targetKind === 'character'
                     ? '/api/generate'
                     : `/api/groups/${encodeURIComponent(targetId)}/chats/${encodeURIComponent(chatId)}/generate`;
+            // Sampled once, before the request, because it is a property of
+            // how this generation was started. The server cannot work it out:
+            // an IM message and a background window look identical from there.
+            const notifyWhenDone = isWindowHidden();
             const body =
                 targetKind === 'character'
                     ? {
@@ -138,11 +143,13 @@ export function useGeneration(target: GenerationTarget | null, chatId: string | 
                           chatId,
                           action,
                           ...(message !== undefined ? { message } : {}),
+                          ...(notifyWhenDone ? { notifyWhenDone } : {}),
                       }
                     : {
                           action,
                           ...(message !== undefined ? { message } : {}),
                           ...(speaker ? { speaker } : {}),
+                          ...(notifyWhenDone ? { notifyWhenDone } : {}),
                       };
 
             try {

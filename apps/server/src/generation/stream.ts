@@ -159,6 +159,16 @@ export interface GenerationStreamInput extends Omit<GenerateReplyInput, 'signal'
 }
 
 /**
+ * How a streamed generation ended.
+ *
+ * Returned rather than only written to the wire so a caller can act on it
+ * somewhere a socket cannot reach — a notification, a log line. `null` means no
+ * terminal event was produced at all, which is its own answer: there is nothing
+ * to report.
+ */
+export type GenerationOutcome = Extract<GenerationEvent, { type: 'done' | 'error' }> | null;
+
+/**
  * Stream one completion to the client and persist its result.
  *
  * The HTTP face of `generateReply`: it opens SSE, relays every event, writes a
@@ -169,10 +179,11 @@ export interface GenerationStreamInput extends Omit<GenerateReplyInput, 'signal'
  * Shared by single-character and group generation so the SSE contract, stop
  * behaviour and partial-reply handling cannot drift between them.
  */
-export async function runGenerationStream(input: GenerationStreamInput): Promise<void> {
+export async function runGenerationStream(input: GenerationStreamInput): Promise<GenerationOutcome> {
     const { reply } = input;
     let finished = false;
     let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let outcome: GenerationOutcome = null;
 
     const abort = new AbortController();
     reply.request.raw.on('close', () => {
@@ -193,6 +204,9 @@ export async function runGenerationStream(input: GenerationStreamInput): Promise
         heartbeat = setInterval(() => writeSseComment(reply, 'ping'), 15000);
 
         for await (const event of generateReply({ ...input, signal: abort.signal })) {
+            if (event.type === 'done' || event.type === 'error') {
+                outcome = event;
+            }
             writeSse(reply, event);
         }
     } finally {
@@ -204,4 +218,6 @@ export async function runGenerationStream(input: GenerationStreamInput): Promise
             endSse(reply);
         }
     }
+
+    return outcome;
 }
