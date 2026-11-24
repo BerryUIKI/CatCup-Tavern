@@ -1,6 +1,5 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/openai.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. Turning a card, a persona, a preset and a world info
+// scan into the message array a provider receives.
 
 import type { WorldInfoPrompt } from '@catcup/compat-st';
 import {
@@ -43,7 +42,7 @@ import type { GroupMacroMembers } from './worldInfoTurn.js';
 
 export interface AssembleInput {
     promptSettings?: Partial<PromptSettings>;
-    /** Order-list id. Defaults to SillyTavern's global Chat Completion id. */
+    /** Which order list applies; the global one when the caller names none. */
     characterId?: string | number;
     generationType?: GenerationType;
     character: CharacterDetail;
@@ -81,7 +80,7 @@ export interface AssembleInput {
     group?: GroupMacroMembers;
     /** Latest summary, for `{{summary}}` expansion. */
     summaryText?: string;
-    /** Formatted summary to inject, following SillyTavern's Memory positions. */
+    /** Formatted summary to inject, at the position the memory settings choose. */
     summaryInjection?: SummaryInjection;
     /**
      * Card fields merged from every group member, replacing the speaking
@@ -223,9 +222,11 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
     const settings = sanitizePromptSettings(input.promptSettings);
     const characterId = input.characterId ?? GLOBAL_PROMPT_ORDER_ID;
     const generationType = input.generationType ?? 'normal';
-    // Joined group cards stand in for the speaking member's own fields, so the
-    // prompt, the `{{description}}` macros and the card overrides all read one
-    // set of values — as SillyTavern's `getCharacterCardFieldsLazy` does.
+    // In a joined group the speaking member's fields are replaced by the joined
+    // card text, so the prompt, the `{{description}}` macros and the card
+    // overrides all read the same values. Letting them read different copies is
+    // how a group chat ends up with a description that disagrees with its own
+    // macro expansion.
     const joined = input.joinedCard ?? null;
     const card = joined
         ? {
@@ -260,7 +261,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         substitute,
     });
 
-    // Phase 1: fixed system prompts, resolved from the card and the scan.
+    // Phase 1 — the fixed system prompts. Each is resolved once here so the
+    // order list can place it by identifier without knowing where it came from.
     const worldInfo = input.worldInfo ?? null;
     const literals: Array<{ identifier: string; role: CompletionRole; content: string }> = [
         {
@@ -286,11 +288,12 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         },
     ];
 
-    // The persona's own text, in one slot so the prompt order keeps treating it
-    // as one thing. The optional fields are appended in a fixed order and only
-    // when they carry something: a persona with a name and a description — the
-    // shape every settings file had before the fields existed — produces exactly
-    // the description it always did.
+    // The persona occupies one slot, so the prompt order keeps treating it as
+    // one thing rather than gaining a slot per optional field.
+    //
+    // The extras are appended in a fixed order and only when they carry
+    // something, which keeps an older settings file — a persona with just a name
+    // and a description — producing exactly the text it always did.
     const personaText = personaPromptText(input.persona);
     if (personaText) {
         literals.push({
@@ -300,8 +303,9 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         });
     }
 
-    // The director sits after the persona and before the character description,
-    // with the other system material rather than in the dialogue.
+    // The director's rules sit with the other system material, after the
+    // persona and before the character description. Putting them in the
+    // dialogue would make them read as something a character said.
     if (input.directorRules?.trim()) {
         const at = literals.findIndex((literal) => literal.identifier === IDENTIFIER.CHAR_DESCRIPTION);
         const entry = {
@@ -348,7 +352,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         };
     }
 
-    // Phase 2: character card overrides for main and jailbreak.
+    // Phase 2 — the card's overrides for the main and jailbreak prompts. Done
+    // after phase 1 because an override replaces text phase 1 produced.
     applyCardOverride(collection, settings, characterId, IDENTIFIER.MAIN, card.system_prompt, macroContext);
     applyCardOverride(
         collection,
@@ -427,7 +432,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         }
     }
 
-    // Phase 4: relative injections into main (the Author's Note in prompt).
+    // Phase 4 — injections positioned relative to the main prompt, which is the
+    // Author's Note in its "in prompt" mode.
     if (worldInfo?.authorNote?.value) {
         const note = worldInfo.authorNote;
         const message: CompletionMessage = {
@@ -442,7 +448,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         }
     }
 
-    // Phase 5: in-chat injections.
+    // Phase 5 — in-chat injections, collected before the history so they can be
+    // spliced into it at their depths.
     const injections: Injection[] = [];
 
     if (summaryInjection?.content && summaryInjection.position === 1) {
@@ -488,9 +495,9 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         });
     }
 
-    // Card asides: SillyTavern's `depth_prompt` in `extensions`. One card in a
-    // single-character chat, or every non-muted member's aside in a joined
-    // group chat, injected in chat at the depth the card asks for.
+    // Card asides (`depth_prompt` in the card's extensions): the card's own in
+    // a single chat, every non-muted member's in a joined group. Each goes in at
+    // the depth that card asked for, which is why they are not merged into one.
     for (const [index, aside] of (input.cardDepthPrompts ?? []).entries()) {
         if (!aside.text.trim()) {
             continue;
@@ -503,11 +510,14 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         });
     }
 
-    // Phase 6: chat history, with the injections spliced in by depth.
-    // `promptOnly` scripts run here, on the copy that becomes the prompt; the
-    // stored message keeps its original text. Macros expand after the scripts,
-    // as SillyTavern does in `PromptManager.preparePrompt`, so a greeting that
-    // still carries `{{char}}` reaches the model with the name filled in.
+    // Phase 6 — the chat history, with the phase 5 injections spliced in at
+    // their depths.
+    //
+    // This is a copy: `promptOnly` scripts run on it and macros expand on it, so
+    // the stored message keeps its original text. Order matters within the copy
+    // — scripts first, then macros — because a script is written against the
+    // stored text, including any `{{char}}` still in it, and expanding first
+    // would change what the script's pattern sees.
     const rawHistory = toHistoryEntries(input.messages);
     const depthOffset = generationType === 'continue' ? 2 : 1;
     const history = rawHistory.map((entry, index): CompletionMessage => {
@@ -524,10 +534,11 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
             ),
         );
 
-        // SillyTavern prepends the speaker's name in group chats, after the
-        // content transforms. Its default rule prefixes every message whose
-        // name is not the user persona, which also covers narrator and sendas
-        // messages, not only assistant turns.
+        // In a group chat each turn is prefixed with its speaker, after the
+        // content transforms. The rule is "not the user", not "the assistant" —
+        // a narrator line and a `sendas` message need their speaker named as
+        // much as a character's reply does, and the model has to tell several
+        // characters apart.
         return {
             identifier: `chatHistory-${index}`,
             role: entry.role,
@@ -567,8 +578,9 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         content: substitute(input.newChatPrompt ?? DEFAULT_MESSAGES.newChat),
     };
 
-    // ST reserves budget for the group nudge next to the new-chat marker and
-    // appends it after the history. Squashing never merges it.
+    // The group nudge reserves its budget beside the new-chat marker and is
+    // appended after the history. It is one of the prompts the squash refuses
+    // to merge, because it is a boundary rather than instruction.
     const groupNudgeMessage: CompletionMessage | null = input.groupNudge
         ? { identifier: 'groupNudge', role: 'system', content: substitute(input.groupNudge) }
         : null;
@@ -603,7 +615,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         completion.add('groupNudge', null, [groupNudgeMessage]);
     }
 
-    // Phase 7: dialogue examples.
+    // Phase 7 — dialogue examples, after the history so the model reads them as
+    // a sample of the style rather than as part of the conversation.
     if (collection.some((prompt) => prompt.identifier === IDENTIFIER.DIALOGUE_EXAMPLES)) {
         const index = collection.findIndex((prompt) => prompt.identifier === IDENTIFIER.DIALOGUE_EXAMPLES);
         const blocks = buildExampleBlocks(input, worldInfo, substitute, card);
@@ -631,7 +644,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         }
     }
 
-    // Phase 8: continue nudge.
+    // Phase 8 — the continue nudge, appended last among the ordinary prompts
+    // because it instructs the model about the reply it is about to write.
     if (generationType === 'continue') {
         completion.add('continueNudge', null, [
             {
@@ -642,7 +656,8 @@ export function assemblePrompt(input: AssembleInput): AssembleResult {
         ]);
     }
 
-    // Phase 9: impersonation instruction.
+    // Phase 9 — the impersonation instruction. Last, and after the history,
+    // because it changes who is speaking for this one request.
     //
     // SillyTavern adds this as a control prompt, after the history. Anchoring
     // it at the end is what makes it read as an instruction to write the next
