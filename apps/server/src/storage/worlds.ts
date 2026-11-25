@@ -1,5 +1,6 @@
 import { readdir, stat } from 'node:fs/promises';
-
+import path from 'node:path';
+import { getStringHash } from '@catcup/compat-st';
 import {
     type ItemScope,
     isRecord,
@@ -7,7 +8,16 @@ import {
     type WorldInfoEntryPatch,
     type WorldSummary,
 } from '@catcup/shared';
-
+import {
+    aliasPathFor,
+    copyAliasFile,
+    deleteAliases,
+    moveAliasFile,
+    readAliases,
+    removeAliasFile,
+    setAliases,
+    setGeneratedAliases,
+} from '../worldinfo/aliases.js';
 import {
     appendEntry,
     applyEntryPatch,
@@ -23,6 +33,8 @@ import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';
 import {
     copyItemIntoScope,
+    findItemInScope,
+    itemDirs,
     listMergedItems,
     locateItem,
     moveItemBetweenScopes,
@@ -227,15 +239,156 @@ export async function deleteWorld(id: string): Promise<boolean> {
     if (!found) {
         return false;
     }
+    // The alias sidecar belongs to this book and nothing else, so it goes with
+    // it. A failure here must not report the book as undeleted.
+    await removeAliasFile(found.filePath).catch(() => false);
     return removeIfPresent(found.filePath);
 }
 
 /** Move a book into the shared scope, or take a shared one into this profile. */
 export async function changeWorldScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
-    return moveItemBetweenScopes('worlds', id, target, BOOK_EXTENSIONS);
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    const result = await moveItemBetweenScopes('worlds', id, target, BOOK_EXTENSIONS);
+    if (found) {
+        await moveAliasFile(found.filePath, aliasPathFor(path.join(itemDirs('worlds')[target], found.fileName)));
+    }
+    return result;
 }
 
 /** Copy a book into the other scope under a free name. */
 export async function copyWorldIntoScope(id: string, target: ItemScope): Promise<ScopeMoveResult> {
-    return copyItemIntoScope('worlds', id, target, BOOK_EXTENSIONS);
+    const source = await findItemInScope('worlds', id, target === 'shared' ? 'profile' : 'shared', BOOK_EXTENSIONS);
+    const result = await copyItemIntoScope('worlds', id, target, BOOK_EXTENSIONS);
+    if (source) {
+        const destination = path.join(itemDirs('worlds')[target], result.fileName);
+        await copyAliasFile(source.filePath, destination, result.id);
+    }
+    return result;
+}
+
+/**
+ * A book's aliases, with a note on which sets no longer match their entry.
+ *
+ * "Stale" means the entry's content changed after the aliases were generated,
+ * which makes a model-produced set a guess at text that no longer exists. A
+ * hand-entered set carries no `generatedFrom` and is never stale — the person
+ * wrote it against whatever the entry says now.
+ */
+export async function readWorldAliases(id: string): Promise<{
+    aliases: Record<string, string[]>;
+    stale: number[];
+    generated: Record<string, { from?: string; at?: number; model?: string }>;
+}> {
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        return { aliases: {}, stale: [], generated: {} };
+    }
+
+    const [records, raw] = await Promise.all([
+        readAliases(found.filePath, id),
+        readJsonFile<unknown>(found.filePath, null),
+    ]);
+
+    const contentHashByUid = new Map<number, string>();
+    for (const entry of parseWorldInfoBook(id, raw)) {
+        contentHashByUid.set(entry.uid, String(getStringHash(entry.content)));
+    }
+
+    const aliases: Record<string, string[]> = {};
+    const generated: Record<string, { from?: string; at?: number; model?: string }> = {};
+    const stale: number[] = [];
+
+    for (const [key, record] of Object.entries(records)) {
+        if (record.aliases.length === 0) {
+            continue;
+        }
+        aliases[key] = record.aliases;
+        if (record.generatedFrom !== undefined) {
+            generated[key] = {
+                ...(record.generatedFrom ? { from: record.generatedFrom } : {}),
+                ...(record.generatedAt ? { at: record.generatedAt } : {}),
+                ...(record.generatedWith ? { model: record.generatedWith } : {}),
+            };
+            const current = contentHashByUid.get(Number(key));
+            if (current !== undefined && String(current) !== record.generatedFrom) {
+                stale.push(Number(key));
+            }
+        }
+    }
+
+    return { aliases, stale, generated };
+}
+
+/** Replace one entry's aliases. Rejects a uid the book does not hold. */
+export async function writeWorldAliases(
+    id: string,
+    uid: number,
+    aliases: readonly string[],
+): Promise<{ aliases: string[] }> {
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        throw new Error('World info book not found');
+    }
+
+    const raw = await readJsonFile<unknown>(found.filePath, null);
+    if (!findEntryLocation(raw, uid)) {
+        throw new Error('World info entry not found');
+    }
+
+    const record = await setAliases(found.filePath, id, uid, aliases);
+    return { aliases: record?.aliases ?? [] };
+}
+
+/**
+ * Write the rows a review sheet accepted.
+ *
+ * Batch rather than one route call per row: a hundred-entry book would otherwise
+ * be a hundred round trips, and a half-written sidecar with no record of what
+ * stopped halfway. Each row carries its own provenance — the content hash the
+ * run generated it against — so an entry edited between the run and the apply
+ * is stored as stale rather than as fresh.
+ */
+export async function applyWorldAliases(
+    id: string,
+    rows: readonly { uid: number; aliases: string[] }[],
+    generatedFrom: ReadonlyMap<number, string> = new Map(),
+    /** The model the run used, recorded beside each row it produced. */
+    model = '',
+): Promise<{ updated: number; kept: number }> {
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        throw new Error('World info book not found');
+    }
+
+    const raw = await readJsonFile<unknown>(found.filePath, null);
+    const known = new Set(readEntriesForEditor(raw).map((entry) => entry.uid));
+
+    let updated = 0;
+    let kept = 0;
+    for (const row of rows) {
+        if (!known.has(row.uid)) {
+            // The entry was deleted between the run and the apply. Skipping it
+            // is the only sane answer; failing the whole batch is not.
+            kept += 1;
+            continue;
+        }
+        const from = generatedFrom.get(row.uid);
+        if (from) {
+            await setGeneratedAliases(found.filePath, id, row.uid, row.aliases, from, model);
+        } else {
+            await setAliases(found.filePath, id, row.uid, row.aliases);
+        }
+        updated += 1;
+    }
+
+    return { updated, kept };
+}
+
+/** Remove one entry's aliases. */
+export async function clearWorldAliases(id: string, uid: number): Promise<boolean> {
+    const found = await locateItem('worlds', id, BOOK_EXTENSIONS);
+    if (!found) {
+        throw new Error('World info book not found');
+    }
+    return deleteAliases(found.filePath, id, uid);
 }

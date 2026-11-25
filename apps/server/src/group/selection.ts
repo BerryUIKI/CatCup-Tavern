@@ -38,6 +38,16 @@ export interface SelectGroupSpeakerInput {
     isUserInput?: boolean;
     /** Explicit member file name, id or name. */
     speaker?: string | null;
+    /**
+     * Members the person is playing, so the model must never speak as them.
+     *
+     * Avatar file names. Excluded from every strategy below rather than adding
+     * a fourth one: "the player plays this character" is not a way of choosing a
+     * speaker, it is a constraint on who may be chosen. An explicit `speaker`
+     * naming a played member is ignored for the same reason — the alternative is
+     * a model writing the person's own lines.
+     */
+    playedMembers?: readonly string[];
     /** Injectable for deterministic tests. */
     random?: () => number;
 }
@@ -131,11 +141,21 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
         return null;
     }
 
+    // Played members are present in the prompt but never speak. When every
+    // enabled member is played there is nobody left to choose, and returning
+    // `null` is honest — the caller reports it rather than the model writing
+    // the person's own dialogue.
+    const played = new Set(input.playedMembers ?? []);
+    const speakers = played.size > 0 ? enabled.filter((member) => !played.has(member.fileName)) : enabled;
+    if (speakers.length === 0) {
+        return null;
+    }
+
     const isUserInput = input.isUserInput ?? input.action === 'send';
 
     const explicit = input.speaker?.trim().toLowerCase();
     if (explicit) {
-        const match = enabled.find(
+        const match = speakers.find(
             (member) =>
                 member.fileName.toLowerCase() === explicit ||
                 member.id.toLowerCase() === explicit ||
@@ -151,7 +171,7 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
     // Regenerate and continue rewrite the same member's message, as ST's
     // `activateSwipe` does.
     if (input.action !== 'send' && current) {
-        const match = enabled.find((member) => member.fileName === current);
+        const match = speakers.find((member) => member.fileName === current);
         if (match) {
             return { speaker: match, reason: 'current' };
         }
@@ -161,16 +181,16 @@ export function selectGroupSpeaker(input: SelectGroupSpeakerInput): GroupSpeaker
         case 2: {
             // Manual groups: the client picks the speaker. Falling back to the
             // first member keeps an API caller without a pick from failing.
-            return { speaker: enabled[0] as GroupSpeaker, reason: 'manual' };
+            return { speaker: speakers[0] as GroupSpeaker, reason: 'manual' };
         }
         case 1: {
-            return { speaker: nextAfter(enabled, current), reason: 'list' };
+            return { speaker: nextAfter(speakers, current), reason: 'list' };
         }
         case 3: {
-            return { speaker: selectPooled(enabled, input, isUserInput), reason: 'pooled' };
+            return { speaker: selectPooled(speakers, input, isUserInput), reason: 'pooled' };
         }
         default: {
-            return selectNatural(enabled, input, current, isUserInput);
+            return selectNatural(speakers, input, current, isUserInput);
         }
     }
 }

@@ -1,3 +1,6 @@
+// Written for CatCup. Asking the active model for an image prompt, and
+// cleaning up what comes back.
+
 import {
     type ChatMessage,
     DEFAULT_IMAGE_PROMPT_TEMPLATE,

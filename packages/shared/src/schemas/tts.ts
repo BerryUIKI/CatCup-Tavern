@@ -1,3 +1,5 @@
+// Written for CatCup. The text-to-speech settings model and its defaults.
+
 import { z } from 'zod';
 
 /**

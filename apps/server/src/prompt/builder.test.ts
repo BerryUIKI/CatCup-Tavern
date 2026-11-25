@@ -1,3 +1,4 @@
+import type { WorldInfoPrompt } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -7,8 +8,6 @@ import {
     type PromptOrderEntry,
 } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
-
-import type { WorldInfoPrompt } from '../worldinfo/types.js';
 import { buildPrompt } from './builder.js';
 import { substituteMacros } from './macros.js';
 import type { PromptSettings } from './manager.js';
@@ -113,7 +112,7 @@ describe('prompt assembly', () => {
         const result = buildPrompt({ character, messages: history, persona, settings });
 
         expect(result.messages.map((message) => message.content)).toEqual([
-            "Write Seraphina's next reply in a fictional chat between Seraphina and Alex.",
+            'Continue the scene as Seraphina, replying to Alex in a fictional chat. Stay in character and in the scene.',
             'A curious traveler.',
             'A guardian of Eldoria.',
             'Kind and watchful.',
@@ -160,10 +159,10 @@ describe('prompt assembly', () => {
 
         const last = result.messages[result.messages.length - 1];
         expect(last?.role).toBe('system');
-        expect(last?.content).toContain('from the point of view of Alex');
+        expect(last?.content).toContain('Reply as Alex');
 
         const normal = buildPrompt({ character, messages: history, persona, settings });
-        expect(normal.messages.some((message) => message.content.includes('from the point of view of'))).toBe(false);
+        expect(normal.messages.some((message) => message.content.includes('Reply as '))).toBe(false);
     });
 
     it('places world info in its own slots', () => {
@@ -202,7 +201,7 @@ describe('prompt assembly', () => {
         const result = buildPrompt({ character: withMain, messages: [], persona, settings });
 
         expect(result.messages[0]?.content).toBe(
-            "Card prompt. Write Seraphina's next reply in a fictional chat between Seraphina and Alex.",
+            'Card prompt. Continue the scene as Seraphina, replying to Alex in a fictional chat. Stay in character and in the scene.',
         );
     });
 
@@ -360,7 +359,7 @@ describe('prompt assembly', () => {
         const result = buildPrompt({ character, messages: history, persona, settings, generationType: 'continue' });
 
         expect(result.messages[result.messages.length - 1]?.content).toBe(
-            '[Continue your last message without repeating its original content.]',
+            '[Keep going from where that reply stopped. Do not repeat what it already said.]',
         );
     });
 
@@ -389,7 +388,7 @@ describe('prompt assembly', () => {
         const squashed = buildPrompt({ character, messages: [], persona, settings, squashSystemMessages: true });
 
         expect(squashed.messages.length).toBeLessThan(separate.messages.length);
-        expect(squashed.messages[0]?.content).toContain("Write Seraphina's next reply");
+        expect(squashed.messages[0]?.content).toContain('Continue the scene as Seraphina');
         expect(squashed.messages[0]?.content).toContain('A guardian of Eldoria.');
     });
 });

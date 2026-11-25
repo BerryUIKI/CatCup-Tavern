@@ -46,6 +46,14 @@ export interface ImportResult {
     errors: string[];
     /** Chats whose character was not imported, reported rather than guessed at. */
     skippedChats: string[];
+    /**
+     * The ids of the books this import created.
+     *
+     * Reported so the caller can offer to generate their aliases, which is worth
+     * most the moment a book arrives — the person is thinking about that book
+     * then, and will not remember a button three weeks later.
+     */
+    worldIds: string[];
 }
 
 async function listFiles(directory: string, extensions: readonly string[]): Promise<string[]> {
@@ -157,6 +165,7 @@ export async function importSillyTavern(root: string): Promise<ImportResult> {
     const errors = [...plan.errors];
     const skippedChats: string[] = [];
     const imported = { characters: 0, chats: 0, worlds: 0, presets: 0 };
+    const worldIds: string[] = [];
 
     // Characters first: chats are attached to them by name.
     const byName = new Map<string, Awaited<ReturnType<typeof importCharacter>>>();
@@ -212,7 +221,8 @@ export async function importSillyTavern(root: string): Promise<ImportResult> {
             if (!isRecord(book)) {
                 throw new Error('not a JSON object');
             }
-            await createWorld({ fileName: path.basename(filePath), book });
+            const world = await createWorld({ fileName: path.basename(filePath), book });
+            worldIds.push(world.id);
             imported.worlds += 1;
         } catch (error) {
             errors.push(`${path.basename(filePath)}: ${error instanceof Error ? error.message : 'failed'}`);
@@ -239,5 +249,5 @@ export async function importSillyTavern(root: string): Promise<ImportResult> {
         }
     }
 
-    return { imported, errors, skippedChats };
+    return { imported, errors, skippedChats, worldIds };
 }

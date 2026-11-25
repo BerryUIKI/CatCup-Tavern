@@ -1,18 +1,25 @@
+// Written for CatCup. Reading and writing the CharX container: a ZIP holding a
+// V3 card, an icon and an `assets/` tree.
+
+import { mutateCardPayload, normalizeCard, type ParsedCard } from '@catcup/compat-st';
 import { isRecord } from '@catcup/shared';
 import { strFromU8, strToU8, unzipSync, type Zippable, zipSync } from 'fflate';
-
 import { safeFileName } from '../storage/paths.js';
-import { normalizeCard, type ParsedCard } from './parse.js';
-import { mutateCardPayload } from './write.js';
 
 /**
- * CharX package support.
+ * CharX packages.
  *
- * CharX is RisuAI's character archive: a ZIP with `card.json` in Character
- * Card V3 shape, images and other assets under `assets/`, and optionally a
- * `module.risum` bundle of Risu scripts. CatCup imports the card, uses a PNG
- * icon as the character image, and keeps every asset so a CharX export can
- * round-trip. Risu modules are not imported: CatCup cannot execute them.
+ * The container is a specification this app implements, not one it adapted: a
+ * ZIP with `card.json` in Character Card V3 shape, images and other files under
+ * `assets/`, and optionally a `module.risum` bundle of Risu scripts. CatCup
+ * imports the card, uses a PNG icon as the character image, and keeps every
+ * asset so an export can put the same entries back. A `module.risum` is not
+ * imported — CatCup cannot execute one, and carrying it silently would promise
+ * a behaviour this app does not have.
+ *
+ * The limits below are not tuning: a ZIP's own header is the only thing that
+ * says how big its contents claim to be, so every check runs on the bytes that
+ * actually arrived, after extraction and again per entry.
  */
 
 const MAX_ENTRIES = 200;

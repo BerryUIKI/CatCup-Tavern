@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="{{lang}}" dir="{{dir}}">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{{meta.title}}</title>
+        <meta name="description" content="{{meta.description}}" />
+        <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#0d0a08" />
+        <link rel="canonical" href="{{canonical}}" />
+        <link rel="alternate" hreflang="x-default" href="{{siteUrl}}/" />
+        {{#alternates}}
+        <link rel="alternate" hreflang="{{code}}" href="{{url}}" />
+        {{/alternates}}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="CatCup Tavern" />
+        <meta property="og:title" content="{{meta.title}}" />
+        <meta property="og:description" content="{{meta.description}}" />
+        <meta property="og:url" content="{{canonical}}" />
+        <meta property="og:image" content="{{siteUrl}}/assets/og.png" />
+        <meta property="og:image:width" content="1280" />
+        <meta property="og:image:height" content="640" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="{{meta.title}}" />
+        <meta name="twitter:description" content="{{meta.description}}" />
+        <meta name="twitter:image" content="{{siteUrl}}/assets/og.png" />
+        <link rel="icon" href="{{root}}assets/catcup-icon.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="{{root}}assets/catcup-icon.png" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="{{root}}styles.css" />
+        <script type="application/ld+json">{{{jsonld}}}</script>
+        <script src="{{root}}main.js" defer></script>
+    </head>
+    <body>
+        <a class="skip-link" href="#main">{{a11y.skip}}</a>
+
+        <header class="site-header">
+            <div class="col header-inner">
+                <a class="brand" href="{{root}}#top">
+                    <img src="{{root}}assets/catcup-icon.svg" alt="" width="30" height="30" />
+                    <span>CatCup Tavern</span>
+                </a>
+                <nav class="site-nav" id="site-nav" aria-label="Primary">
+                    <a href="#chat">{{nav.chat}}</a>
+                    <a href="#lorebooks">{{nav.lorebooks}}</a>
+                    <a href="#install">{{nav.install}}</a>
+                    <a href="{{docsUrl}}">{{nav.docs}}</a>
+                </nav>
+                <div class="header-right">
+                    <div class="lang-menu">
+                        <button
+                            type="button"
+                            class="lang-button"
+                            id="lang-button"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="lang-list"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" />
+                                <path
+                                    d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9Z"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.6"
+                                />
+                            </svg>
+                            <span>{{langName}}</span>
+                        </button>
+                        <ul class="lang-list" id="lang-list" role="listbox" aria-labelledby="lang-button" hidden>
+                            {{#languages}}
+                            <li role="none">
+                                <a
+                                    role="option"
+                                    href="{{url}}"
+                                    hreflang="{{code}}"
+                                    lang="{{code}}"
+                                    aria-selected="{{selected}}"
+                                    >{{name}}</a
+                                >
+                            </li>
+                            {{/languages}}
+                        </ul>
+                    </div>
+                    <a class="button button-small" href="{{releaseUrl}}">{{nav.download}}</a>
+                </div>
+            </div>
+        </header>
+
+        <main id="main">
+            <section class="hero" id="top">
+                <div class="col hero-grid">
+                    <div class="hero-copy">
+                        <h1>{{hero.title}}</h1>
+                        <p class="lede">{{hero.lede}}</p>
+                        <div class="cta-row">
+                            <a class="button" href="{{releaseUrl}}">{{hero.download}}</a>
+                            <a class="link-strong" href="{{docsUrl}}">{{hero.docs}}</a>
+                        </div>
+                        <p class="meta-line">{{hero.meta}}</p>
+                    </div>
+
+                    <div class="hero-demo">
+                        <div class="shapes">
+                            <div class="shape-tabs" role="tablist" aria-label="{{a11y.shape}}">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-browser"
+                                    aria-controls="window"
+                                    aria-selected="true"
+                                    data-shape="browser"
+                                >
+                                    {{shapes.browser}}
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-lan"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="lan"
+                                >
+                                    {{shapes.lan}}
+                                </button>
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    id="shape-windows"
+                                    aria-controls="window"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                    data-shape="windows"
+                                >
+                                    {{shapes.windows}}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="window" id="window" role="tabpanel" aria-labelledby="shape-browser" data-shape="browser">
+                            <div class="chrome" aria-hidden="true">
+                                <div class="chrome-dots"><i></i><i></i><i></i></div>
+                                <div class="chrome-address">
+                                    <span class="chrome-url" data-url-browser="{{shapes.browserAddress}}">
+                                        {{shapes.browserAddress}}
+                                    </span>
+                                    <span class="chrome-lan-note">{{shapes.lanNote}}</span>
+                                </div>
+                                <div class="chrome-win">
+                                    <span>{{shapes.windowsTitle}}</span>
+                                    <span class="win-buttons"><i>—</i><i>▢</i><i class="win-close">✕</i></span>
+                                </div>
+                            </div>
+
+                            <div class="app">
+                                <aside class="rail" aria-label="Library">
+                                    <div class="rail-brand">
+                                        <span class="rail-name">CatCup Tavern</span>
+                                        <span class="rail-tag">{{brand.tagline}}</span>
+                                    </div>
+                                    <div class="rail-tabs">
+                                        <span class="on">{{demo.characters}}</span>
+                                        <span>{{demo.groups}}</span>
+                                    </div>
+                                    <div class="rail-search">{{demo.search}}</div>
+                                    <div class="rail-row on">
+                                        <span class="avatar">{{demo.characterInitials}}</span>
+                                        <span class="rail-row-text">
+                                            <span class="rail-row-name">Mira</span>
+                                            <span class="rail-row-sub">{{demo.characterSubtitle}}</span>
+                                        </span>
+                                    </div>
+                                    <div class="rail-foot">
+                                        <span class="rail-foot-row">{{demo.profile}}</span>
+                                        <span class="rail-foot-row provider">{{demo.provider}}</span>
+                                    </div>
+                                </aside>
+
+                                <div class="pane">
+                                    <header class="pane-head">
+                                        <span class="avatar small">{{demo.characterInitials}}</span>
+                                        <span class="pane-head-id">
+                                            <span class="pane-head-name">Mira</span>
+                                            <span class="pane-head-sub">{{demo.characterSubtitle}}</span>
+                                        </span>
+                                        <span class="chip">{{demo.chatSelect}}</span>
+                                    </header>
+
+                                    <div
+                                        class="transcript"
+                                        id="transcript"
+                                        aria-live="polite"
+                                        aria-label="{{a11y.transcript}}"
+                                    >
+                                        <div class="messages" id="messages"></div>
+                                        <div class="transcript-empty" id="transcript-empty" hidden>
+                                            {{demo.empty}}
+                                        </div>
+                                        <div class="transcript-end" id="transcript-end">
+                                            <button type="button" class="demo-again" id="demo-again" hidden>
+                                                {{hero.startOver}}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <form class="composer" id="composer" autocomplete="off">
+                                        <div class="composer-shell">
+                                            <label class="sr-only" for="composer-input">Message</label>
+                                            <textarea
+                                                id="composer-input"
+                                                rows="1"
+                                                placeholder="{{demo.placeholder}}"
+                                                aria-label="Message"
+                                            ></textarea>
+                                            <button
+                                                type="button"
+                                                class="impersonate"
+                                                title="{{demo.impersonate}}"
+                                                aria-label="{{demo.impersonate}}"
+                                            >
+                                                <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                                                    <path
+                                                        d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.7"
+                                                        stroke-linecap="round"
+                                                        stroke-linejoin="round"
+                                                    />
+                                                </svg>
+                                            </button>
+                                            <button type="submit" class="send" id="send">{{demo.send}}</button>
+                                            <button type="button" class="stop" id="stop" hidden>{{demo.stop}}</button>
+                                        </div>
+                                        <div class="composer-hints">
+                                            <span>{{demo.hints}}</span>
+                                            <span class="composer-disclaimer">{{demo.disclaimer}}</span>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="demo-note">{{hero.demoNote}}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="band" id="data">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>{{data.heading}}</h2>
+                        <p>{{data.body}}</p>
+                        <pre class="tree">{{#data.tree}}{{.}}
+{{/data.tree}}</pre>
+                        <p class="note">{{data.note}}</p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="lorebooks">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">data/</span></div>
+                    <div class="split-body">
+                        <h2>{{features.heading}}</h2>
+                        <ul class="ledger">
+                            {{#features.rows}}
+                            <li class="ledger-row" id="row-{{index}}">
+                                <span class="ledger-path mono">{{path}}</span>
+                                <span class="ledger-text">
+                                    <span class="ledger-name">{{name}}</span>
+                                    <span class="ledger-desc">{{desc}}</span>
+                                </span>
+                                <span class="status status-{{status}}">{{statusWord}}</span>
+                            </li>
+                            {{/features.rows}}
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section" id="chat">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">1 → 5</span></div>
+                    <div class="split-body">
+                        <h2>{{pipeline.heading}}</h2>
+                        <ol class="pipeline">
+                            {{#pipeline.steps}}
+                            <li>
+                                <span class="pipe-name">{{name}}</span>
+                                <span class="pipe-desc">{{desc}}</span>
+                            </li>
+                            {{/pipeline.steps}}
+                        </ol>
+                        <figure class="shot shot-inspector">
+                            <img
+                                src="{{root}}assets/context-inspector.jpg"
+                                alt="{{pipeline.caption}}"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                            <figcaption>{{pipeline.caption}}</figcaption>
+                        </figure>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section limits" id="limits">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono wine">—</span></div>
+                    <div class="split-body">
+                        <h2>{{limits.heading}}</h2>
+                        <p>{{limits.intro}}</p>
+                        <ul class="plain-list">
+                            {{#limits.items}}
+                            <li>{{.}}</li>
+                            {{/limits.items}}
+                        </ul>
+                        <p class="note">
+                            {{limits.more}}
+                            <a href="{{limitationsUrl}}">{{limits.limitationsLink}}</a> ·
+                            <a href="{{compatUrl}}">{{limits.compatLink}}</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section install" id="install">
+                <div class="col split">
+                    <div class="rail-label"><span class="mono">install</span></div>
+                    <div class="split-body">
+                        <h2>{{install.heading}}</h2>
+                        <div class="install-rows">
+                            <div class="install-row">
+                                <h3>{{install.rows.0.name}}</h3>
+                                <p>{{install.rows.0.desc}}</p>
+                                <div class="download-links">
+                                    <a class="button button-small" href="{{releaseUrl}}">
+                                        {{install.rows.0.link}}
+                                    </a>
+                                    <span class="note">{{install.direct}}</span>
+                                </div>
+                                <p class="file-line mono">
+                                    CatCup.Tavern_{{version}}_x64-setup.exe ·
+                                    <a href="{{releasesUrl}}">{{install.allReleases}}</a>
+                                </p>
+                            </div>
+                            <div class="install-row">
+                                <h3>{{install.rows.1.name}}</h3>
+                                <p>{{install.rows.1.desc}}</p>
+                                <div class="commands">
+                                    <div class="command">
+                                        <code>pnpm install</code>
+                                        <button type="button" class="copy" data-copy="pnpm install">
+                                            {{install.copy}}
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>pnpm dev</code>
+                                        <button type="button" class="copy" data-copy="pnpm dev">
+                                            {{install.copy}}
+                                        </button>
+                                    </div>
+                                    <div class="command">
+                                        <code>CATCUP_HOST=0.0.0.0 pnpm start</code>
+                                        <button
+                                            type="button"
+                                            class="copy"
+                                            data-copy="CATCUP_HOST=0.0.0.0 pnpm start"
+                                        >
+                                            {{install.copy}}
+                                        </button>
+                                    </div>
+                                </div>
+                                <p class="note">{{install.lanNote}} {{install.after}} {{install.tls}}</p>
+                            </div>
+                            <div class="install-row">
+                                <h3>{{install.rows.2.name}}</h3>
+                                <p>{{install.rows.2.desc}}</p>
+                            </div>
+                        </div>
+                        <figure class="shot">
+                            <img
+                                src="{{root}}assets/settings-providers.jpg"
+                                alt="{{features.rows.6.name}}"
+                                width="800"
+                                height="525"
+                                loading="lazy"
+                            />
+                        </figure>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="site-footer">
+            <div class="col footer-inner">
+                <div class="footer-brand">
+                    <img src="{{root}}assets/catcup-icon.svg" alt="" width="26" height="26" />
+                    <span>CatCup Tavern</span>
+                </div>
+                <p class="footer-license">{{footer.license}}</p>
+                <nav class="footer-links" aria-label="Footer">
+                    <a href="{{docsUrl}}">{{footer.docs}}</a>
+                    <a href="{{changelogUrl}}">{{footer.changelog}}</a>
+                    <a href="{{limitationsUrl}}">{{footer.limitations}}</a>
+                    <a href="{{securityUrl}}">{{footer.security}}</a>
+                    <a href="{{licenseUrl}}">{{footer.licenseLink}}</a>
+                    <a href="{{repoUrl}}">{{nav.github}}</a>
+                </nav>
+                <p class="footer-langs">
+                    <span>{{footer.languages}}</span>
+                    {{#languages}}
+                    <a href="{{url}}" hreflang="{{code}}" lang="{{code}}">{{name}}</a>
+                    {{/languages}}
+                </p>
+            </div>
+        </footer>
+
+        <script type="application/json" id="demo-data">{{{demoData}}}</script>
+    </body>
+</html>

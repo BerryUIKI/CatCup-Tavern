@@ -1,3 +1,6 @@
+// Written for CatCup. Quick reply sets on disk: one file per set, named after
+// the set, with the profile and shared scopes layered over each other.
+
 import { readdir, rename } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -24,12 +27,29 @@ import {
 const SET_EXTENSIONS = ['.json'] as const;
 
 /**
- * Quick reply sets live one file per set, named after the set, matching
- * SillyTavern's `data/QuickReplies/<name>.json`. The file id is the file name
- * without `.json`; the set's `name` field is what settings and chats link to.
+ * Quick reply sets on disk.
  *
- * A set marked reusable lives in `data/shared/quickreplies/` instead, and every
- * profile sees it. The profile's own set of the same id wins.
+ * One file per set, named after the set, in `QuickReplies/<name>.json` — the
+ * published layout, which is why a set exported from here opens in the other
+ * clients and theirs opens here. The file's id is the name without `.json`; the
+ * `name` inside is what settings and a chat's `chat_metadata.quickReply` links
+ * refer to, and the two can disagree after a rename, which is why a rename
+ * reports the old name back to the caller.
+ *
+ * A set marked reusable lives in `data/shared/quickreplies/` instead and every
+ * profile sees it. The profile's own set of the same id wins and is the one
+ * marked `shadowed` on the shared copy — one id still addresses one set.
+ *
+ * Three rules run through the file:
+ *
+ * - **A corrupt file still occupies its name.** It is skipped by the listing but
+ *   counted as taken, because creating over it would destroy whatever the person
+ *   had without ever having read it.
+ * - **Unknown fields survive a save.** The card editor learned this the hard way
+ *   and so would this one: a set written by a newer client, opened here and saved
+ *   back, must not lose the fields this version does not know about.
+ * - **Renaming moves the file.** The id *is* the file name, so a rename that only
+ *   wrote new content would leave two files claiming the same set.
  */
 
 /** Absolute path of a quick reply set file in one scope. */

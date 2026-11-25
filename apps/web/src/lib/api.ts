@@ -1,4 +1,6 @@
 import type {
+    AliasEstimate,
+    AliasRun,
     AttachImageRequest,
     AuthPasswordResponse,
     AuthStatus,
@@ -12,6 +14,10 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    DirectorCast,
+    DirectorConfig,
+    DirectorConfigPatch,
+    DirectorView,
     DistillAccepted,
     DistillAcceptInput,
     DistillBookEstimate,
@@ -30,6 +36,8 @@ import type {
     HealthResponse,
     ImageScope,
     ImportCharactersResponse,
+    ImSettings as ImSettingsValue,
+    ImStatusView,
     ItemScope,
     Persona,
     PersonaView,
@@ -54,6 +62,8 @@ import type {
     SharedItemKind,
     SummarizeResponse,
     SummaryRecord,
+    TelegramScanView,
+    WorldAliasView,
     WorldDetail,
     WorldInfoEntryPatch,
     WorldSummary,
@@ -191,6 +201,17 @@ export const api = {
         remove: (id: string) =>
             request<{ settings: SettingsResponse }>(`/personas/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     },
+    imStatus: () => request<{ status: ImStatusView }>('/im/status'),
+    setImToken: (token: string) =>
+        request<{ status: ImStatusView }>('/im/telegram/token', {
+            method: 'PUT',
+            body: JSON.stringify({ token }),
+        }),
+    updateImSettings: (patch: { enabled?: boolean; ownerId?: string; notifyOnReply?: boolean }) =>
+        request<{ settings: ImSettingsValue; status: ImStatusView }>('/im/settings', {
+            method: 'PATCH',
+            body: JSON.stringify(patch),
+        }),
     worlds: {
         list: () => request<{ worlds: WorldSummary[] }>('/worlds'),
         get: (id: string) => request<{ world: WorldDetail }>(`/worlds/${encodeURIComponent(id)}`),
@@ -223,6 +244,40 @@ export const api = {
                 method: 'PUT',
                 body: JSON.stringify({ uids }),
             }),
+        aliases: (id: string) => request<WorldAliasView>(`/worlds/${encodeURIComponent(id)}/aliases`),
+        setAliases: (id: string, uid: number, aliases: string[]) =>
+            request<{ aliases: string[] }>(`/worlds/${encodeURIComponent(id)}/aliases/${uid}`, {
+                method: 'PUT',
+                body: JSON.stringify({ aliases }),
+            }),
+        clearAliases: (id: string, uid: number) =>
+            request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}/aliases/${uid}`, { method: 'DELETE' }),
+        estimateAliases: (id: string, query: { uids?: number[]; includeExisting: boolean }) => {
+            const params = new URLSearchParams({ includeExisting: String(query.includeExisting) });
+            if (query.uids && query.uids.length > 0) {
+                params.set('uids', query.uids.join(','));
+            }
+            return request<{ estimate: AliasEstimate }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/estimate?${params.toString()}`,
+            );
+        },
+        aliasRuns: (id: string) => request<{ runs: AliasRun[] }>(`/worlds/${encodeURIComponent(id)}/aliases/runs`),
+        aliasRun: (id: string, runId: string) =>
+            request<{ run: AliasRun }>(`/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}`),
+        stopAliasRun: (id: string, runId: string) =>
+            request<{ ok: boolean }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}/stop`,
+                { method: 'POST' },
+            ),
+        deleteAliasRun: (id: string, runId: string) =>
+            request<{ ok: boolean }>(`/worlds/${encodeURIComponent(id)}/aliases/runs/${encodeURIComponent(runId)}`, {
+                method: 'DELETE',
+            }),
+        applyAliases: (id: string, runId: string | null, entries: Array<{ uid: number; aliases: string[] }>) =>
+            request<{ updated: number; kept: number }>(
+                `/worlds/${encodeURIComponent(id)}/aliases/apply${runId ? `?runId=${encodeURIComponent(runId)}` : ''}`,
+                { method: 'POST', body: JSON.stringify({ entries }) },
+            ),
         exportUrl: (id: string) => `/api/worlds/${encodeURIComponent(id)}/export`,
     },
     context: {
@@ -304,6 +359,18 @@ export const api = {
         remove: (id: string) => request<{ ok: boolean }>(`/presets/${encodeURIComponent(id)}`, { method: 'DELETE' }),
         exportUrl: (id: string) => `/api/presets/${encodeURIComponent(id)}/export`,
     },
+    /** Scan a Telegram export's text; writes nothing. */
+    scanTelegramExport: (raw: string) =>
+        request<{ scan: TelegramScanView }>('/import/telegram/scan', {
+            method: 'POST',
+            body: JSON.stringify({ raw }),
+        }),
+    /** Write a scanned export as a chat on one character. */
+    importTelegramExport: (raw: string, characterId: string, owner: string) =>
+        request<{ chat: ChatDetail; imported: number }>('/import/telegram', {
+            method: 'POST',
+            body: JSON.stringify({ raw, characterId, owner }),
+        }),
     importFromInstall: (path: string, dryRun: boolean) =>
         request<{ plan: ExistingInstallPlan } | { result: ExistingInstallResult }>('/import/sillytavern', {
             method: 'POST',
@@ -508,6 +575,21 @@ export const api = {
             );
             return data.chat;
         },
+        director: {
+            get: (characterId: string, chatId: string) =>
+                request<DirectorView>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director`,
+                ),
+            save: (characterId: string, chatId: string, patch: DirectorConfigPatch) =>
+                request<{ director: DirectorConfig }>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director`,
+                    { method: 'PATCH', body: JSON.stringify({ director: patch }) },
+                ),
+            cast: (characterId: string, chatId: string) =>
+                request<DirectorCast>(
+                    `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/director/cast`,
+                ),
+        },
         summarize: (characterId: string, chatId: string) =>
             request<SummarizeResponse>(
                 `/chats/${encodeURIComponent(characterId)}/${encodeURIComponent(chatId)}/summarize`,
@@ -587,6 +669,21 @@ export const api = {
                     `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}`,
                     { method: 'DELETE' },
                 ),
+            director: {
+                get: (groupId: string, chatId: string) =>
+                    request<DirectorView>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director`,
+                    ),
+                save: (groupId: string, chatId: string, patch: DirectorConfigPatch) =>
+                    request<{ director: DirectorConfig }>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director`,
+                        { method: 'PATCH', body: JSON.stringify({ director: patch }) },
+                    ),
+                cast: (groupId: string, chatId: string) =>
+                    request<DirectorCast>(
+                        `/groups/${encodeURIComponent(groupId)}/chats/${encodeURIComponent(chatId)}/director/cast`,
+                    ),
+            },
             updateMessage: async (
                 groupId: string,
                 chatId: string,

@@ -1,3 +1,6 @@
+// Written for CatCup against the OpenAI speech API: the `/audio/speech` request,
+// the format-to-content-type mapping and the error surface.
+
 import type { TtsSettings } from '@catcup/shared';
 
 import { HttpError } from '../http/errors.js';

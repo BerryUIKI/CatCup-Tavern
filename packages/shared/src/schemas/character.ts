@@ -1,3 +1,7 @@
+// Implements the Character Card V2/V3 specification. Cards are exchanged as
+// files between clients, so the field names and the wrapper shape are the
+// standard, not any one client's choice.
+
 import { z } from 'zod';
 
 import type { ItemScope } from './shared.js';
@@ -5,12 +9,11 @@ import type { ItemScope } from './shared.js';
 /**
  * Character Card V2/V3 schemas.
  *
- * Field names follow the SillyTavern / Character Card spec so cards can be
- * imported and exported without translation. Unknown fields are preserved via
- * passthrough objects.
+ * Field names follow the Character Card V2/V3 specification so cards import and
+ * export without translation. Unknown fields are preserved via passthrough
+ * objects.
  *
- * Derived from the Character Card V2/V3 specification used by SillyTavern.
- * @see https://github.com/SillyTavern/SillyTavern
+ * @see https://github.com/malfoyslastname/character-card-spec-v2
  */
 
 export const characterBookEntrySchema = z

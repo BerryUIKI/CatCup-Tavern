@@ -1,6 +1,5 @@
+import { createTokenCounter } from '@catcup/compat-st';
 import type { DistillBookEstimate, ProviderKind } from '@catcup/shared';
-
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { readBookSections } from '../storage/books.js';
 import { getActiveProvider, getSettings } from '../storage/settings.js';
 import { chunkBook, chunkBudget } from './chunk.js';

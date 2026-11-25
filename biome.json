@@ -6,7 +6,15 @@
         "useIgnoreFile": true
     },
     "files": {
-        "includes": ["**", "!**/dist", "!**/.ref", "!**/data", "!apps/server/assets"]
+        "includes": [
+            "**",
+            "!**/dist",
+            "!**/.ref",
+            "!**/data",
+            "!apps/server/assets",
+            "!site/template.html",
+            "!**/settings.local.json"
+        ]
     },
     "formatter": {
         "enabled": true,
@@ -17,7 +25,10 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "preset": "recommended"
+            "preset": "recommended",
+            "complexity": {
+                "noImportantStyles": "off"
+            }
         }
     },
     "css": {

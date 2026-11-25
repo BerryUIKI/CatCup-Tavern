@@ -237,6 +237,76 @@ describe('buildSummaryRequest', () => {
         expect(request.transcriptMessages).toBe(2);
     });
 
+    it('withholds the previous summary when summaries are append-only', () => {
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ appendOnly: true }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
+
+        // The previous summary is what makes the default chain destructive:
+        // asked to fold it forward under a word limit, the model drops
+        // whatever does not fit and the loss is permanent. Withholding it asks
+        // for the new range alone.
+        expect(request.prompt[1]?.content).toBe('Alex:\nHello.\n\nSeraphina:\nYou came.');
+
+        // The transcript still starts after the latest summary, so the two
+        // messages already covered are not summarized a second time.
+        expect(request.lastUsedIndex).toBe(2);
+        expect(request.transcriptMessages).toBe(2);
+    });
+
+    it('swaps the stock prompt for the append-only one, and leaves a custom prompt alone', () => {
+        const stock = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ appendOnly: true }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
+        // "Use that as a base and expand" is an instruction about text the
+        // model was never given, so the stock prompt is replaced.
+        expect(stock.prompt[0]?.content).not.toContain('use that as a base');
+        expect(stock.prompt[0]?.content).toContain('200 words');
+
+        const custom = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ appendOnly: true, prompt: 'Write a chronicle in {{words}} words.' }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
+        // A prompt the person wrote is theirs to shape; it is sent as written.
+        expect(custom.prompt[0]?.content).toBe('Write a chronicle in 200 words.');
+    });
+
+    it('still carries the previous summary when append-only is off', () => {
+        // The default must stay byte-identical to what SillyTavern produces.
+        const request = requestOf(
+            buildSummaryRequest({
+                messages,
+                character,
+                persona,
+                memory: memory({ appendOnly: false }),
+                generation,
+                countTokens: countChars,
+            }),
+        );
+
+        expect(request.prompt[1]?.content).toContain('They met at the gate.');
+    });
+
     it('expands macros and the target length in the prompt', () => {
         const request = requestOf(
             buildSummaryRequest({

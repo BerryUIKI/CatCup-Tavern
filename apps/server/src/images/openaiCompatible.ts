@@ -1,3 +1,6 @@
+// Written for CatCup against the OpenAI images API: the `/images/generations`
+// body, the size mapping and both response shapes (base64 and URL).
+
 import type { ImageGenerationSettings } from '@catcup/shared';
 import { isRecord } from '@catcup/shared';
 

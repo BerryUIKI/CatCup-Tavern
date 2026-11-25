@@ -1,0 +1,44 @@
+name: Pages
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "site/**"
+            - "scripts/build-site.mjs"
+            - ".github/workflows/pages.yml"
+    workflow_dispatch:
+
+concurrency:
+    group: pages
+    cancel-in-progress: true
+
+permissions:
+    contents: write
+
+jobs:
+    deploy:
+        name: Build and publish the landing site
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - name: Check out
+              uses: actions/checkout@v7
+
+            - name: Set up Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 24
+
+            # The build has no dependencies; it fails on a locale that is
+            # missing a key or leaves a placeholder behind.
+            - name: Build every locale
+              run: node scripts/build-site.mjs
+
+            - name: Publish to gh-pages
+              uses: peaceiris/actions-gh-pages@v4
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./site/dist
+                  publish_branch: gh-pages
+                  force_orphan: false

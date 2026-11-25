@@ -1,18 +1,19 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. When a summary is due, which messages it covers, and the
+// request that produces it. The stored shape — one summary per covered message
+// on `extra.memory` — is the chat format and does not change here.
 
+import { RESERVED_TOKENS } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
+    DEFAULT_APPEND_ONLY_MEMORY_PROMPT,
+    DEFAULT_MEMORY_PROMPT,
     type GenerationSettings,
     getLatestSummary,
     type MemorySettings,
     type PersonaSettings,
     substituteMacros,
 } from '@catcup/shared';
-
-import { RESERVED_TOKENS } from '../prompt/definitions.js';
 import { createMacroContext, type GroupMacroMembers } from '../prompt/worldInfoTurn.js';
 import type { PromptMessage } from '../providers/types.js';
 
@@ -24,7 +25,13 @@ const REQUEST_OVERHEAD = MESSAGE_OVERHEAD * 2;
 
 const WORD_PATTERN = /\b\w+\b/g;
 
-/** Count words the way SillyTavern's `extractAllWords` does. */
+/**
+ * Count words as runs of word characters.
+ *
+ * This is the unit `promptForceWords` is expressed in, so it has to stay
+ * stable: a change here silently moves the threshold for every chat that has
+ * auto-summary on.
+ */
 export function countWords(text: string): number {
     return (text.match(WORD_PATTERN) ?? []).length;
 }
@@ -58,11 +65,20 @@ export function summaryProgress(messages: readonly ChatMessage[]): SummaryProgre
 }
 
 /**
- * Whether a new reply should trigger an automatic summary.
+ * Whether a reply should trigger an automatic summary.
  *
- * The newest message is never part of a summary request (SillyTavern excludes
- * it so the summary covers settled history), so this also requires at least
- * one earlier message to summarize.
+ * Four conditions, and each one exists to stop a specific failure:
+ *
+ * - The feature is off, or both triggers are disabled — nothing to do.
+ * - Fewer than two messages — there is no settled history yet. A summary always
+ *   covers history *before* the newest message, so one message cannot be
+ *   summarized without the summary describing the reply it just answered.
+ * - Nothing since the last summary — every system message is skipped and an
+ *   empty message carries nothing, so re-summarizing would ask the model to
+ *   summarize silence and pay for the answer.
+ *
+ * Either trigger firing is enough: the interval counts every new message, and
+ * the word threshold counts only their words.
  */
 export function shouldAutoSummarize(
     messages: readonly ChatMessage[],
@@ -179,18 +195,48 @@ export interface SummaryRequest {
 export type SummaryRequestResult = { request: SummaryRequest } | { reason: string };
 
 /**
- * Build one summary request: the summarize instruction as a system message and
- * the previous summary plus the new transcript as the user message.
+ * Build one summary request: the instruction as a system message, and the
+ * carried summary plus the new transcript as the user message.
  *
- * This mirrors SillyTavern's raw prompt builders rather than its default quiet
- * prompt, so the summary request stays independent of the active preset, world
- * info and regex scripts.
+ * The request is built here rather than through the prompt assembler on
+ * purpose. A summary must not be shaped by the active preset, the world info
+ * scan or the regex scripts: it is a maintenance call about the chat, and
+ * letting a jailbreak prompt or a lorebook entry into it would make the
+ * summary depend on scene state it is supposed to stand outside of.
  */
 export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestResult {
     const latest = getLatestSummary(input.messages);
     const maxTokens = input.memory.responseLength > 0 ? input.memory.responseLength : input.generation.maxTokens;
+
+    /**
+     * In append-only mode the previous summary is deliberately withheld.
+     *
+     * Handing it back is what makes the default chain destructive: the model is
+     * asked to fold an unbounded history into a fixed word budget, so whatever
+     * does not fit is gone for good. Withholding it asks for the new range
+     * alone, which is also what makes the result a stable unit an index could
+     * later consume.
+     *
+     * The transcript still starts after the latest summary, so nothing is
+     * summarized twice — only the previous summary's *text* stops being an
+     * input.
+     */
+    const carried = input.memory.appendOnly ? '' : (latest?.value ?? '');
+
+    /**
+     * The stock prompt tells the model to "use that as a base and expand",
+     * which is incoherent when nothing is carried. A prompt still holding that
+     * instruction is swapped for the append-only default rather than sent as
+     * an instruction about text the model was not given; a prompt the person
+     * wrote themselves is sent as written, since it is theirs to shape.
+     */
+    const prompt =
+        input.memory.appendOnly && input.memory.prompt === DEFAULT_MEMORY_PROMPT
+            ? DEFAULT_APPEND_ONLY_MEMORY_PROMPT
+            : input.memory.prompt;
+
     const macroContext = createMacroContext(input.character, input.persona, input.group, latest?.value);
-    const summaryPrompt = substituteMacros(input.memory.prompt, {
+    const summaryPrompt = substituteMacros(prompt, {
         ...macroContext,
         words: input.memory.promptWords,
     });
@@ -198,7 +244,7 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestR
         return { reason: 'The summary prompt is empty.' };
     }
 
-    const fixed = input.countTokens(summaryPrompt) + input.countTokens(latest?.value ?? '') + REQUEST_OVERHEAD;
+    const fixed = input.countTokens(summaryPrompt) + input.countTokens(carried) + REQUEST_OVERHEAD;
     const budget = input.generation.contextSize - maxTokens - RESERVED_TOKENS - fixed;
     if (budget <= 0) {
         return { reason: 'The context budget leaves no room for a summary request.' };
@@ -215,7 +261,7 @@ export function buildSummaryRequest(input: SummaryRequestInput): SummaryRequestR
         return { reason: 'No new messages to summarize.' };
     }
 
-    const userContent = [latest?.value ?? '', transcript.text].filter(Boolean).join('\n\n');
+    const userContent = [carried, transcript.text].filter(Boolean).join('\n\n');
 
     return {
         request: {

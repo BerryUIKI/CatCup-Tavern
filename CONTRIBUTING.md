@@ -9,16 +9,27 @@ Thanks for helping build CatCup Tavern. The project is English-first and AGPL-3.
 - For a feature, keep it inside the current milestone unless the scope is explicitly changed.
 - Never commit `data/`, `.ref/`, API keys, cookies or private chat content.
 
-## GitFlow
+## Trunk-based development
 
-- `main` is the release baseline. It only ever receives merges from `dev` (releases) or from `hotfix/*` (emergencies).
-- `dev` is the integration branch. Every feature lands here first.
-- Create working branches from `dev` and target `dev` in pull requests.
-- Use merge commits (not squash) when merging PRs so stacked branches keep clean diffs and history stays reconstructible.
-- Cut `release/<version>` from `dev` only when a release needs stabilising commits; otherwise promote `dev` directly.
-- Cut `hotfix/<version>` from `main` for a fix that cannot wait for the next release, then merge it back into both `main` and `dev`.
+`main` is the trunk and the only long-lived branch. There is no integration
+branch: a change is ready when its PR is ready, and it goes straight onto `main`.
 
-Branch names should be short and scoped:
+- **Branch from `main`, target `main`.** Short-lived branches only — hours to a
+  couple of days. If a branch would live a week, split the work into PRs that
+  each land on their own; a long branch is a merge conflict with a name.
+- **Squash merge.** One PR becomes one commit on `main`. The trunk stays linear,
+  `git log main` is a readable history of what changed, and reverting a change is
+  reverting one commit.
+- **Rebase on `main`, do not merge it back in.** A merge commit from `main` into
+  a working branch puts the trunk's history into the branch and then squash
+  discards it anyway.
+- **Delete the branch after it merges**, locally and on the remote. `git branch
+  --merged main` and `git branch -r --merged origin/main` should stay short.
+- **Keep `main` releasable at all times.** That is the point of the model: a
+  release can be cut from any commit on `main`, not only from a stabilised
+  branch. CI runs on every push for that reason.
+
+Branch names stay short and scoped:
 
 ```text
 feat/world-info
@@ -26,40 +37,49 @@ feat/prompt-manager
 fix/chat-swipe
 docs/milestones
 ci/release-workflow
-release/0.3.0
-hotfix/0.2.2
 ```
 
-Prefixes in use: `feat/`, `fix/`, `docs/`, `ci/`, `chore/`, `release/`, `hotfix/`. No long descriptive branch names are required; the PR title carries the detail.
+Prefixes in use: `feat/`, `fix/`, `docs/`, `ci/`, `chore/`. No long descriptive
+branch names are required; the PR title carries the detail.
 
 ### Branch protection
 
-`main` and `dev` are both protected on GitHub:
+`main` is protected on GitHub:
 
-| Rule                                   | `main`                            | `dev`                             |
-| -------------------------------------- | --------------------------------- | --------------------------------- |
-| Pull request required                  | yes                               | yes                               |
-| Required status check                  | `Typecheck, lint, test and build` | `Typecheck, lint, test and build` |
-| Branch must be up to date before merge | yes                               | no                                |
-| Force push / branch deletion           | blocked                           | blocked                           |
-| Rules apply to admins                  | yes                               | no                                |
+| Rule                                   | `main`                            |
+| -------------------------------------- | --------------------------------- |
+| Pull request required                  | yes                               |
+| Required status check                  | `Typecheck, lint, test and build` |
+| Branch must be up to date before merge | yes                               |
+| Force push / branch deletion           | blocked                           |
+| Rules apply to admins                  | yes                               |
 
-`main` additionally requires the branch to be current with its base before merging, because a release build is cut from it. The maintainer keeps an admin override on `dev` for merging stacked PRs in order; a normal contributor still has to pass CI and open a PR.
-
-### Merging a working branch
-
-After the PR merges, delete the branch — locally and on the remote. Do not keep merged branches around; `git branch --merged dev` and `git branch -r --merged origin/dev` should stay short. Branches that were never merged must not be deleted without asking the maintainer.
+Up-to-date-before-merge is required because a release can be cut from any commit
+on the trunk, and a green check on a stale branch says nothing about the commit
+that would actually land. The cost is that a PR needs a rebase rather than a
+merge when another lands first; with short branches that is a small rebase.
 
 ### Stacked PRs
 
-If a change depends on another open PR, branch from the dependency and target `dev`. Note the stack in the PR body. Merge the base PR first with a merge commit; the stacked PR's diff then shrinks to its own changes.
+Trunk-based development prefers a stack to a long branch. If a change genuinely
+depends on an open PR, branch from that PR's branch, note the stack in both
+bodies, and merge the base first. The stacked PR then targets `main` too, and its
+diff shrinks to its own changes once the base lands. A stack three deep is a
+signal the work should have been split differently.
+
+### Releases
+
+`release/<version>` is cut from `main`, used only when a release needs commits
+that should not sit on the trunk (a version bump is not one of those), and merges
+back. `hotfix/<version>` is cut from `main` for an emergency and merges back.
+Both are exceptions with a short life, not a second integration branch.
 
 ## Releases
 
 Releases are cut from `main` and built by CI automatically:
 
 1. Bump the version everywhere it is written down — `package.json`, `packages/shared`, `apps/server`, `apps/web`, `apps/desktop`, `apps/desktop/src-tauri/tauri.conf.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `catcup-desktop` entry in `Cargo.lock`), and `apps/server/src/config.ts` — and turn the `Unreleased` changelog entries into a `## <version> — <date>` section.
-2. Merge the release preparation into `dev`, then open a `dev` → `main` pull request and merge it with a merge commit.
+2. Open that as a normal PR against `main` and squash-merge it, like any other change. There is no release branch: the trunk is already releasable, and the version bump is one commit on it.
 3. That push to `main` is the release. `.github/workflows/release.yml` reads the version from `package.json`, creates the `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest`, and creates the GitHub release with the changelog section as the body and the installer as an asset.
 
 Nothing is published when the version in `package.json` already has a tag, so later merges into `main` stay quiet. A version without a matching `CHANGELOG.md` section fails the build on purpose.
@@ -108,7 +128,9 @@ pnpm --filter @catcup/server test
 pnpm --filter @catcup/server build
 ```
 
-CI runs the same four gates on every PR into `dev` or `main` and on every push to either branch (`.github/workflows/ci.yml`). The job name is the required status check on both protected branches, so a PR cannot merge while it is red. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on Windows, macOS and Linux — that is the only place the shell is compiled before a release, so treat a red result there as blocking even though it is not a required check yet.
+CI runs the same four gates on every PR into `main` and on every push to `main` (`.github/workflows/ci.yml`). The job name is the required status check on the protected trunk, so a PR cannot merge while it is red.
+
+`dev` stays in the workflow's `pull_request` list for exactly one commit — the one that lands this migration, whose own PR is based on it. A trigger that no longer matches its own base would leave that PR with no checks at all. A second job, `Desktop shell`, compiles the Tauri crate with `cargo check` on Windows, macOS and Linux — that is the only place the shell is compiled before a release, so treat a red result there as blocking even though it is not a required check yet.
 
 ## Code style
 
@@ -118,12 +140,15 @@ CI runs the same four gates on every PR into `dev` or `main` and on every push t
 - Keep provider calls and API keys server-side.
 - Preserve unknown fields when reading ST files; do not drop data on round-trip.
 - Do not import from `.ref/` at runtime or build time. It is reference material only.
-- Add a file header when adapting code from SillyTavern or RisuAI:
+- Add a file header when adapting code from another client:
 
 ```ts
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/<commit>/<path>
+// Adapted from <project> (<license>)
+// https://github.com/<project>/blob/<commit>/<path>
 ```
+
+A file written against a published format needs no such header — say which
+specification it implements instead.
 
 ## Tests
 
@@ -145,13 +170,13 @@ Docs live in `docs/`; the index is [docs/README.md](docs/README.md). Update the 
 - security change → `docs/SECURITY.md`;
 - user-facing change → `CHANGELOG.md`.
 
-## Licensing and reuse
+## Licensing and attribution
 
-- The project is AGPL-3.0-only.
-- Do not copy code from SillyTavern (AGPL-3.0) or RisuAI (GPL-3.0) without updating `NOTICE` and [docs/REUSE.md](docs/REUSE.md).
-- GPL-3.0 code may be combined into this AGPL-3.0 project under AGPLv3 §13.
+- The project is AGPL-3.0-only. That is CatCup's own choice, not something forced on it: the data formats it reads and writes are a shared standard, implemented here from the specification.
+- A few modules were adapted from other tavern clients. Credit them: update `NOTICE` and [docs/REUSE.md](docs/REUSE.md) in the same change.
+- Prefer writing against the format documentation to adapting an existing client's code. A format is free to implement; someone else's expression is not.
 - Do not introduce dependencies with licenses incompatible with AGPL-3.0 distribution.
-- Keep the original copyright header and note the modifications.
+- Keep the original copyright header and note the modifications in any file you adapt.
 
 ## Security
 
@@ -162,7 +187,7 @@ Docs live in `docs/`; the index is [docs/README.md](docs/README.md). Update the 
 ## Pull requests
 
 - Keep PRs small and focused on one concern.
-- Base them on `dev`.
+- Base them on `main`.
 - Use the PR template.
 - Describe the failure path, not just the happy path.
 - Include the test plan and the docs you updated.
@@ -178,4 +203,4 @@ A change is done when:
 - [ ] Docs and `CHANGELOG.md` are updated.
 - [ ] No secrets, data or reference-checkout files are committed.
 - [ ] Licensing/attribution is updated if code was reused.
-- [ ] The PR targets `dev` and is small enough to review.
+- [ ] The PR targets `main` and is small enough to review.

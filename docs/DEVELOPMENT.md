@@ -32,18 +32,44 @@ The server serves `apps/web/dist` when it exists. The first run asks for a passw
 
 ## Scripts
 
-| Command                               | Description                                        |
-| ------------------------------------- | -------------------------------------------------- |
-| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together |
-| `pnpm build`                          | Build server with tsup and web with Vite           |
-| `pnpm start`                          | Run the built server                               |
-| `pnpm typecheck`                      | TypeScript across all workspace packages           |
-| `pnpm test`                           | Vitest across packages                             |
-| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                           |
-| `pnpm format`                         | Biome formatter                                    |
-| `pnpm --filter @catcup/server test`   | Server tests only                                  |
-| `pnpm --filter @catcup/web build`     | Web build only                                     |
-| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first  |
+| Command                               | Description                                                         |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`                            | Run server (`tsx watch`) and web (`vite`) together                  |
+| `pnpm build`                          | Build server with tsup and web with Vite                            |
+| `pnpm start`                          | Run the built server                                                |
+| `pnpm typecheck`                      | TypeScript across all workspace packages                            |
+| `pnpm test`                           | Vitest across packages                                              |
+| `pnpm lint` / `pnpm lint:fix`         | Biome check / safe fixes                                            |
+| `pnpm format`                         | Biome formatter                                                     |
+| `pnpm --filter @catcup/server test`   | Server tests only                                                   |
+| `pnpm --filter @catcup/web build`     | Web build only                                                      |
+| `pnpm --filter @catcup/desktop build` | Windows installer; build the server and SPA first                   |
+| `pnpm site`                           | Build the landing page into `site/dist`                             |
+| `pnpm --filter @catcup/server recall` | Measure what aliases and the lexical pass add to recall (see below) |
+
+### Measuring retrieval
+
+`recall` answers the question #127 was opened to settle: does a book need aliases, embeddings, or neither?
+
+```bash
+pnpm --filter @catcup/server recall <book.json> <chat.txt> [--aliases <aliases.json>]
+```
+
+It runs the real scanner over one paragraph three ways — the book's own keys, the same book with its alias sidecar applied, and that plus the BM25 pass — and reports how many entries each reached. It needs no provider, no key and no cost, and it reads the app's own loader and scanner rather than reimplementing them, so the numbers are the ones the app would produce.
+
+`--aliases` defaults to a `<book>.aliases.json` beside the book. Nothing is generated: the point is to measure a sidecar you already have.
+
+Read the output as: if aliases close most of the gap between `keys only` and `+ lexical`, embeddings would be paying twice for coverage aliases already give.
+
+`chat-recall` is the same idea for a conversation:
+
+```bash
+pnpm --filter @catcup/server chat-recall <chat.jsonl> [--window 5] [--top 3]
+```
+
+For each turn it rebuilds the window the prompt would have kept — including the turn being answered — and counts what a BM25 pass would have surfaced from messages the window had already dropped. It answers whether a retrieval pass over chat messages earns its place, which is the open question in #129.
+
+The result is an **upper bound**: a hit scored, which is not the same as a hit being useful. Read a few recoverable turns by hand before trusting the number.
 
 ## Environment variables
 
@@ -106,11 +132,12 @@ packages/shared/
 pnpm test                       # everything
 pnpm --filter @catcup/server test
 pnpm --filter @catcup/shared test
-pnpm --filter @catcup/server exec vitest run src/cards/parse.test.ts
+pnpm --filter @catcup/compat-st test
 ```
 
 Current coverage:
 
+- compat-st: the ported card parser, writer and PNG chunk handling;
 - shared: schema defaults and the character library request schemas, macros, keywords, memory lookup, personas, regex scripts, the quick reply script parser, speech text preparation;
 - server: character card normalization, CharX import/export, card write-back and favorites, chat JSONL parsing/round-trip, world info, prompt assembly, presets, groups, summary memory, regex scripts, quick reply storage/routes/execution, provider draft testing and active-provider invariants, the TTS adapter/routes against a local speech stub, and the desktop open-session auth model.
 
@@ -128,7 +155,7 @@ Use this checklist for a typical vertical slice:
 4. **Tests**: unit tests for logic; a manual smoke test for UI paths.
 5. **Docs**: update the relevant `docs/` page, `CHANGELOG.md` and, if scope changed, `MILESTONES.md`.
 6. **Quality gates**: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`.
-7. **PR**: branch from `dev`, keep it small, target `dev`; see [CONTRIBUTING.md](../CONTRIBUTING.md).
+7. **PR**: branch from `main`, keep it short-lived, target `main`, squash-merge; see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Adding a provider
 
@@ -160,13 +187,13 @@ Do not commit any file under `data/`.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `dev` or `main` and on every push to either branch, so a merged pull request is verified again on the integration branch without anyone re-running the gates by hand.
+`.github/workflows/ci.yml` runs `pnpm install --frozen-lockfile`, then `typecheck`, `lint`, `test` and `build` on Ubuntu with Node 24. It triggers on every pull request into `main` and on every push to `main`, so a merged pull request is verified again on the trunk without anyone re-running the gates by hand.
 
 A second job, `Desktop shell`, compiles the Tauri crate on `windows-latest`, `ubuntu-latest` and `macos-latest` with `cargo check --locked`, caching the Rust build per platform and failing independently on each. It builds the server bundle, the SPA and the Node sidecar first, because `cargo check` runs the Tauri build script, which copies those into the target directory — a placeholder would only prove that a placeholder compiles. This is the only place a Rust compile error is caught before a release, and the only place the macOS and Linux build is exercised at all; until it is added to the required checks, it reports on the pull request without blocking the merge.
 
-The `Typecheck, lint, test and build` job is a required status check on both `main` and `dev`; neither accepts a force push or deletion, and both change through a pull request — with `dev` keeping an admin override for merging stacked PRs in order. `main` also requires the branch to be up to date with its base before merging. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
+The `Typecheck, lint, test and build` job is a required status check on `main`; it accepts no force push or deletion, and changes only through a pull request. The branch must also be up to date with its base before merging, so a green check always describes the commit that would land. See [CONTRIBUTING.md](../CONTRIBUTING.md#branch-protection).
 
-The release workflow, `.github/workflows/release.yml`, is separate. It runs when a `dev` → `main` merge lands: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. When `TAURI_SIGNING_PRIVATE_KEY` is set in the repository secrets it also produces the signed updater archive and a `latest.json` manifest, which is what lets an installed app update itself; without the secret the release is built and published exactly as before, minus that capability, and the run summary says so. A push whose version already has a tag is skipped, so an ordinary merge into `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
+The release workflow, `.github/workflows/release.yml`, is separate. It runs when a PR lands on `main`: it reads the version from `package.json`, creates the matching `v<version>` tag on the merged commit, builds the Windows installer on `windows-latest` and creates or updates the GitHub release, using that version's `CHANGELOG.md` section as the body. When `TAURI_SIGNING_PRIVATE_KEY` is set in the repository secrets it also produces the signed updater archive and a `latest.json` manifest, which is what lets an installed app update itself; without the secret the release is built and published exactly as before, minus that capability, and the run summary says so. A push whose version already has a tag is skipped, so an ordinary PR landing on `main` publishes nothing. A version without a changelog section fails the workflow on purpose, so a release cannot ship with missing notes. Pushing a `v*` tag by hand, or running the workflow manually with an existing tag, still releases that tag.
 The desktop build therefore runs on CI; a local Rust toolchain is only needed when iterating on the shell itself. Run the Release workflow manually with an existing tag to rebuild or republish an installer.
 
 Run the same gates locally before pushing — CI is a backstop, not a substitute:
@@ -201,6 +228,36 @@ A skill is only as good as its fidelity to the app. Two rules keep it honest:
 
 `biome check` covers `.claude/skills/**/*.mjs` because the repository-wide `includes` does not exclude
 it, so skill scripts are formatted and linted like the rest of the repo.
+
+## Landing site
+
+The public site at <https://berryuiki.github.io/CatCup-Tavern/> lives in `site/` and is published by
+`.github/workflows/pages.yml` to the `gh-pages` branch whenever `main` changes something under `site/`.
+It is static: no framework, no bundler and no dependencies.
+
+| Path                       | Holds                                                                     |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `site/template.html`       | The one page, with `{{key}}` placeholders and `{{#list}}…{{/list}}` loops |
+| `site/styles.css`          | Tokens copied from `apps/web/src/styles.css` and the whole layout         |
+| `site/main.js`             | Shape switcher, the live chat window, the language menu, copy buttons     |
+| `site/content/<code>.json` | One deck per locale, `en` being the source                                |
+| `scripts/build-site.mjs`   | Renders each deck into `site/dist`, writes `sitemap.xml` and the rest     |
+| `scripts/preview-site.mjs` | Builds and serves `site/dist` on <http://localhost:4173>                  |
+
+Three rules:
+
+- **Copy comes from the deck, never from the template.** Every user-visible string is a key in
+  `site/content/en.json`; the build fails if a locale is missing a key, carries one `en` no longer has,
+  or leaves a placeholder in the HTML. Add a string in `en`, then in all nine locales.
+- **The hero is the product, built in HTML.** The chat window is real markup styled from the app's own
+  tokens, and the canned replies live in `replies` in the deck. It is not a screenshot and must not
+  become one.
+- **Claims are checked against the code.** The status words in `features.rows` and every line in
+  `limits.items` must match `docs/LIMITATIONS.md`; a feature that ships is moved out of `limits` in the
+  same pull request that ships it.
+
+`CATCUP_SITE_ONLY=de,fr pnpm site` builds just those locales while a translation is in progress. CI and
+the workflow always build all nine.
 
 ## Related docs
 

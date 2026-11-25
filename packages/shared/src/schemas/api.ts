@@ -74,6 +74,16 @@ export interface GenerateRequest {
     chatId: string;
     action: GenerateAction;
     message?: string;
+    /**
+     * Ask the server to notify the owner over IM when this generation ends.
+     *
+     * The client sets it, and only when its window was out of sight at the
+     * moment of sending — that is not something the server can tell, since an IM
+     * message and a background tab reach it the same way. Absent is "no", which
+     * is also what keeps the IM loopback path from notifying a conversation the
+     * reply is already in.
+     */
+    notifyWhenDone?: boolean;
 }
 
 /** One member speaking in a group chat. */
@@ -95,6 +105,8 @@ export interface GroupGenerateRequest {
      * it as an override.
      */
     speaker?: string;
+    /** See `GenerateRequest.notifyWhenDone`. */
+    notifyWhenDone?: boolean;
 }
 
 export type GenerationEvent =
@@ -282,6 +294,19 @@ export interface ImportWorldRequest {
     book: unknown;
 }
 
+/**
+ * A book's alias sets, keyed by uid.
+ *
+ * `stale` names the uids whose entry content changed after a model generated
+ * their aliases. A hand-entered set is never stale, because it was written
+ * against whatever the entry says now.
+ */
+export interface WorldAliasView {
+    aliases: Record<string, string[]>;
+    stale: number[];
+    generated: Record<string, { from?: string; at?: number; model?: string }>;
+}
+
 /** How much of another installation an import move touches. */
 export interface ExistingInstallCounts {
     characters: number;
@@ -302,6 +327,14 @@ export interface ExistingInstallResult {
     errors: string[];
     /** Chats whose character was not found in the same import. */
     skippedChats: string[];
+    /**
+     * The books this import created.
+     *
+     * The import dialog offers to generate their aliases, which is worth most
+     * the moment a book arrives rather than later, when the button has to be
+     * remembered.
+     */
+    worldIds: string[];
 }
 
 export interface ContextPreviewMessage {

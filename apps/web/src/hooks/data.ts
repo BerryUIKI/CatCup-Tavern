@@ -45,6 +45,8 @@ export const queryKeys = {
     preset: (id: string | null) => ['preset', id] as const,
     worlds: ['worlds'] as const,
     world: (id: string | null) => ['world', id] as const,
+    worldAliases: (id: string | null) => ['worldAliases', id] as const,
+    aliasRuns: (id: string | null) => ['aliasRuns', id] as const,
     regex: ['regex'] as const,
     quickReplies: ['quickReplies'] as const,
     images: (folder: string) => ['images', folder] as const,
@@ -993,6 +995,87 @@ export function useWorld(id: string | null) {
         queryKey: queryKeys.world(id),
         queryFn: () => api.worlds.get(id as string),
         enabled: Boolean(id),
+    });
+}
+
+/**
+ * A book's alias sets.
+ *
+ * Aliases live in a sidecar beside the book rather than in the entries, so they
+ * are fetched separately and cannot be invalidated by an entry save.
+ */
+export function useWorldAliases(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.worldAliases(id),
+        queryFn: () => api.worlds.aliases(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+export function useSetWorldAliases(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { uid: number; aliases: string[] }) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.setAliases(id, variables.uid, variables.aliases);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worldAliases(id) });
+            // The scanner matches aliases as keys, so the book's cached view is
+            // stale in the sense that matters: a scan run from another surface
+            // must see the new list.
+            void queryClient.invalidateQueries({ queryKey: queryKeys.world(id) });
+        },
+    });
+}
+
+/** The alias runs recorded for one book, newest first. */
+export function useAliasRuns(id: string | null) {
+    return useQuery({
+        queryKey: queryKeys.aliasRuns(id),
+        queryFn: () => api.worlds.aliasRuns(id as string),
+        enabled: Boolean(id),
+    });
+}
+
+/**
+ * What generating this book's aliases would cost.
+ *
+ * `staleTime: 0` on purpose: the answer changes whenever an alias is typed, and
+ * a person opening the dialog right after editing one must not read a count
+ * from before the edit.
+ */
+export function useAliasEstimate(id: string | null, includeExisting: boolean) {
+    return useQuery({
+        queryKey: [...queryKeys.aliasRuns(id), 'estimate', includeExisting] as const,
+        queryFn: () => api.worlds.estimateAliases(id as string, { includeExisting }),
+        enabled: Boolean(id),
+        staleTime: 0,
+    });
+}
+
+/**
+ * Write the rows a review sheet kept.
+ *
+ * Invalidates both the alias view and the book: the scanner matches aliases as
+ * keys, so anything holding a cached scan has to see the new list too.
+ */
+export function useApplyAliases(id: string | null) {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { runId: string | null; entries: Array<{ uid: number; aliases: string[] }> }) => {
+            if (!id) {
+                throw new Error('No world info book selected');
+            }
+            return api.worlds.applyAliases(id, variables.runId, variables.entries);
+        },
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.worldAliases(id) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.world(id) });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.aliasRuns(id) });
+        },
     });
 }
 

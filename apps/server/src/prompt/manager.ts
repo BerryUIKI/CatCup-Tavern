@@ -1,5 +1,5 @@
-import type { PromptEntry, PromptOrder, PromptOrderEntry } from '@catcup/shared';
-import { GLOBAL_PROMPT_ORDER_ID } from '@catcup/shared';
+// Written for CatCup. Filling in a preset's gaps, resolving the order a
+// character's prompts render in, and preparing the collection for assembly.
 
 import {
     DEFAULT_INJECTION_ORDER,
@@ -7,7 +7,9 @@ import {
     type GenerationType,
     IDENTIFIER,
     ST_DEFAULT_PROMPTS,
-} from './definitions.js';
+} from '@catcup/compat-st';
+import type { PromptEntry, PromptOrder, PromptOrderEntry } from '@catcup/shared';
+import { GLOBAL_PROMPT_ORDER_ID } from '@catcup/shared';
 
 export interface PromptSettings {
     prompts: PromptEntry[];
@@ -43,13 +45,22 @@ function cloneOrder(order: PromptOrderEntry[]): PromptOrderEntry[] {
 }
 
 /**
- * Fill in whatever a preset or settings file leaves out, following
- * SillyTavern's sanitize order.
+ * Fill in whatever a preset or settings file left out.
  *
- * One deliberate divergence: when a global order list exists but is empty,
- * SillyTavern appends a second default list while `find()` keeps returning the
- * empty first one, leaving the prompt with no main, history or examples. This
- * port replaces the empty list instead.
+ * The result is always usable: there is a global order, it is not empty, and
+ * every identifier it names exists as a prompt.
+ *
+ * Three gaps are filled, and the third is where a naive implementation fails:
+ *
+ * - No prompts at all means the defaults, in declaration order.
+ * - A prompt list that exists but is missing an identifier gets the default for
+ *   it appended. An older preset therefore gains a new default rather than
+ *   silently rendering without it.
+ * - An **empty** global order list is *replaced* with the default order. The
+ *   distinction between "missing" and "present but empty" matters: an empty
+ *   list is a real state a preset file can be saved in, and leaving it empty
+ *   would produce a prompt with no main, no history and no examples — a
+ *   generation that fails for a reason nothing in the UI explains.
  */
 export function sanitizePromptSettings(settings: Partial<PromptSettings> | undefined): PromptSettings {
     const prompts = (settings?.prompts ?? []).map(clonePrompt);

@@ -6,6 +6,18 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createProfileDataDir, fixturePath } from '../testHelpers/profile.js';
 import { strippedDraft } from './generate.js';
 
+/**
+ * Notifications are recorded rather than sent: this file is about whether the
+ * route hands the outcome to the notifier at all, and the notifier's own rules
+ * live in `im/notify.test.ts`.
+ */
+const notifications: Array<{ outcome: unknown; context: { characterName: string; background: boolean } }> = [];
+vi.mock('../im/notify.js', () => ({
+    notifyTurn: async (outcome: unknown, context: { characterName: string; background: boolean }) => {
+        notifications.push({ outcome, context });
+    },
+}));
+
 let root: string;
 let app: FastifyInstance;
 let stub: Server;
@@ -265,6 +277,58 @@ describe('generate routes', () => {
             original_avatar: 'Bram.json',
             mes: 'Stub reply.',
         });
+    });
+});
+
+describe('notifying the owner when the app was not in front', () => {
+    it('tells the notifier the app was in front when the client did not ask', async () => {
+        notifications.length = 0;
+        const chatId = await createChat();
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger' });
+
+        // The route always hands the outcome over and never sends anything
+        // itself; `background: false` is what makes the notifier stay quiet. The
+        // IM loopback path calls this same route and must not notify a
+        // conversation its reply is already in.
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0]?.context.background).toBe(false);
+    });
+
+    it('hands the stored reply to the notifier when asked', async () => {
+        notifications.length = 0;
+        const chatId = await createChat();
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'trigger', notifyWhenDone: true });
+
+        expect(notifications).toHaveLength(1);
+        const [first] = notifications;
+        expect(first?.context).toEqual({ characterName: 'Aria', background: true });
+        expect(first?.outcome).toMatchObject({ type: 'done' });
+    });
+
+    it('does not notify for an impersonation draft', async () => {
+        notifications.length = 0;
+        const chatId = await createChat();
+        await generate('/api/generate', { characterId: 'Aria', chatId, action: 'impersonate', notifyWhenDone: true });
+
+        // A draft for the composer is not a reply, and nothing was stored.
+        expect(notifications).toEqual([]);
+    });
+
+    it('names the member who spoke in a group, not the group', async () => {
+        notifications.length = 0;
+        const group = await call('POST', '/api/groups', { name: 'Notify group', members: ['Aria', 'Bram'] });
+        const groupId = group.json().group.id as string;
+        const created = await call('POST', `/api/groups/${groupId}/chats`, {});
+        const chatId = created.json().chat.chatId as string;
+
+        await generate(`/api/groups/${groupId}/chats/${encodeURIComponent(chatId)}/generate`, {
+            action: 'trigger',
+            speaker: 'Bram.json',
+            notifyWhenDone: true,
+        });
+
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0]?.context).toEqual({ characterName: 'Bram', background: true });
     });
 });
 

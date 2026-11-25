@@ -1,15 +1,18 @@
 import type { Stats } from 'node:fs';
 import { readdir, readFile, stat, unlink } from 'node:fs/promises';
 import path from 'node:path';
-
+import {
+    buildCardPayload,
+    mutateCardPayload,
+    type ParsedCard,
+    parseCardBuffer,
+    readFavorite,
+    writePngCard,
+} from '@catcup/compat-st';
 import type { CharacterDetail, CharacterPatch, CharacterSummary, ItemScope } from '@catcup/shared';
 import { isRecord } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
-
-import { readFavorite } from '../cards/favorite.js';
 import { readCharacterModel } from '../cards/model.js';
-import { type ParsedCard, parseCardBuffer } from '../cards/parse.js';
-import { buildCardPayload, mutateCardPayload, writePngCard } from '../cards/write.js';
 import { deleteCharacterAssets } from './characterAssets.js';
 import { withFileLock } from './mutex.js';
 import { assertSimpleName, paths, resolveInside, safeFileName } from './paths.js';

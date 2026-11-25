@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-
+import type { GenerationType } from '@catcup/compat-st';
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     applyRegexScripts,
     type CharacterDetail,
@@ -7,6 +8,7 @@ import {
     type GenerateAction,
     type GroupDepthPrompt,
     getLatestSummary,
+    getSummaries,
     REGEX_PLACEMENT,
     type RegexScript,
     readCardDepthPrompt,
@@ -16,17 +18,17 @@ import {
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
+import { choiceInstruction, parseChoices } from '../director/choices.js';
+import { choiceLanguage, directorBlock, readDirector } from '../director/config.js';
 import { activeGenerations } from '../generation/registry.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { notifyTurn } from '../im/notify.js';
+import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
-import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { appendMessage, chatPersonaId, patchChatMetadata, readChat, updateMessage } from '../storage/chats.js';
 import { readPresetBody } from '../storage/presets.js';
@@ -39,6 +41,15 @@ const generateSchema = z.object({
     chatId: z.string().min(1).max(300),
     action: z.enum(['send', 'regenerate', 'continue', 'trigger', 'impersonate']),
     message: z.string().max(200000).optional(),
+    /**
+     * Tell the owner over IM when this generation ends.
+     *
+     * Set by the client, not inferred here, because only the browser knows
+     * whether its window was in front when the request went out. Absent means
+     * no — which is what keeps the IM loopback path (it calls this same route)
+     * from notifying a conversation the reply is already sitting in.
+     */
+    notifyWhenDone: z.boolean().optional(),
 });
 
 const stopParamsSchema = z.object({
@@ -57,6 +68,8 @@ interface PersistContext {
     startedAt: string;
     /** Scripts that transform a message before it is stored. */
     regexScripts: readonly RegexScript[];
+    /** How many options to pull out of the reply; `0` or absent leaves it alone. */
+    directorChoices?: number;
     substitute: (text: string, escapeValues: boolean) => string;
 }
 
@@ -110,9 +123,17 @@ async function persistMessage(
     reasoning: string,
     stopped: boolean,
 ): Promise<ChatMessage> {
+    // The director's option block is pulled out **before** regex scripts run, so
+    // a script sees the reply the person sees and never the sentinels. The
+    // stored prose is what the model wrote minus that block; the options travel
+    // in `extra.director`.
+    const parsed = context.directorChoices ? parseChoices(text, context.directorChoices) : null;
+    const replyText = parsed ? parsed.prose : text;
+    const choices = parsed && parsed.options.length > 0 ? parsed.options : null;
+
     // Scripts without a markdown/prompt flag run here, once, so the stored
     // message — and therefore the prompt and the view — all read the result.
-    const storedText = applyRegexScripts(context.regexScripts, text, REGEX_PLACEMENT.AI_OUTPUT, {
+    const storedText = applyRegexScripts(context.regexScripts, replyText, REGEX_PLACEMENT.AI_OUTPUT, {
         substitute: context.substitute,
     });
     const storedReasoning = applyRegexScripts(context.regexScripts, reasoning, REGEX_PLACEMENT.REASONING, {
@@ -126,6 +147,7 @@ async function persistMessage(
         gen_finished: new Date().toISOString(),
         ...(storedReasoning ? { reasoning: storedReasoning } : {}),
         ...(stopped ? { stopped: true } : {}),
+        ...(choices ? { director: { choices: { options: choices } } } : {}),
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
@@ -273,12 +295,36 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         // Summary memory is read after the action so a regenerated reply no
         // longer contributes its own summary, and the user's new message is
         // part of the transcript in the same way a normal send sees it.
+        // The director is read here, once, and used three times: its block joins
+        // the prompt, its choice count decides whether a reply is parsed, and its
+        // played members decide who may speak.
+        const director = readDirector(chat.header.chat_metadata);
+        const directorBlockText = director
+            ? directorBlock({
+                  character,
+                  director,
+              })
+            : '';
+
         const latestSummary = getLatestSummary(messages);
         const macroContext = createMacroContext(character, persona, undefined, latestSummary?.value);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
-        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
-        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+        const memoryInjection = buildMemoryInjection(
+            settings.memory,
+            summariesForTurn(settings.memory, getSummaries(messages), (summary) =>
+                tokenCounter.count(formatMemoryText(settings.memory, summary, macroContext) ?? ''),
+            ),
+            macroContext,
+        );
+        // The scan sees the same summaries the prompt does: in append-only
+        // mode a world info entry keyed on an old summary's wording would
+        // otherwise stop firing the moment a newer summary replaced it.
+        const memoryText = formatSummaryList(
+            settings.memory,
+            [...getSummaries(messages)].sort((a, b) => b.index - a.index),
+            macroContext,
+        );
 
         // The card's own in-chat aside, SillyTavern's
         // `data.extensions.depth_prompt`. It is injected at the depth the card
@@ -332,6 +378,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             squashSystemMessages: preset.squashSystemMessages,
             worldInfo: worldInfoTurn.prompt,
             generationType,
+            ...(directorBlockText ? { directorRules: directorBlockText } : {}),
             countTokens: tokenCounter.count,
             regexScripts,
             substitute,
@@ -340,6 +387,16 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
         });
         const prompt = assembled.messages;
+
+        if (director?.choices && body.action === 'send') {
+            // Appended after the history, the same mechanism the group nudge
+            // uses. It is an instruction for *this* generation and is not
+            // stored, so it never accumulates across turns.
+            prompt.push({
+                role: 'system',
+                content: choiceInstruction(director.choiceCount, choiceLanguage(character.card)),
+            });
+        }
 
         if (prompt.length === 0) {
             throw badRequest('The assembled prompt is empty. Check the enabled prompt entries.');
@@ -359,6 +416,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
             startedAt,
             regexScripts,
             substitute,
+            ...(director?.choices && body.action === 'send' ? { directorChoices: director.choiceCount } : {}),
         };
 
         // Impersonation produces a draft for the composer, not a message: the
@@ -370,7 +428,7 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         const personaName = persona.name;
         const prefill = impersonationPrefill(personaName);
 
-        await runGenerationStream({
+        const outcome = await runGenerationStream({
             reply,
             provider,
             model: resolved.model,
@@ -401,6 +459,16 @@ export async function registerGenerateRoutes(app: FastifyInstance): Promise<void
         if (draftOnly) {
             return;
         }
+
+        // Fire-and-forget and after persistence, in that order: a notification
+        // must never delay or endanger the reply it describes. `notifyTurn`
+        // decides whether there is anything to say — a foreground generation, a
+        // reply the person stopped, and one that produced no text are all
+        // silent.
+        void notifyTurn(outcome, {
+            characterName: character.name,
+            background: body.notifyWhenDone === true,
+        });
 
         // Fire-and-forget: a due summary never delays the reply. The memory
         // service reads the chat again, so only a persisted reply counts.

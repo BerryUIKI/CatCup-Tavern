@@ -642,9 +642,12 @@ Starts a generation and returns an SSE stream. Except for `impersonate`, the ser
     "characterId": "Seraphina",
     "chatId": "Seraphina - 2026-11-09_18-42-29",
     "action": "send",
-    "message": "I'm feeling better, thank you. What is this place?"
+    "message": "I'm feeling better, thank you. What is this place?",
+    "notifyWhenDone": true
 }
 ```
+
+`notifyWhenDone` is optional and described under [the IM notifications](#notifywhendone-on-the-generation-endpoints); absent means no.
 
 | Action        | Behaviour                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -717,11 +720,13 @@ Copy an existing SillyTavern installation into this one.
 
 - `path` is an **absolute** path on the machine running CatCup. A relative path, a missing path or a directory with no SillyTavern data is a `400` with a message saying which.
 - `dryRun: true` returns `{ "plan": { characters, chats, worlds, presets, sources, errors } }` and writes nothing. `sources` lists the folders that contributed files.
-- Without `dryRun` it copies, returning `{ "result": { imported: { characters, chats, worlds, presets }, errors, skippedChats } }`.
+- Without `dryRun` it copies, returning `{ "result": { imported: { characters, chats, worlds, presets }, errors, skippedChats, worldIds } }`. `worldIds` names the books this import created, so the dialog can offer to generate their aliases — a file that could not be read is reported in `errors` and never in `worldIds`.
 
 What is read: `characters/`, `chats/<character>/*.jsonl`, `worlds/`, and OpenAI presets from `openai presets/`, `presets/openai/` or `public/presets/openai/`. Chats are attached to a character by matching the folder name against the imported card's name or id; a chat whose character is not in the same import is reported in `skippedChats` rather than guessed at. Files over 20 MB and kinds beyond 500 files are skipped, with an error per file.
 
 Importing is additive: running it twice adds copies with numeric suffixes instead of overwriting.
+
+The import dialog uses `worldIds` to offer alias generation per book, with the request count from `GET /api/worlds/:id/aliases/estimate` shown before anything is spent. Nothing runs unless the person asks.
 
 Group chats, backgrounds, themes and SillyTavern's own settings are not imported.
 
@@ -996,6 +1001,8 @@ Partial update. All fields are optional:
 
 `activeProviderId` must reference an existing, enabled provider. A missing id returns `404`; a disabled provider returns `400` with code `PROVIDER_DISABLED`. Provider configuration is managed through the provider endpoints, not this patch. Response: `{ "settings": SettingsResponse }`.
 
+Nested blocks are true partials: a field you omit keeps its saved value rather than falling back to its default. That holds for `generation`, `ui`, `worldInfo`, `authorNote`, `memory`, `quickReplies`, `tts` and `imageGeneration`, so `{ "worldInfo": { "globalBooks": ["eldoria"] } }` changes the book list and nothing else. `false` and `0` are values, not omissions.
+
 `ttsApiKey` is write-only. It is stored in `data/secrets.json` under the key `tts`; an empty string removes it. The response never includes it, only `ttsHasKey`. `imageApiKey` is the same for image generation, stored under `image` and reported as `imageHasKey`.
 
 ## Providers
@@ -1017,6 +1024,8 @@ A profile is a data scope: its own characters, chats, groups, world info, preset
 `ProfileSummary` is `{ id, name, description, archived, active, counts: { characters, chats, groups, books, presets }, sizeBytes }`.
 
 `PUT /api/profiles/active` answers `409 PROFILE_BUSY` while a generation is running — finish or stop the reply first. After a switch the client must refetch every scoped collection: characters, chats, groups, world info, presets, regex, quick replies, images and settings.
+
+**The switch restarts the IM transport**, in that order: the bot is stopped before the scope moves and rebuilt afterwards from the new profile's settings. Its token is machine-wide (`data/secrets.json`) while its allowlist, switches and bindings are per profile, so without this the bot would keep answering the previous profile's owner id — silently, because the notification path reads the new profile's id and the two would simply disagree. The busy check above covers generations and runs; a transport reply in flight is not one of them, which is why the transport is stopped outright rather than waited on.
 
 ### The shared scope
 
@@ -1248,6 +1257,114 @@ Removes one entry. `displayIndex` values are not renumbered, so gaps remain unti
 
 Response: `{ "world": WorldDetail }`.
 
+### `GET /api/worlds/:id/aliases`
+
+The extra names the book's entries answer to, read from `<book>.aliases.json` beside the book.
+
+```json
+{
+    "aliases": { "3": ["王女", "the Princess"] },
+    "stale": [],
+    "generated": { "3": { "from": "6532256678366231", "at": 1763330000000, "model": "gpt-5" } }
+}
+```
+
+`stale` lists the uids whose entry content changed after a model generated their aliases. A hand-entered list is never stale. A book with no sidecar answers with empty objects.
+
+### `PUT /api/worlds/:id/aliases/:uid`
+
+```json
+{ "aliases": ["王女", "the Princess"] }
+```
+
+Replaces one entry's list. Strings are trimmed, de-duplicated case-insensitively and capped at 50 per entry and 100 characters each. An empty array removes the record.
+
+Response: `{ "aliases": ["王女", "the Princess"] }`. `404` when the book or the uid does not exist.
+
+This never writes to the book file: an entry's identity hash covers its whole raw record, and changing it would detach that entry's timed effects from every chat that already has them.
+
+### `DELETE /api/worlds/:id/aliases/:uid`
+
+Removes one entry's aliases. Response: `{ "ok": true }`; `ok` is `false` when there was nothing to remove.
+
+### `GET /api/worlds/:id/aliases/estimate`
+
+What generating this book's aliases would cost, before anything is spent.
+
+```
+/api/worlds/eldoria/aliases/estimate?includeExisting=true&uids=0,1
+```
+
+```json
+{
+    "estimate": { "requests": 2, "withAliases": 0, "empty": 1, "promptTokens": 1223, "model": "stub-model" }
+}
+```
+
+`requests` is the number of entries a run would ask about — the number of requests a person is about to spend, not an approximation. `empty` counts entries skipped because they have no content and no keywords. `promptTokens` is counted with the same tokenizer the chat budget uses, against the model the run would use. `uids` is optional and comma-separated; without it the estimate covers the whole book.
+
+### `POST /api/worlds/:id/aliases/runs`
+
+Starts a run and streams its progress as SSE.
+
+```json
+{ "uids": [3, 4], "includeExisting": true, "model": "gpt-5" }
+```
+
+Every field is optional. `uids` restricts the run to those entries; without it the whole book is planned. `includeExisting: false` skips entries that already carry aliases, which is what a second pass over a partly finished book wants.
+
+Events:
+
+```text
+start     { runId, model, items: AliasRunItem[] }
+item      { item }
+progress  { done, total }
+done      { run: AliasRun }
+error     { message }
+```
+
+`done` is the only terminal event and ends the stream. The run is **not** stopped when the client disconnects: a hundred-entry book is minutes of work, and only `/stop` cancels it. A run that fails on its first request still emits `done` with `status: "failed"`.
+
+`400` when there is no provider or the provider has no model; `404` when the book does not exist.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/attach`
+
+Reattaches to a run still in flight. The opening `start` event is replayed on subscribe, so the rows that already finished are drawn. `409` with code `ALIAS_FINISHED` when the run is no longer in flight.
+
+### `GET /api/worlds/:id/aliases/runs`
+
+The run records this profile holds for that book, newest first. Each is an `AliasRun`; a finished one is read, not streamed.
+
+### `GET /api/worlds/:id/aliases/runs/:runId`
+
+One run record. `404` when it is gone.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/stop`
+
+Aborts a run. Response `{ "ok": boolean }`; `false` when the run was not in flight. A stopped run keeps every row that finished, and its record is what a resume plans from.
+
+### `POST /api/worlds/:id/aliases/runs/:runId/resume`
+
+Restarts a recorded run as a new stream. A row that finished keeps its proposal only when the entry's content hash still matches; everything else is planned again. A row that was skipped stays skipped unless its entry has since gained content. `409` with code `ALIAS_RUNNING` when the run is in flight.
+
+### `POST /api/worlds/:id/aliases/apply`
+
+Writes the rows a review sheet kept. `?runId=` is optional and supplies provenance — each row's `generatedFrom` is taken from that run's recorded content hash, so an entry edited between the run and the apply is stored as stale rather than as fresh.
+
+```json
+{ "entries": [{ "uid": 3, "aliases": ["王女", "Aurelia"] }, { "uid": 4, "aliases": ["Bram"] }] }
+```
+
+Response: `{ "updated": 2, "kept": 0 }`. `kept` counts rows skipped because the book no longer holds that uid — an entry deleted between the run and the apply costs that row, not the batch. The book file is never written; only the sidecar is.
+
+### `DELETE /api/worlds/:id/aliases/runs/:runId`
+
+Deletes a run record. Response `{ "ok": boolean }`.
+
+### `GET /api/worlds/:id/aliases/stale`
+
+The uids whose generated aliases no longer match their entry's content: `{ "stale": [3] }`. The full alias view already carries this; the endpoint exists for a caller that wants only the badge count.
+
 ### `POST /api/worlds/import`
 
 ```json
@@ -1261,7 +1378,7 @@ Importing does not enable the book; add its id to `worldInfo.globalBooks` throug
 
 ### `GET /api/worlds/:id/export`
 
-Returns the stored body as a JSON download.
+Returns the stored body as a JSON download. Alias sidecars are **not** included: the download is exactly the book SillyTavern would have written, so an export carries no CatCup-only state.
 
 ### `DELETE /api/worlds/:id`
 
@@ -1595,6 +1712,153 @@ Returns the image bytes with the correct `Content-Type`, `Cache-Control: private
 ### `DELETE /api/images/:folder/:file`
 
 Deletes the image and its sidecar. Messages that already reference it keep the reference. Response: `{ "ok": true }`; `404` when the image does not exist.
+
+## The director
+
+A per-chat layer that turns a conversation into a guided scene, per [RFC 0003](RFC/0003-guided-roleplay.md). The config lives in `chat_metadata.director`, so it travels with the chat file and SillyTavern ignores it.
+
+### `GET /api/chats/:characterId/:chatId/director`
+
+```json
+{
+    "director": {
+        "enabled": false,
+        "speakerMode": "auto",
+        "playedMembers": [],
+        "rules": "",
+        "choices": false,
+        "choiceCount": 3
+    },
+    "enabled": false
+}
+```
+
+A chat that never had a director answers with the defaults and `enabled: false`, which is the same thing the form sees for a director that is switched off.
+
+### `PATCH /api/chats/:characterId/:chatId/director`
+
+```json
+{ "director": { "enabled": true, "rules": "Keep the pace slow.", "choices": true } }
+```
+
+Merged onto what is stored, not replacing it, so a form that sends only what changed cannot reset the rest. Response: `{ "director": DirectorConfig, "personaId": string | null }`.
+
+**`400 DIRECTOR_SELF_PLAY`** when a **single** chat names its own character in `playedMembers`. The card block tells the model "you are {{char}}", so also forbidding it from writing that character contradicts itself; the message names both ways out — a group chat, or a narrator card with the cast played from the world book. A group has no such collision, because the speaker is chosen per turn and a played member is muted for the whole chat.
+
+The refused save writes nothing: the stored config is unchanged.
+
+### `GET /api/chats/:characterId/:chatId/director/cast`
+
+```json
+{ "cast": [{ "id": "Aurelia", "name": "Aurelia" }], "isGroup": false }
+```
+
+Who can be played in this chat. This route covers the single-chat path, so it always answers the chat's own card — which the PATCH above then refuses if chosen. Listing it anyway is deliberate: the refusal points at a group, and hiding the option would leave the person wondering why it is missing.
+
+### Group chats
+
+The same config, on the group chat's own metadata — two chats with the same cast can be two different stories, so it lives on the chat rather than the group.
+
+```
+GET   /api/groups/:groupId/chats/:chatId/director
+PATCH /api/groups/:groupId/chats/:chatId/director
+GET   /api/groups/:groupId/chats/:chatId/director/cast
+```
+
+The request and response shapes are identical to the single-chat routes, and `cast` answers the group's members with `isGroup: true`.
+
+Two differences, both deliberate. **There is no self-play refusal**: a group has no contradiction between "you are {{char}}" and "never write this member", because the speaker is chosen per turn and a played member is muted for the whole chat. And **a played member who is not in the group is accepted rather than rejected** — a card temporarily out of a group should not block a save that touches something else, and the cast block simply renders nobody for that entry.
+
+Played members are excluded from every speaker strategy, and an explicit `speaker` naming one is ignored for the same reason it is in a single chat.
+
+### How choices work
+
+When `choices` is on, the generation request carries one extra system instruction after the history asking for a line-oriented block:
+
+```text
+<<<CHOICES>>>
+掏出手机看那条短信
+直接下楼
+<<<END>>>
+```
+
+The block is parsed out of the reply **before** regex scripts run, so the stored message is the prose the person sees and never the sentinels. The options land on the reply as `extra.director.choices`, and clicking one sends its label through the ordinary send path — an option is a shortcut for a line the person could have typed, not a special kind of turn.
+
+The format is line-oriented rather than JSON for one reason: a streamed JSON object has to balance its brackets and survive an unescaped quote, while a line format degrades. A block cut off mid-way still yields the lines before the cut, and no block at all means "no options this turn" rather than a failure. **Choices can never fail a reply.**
+
+## Importing a Telegram export
+
+A Telegram Desktop JSON export becomes a CatCup chat. No bot, no token — the user already has the file.
+
+### `POST /api/import/telegram/scan`
+
+```json
+{ "raw": "<the export file's text>" }
+```
+
+Writes nothing. Returns `{ "scan": TelegramScanView }`: the participant names and how many messages each sent — the one decision this importer will not make for you — plus the message count, the rows it dropped (service, empty, malformed) and the date range of the messages it kept.
+
+`400` with code `TELEGRAM_FORMAT` when the file is not JSON.
+
+### `POST /api/import/telegram`
+
+```json
+{ "raw": "<the export file's text>", "characterId": "Aurelia", "owner": "You" }
+```
+
+Writes the chat. `owner` is **required** and is the participant who becomes the persona; every other participant becomes the character. The scan is redone from `raw` rather than trusted from the client, so a confirmation screen cannot be edited into importing messages nobody saw.
+
+Response: `{ "chat": ChatDetail, "imported": number }`. The chat is written through the same storage path as any other, so it reads back through `GET /api/chats/:characterId/:chatId` and exports to SillyTavern unchanged.
+
+- `400 TELEGRAM_UNKNOWN_OWNER` when `owner` never speaks in the export — refusing beats importing a chat where every line is the character's.
+- `400 TELEGRAM_GROUP` when more than one other participant speaks. Collapsing them into one name would rewrite who said what.
+- `400 TELEGRAM_EMPTY` when nothing in the file became a message.
+
+A repeat import adds a copy with a numeric suffix rather than overwriting.
+
+## Instant messaging
+
+Reaching a character from Telegram, per [RFC 0004](RFC/0004-im-integration.md). Off by default; nothing polls unless a token is stored and the setting is on.
+
+### `GET /api/im/status`
+
+```json
+{
+    "status": { "hasToken": true, "running": true, "error": null, "bot": { "id": "42", "username": "catcup_bot" } }
+}
+```
+
+`hasToken` stands in for the token, which is never returned by any endpoint. `error` is the last poll failure, worded for a person, and is cleared as soon as a poll succeeds. `bot` is Telegram's `getMe` answer, filled in once a poll has run.
+
+### `PUT /api/im/telegram/token`
+
+```json
+{ "token": "123456:ABC-DEF" }
+```
+
+Stores the bot token in `data/secrets.json`, beside the provider keys and never in `settings.json` — a profile switch must not carry a credential, and settings are served to the client. Omitting `token` keeps the stored one; an empty string clears it. The response is the same `ImStatusView` as `GET /api/im/status`.
+
+### `PATCH /api/im/settings`
+
+```json
+{ "enabled": true, "ownerId": "99999999", "notifyOnReply": false }
+```
+
+Every field is optional and a missing one keeps its stored value. `notifyOnReply` is separate from `enabled` on purpose: a bot used for conversation is not necessarily one wanted as a notification channel. `ownerId` is a **string** because Telegram ids exceed 2^32 and arrive as strings; comparing them as numbers would lose precision on real accounts. An empty `ownerId` means **nobody** may talk to the bot, not everybody — and with `notifyOnReply` on, it also means there is nowhere to send a notification.
+
+Both write endpoints call the transport sync, so a change takes effect without a restart. Response: `{ "settings": ImSettings, "status": ImStatusView }`.
+
+### `notifyWhenDone` on the generation endpoints
+
+`POST /api/generate` and `POST /api/groups/:groupId/chats/:chatId/generate` accept an optional `notifyWhenDone: boolean`. When it is `true` and `im.notifyOnReply` is on, the server sends the owner a Telegram message once the generation ends — the character's name and the first sentence, or the failure.
+
+The client sets it, and only when its window was out of sight when the request went out: that is the one fact the server cannot reconstruct, because an IM message and a background tab arrive identically. It is an accepted field on both schemas rather than ignored, so a client that does not send it gets silence.
+
+Three cases send nothing regardless of the flag: a reply the person stopped (they were watching it), an impersonation draft (it is a draft, and nothing was stored), and a generation that produced no terminal event. A notification is never awaited by the route, so a slow Telegram does not hold the reply; a failed delivery is logged and dropped, never retried.
+
+The IM loopback path calls `POST /api/generate` too and never sets the flag, which is what keeps a reply from being announced in the conversation it was delivered to.
+
+The bot's own commands are not API routes — they are handled inside the Telegram conversation — but the surface is small enough to state here. `/chat`, `/new`, `/stop`, `/who` and `/help` are described in `docs/RFC/0004-im-integration.md`; `/status` reports whether a reply is being written and which chat this conversation is bound to, and `/provider` names the provider and model a generation would call. Replies are sent with `parse_mode: 'HTML'`, falling back to plain text if the conversion would produce unbalanced tags.
 
 ## Notes and limits
 

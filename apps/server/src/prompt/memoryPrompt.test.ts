@@ -1,3 +1,4 @@
+import { IDENTIFIER, ST_DEFAULT_PROMPTS } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -6,9 +7,7 @@ import {
     type PromptEntry,
 } from '@catcup/shared';
 import { describe, expect, it } from 'vitest';
-
 import { buildPrompt } from './builder.js';
-import { IDENTIFIER, ST_DEFAULT_PROMPTS } from './definitions.js';
 
 const speaker = {
     id: 'Seraphina',
@@ -68,8 +67,21 @@ function promptWith(
     });
 }
 
+/**
+ * The index of the Main Prompt.
+ *
+ * Found by the longest literal run in the Main Prompt's own template, rather
+ * than by a hard-coded phrase: the wording is CatCup's to change, and a test
+ * that pins it here would fail for a reason that has nothing to do with memory.
+ * Macros are split out because they expand to names the template does not hold.
+ */
 function mainIndex(messages: ReturnType<typeof buildPrompt>['messages']): number {
-    return messages.findIndex((message) => message.content.includes("Write Seraphina's next reply"));
+    const main = ST_DEFAULT_PROMPTS.find((prompt) => prompt.identifier === IDENTIFIER.MAIN);
+    const literal = (main?.content ?? '')
+        .split(/\{\{[^}]*\}\}/)
+        .reduce((longest, part) => (part.length > longest.length ? part : longest), '')
+        .trim();
+    return messages.findIndex((message) => message.content.includes(literal));
 }
 
 describe('summary memory injection', () => {
@@ -162,7 +174,7 @@ describe('summary memory injection', () => {
         expect(
             prompt.messages.some(
                 (message) =>
-                    message.content.includes("Write Seraphina's next reply") &&
+                    message.content.includes('Continue the scene as Seraphina') &&
                     message.content.includes('[Summary: The gate opened.]'),
             ),
         ).toBe(true);

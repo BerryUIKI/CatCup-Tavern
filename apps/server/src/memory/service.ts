@@ -1,7 +1,7 @@
-// Derived from SillyTavern (AGPL-3.0)
-// https://github.com/SillyTavern/SillyTavern/blob/1.19.0/public/scripts/extensions/memory/index.js
-// Ported to TypeScript without DOM or global state. See docs/REUSE.md.
+// Written for CatCup. The summary lifecycle: the per-chat lock, the model call,
+// and writing the result back onto the message it covers.
 
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     type CharacterDetail,
     type ChatMessage,
@@ -9,10 +9,8 @@ import {
     type PersonaSettings,
     type SummarizeResponse,
 } from '@catcup/shared';
-
 import { badRequest, HttpError } from '../http/errors.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import type { GroupMacroMembers } from '../prompt/worldInfoTurn.js';
 import { getAdapter } from '../providers/index.js';
 import type { MessagePatch } from '../storage/chats.js';
@@ -20,7 +18,13 @@ import { readPresetBody } from '../storage/presets.js';
 import { getActiveProvider, getProviderSecret, getSettings } from '../storage/settings.js';
 import { buildSummaryRequest, shouldAutoSummarize } from './summary.js';
 
-/** A summary request that takes longer than this is aborted. */
+/**
+ * A summary request that takes longer than this is aborted.
+ *
+ * Not a quality setting: the per-chat lock is held across the model call, so a
+ * provider that streams whitespace or keeps the socket open would block every
+ * later memory write for that chat indefinitely.
+ */
 const SUMMARY_TIMEOUT_MS = 120_000;
 
 /** The live chat a summary is written back to. */
@@ -46,6 +50,11 @@ export interface MemoryTarget {
  * A summary request holds the lock across the model call, so a manual edit or
  * delete issued while an automatic summary is in flight lands afterwards
  * instead of being overwritten by it.
+ *
+ * The chain is built from the *previous* promise, so a task that failed does
+ * not poison the queue: the next one still runs. The key is dropped only when
+ * it is still this task's promise at the end, so a queued successor's entry is
+ * not deleted out from under it.
  */
 const memoryLocks = new Map<string, Promise<unknown>>();
 
@@ -63,9 +72,17 @@ export async function withMemoryLock<T>(key: string, task: () => Promise<T>): Pr
 }
 
 /**
- * Locate the message a summary was computed from after the chat may have
- * changed. A deleted or edited anchor is not found, which is the signal to
- * discard the stale summary rather than attach it to the wrong message.
+ * Locate the message a summary was computed from, after the chat may have
+ * changed while the model was thinking.
+ *
+ * Matching is by content, author and — when the anchor carries one — send date.
+ * A message that was deleted, or whose text or author changed, is not found,
+ * and that is the signal to discard the summary: attaching it to whatever now
+ * sits at that index would label the wrong message as covered.
+ *
+ * The send date is optional because messages written by other clients may not
+ * have one; falling back to content alone is better than refusing to find the
+ * anchor at all.
  */
 export function findMessageIndex(messages: readonly ChatMessage[], anchor: ChatMessage): number {
     return messages.findIndex(
@@ -94,11 +111,12 @@ async function writeAnchor(
 }
 
 /**
- * Apply a memory change chosen from the chat as it is under the lock.
+ * Apply a memory change chosen from the chat as it is *inside* the lock.
  *
- * Evaluating the choice inside the lock means a manual save or delete targets
- * the newest summary even when an automatic summary was in flight when the
- * request arrived, instead of a stale message index.
+ * The chooser receives the messages only once the lock is held, which is the
+ * point: a manual save or delete that arrived while an automatic summary was
+ * in flight then targets the newest summary rather than the index that was
+ * correct when the request was made.
  */
 export async function updateMemoryWith(
     target: MemoryTarget,
@@ -117,6 +135,18 @@ export async function updateMemoryWith(
     });
 }
 
+/**
+ * Build and run one summary request.
+ *
+ * Fresh state is read every time — settings, provider, preset, the chat — so a
+ * summary started after the user changed a provider uses the new one. The
+ * target holds only what does not change per turn: the chat key, the card and
+ * persona whose macros apply.
+ *
+ * The model is the provider's default, never a character's choice. A summary is
+ * not a character speaking, and pinning it to whichever card is selected would
+ * make the same chat summarize differently depending on who is talking.
+ */
 async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<SummarizeResponse> {
     const settings = await getSettings();
     const provider = await getActiveProvider();
@@ -158,8 +188,9 @@ async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<S
         return { summary: null, reason: 'No new messages to summarize.' };
     }
 
-    // Abort a request that never finishes so the per-chat lock cannot be held
-    // forever by a provider that streams whitespace or keeps the socket open.
+    // Two abort sources, one controller: the timeout above, and the caller's
+    // signal. The listener is removed in `finally` so a long-lived signal does
+    // not accumulate one per summary.
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), SUMMARY_TIMEOUT_MS);
     const forwardAbort = () => controller.abort();
@@ -197,8 +228,9 @@ async function runSummary(target: MemoryTarget, signal?: AbortSignal): Promise<S
     }
 
     // The chat may have changed while the model was thinking. Re-locate the
-    // anchored message; if it is gone or edited, discard the summary instead
-    // of attaching it to a different message.
+    // anchored message; if it is gone or edited, discard the summary. Reporting
+    // the discard as a reason rather than an error is deliberate: nothing went
+    // wrong, the summary simply described text that no longer exists.
     const stored = await writeAnchor(target, anchor, { extra: { memory: value } });
     if (!stored) {
         return {
@@ -225,10 +257,19 @@ export async function summarizeNow(target: MemoryTarget, signal?: AbortSignal): 
 const activeAutoSummaries = new Set<string>();
 
 /**
- * Update a chat's summary after a reply when the schedule says it is due.
+ * Update a chat's summary after a reply, when the schedule says it is due.
  *
- * Runs in the background after the generation stream has finished, so a slow
- * summary never delays the reply. Errors are logged and never reach the chat.
+ * Runs in the background once the reply has finished streaming, so a slow
+ * summary never delays it. Nothing here may reach the chat: a failed summary is
+ * a log line, not a visible error, because the user did not ask for it.
+ *
+ * Two guards, for different reasons:
+ *
+ * - The in-flight set stops a chat from queueing a second automatic request
+ *   behind the first, which would otherwise summarize the same history twice.
+ * - Only a reply triggers it. If the newest message is the user's own, the
+ *   generation either failed or has not produced anything, and summarizing then
+ *   would cover a turn that is not finished.
  */
 export async function maybeSummarizeAfterTurn(target: MemoryTarget): Promise<void> {
     if (activeAutoSummaries.has(target.key)) {

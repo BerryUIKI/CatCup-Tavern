@@ -1,6 +1,6 @@
 # What works, and what does not
 
-CatCup Tavern is early-access software. The goal is narrow: someone who already uses SillyTavern can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
+CatCup Tavern is early-access software. The goal is narrow: someone who already has a library in another tavern client can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
 
 This page describes the repository as it stands. The published `0.3.0` build predates the desktop work: the tray icon, self-update, `.catcup` packages, impersonation, drag-and-drop import and the web password change are not in it.
 
@@ -66,7 +66,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - **STscript and typed slash commands.** A line such as `/send hello` typed into the message box is sent to the model as ordinary text. Only Quick Reply buttons run the supported commands.
 - **SillyTavern extensions.** None load.
 - **Attachments and images.** No file upload, no vision input, no character sprites or backgrounds.
-- **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory.
+- **Vector memory.** There is no embedding-based retrieval; long chats are trimmed to the token budget and the rolling summary is the only long-term memory. World info has an opt-in lexical (BM25) pass, but it ranks words, not meanings: a paraphrase that shares no vocabulary with an entry still will not match. An entry can also carry extra names under its keywords — typed by hand, or proposed by the model with **Generate aliases** in the book editor and kept from a review sheet — which closes the synonym gap where someone knows the words. Two costs are worth knowing before relying on them. **Aliases do not survive a world info export**, because they live in a `<book>.aliases.json` file beside the book rather than inside it; a book taken back to SillyTavern keeps only its own keys. And **an alias is a primary key**: it also satisfies the secondary-key logic and shares the token budget, so a wrong one hides the entry in scenes it should fire in rather than merely adding one.
 - **Removing the password is desktop-only.** A web or LAN install can change its password in Settings → About, but not remove it: with no password there would be nothing between the network and your data. Only the desktop app can drop back to open mode.
 
 **Partial, and worth knowing before you rely on it**
@@ -101,6 +101,16 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 **Platform**
 
 - **No in-app backup, restore or migration.** Back up by copying the data folder while the server is stopped.
+- **The director is one form and nothing else.** A chat can carry one — standing rules, a character you play, options after each reply — from **Tools → Director** in the chat header, for a single chat and for a group. What it does not have: a way to say "only these characters are on stage right now" (the cast is whoever the chat has), a history of scenes, or any of story mode's beats and branches. A single chat refuses to let you play its own card, because the prompt already tells the model to be that character; the refusal names the two ways out. **Story mode** (chapters, scenes, a story graph distilled from a book) is designed but not built — its plot distillation has no contract yet — so `chat_metadata.story` is a reserved key that nothing writes.
+
+- **A Telegram export imports one conversation at a time, and refuses groups.** Export the chat in Telegram Desktop as JSON, then choose it in **Import from another app**. Service rows, joins and messages with no text are dropped and counted; media becomes a short marker such as `[photo]` rather than a file path, because a chat file can be exported or shared and a path from the exporting machine is a leak. An export with more than one other speaker is refused rather than flattened — collapsing two people into one name would rewrite who said what. There is no Discord or Matrix import: neither has a first-party export in this shape.
+
+- **The bot answers private conversations only.** A message sent in a group, supergroup or channel is ignored without a reply, even from the owner. That is deliberate rather than missing: a CatCup group chat is several characters and a Telegram group is several people, and a reply would be public the moment it was delivered. Removing the bot from a group is the only way to be sure it is not in one — it does not announce itself either way.
+
+- **Notifications follow the window, and nothing else.** With **Tell me when a reply finishes** on, a generation started while the app was out of sight sends a Telegram message when it ends. Three things are therefore silent: a reply you were watching when it started, a reply you stopped, and a reply that came over Telegram itself. If you start a generation and then switch away, you are not told — the app only knows where its window was at the moment you pressed Send, and watching it afterwards is not something it can see. Running the desktop app in the tray counts as out of sight only if the window was already hidden. A notification is dropped rather than retried if Telegram refuses it, so a flaky connection loses one.
+
+The notification goes to the **owner id** in Settings → IM, in a private chat with the bot, whether or not you have ever messaged it. It needs the bot token to be set, but the bot's own polling switch can stay off if you only want to be told things — the message is one outbound call.
+
 - **The SillyTavern folder import usually finds no presets.** SillyTavern 1.19 keeps user presets in OpenAI Settings, which the importer does not read; import them one at a time from Settings → Prompts.
 - **Repeat imports add copies** with numeric suffixes instead of updating what is already there.
 - **Imported books arrive disabled and imported presets arrive active** — the opposite of what you might expect; enable books before they affect a chat.

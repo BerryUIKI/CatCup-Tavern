@@ -1,6 +1,5 @@
+import { ensureTimedWorldInfo } from '@catcup/compat-st';
 import { describe, expect, it } from 'vitest';
-
-import { ensureTimedWorldInfo } from './timedEffects.js';
 
 describe('timed world info metadata', () => {
     it('creates the containers SillyTavern expects', () => {

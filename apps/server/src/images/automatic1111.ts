@@ -1,3 +1,6 @@
+// Written for CatCup against the Automatic1111 HTTP API: the `/sdapi/v1/txt2img`
+// request body, the response shape and seed read-back.
+
 import type { ImageGenerationSettings } from '@catcup/shared';
 
 import { joinUrl } from '../providers/http.js';

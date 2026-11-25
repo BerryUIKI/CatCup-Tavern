@@ -1,10 +1,10 @@
 import { profileCreateSchema, profileRenameSchema, type SettingsResponse } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
-import { runningCount } from '../distill/registry.js';
 import { activeGenerations } from '../generation/registry.js';
 import { badRequest, conflict, notFound } from '../http/errors.js';
+import { stopTransport, syncTransport } from '../im/service.js';
+import { runningCount } from '../runs/registry.js';
 import { withFileLock } from '../storage/mutex.js';
 import { paths } from '../storage/paths.js';
 import {
@@ -80,6 +80,13 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
             throw conflict('Finish or stop what is running before switching profiles.', 'PROFILE_BUSY');
         }
 
+        // The bot goes quiet before the scope moves, not after. Its allowlist and
+        // bindings are per profile while its token is machine-wide, so a message
+        // answered across the switch would be judged by one profile's settings
+        // and written into another's chats. The busy check above does not see a
+        // transport's in-flight reply, which is why this is not left to it.
+        await stopTransport();
+
         return withFileLock(paths.globalSettings, async () => {
             try {
                 await switchProfile(id);
@@ -88,6 +95,12 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
             }
             // The scope changed, so every cached value belongs to the old one.
             clearSettingsCache();
+            // And the transport was built from the old profile's `ownerId` and
+            // `enabled`. Without this the allowlist keeps answering the previous
+            // profile's account until the next restart — silently, and in a
+            // direction nobody sees because the common setup uses one account
+            // across profiles.
+            await syncTransport();
             const settings: SettingsResponse = await getSettingsResponse();
             return { activeProfileId: id, settings };
         });

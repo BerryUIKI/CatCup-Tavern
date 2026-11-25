@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-
+import type { GenerationType } from '@catcup/compat-st';
+import { createTokenCounter } from '@catcup/compat-st';
 import {
     applyRegexScripts,
     buildGroupDepthPrompts,
@@ -10,6 +11,7 @@ import {
     type Group,
     type GroupDepthPrompt,
     getLatestSummary,
+    getSummaries,
     type JoinedMemberCard,
     joinsGroupCards,
     REGEX_PLACEMENT,
@@ -21,19 +23,19 @@ import {
 } from '@catcup/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-
+import { choiceInstruction, parseChoices } from '../director/choices.js';
+import { choiceLanguage, directorBlock, readDirector } from '../director/config.js';
 import { runGenerationStream } from '../generation/stream.js';
 import { type ResolvedMember, resolveMembers } from '../group/members.js';
 import { cleanGroupReply, stForceAvatarUrl } from '../group/output.js';
 import { findCurrentSpeaker, isNarratorMessage, lastAssistantSpeaker, selectGroupSpeaker } from '../group/selection.js';
 import { badRequest, notFound } from '../http/errors.js';
-import { buildMemoryInjection, formatMemoryText } from '../memory/inject.js';
+import { notifyTurn } from '../im/notify.js';
+import { buildMemoryInjection, formatMemoryText, formatSummaryList, summariesForTurn } from '../memory/inject.js';
 import { maybeSummarizeAfterTurn } from '../memory/service.js';
 import { buildPrompt } from '../prompt/builder.js';
-import type { GenerationType } from '../prompt/definitions.js';
 import { substituteMacros } from '../prompt/macros.js';
 import { resolvePreset } from '../prompt/preset.js';
-import { createTokenCounter } from '../prompt/tokenizer.js';
 import { createMacroContext, type GroupMacroMembers, scanWorldInfoForTurn } from '../prompt/worldInfoTurn.js';
 import { getCharacter } from '../storage/characters.js';
 import { chatPersonaId } from '../storage/chats.js';
@@ -60,6 +62,14 @@ const generateSchema = z.object({
     action: z.enum(['send', 'regenerate', 'continue', 'trigger']),
     message: z.string().max(200000).optional(),
     speaker: z.string().min(1).max(300).optional(),
+    /**
+     * Tell the owner over IM when this generation ends.
+     *
+     * Same contract as the single-character route: the client sets it, and only
+     * when its window was out of sight. Group auto mode is the case it exists
+     * for — those turns happen while nobody is looking, by definition.
+     */
+    notifyWhenDone: z.boolean().optional(),
 });
 
 function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
@@ -73,8 +83,8 @@ function toGenerationSpeaker(character: CharacterDetail): GenerationSpeaker {
 }
 
 function groupNewChatPrompt(): string {
-    // ST's default `new_group_chat_prompt`; `{{group}}` expands to every member.
-    return '[Start a new group chat. Group members: {{group}}]';
+    // `{{group}}` expands to every member.
+    return '[New group scene. Present: {{group}}]';
 }
 
 interface PersistContext {
@@ -92,6 +102,8 @@ interface PersistContext {
     substitute: (text: string, escapeValues: boolean) => string;
     /** Names of the other members, for trimming a reply that speaks for them. */
     otherNames: string[];
+    /** How many options to pull out of the reply; absent leaves it alone. */
+    directorChoices?: number;
     /** The batch id SillyTavern uses to group one turn's replies. */
     batchId: number;
 }
@@ -146,9 +158,17 @@ async function persistGroupReply(
     reasoning: string,
     stopped: boolean,
 ): Promise<ChatMessage> {
+    // Choices come out first, before the group trimmer looks at the text: the
+    // trimmer's job is to cut a reply that speaks for another member, and the
+    // option lines look exactly like that. Stripping them first means the
+    // trimmer only ever sees prose, and the options survive intact.
+    const parsed = context.directorChoices ? parseChoices(text, context.directorChoices) : null;
+    const replyText = parsed ? parsed.prose : text;
+    const choices = parsed && parsed.options.length > 0 ? parsed.options : null;
+
     // Trim a reply that starts speaking for another member before scripts run,
     // as SillyTavern's `cleanGroupMessage` does.
-    const cleaned = cleanGroupReply(text, context.speaker.name, context.otherNames);
+    const cleaned = cleanGroupReply(replyText, context.speaker.name, context.otherNames);
     const storedText = applyRegexScripts(context.regexScripts, cleaned, REGEX_PLACEMENT.AI_OUTPUT, {
         substitute: context.substitute,
     });
@@ -166,6 +186,7 @@ async function persistGroupReply(
         gen_finished: new Date().toISOString(),
         ...(storedReasoning ? { reasoning: storedReasoning } : {}),
         ...(stopped ? { stopped: true } : {}),
+        ...(choices ? { director: { choices: { options: choices } } } : {}),
     };
 
     if (context.action === 'regenerate' && context.regenerateIndex !== null) {
@@ -218,6 +239,24 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         if (members.length === 0) {
             throw badRequest('This group has no enabled members with a character card');
         }
+        // The director is per conversation, so it lives on the group chat's own
+        // metadata, not on the group record: two chats with the same cast can
+        // be two different stories.
+        const director = readDirector(chat.header.chat_metadata);
+        // The cast block names who the player controls; in a group it is built
+        // from the group's own members, so a played member is listed by the name
+        // the prompt will use for them.
+        const directorBlockText = director
+            ? directorBlock({
+                  character: resolvedMembers[0]?.speaker ?? { id: '', name: '' },
+                  members: resolvedMembers.map((member) => ({
+                      id: member.speaker.fileName,
+                      name: member.speaker.name,
+                  })),
+                  director,
+              })
+            : '';
+
         const groupMacros: GroupMacroMembers = {
             members: resolvedMembers.map((member) => member.speaker.name),
             enabled: members.map((member) => member.speaker.name),
@@ -272,6 +311,7 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
                 ...(body.action === 'send' && body.message !== undefined ? { message: body.message } : {}),
                 ...(body.action === 'regenerate' && lastMessage ? { message: lastMessage.mes } : {}),
                 ...(body.action === 'send' && body.speaker !== undefined ? { speaker: body.speaker } : {}),
+                ...(director ? { playedMembers: director.playedMembers } : {}),
             });
             if (!selection) {
                 throw badRequest('No enabled member can reply');
@@ -403,8 +443,21 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
         const macroContext = createMacroContext(speaker, persona, groupMacros, latestSummary?.value);
         const substitute = (text: string, escapeValues: boolean) =>
             substituteMacros(text, macroContext, escapeValues ? { escapeValue: sanitizeRegexMacro } : {});
-        const memoryInjection = buildMemoryInjection(settings.memory, latestSummary, macroContext);
-        const memoryText = formatMemoryText(settings.memory, latestSummary, macroContext);
+        const memoryInjection = buildMemoryInjection(
+            settings.memory,
+            summariesForTurn(settings.memory, getSummaries(messages), (summary) =>
+                tokenCounter.count(formatMemoryText(settings.memory, summary, macroContext) ?? ''),
+            ),
+            macroContext,
+        );
+        // The scan sees the same summaries the prompt does: in append-only
+        // mode a world info entry keyed on an old summary's wording would
+        // otherwise stop firing the moment a newer summary replaced it.
+        const memoryText = formatSummaryList(
+            settings.memory,
+            [...getSummaries(messages)].sort((a, b) => b.index - a.index),
+            macroContext,
+        );
 
         const activePreset = settings.activePresetId ? await readPresetBody(settings.activePresetId) : null;
         const preset = resolvePreset(activePreset, settings.generation);
@@ -520,8 +573,18 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             ...(memoryInjection ? { summaryInjection: memoryInjection } : {}),
             ...(joinedCard ? { joinedCard } : {}),
             cardDepthPrompts,
+            ...(directorBlockText ? { directorRules: directorBlockText } : {}),
         });
         const prompt = assembled.messages;
+
+        if (director?.choices && body.action === 'send') {
+            // After the history, for this generation only — the same mechanism
+            // the group nudge uses, and never stored.
+            prompt.push({
+                role: 'system',
+                content: choiceInstruction(director.choiceCount, choiceLanguage(speaker.card)),
+            });
+        }
 
         if (prompt.length === 0) {
             throw badRequest('The assembled prompt is empty. Check the enabled prompt entries.');
@@ -546,9 +609,10 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
                 .filter((member) => member.speaker.fileName !== speaker.fileName)
                 .map((member) => member.speaker.name),
             batchId,
+            ...(director?.choices && body.action === 'send' ? { directorChoices: director.choiceCount } : {}),
         };
 
-        await runGenerationStream({
+        const outcome = await runGenerationStream({
             reply,
             provider,
             model: resolved.model,
@@ -560,6 +624,14 @@ export async function registerGroupGenerateRoutes(app: FastifyInstance): Promise
             generationId,
             speaker: toGenerationSpeaker(speaker),
             persist: (text, reasoning, stopped) => persistGroupReply(context, text, reasoning, stopped),
+        });
+
+        // Fire-and-forget and after persistence. The speaker is named rather
+        // than the group, because "who said it" is what a notification from a
+        // group chat is for.
+        void notifyTurn(outcome, {
+            characterName: speaker.name,
+            background: body.notifyWhenDone === true,
         });
 
         // Fire-and-forget: the memory service re-reads the chat, so a summary

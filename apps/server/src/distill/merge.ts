@@ -1,8 +1,8 @@
 import { type DistillAnalysis, errorMessage, type ProviderConfig } from '@catcup/shared';
 
 import { getAdapter } from '../providers/index.js';
+import { extractJson } from '../providers/reply.js';
 import type { PromptMessage } from '../providers/types.js';
-import { extractJson } from './analyze.js';
 import { nearMissMessages } from './prompts.js';
 
 /**

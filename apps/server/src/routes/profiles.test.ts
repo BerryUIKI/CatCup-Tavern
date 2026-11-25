@@ -157,25 +157,64 @@ describe('profile routes', () => {
     it('refuses to switch while a distillation run is in flight', async () => {
         // A run resolves its scope when it starts and writes into that profile
         // when it finishes, so the same guard has to cover it.
-        const { createRun, releaseRun } = await import('../distill/registry.js');
-        createRun({
-            id: 'distill-route-test',
-            bookId: 'novel',
-            bookName: 'novel',
-            mode: 'sections',
-            model: '',
-            status: 'running',
-            startedAt: 0,
-            finishedAt: null,
-            chunks: [],
-            draft: null,
-        });
+        const { createRun, releaseRun } = await import('../runs/registry.js');
+        createRun(
+            {
+                id: 'distill-route-test',
+                bookId: 'novel',
+                bookName: 'novel',
+                mode: 'sections',
+                model: '',
+                status: 'running',
+                startedAt: 0,
+                finishedAt: null,
+                chunks: [],
+                draft: null,
+            },
+            'distill-route-test',
+            () => ({ type: 'start', runId: 'distill-route-test', model: '', chunks: [] }),
+        );
         try {
             const response = await call('PUT', '/api/profiles/active', { id: 'default' });
             expect(response.statusCode).toBe(409);
             expect((response.json() as { code?: string }).code).toBe('PROFILE_BUSY');
         } finally {
             releaseRun('distill-route-test');
+        }
+    });
+
+    it('tears the IM transport down when the new profile does not want one', async () => {
+        // The token is machine-wide and the two switches are per profile. A
+        // profile with the notification switch on builds a transport; switching
+        // to one with it off must remove that transport, or the bot keeps
+        // answering the previous profile's allowlist — while the notification
+        // path reads the new profile's, so the two disagree.
+        const { setTelegramToken, updateSettings } = await import('../storage/settings.js');
+        const { getTransport } = await import('../im/service.js');
+
+        await setTelegramToken('123:abc');
+        await updateSettings({ im: { enabled: false, notifyOnReply: true, ownerId: '111' } });
+        await call('PATCH', '/api/im/settings', { notifyOnReply: true });
+        expect(getTransport()).not.toBeNull();
+
+        const created = await call('POST', '/api/profiles', { name: 'No bot here' });
+        const profile = (created.json() as { profile: { id: string } }).profile;
+        try {
+            // A new profile starts with every IM switch off.
+            expect((await call('PUT', '/api/profiles/active', { id: profile.id })).statusCode).toBe(200);
+            expect(getTransport()).toBeNull();
+
+            // Back to the profile that does want it.
+            await call('PUT', '/api/profiles/active', { id: 'default' });
+            expect(getTransport()).not.toBeNull();
+        } finally {
+            await setTelegramToken('');
+            await updateSettings({ im: { enabled: false, notifyOnReply: false, ownerId: '' } });
+            // A live extra profile would change what "archive the last one"
+            // means for the tests below, so it goes whatever happened above.
+            await call('PUT', '/api/profiles/active', { id: 'default' });
+            await call('POST', `/api/profiles/${profile.id}/archive`);
+            await call('DELETE', `/api/profiles/${profile.id}`);
         }
     });
 

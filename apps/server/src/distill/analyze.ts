@@ -1,6 +1,7 @@
 import { type DistillAnalysis, distillAnalysisSchema, errorMessage, type ProviderConfig } from '@catcup/shared';
 
 import { getAdapter } from '../providers/index.js';
+import { extractJson } from '../providers/reply.js';
 import type { PromptMessage } from '../providers/types.js';
 import { ANALYSIS_REPAIR_USER_TEMPLATE, ANALYSIS_SAMPLING, analysisMessages, renderPrompt } from './prompts.js';
 
@@ -38,37 +39,6 @@ const TEMPERATURE = ANALYSIS_SAMPLING.temperature;
 
 function prompt(text: string, chapter: string): PromptMessage[] {
     return analysisMessages(text, chapter);
-}
-
-/**
- * Pull a JSON object out of whatever the model returned.
- *
- * A fenced block and a sentence of preamble are both common enough to recover
- * from; a reply with no object in it is not, and returns null so the caller can
- * ask once more.
- */
-export function extractJson(raw: string): unknown {
-    const trimmed = raw.trim();
-
-    const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(trimmed);
-    const candidate = fenced?.[1]?.trim() ?? trimmed;
-
-    try {
-        return JSON.parse(candidate);
-    } catch {
-        // Fall through to the outermost braces.
-    }
-
-    const start = candidate.indexOf('{');
-    const end = candidate.lastIndexOf('}');
-    if (start < 0 || end <= start) {
-        return null;
-    }
-    try {
-        return JSON.parse(candidate.slice(start, end + 1));
-    } catch {
-        return null;
-    }
 }
 
 /** Drain one request into a string. Streams are the only API the adapters offer. */

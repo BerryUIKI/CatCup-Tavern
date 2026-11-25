@@ -1,3 +1,6 @@
+// Written for CatCup. Running a quick reply: the fixed command subset, the
+// argument rules, `/run` expansion, and what reaches the chat.
+
 import {
     type AppSettings,
     applyRegexScripts,
@@ -84,11 +87,12 @@ const ALLOWED_ARGUMENTS: Record<ParsedQuickReplyCommand['name'], ReadonlySet<str
 };
 
 /**
- * Expand macros in a command's arguments, as SillyTavern's parser does before
- * a command callback sees them.
+ * Expand macros in a command's arguments, before its handler sees them.
  *
- * The message text of `/send`, `/sys` and `/echo` is left alone because their
- * execution paths expand it exactly once with the same context.
+ * `expandText` is false for `/send`, `/sys` and `/echo` specifically: their
+ * handlers expand the message text themselves, once, with the same context. If
+ * both did it the text would be expanded twice, and a macro whose value
+ * contains another macro would expand one level too deep.
  */
 function expandCommand(
     command: ParsedQuickReplyCommand,
@@ -168,11 +172,21 @@ function resolveRun(
 }
 
 /**
- * Expand `/run` into the commands it points at.
+ * Expand `/run` into the steps it points at, in place.
  *
- * A run target that is plain text ends the chain with an input directive,
- * mirroring ST's behaviour of placing it in the message box and clicking send.
- * A set with `disableSend` pastes its message literally instead.
+ * Three outcomes, and the difference between them matters:
+ *
+ * - A set with `disableSend` pastes its message as input rather than running
+ *   it. That is what the flag means, and it is the only way to have a `/run`
+ *   target whose text survives as text.
+ * - A target that parses as plain text becomes an input step that submits,
+ *   because the reply's message *is* the thing to send.
+ * - A target that parses as commands is flattened recursively, so a `/run`
+ *   chain executes as one list.
+ *
+ * `depth` bounds the recursion. The guard is checked before resolving the
+ * target, so a cycle of `/run` pointing at itself fails on the way in rather
+ * than after 10 levels of work.
  */
 function flattenCommands(
     commands: readonly ParsedQuickReplyCommand[],
@@ -225,11 +239,15 @@ function assertArguments(command: ParsedQuickReplyCommand): void {
 }
 
 /**
- * Check every command before the first append.
+ * Validate every step before the first append happens.
  *
- * The API promises that a malformed reply leaves the chat untouched; running
- * this over the flattened steps keeps a bad tail from leaving earlier appends
- * behind.
+ * The API promises that a malformed reply leaves the chat untouched. Validating
+ * as each step runs would break that promise the moment a good step is followed
+ * by a bad one — the good step's message would already be on disk.
+ *
+ * Range checks live here too, not only shape checks: an argument the command
+ * does not declare, a missing body, a severity `/echo` does not have, a speaker
+ * index beyond the cast.
  */
 function validateCommand(command: ParsedQuickReplyCommand, target: QuickReplyTarget): void {
     assertArguments(command);

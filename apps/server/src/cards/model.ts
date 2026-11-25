@@ -1,6 +1,5 @@
+import type { ParsedCard } from '@catcup/compat-st';
 import { CATCUP_MODEL_EXTENSION, isRecord } from '@catcup/shared';
-
-import type { ParsedCard } from './parse.js';
 
 /**
  * Read the character's model choice from a parsed card.

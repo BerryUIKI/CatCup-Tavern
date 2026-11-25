@@ -1,3 +1,6 @@
+// Written for CatCup. Storing a character's CharX assets beside its card, so an
+// export can put the same archive entries back.
+
 import type { Dirent } from 'node:fs';
 import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,16 +21,39 @@ import { assertSimpleName, paths, resolveInside } from './paths.js';
  * Assets follow their card's scope: a shared card's assets live in
  * `data/shared/character-assets/`, so a profile card of the same id keeps its
  * own instead of inheriting the shared one's files.
+ *
+ * Three rules keep a package from doing damage:
+ *
+ * - **Nothing is written in place.** The whole asset set is built in a staging
+ *   directory and moved over the old one in a single `rename`, so an import that
+ *   fails halfway leaves the previous assets intact rather than a mixture of two
+ *   packages.
+ * - **The caps are enforced on read, not only on write.** A folder that someone
+ *   filled by hand is subject to the same limits as one this code wrote, because
+ *   the cost being bounded is loading it back into memory.
+ * - **Every archive path is checked segment by segment.** `assets/../../x` is a
+ *   path traversal in a ZIP entry the same way it is in a request, and the check
+ *   runs before the path is resolved rather than after.
  */
 
+/** How many files one character may carry. */
 const MAX_ASSETS = 200;
+/** How many bytes they may total; a package larger than this is refused rather than trimmed. */
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
+/** How deep an `assets/a/b/c…` path may nest. */
 const MAX_DEPTH = 8;
 
 function assetRoot(scope: ItemScope): string {
     return scope === 'shared' ? paths.sharedCharacterAssets : paths.characterAssets;
 }
 
+/**
+ * Split an archive-relative path into safe segments.
+ *
+ * Empty segments are rejected along with `.` and `..`: an empty one comes from a
+ * doubled separator, and permitting it would make two distinct archive entries
+ * resolve to the same file.
+ */
 function segmentsOf(relative: string): string[] {
     const segments = relative.split('/');
     if (!segments.length || segments.some((segment) => !segment || segment === '.' || segment === '..')) {

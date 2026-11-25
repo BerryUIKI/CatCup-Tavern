@@ -14,21 +14,33 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-Portions of this software are derived from, or based on, the following works:
+CatCup is licensed AGPL-3.0 by its own choice. The character card, chat,
+world info and preset formats it reads and writes are the tavern ecosystem's
+shared standard, implemented here from the specifications.
 
-1. SillyTavern
-   https://github.com/SillyTavern/SillyTavern
-   Copyright (C) SillyTavern contributors
-   Licensed under the GNU Affero General Public License, version 3.
-   Includes the Claude tokenizer vocabulary at
-   apps/server/assets/tokenizers/claude.json, copied from SillyTavern's
-   src/tokenizers/claude.json.
+**No file in this repository is another project's code.** Everything that was
+once adapted from another client has been rewritten: the behaviour was taken
+from the documentation, and the implementation is this project's. What follows is
+what that rewrite could not remove — one data file and one algorithm whose
+outputs have to stay identical to what existing files already contain.
 
-2. RisuAI
-   https://github.com/kwaroran/RisuAI
-   Copyright (C) 2024 Kwaroran
-   Licensed under the GNU General Public License, version 3.
-   Combined with this AGPL-3.0 project under GNU AGPLv3 section 13.
+Third-party material included or depended on:
+
+1. Claude tokenizer vocabulary
+   apps/server/assets/tokenizers/claude.json
+   Copied from SillyTavern's src/tokenizers/claude.json
+   (https://github.com/SillyTavern/SillyTavern), Copyright (C) SillyTavern
+   contributors, licensed under the GNU Affero General Public License, v3.
+   This is a byte-level BPE vocabulary — data rather than code. It is shipped
+   verbatim because a token budget computed from anything else would disagree
+   with what the same prompt costs in the client that produced the file.
+
+2. cyrb53 string hash
+   Copyright (C) 2018 bryc
+   Public domain / MIT.
+   Used as published by packages/compat-st/src/hash.ts. The hash is how a chat
+   file stores its timed world info state, so the algorithm must match for
+   imported chats to keep working.
 
 3. @agnai/web-tokenizers
    https://github.com/mlc-ai/tokenizers-cpp
@@ -36,4 +48,20 @@ Portions of this software are derived from, or based on, the following works:
    Licensed under the Apache License, version 2.0.
    Runtime dependency used to load the Claude vocabulary.
 
-See docs/REUSE.md for the list of adapted modules and the nature of each reuse.
+4. js-tiktoken
+   Licensed under the MIT License.
+   Runtime dependency used for the OpenAI-family token counts.
+
+SillyTavern and RisuAI were read while this project was written, and
+`docs/REUSE.md` §2 and §3 record what was read and what came of it. Reading an
+implementation is not the same as copying one, and the value of that record is
+that it says which it was for every case.
+
+The AGPL-3.0 obligations above that used to follow from adapted files no longer
+have adapted files behind them. AGPL-3.0 is this project's choice, and §13
+applies to it on its own terms: if you run a modified CatCup as a network
+service, offer your users its source.
+
+See `docs/REUSE.md` for the per-file inventory and `docs/REUSE-ISOLATION.md` for
+the record of the rewrite — which modules came from where, and what replaced
+each one.

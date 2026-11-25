@@ -1,5 +1,5 @@
 // biome-ignore-all lint/a11y/noNoninteractiveTabindex: a tabpanel must be focusable when it contains no controls (e.g. About)
-import type { GenerationSettings } from '@catcup/shared';
+import type { GenerationSettings, WorldInfoConfig } from '@catcup/shared';
 import {
     BookOpen,
     Brain,
@@ -9,6 +9,7 @@ import {
     Info,
     Layers,
     ListOrdered,
+    MessageCircle,
     Pencil,
     Regex,
     Save,
@@ -40,6 +41,7 @@ import { type SettingsSectionId, useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
+import { ImSettings } from './ImSettings';
 import { MemorySettings } from './MemorySettings';
 import { Modal } from './Modal';
 import { PersonaSettings } from './PersonaSettings';
@@ -48,6 +50,7 @@ import { PromptOrderEditor } from './PromptOrderEditor';
 import { ProviderSettings, type ProviderSettingsHandle } from './ProviderSettings';
 import { QuickReplySettings } from './QuickReplySettings';
 import { RegexSettings } from './RegexSettings';
+import { RetrievalSettings } from './RetrievalSettings';
 import { Select } from './Select';
 import { ScopeMarks } from './SharedBadge';
 import { Spinner } from './Spinner';
@@ -115,6 +118,13 @@ const SECTIONS: SettingsSection[] = [
         icon: Brain,
         group: 'Prompt',
         description: 'A rolling summary injected into the prompt and stored with the chat.',
+    },
+    {
+        id: 'im',
+        label: 'Instant messaging',
+        icon: MessageCircle,
+        group: 'Chat',
+        description: 'Talk to a character from Telegram, and hear when a reply is ready.',
     },
     {
         id: 'persona',
@@ -359,6 +369,20 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             await updateSettings.mutateAsync({ worldInfo: { globalBooks: next } });
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not update the world info books.', 'error');
+        }
+    };
+
+    /**
+     * Save one or more retrieval settings.
+     *
+     * A `PATCH` carries only the fields that changed — the settings patch is a
+     * true partial, so a value the panel does not send keeps its stored one.
+     */
+    const handleRetrievalChange = async (patch: Partial<WorldInfoConfig>) => {
+        try {
+            await updateSettings.mutateAsync({ worldInfo: patch });
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not update the retrieval settings.', 'error');
         }
     };
 
@@ -704,6 +728,16 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                     ))}
                 </ul>
             )}
+
+            {settings ? (
+                <div className="border-t border-line-soft pt-5">
+                    <RetrievalSettings
+                        config={settings.worldInfo}
+                        onChange={(patch) => void handleRetrievalChange(patch)}
+                        busy={updateSettings.isPending}
+                    />
+                </div>
+            ) : null}
         </div>
     );
 
@@ -759,6 +793,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <PersonaSettings />
             ) : section === 'memory' ? (
                 <MemorySettings />
+            ) : section === 'im' ? (
+                <ImSettings />
             ) : section === 'quickreplies' ? (
                 <QuickReplySettings />
             ) : section === 'regex' ? (

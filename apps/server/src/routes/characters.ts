@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-
+import { buildCardPayload, parseJsonCard, writePngCard } from '@catcup/compat-st';
 import {
     type CharacterBulkResponse,
     type CharacterDetail,
@@ -16,8 +16,6 @@ import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
 import { buildCharx, parseCharx } from '../cards/charx.js';
-import { parseJsonCard } from '../cards/parse.js';
-import { buildCardPayload, writePngCard } from '../cards/write.js';
 import { config } from '../config.js';
 import { badRequest, internal, notFound } from '../http/errors.js';
 import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';

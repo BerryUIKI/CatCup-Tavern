@@ -19,6 +19,7 @@ import {
 import {
     Brain,
     ChevronDown,
+    Clapperboard,
     ImagePlus,
     Images,
     Menu,
@@ -47,10 +48,12 @@ import {
 import { useGeneration } from '../hooks/useGeneration';
 import type { ImageChatTarget } from '../hooks/useImages';
 import { useTts } from '../hooks/useTts';
+import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Composer } from './Composer';
 import { ConfirmDialog } from './ConfirmDialog';
+import { DirectorPanel } from './DirectorPanel';
 import { EmptyState } from './EmptyState';
 import { ImageGalleryDialog } from './ImageGalleryDialog';
 import { ImageGenerationDialog } from './ImageGenerationDialog';
@@ -148,6 +151,7 @@ export function GroupChatView({
     const [renameValue, setRenameValue] = useState('');
     const [manualSpeaker, setManualSpeaker] = useState('');
     const [memoryOpen, setMemoryOpen] = useState(false);
+    const [directorOpen, setDirectorOpen] = useState(false);
     const [pendingDelete, setPendingDelete] = useState<{ kind: 'message'; index: number } | { kind: 'chat' } | null>(
         null,
     );
@@ -610,6 +614,14 @@ export function GroupChatView({
             ...(disabledReason ? { hint: disabledReason } : {}),
         },
         {
+            id: 'director',
+            label: 'Director',
+            icon: Clapperboard,
+            onSelect: () => setDirectorOpen(true),
+            disabled: !selectedChatId,
+            ...(!selectedChatId && disabledReason ? { hint: disabledReason } : {}),
+        },
+        {
             id: 'memory',
             label: 'Memory',
             icon: Brain,
@@ -843,6 +855,14 @@ export function GroupChatView({
                                         onEdit={(text) => handleEditMessage(index, text)}
                                         onEditStart={tts.stop}
                                         onOpenImage={(url, title) => setLightbox({ url, title })}
+                                        // A director option is a shortcut for a line the
+                                        // person could have typed, so it goes through the
+                                        // same send path rather than a special one.
+                                        onChoose={
+                                            !message.is_user && !message.is_system
+                                                ? (label) => handleSend(label)
+                                                : undefined
+                                        }
                                         onIllustrate={
                                             imageEnabled &&
                                             !message.is_user &&
@@ -990,6 +1010,21 @@ export function GroupChatView({
                 focusRequest={focusRequest}
                 onSend={handleSend}
                 onStop={() => void generation.stop()}
+            />
+
+            <DirectorPanel
+                open={directorOpen}
+                onClose={() => setDirectorOpen(false)}
+                // A group has no self-play refusal, so nothing here is blocked.
+                ownCharacterId=""
+                load={async () => {
+                    const [view, cast] = await Promise.all([
+                        api.groups.chats.director.get(group.id, selectedChatId ?? ''),
+                        api.groups.chats.director.cast(group.id, selectedChatId ?? ''),
+                    ]);
+                    return { director: view.director, cast: cast.cast, isGroup: cast.isGroup };
+                }}
+                save={(patch) => api.groups.chats.director.save(group.id, selectedChatId ?? '', patch)}
             />
 
             <MemoryDialog
