@@ -2,7 +2,7 @@
 
 CatCup Tavern aims to be a compatible **client** in a shared ecosystem, not a byte-for-byte reimplementation of any one product. SillyTavern is the reference this page measures against, because it is the client most libraries currently live in and the one a migration comes from — but the formats themselves are a de-facto standard that several clients implement. Compatibility is delivered in layers. This page records what works today, what is partial, and what is planned.
 
-> Status snapshot: **M1 and M2 complete**, released as `0.3.0` on 2026-11-13; M4 is in progress with the desktop shell and packaging shipped; M3 and M5 are planned. See [MILESTONES.md](MILESTONES.md).
+> Status snapshot: **M1, M2 and M2.5 complete**, released as `0.4.0` on 2026-11-26; M4 is in progress with the desktop shell and packaging shipped; M3 and M5 are planned. See [MILESTONES.md](MILESTONES.md).
 
 ## Compatibility layers
 
@@ -122,6 +122,7 @@ World info files load from `data/worlds/` and are scanned with SillyTavern's ful
 - **World Info lexical pass:** off by default, and opt-in through `worldInfo.lexicalMatch`. When on, a BM25F index over each entry's keys, comment and content adds entries the substring keys missed; nothing a keyword matched is removed, and every downstream gate — inclusion groups, probability, the token budget, timed effects, trigger and character filters — still applies. SillyTavern has no equivalent in its scanner (it matches literal substrings only), and its Vector Storage extension reaches the same shape from the other direction: semantic hits are added through `WORLDINFO_FORCE_ACTIVATE` rather than replacing keyword activation. The divergence is recorded here because a book can surface more entries in CatCup than in SillyTavern with the setting on. No card, chat, world info or preset file changes shape; the flag is CatCup settings only.
 - **World info aliases:** an entry may carry extra names that the scanner matches as additional primary keys. SillyTavern has no concept of them, so a book that uses them fires in CatCup where it would not in SillyTavern — which is the point. They live in `<book>.aliases.json` beside the book and are **not** written into the entry, because an entry's identity hash covers its whole raw record and a chat's `timedWorldInfo` records are matched by that hash; putting aliases inside the entry would silently detach its sticky and cooldown effects. A book with no sidecar loads and scans exactly as it does in SillyTavern, and no shared file changes shape. The cost is that aliases do not travel in an ST export. CatCup can propose a list with the active model — one request per entry, reviewed before anything is written — and records the content hash it came from so a list whose entry has since changed is marked stale; SillyTavern has neither, and a book that uses them still fires differently there until the names are copied into the entry's `key`.
 - **Append-only summaries:** off by default. When `memory.appendOnly` is on, a summary is never re-summarized — each covers a settled range and is kept — and the prompt carries the newest summaries plus the earliest. SillyTavern only ever writes a rewrite of the previous one and only ever injects the newest, so a detail that does not fit the word limit is lost at every step and the opening of a long chat eventually falls out of the prompt with nothing left holding it. The file format does not change: ST already stores one summary per covered message on `extra.memory` and never clears an older anchor, so a chat written by either client reads in both. SillyTavern will inject only the newest summary of a chat CatCup wrote this way, which is why the setting is a visible choice rather than the default.
+- **The director:** CatCup-only, off by default. A per-chat `chat_metadata.director` block holds standing rules, a speaker mode and the options count; the character the person plays is kept out of the model's reach, and a line-oriented sentinel block in the reply is stripped before the message is stored and shown, with the options kept as `extra.director.choices.options`. SillyTavern ignores both keys, so a chat with a director reads as an ordinary chat there — the choices are simply absent from the transcript, which is the intended cost of riding on untyped keys rather than a file shape. A chat with no `director` key produces the same prompt and the same file as before this feature existed.
 - **World info group removal:** SillyTavern's inclusion-group `removeEntry` calls `splice(indexOf(entry), 1)`; when the entry is already gone this removes the last unrelated candidate. CatCup guards the index instead of reproducing that data loss.
 - **World info book binding:** a card's own book and the global book list are merged and deduplicated case-insensitively, because `Eldoria` and `eldoria` are the same file on Windows. SillyTavern would load it twice.
 - **World Info entry list order:** the editor sorts by `displayIndex` (falling back to `uid`), then `order` descending, then uid — SillyTavern's Custom sort. SillyTavern's own editor defaults to a Priority sort with drag handles only in Custom mode; this editor always uses Custom order because it exposes explicit up/down buttons instead of dragging.
@@ -180,15 +181,16 @@ Future compatibility tests should copy small fixtures into a test directory rath
 
 ## Compatibility roadmap
 
-| Milestone | Compatibility work                                                                            |
-| --------- | --------------------------------------------------------------------------------------------- |
-| M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer |
-| 0.2.0 MVP | Regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell  |
-| 0.2.1     | Macros in stored messages, card lorebook import, greeting switching                           |
-| M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX, library tags |
-| M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix   |
-| M4        | Desktop signing, auto-updater, file associations, tray icon, window state, macOS/Linux        |
-| M5        | Compatibility polish, i18n, release hardening                                                 |
+| Milestone | Compatibility work                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------ |
+| M1        | World Info scanner/editor, Prompt Manager, preset import/export, editing/branching, tokenizer          |
+| 0.2.0 MVP | Regex scripts, card editing/export, multiple personas, ST data import, Windows desktop shell           |
+| 0.2.1     | Macros in stored messages, card lorebook import, greeting switching                                    |
+| M2        | Group chats, summary memory, Quick Replies subset, TTS, image generation, CharX, library tags          |
+| M2.5      | Director (RFC 0003 layer 1), Telegram channel (RFC 0004), aliases, lexical pass, append-only summaries |
+| M3        | Full STscript, Quick Replies, getContext/event bus, extension sandbox, compatibility matrix            |
+| M4        | Desktop signing, auto-updater, file associations, tray icon, window state, macOS/Linux                 |
+| M5        | Compatibility polish, i18n, release hardening                                                          |
 
 ## Contributing compatibility fixes
 

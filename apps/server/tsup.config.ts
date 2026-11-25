@@ -17,9 +17,11 @@ export default defineConfig({
     outDir: 'dist',
     clean: true,
     sourcemap: true,
-    // @catcup/shared exports TypeScript source, so it must be bundled into the
-    // server output instead of being resolved at runtime by Node.
-    noExternal: bundleDependencies ? [/.*/] : ['@catcup/shared'],
+    // The workspace packages export TypeScript source rather than built output,
+    // so both must be bundled into the server instead of being resolved at
+    // runtime by Node — which would fail on the first `import` of a `.ts` file
+    // or of a `./foo.js` specifier that only exists as `foo.ts`.
+    noExternal: bundleDependencies ? [/.*/] : ['@catcup/shared', '@catcup/compat-st'],
     /**
      * Dependencies are CommonJS and call `require` internally. In an ESM bundle
      * esbuild turns those into a dynamic require that throws, so the bundle

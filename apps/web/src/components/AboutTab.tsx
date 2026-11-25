@@ -6,31 +6,34 @@ import { api } from '../lib/api';
 import { Spinner } from './Spinner';
 
 const WORKS = [
-    'Import character cards (PNG V2/V3, JSON), chats, lorebooks and OpenAI presets — or point at an existing installation’s user folder and copy everything at once.',
+    'Import character cards (PNG V2/V3, JSON, CharX, .catcup), chats, lorebooks and OpenAI presets — or point at an existing installation’s user folder and copy everything at once.',
     'Chat with streaming replies, swipes, regenerate, continue, inline editing, branching and alternate greetings.',
     'Group chats with their own greetings, per-member avatars and natural, list, manual or pooled reply order.',
-    'Summary memory: a rolling summary stored in the chat file, with automatic updates, an editable Memory panel and configurable prompt injection.',
+    'A per-chat director: standing rules, the character you play kept out of the model’s reach, and a short list of options after each reply — for a single chat and for a group.',
+    'Summary memory: a rolling summary stored in the chat file, with automatic updates, an editable Memory panel and configurable prompt injection. Keep every summary stops it rewriting itself.',
+    'A Telegram channel: bind a chat to a Telegram conversation, talk to the character from your phone, and import a Telegram export as a chat.',
     'Quick Replies (subset): version 2 quick reply sets with a button bar, import and export, and the /send, /sys, /echo, /trigger, /continue, /regenerate and /run commands.',
     'Text to speech: browser voices or an OpenAI-compatible /audio/speech endpoint, with per-character voices, a narrator voice, autoplay and a play button on every reply.',
     'Image generation through Automatic1111/Forge, a ComfyUI API workflow or an OpenAI-compatible /images/generations endpoint, with per-character and per-group galleries and images inserted into the chat as media messages.',
-    'Lorebooks with the full world info scan pipeline, and an editor for every entry field.',
+    'Lorebooks with the full world info scan pipeline, an editor for every entry field, an Also matches list per entry, and an opt-in lexical pass.',
     'OpenAI presets: import, activate, and change prompt order and injection positions.',
     'Regex scripts with import and export, applied to input, output, reasoning and lorebook content.',
-    'Several personas, with one default and a per-chat choice.',
-    'Edit character cards and export them back to PNG or JSON, or as a CharX package with its assets.',
+    'Several personas, with one default and a per-chat choice; a persona can carry a card’s personality, scenario and example messages.',
+    'Edit character cards and export them back to PNG or JSON, or as a CharX or .catcup package with its assets.',
     'A character library with tags, favorites, tag and favorite filters, five sort orders, and bulk favorite, tag and delete actions.',
-    'Windows desktop app that installs without an administrator and carries its own runtime.',
+    'Windows desktop app that installs without an administrator, carries its own runtime, lives in the tray and updates itself.',
 ];
 
 const DOES_NOT_WORK = [
     'STscript, the full Quick Replies engine (auto-execution, context menus, per-character sets) and typed slash commands.',
     'Lorebook and prompt extensions written for another client — none of them load.',
-    'Vector/embedding memory for long chats; the rolling summary is the only long-term memory.',
-    'Group chats answer one member per turn with that member’s own card; append modes, automatic turns and multi-member reply batches are not implemented.',
+    'Vector/embedding memory for long chats; the summary is the only long-term memory.',
+    'Group chats answer one member per turn with that member’s own card; append modes and multi-member reply batches are not implemented.',
     'Regex scripts are global only: per-character and per-preset scopes are not implemented.',
-    'Personas have a name and a description only — no avatars and no per-persona injection settings.',
+    'Personas have no avatars, no per-persona injection settings and no attached lorebook.',
+    'Story mode: chapters, scenes and a story graph are designed but not built.',
     'Phone-sized layouts and translated interfaces.',
-    'Automatic updates and signed installers.',
+    'A signed installer — SmartScreen warns once on a downloaded copy.',
 ];
 
 /**

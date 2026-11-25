@@ -2,7 +2,7 @@
 
 CatCup Tavern is early-access software. The goal is narrow: someone who already has a library in another tavern client can install it, point it at their data, and keep roleplaying — one character or a whole group, with lorebooks, presets, memory, speech and images — without going back. Everything outside that is either partial or absent, and this page says which.
 
-This page describes the repository as it stands. The published `0.3.0` build predates the desktop work: the tray icon, self-update, `.catcup` packages, impersonation, drag-and-drop import and the web password change are not in it.
+This page describes the repository as it stands, which is what `0.4.0` ships. Earlier builds predate the Telegram channel, world info aliases, the lexical retrieval pass and the desktop title bar; the [CHANGELOG](../CHANGELOG.md) says which release carries what.
 
 ## What works
 
@@ -20,7 +20,9 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - Branch a conversation from any message, rename or delete a chat, start from any of a card's alternate greetings, and switch a chat's opening to another greeting from the chat header or by swiping the first message.
 - Stop a reply mid-stream; the partial text is kept.
 - **Group chats**: put several characters in one room, with their own greetings, avatars and names on every message. Natural, list, manual and pooled reply order; mute a member without removing them. SillyTavern's three card modes (swap, and join with or without muted members) with a join prefix and suffix, and **auto mode** for letting the group keep talking on its own.
-- **Summary memory**: a rolling summary stored in the chat file, updated automatically after replies or on demand, shown in the Memory panel where it can be edited or deleted, injected after or before the main prompt or at a chat depth, and available as `{{summary}}`.
+- **Summary memory**: a rolling summary stored in the chat file, updated automatically after replies or on demand, shown in the Memory panel where it can be edited or deleted, injected after or before the main prompt or at a chat depth, and available as `{{summary}}`. **Keep every summary** stops re-summarizing, so each summary covers a settled range and the prompt carries the newest ones plus the earliest.
+- **A director for a chat or a group**: standing rules, the character you play kept out of the model's reach, and a short list of options after each reply. **Tools → Director** in the chat header.
+- **A Telegram channel**: bind one of your chats to a Telegram conversation and talk to the character from your phone, with `/chat`, `/new`, `/stop`, `/who`, `/status`, `/provider` and `/help`. A Telegram export imports as an ordinary CatCup chat, and **Tell me when a reply finishes** reports a generation that ended while you were looking elsewhere.
 - **Text to speech**: browser voices or an OpenAI-compatible `/audio/speech` endpoint, with per-character and narrator voices, a play button on every reply, and optional autoplay.
 - **Image generation**: Automatic1111/Forge or an OpenAI-compatible `/images/generations` endpoint, with a prompt typed or drafted from the chat, a per-character and per-group gallery, and images inserted into the chat.
 
@@ -28,7 +30,9 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 
 - SillyTavern's scan pipeline: keys and secondary logic, recursion, inclusion groups with weights, timed effects, budget, and every injection position.
 - An entry editor for every field, with a live test, plus import and export.
-- The context inspector shows the assembled prompt, every entry considered, and why it fired or not.
+- **Also matches** on each entry: extra names, typed by hand or proposed by the model with **Generate aliases**, so a colloquial name finds a canonical entry. Stored beside the book; see the cost below.
+- An opt-in **lexical pass** in Settings → World Info, so an entry can fire on what the chat is about rather than only on the author's own substrings.
+- The context inspector shows the assembled prompt, every entry considered, and why it fired or not — naming the alias or the lexical score when one is what fired it.
 
 **Prompts and presets**
 
@@ -58,6 +62,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 - Add, duplicate and delete providers, including any OpenAI-compatible endpoint. A **Custom provider** entry starts one from nothing: pick the request protocol and type the endpoint.
 - Switch the active provider from the library footer without opening settings; one click, and the model it uses is shown in the list.
 - Five request protocols: OpenAI Chat Completions (which covers OpenAI, OpenRouter, DeepSeek, LM Studio, vLLM and most gateways), the OpenAI Responses API, Anthropic Messages, Google Gemini's own `generateContent`, and native Ollama. KoboldAI and the other SillyTavern-specific backends are not implemented.
+- **Tag, favorite, import and delete in bulk** from the library's selection mode, and **Import from another app** also reads a Telegram Desktop JSON export.
 
 ## What does not work yet
 
@@ -111,6 +116,7 @@ This page describes the repository as it stands. The published `0.3.0` build pre
 
 The notification goes to the **owner id** in Settings → IM, in a private chat with the bot, whether or not you have ever messaged it. It needs the bot token to be set, but the bot's own polling switch can stay off if you only want to be told things — the message is one outbound call.
 
+- **The Telegram channel needs a bot you create yourself.** Make one with `@BotFather`, paste its token into Settings → IM, put your own numeric user id in **Owner id**, and turn on the polling switch. Nothing is proxied through CatCup: message text and the replies travel through Telegram's servers, which is a change from "the data never leaves this machine". The provider key still never leaves the server.
 - **The SillyTavern folder import usually finds no presets.** SillyTavern 1.19 keeps user presets in OpenAI Settings, which the importer does not read; import them one at a time from Settings → Prompts.
 - **Repeat imports add copies** with numeric suffixes instead of updating what is already there.
 - **Imported books arrive disabled and imported presets arrive active** — the opposite of what you might expect; enable books before they affect a chat.

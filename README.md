@@ -16,11 +16,11 @@ A **local-first AI roleplay client**: one Fastify server, three shapes — a bro
 Windows desktop app — with every character card, chat, lorebook and prompt preset kept as an ordinary
 file under `data/`.
 
-> **Status: early access.** `0.3.2` released 2026-11-16. `main` carries the next release.
-> The gaps worth knowing are in [What is not there yet](#what-is-not-there-yet) below, and in full in
+> **Status: early access.** `0.4.0` released 2026-11-26. The gaps worth knowing are in
+> [What is not there yet](#what-is-not-there-yet) below, and in full in
 > [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
-**[Download for Windows](https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe)** ·
+**[Download for Windows](https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.4.0/CatCup.Tavern_0.4.0_x64-setup.exe)** ·
 [Website](https://berryuiki.github.io/CatCup-Tavern/) ·
 [What works and what does not](docs/LIMITATIONS.md) ·
 [Build from source](#install)
@@ -47,7 +47,7 @@ _The chat view. Mira is the sample card that ships with the app._
 
 ### Windows
 
-[Download the installer](https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.3.2/CatCup.Tavern_0.3.2_x64-setup.exe)
+[Download the installer](https://github.com/BerryUIKI/CatCup-Tavern/releases/download/v0.4.0/CatCup.Tavern_0.4.0_x64-setup.exe)
 and run it. It installs per user, needs no administrator and no separate Node installation, and keeps
 your data in `%APPDATA%\dev.catcup.tavern`. The desktop build also carries the tray icon,
 window-state restore, `.catcup` file associations and self-update from signed release artifacts.
@@ -102,13 +102,27 @@ ecosystem's group chat files.
 `selectiveLogic`, recursion, inclusion groups with scoring and weighted rolls, sticky/cooldown/delay
 timed effects, the token budget and every injection position. A full entry editor, and a context
 inspector that shows the assembled prompt, every entry considered, and why it did or did not fire.
+An entry can carry an **Also matches** list of extra names, typed by hand or proposed by the model and
+kept from a review sheet, and an opt-in lexical pass lets an entry fire on what the chat is about
+rather than only on the author's own substrings.
 
 **Prompts.** Import, switch, export and delete OpenAI presets; reorder prompts, disable them, or move
 one into an in-chat injection with a depth, order and role. Model-aware token counting — tiktoken for
 recognised OpenAI models, Claude's vocabulary for Anthropic, a labelled estimate otherwise.
 
 **Memory.** A rolling summary stored in the chat file, updated automatically or on demand, editable,
-and injected at a configurable position. Available to the model as `{{summary}}`.
+and injected at a configurable position. Available to the model as `{{summary}}`. **Keep every
+summary** stops the chain from rewriting itself, so a long chat forgets its middle rather than its
+opening.
+
+**Scenes and characters.** A per-chat **director** decides who may speak, keeps the character you play
+in the prompt without letting the model write them, and offers a short list of options after each
+reply — for a single chat and for a group.
+
+**From your phone.** A Telegram bot binds one of your chats to a Telegram conversation: a plain message
+talks to the character, `/new`, `/stop`, `/who`, `/status`, `/provider` and `/help` cover the rest. An
+exported Telegram conversation imports as an ordinary CatCup chat, and **Tell me when a reply finishes**
+sends one message when a generation started while the window was out of sight ends.
 
 **Speech and images.** Browser voices or any OpenAI-compatible `/audio/speech` endpoint, with
 per-character and narrator voices and a play button on every reply. Image generation through
@@ -136,7 +150,7 @@ type in. One provider can serve several models, chosen per character and per pro
 | Character cards — PNG V2/V3, JSON, CharX                                 | Works                                                                    |
 | `.catcup` packages — the same ZIP container under CatCup's own extension | Works                                                                    |
 | Chats — JSONL, swipes, branches, alternate greetings                     | Works                                                                    |
-| World info — keys and logic, recursion, groups, timed effects, positions | Works                                                                    |
+| World info — keys and logic, recursion, groups, timed effects, positions | Works; aliases and an opt-in lexical pass are CatCup additions           |
 | OpenAI presets — import, prompt order, in-chat injection                 | Works; sampling covers temperature, top p, max tokens and context size   |
 | Regex scripts — all four live placements                                 | Works                                                                    |
 | Quick Replies — version 2 sets                                           | Partial: seven commands, no auto-execution or context menus              |

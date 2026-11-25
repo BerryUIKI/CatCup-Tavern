@@ -1,6 +1,6 @@
 # Milestones
 
-> Current status: **M0, M1, M2 and M4's shell are complete**, most recently released as `0.3.2` on 2026-11-16; M6 (game mode) was scoped 2026-11-24 as RFC 0005 and RFC 0006 and is not started; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch, `0.3.0` the M2 feature release and `0.3.1` profiles and book distillation. M4's remaining acceptance criteria are open; M3 and M5 are planned.
+> Current status: **M0, M1, M2, M2.5 and M4's shell are complete**, most recently released as `0.4.0` on 2026-11-26; M6 (game mode) was scoped 2026-11-24 as RFC 0005 and RFC 0006 and is not started; `0.2.0` was the first early-access release, `0.2.1` a compatibility patch, `0.3.0` the M2 feature release, `0.3.1` profiles and book distillation, `0.3.2` request protocols and the styled controls, and `0.4.0` channels and guidance (M2.5). M4's remaining acceptance criteria are open; M3 and M5 are planned.
 >
 > This document is the source of truth for scope, sequencing and acceptance criteria. If a roadmap table elsewhere disagrees with this file, this file wins.
 
@@ -25,6 +25,7 @@ timeline
         2026-11-13 : 0.3.0 - groups, memory, quick replies, TTS, images, CharX
         2026-11-15 : 0.3.1 - profiles and the shared layer, multi-model, book distillation
         2026-11-16 : 0.3.2 - request protocols, custom provider, styled dropdowns, desktop fixes
+        2026-11-26 : M2.5 - director, Telegram channel, aliases, lexical retrieval, 0.4.0
     section In progress
         UX stages C-E : message experience, editors, accessibility
     section Planned
@@ -119,6 +120,7 @@ Released after the MVP, before M2:
 | **M0**    | Runnable foundation: web + server + ST data basics                         | Complete    | —          |
 | **M1**    | Core SillyTavern experience: world info, prompt manager, presets, editing  | Complete    | M0         |
 | **M2**    | Extended roleplay: groups, memory, TTS, image generation, CharX            | Complete    | M1         |
+| **M2.5**  | Channels and guidance: director, Telegram, aliases, lexical retrieval      | Complete    | M1, M2     |
 | **M3**    | Scripting and extension compatibility: STscript, Quick Replies, getContext | Planned     | M1, M2     |
 | **M4**    | Desktop: signing, auto-updater, file associations, macOS/Linux             | In progress | M0, M1     |
 | **M5**    | Polish and release: mobile, i18n, accessibility, performance, CI, v1.0     | Planned     | M0–M4      |
@@ -351,6 +353,42 @@ M2 shipped in `0.3.0` on 2026-11-13. The 434 unit tests the release carries (98 
 
 The MVP subset runs in the [MVP sequence](#sequencing) above. After `0.2.0`: group chat storage (**done 2026-11-11**) → group chat UI and generation (**done 2026-11-11**) → summary memory (**done 2026-11-11**) → Quick Replies subset (**done 2026-11-12**) → TTS (**done 2026-11-12**) → image generation (**Automatic1111, ComfyUI and OpenAI-compatible done 2026-11-12**) → CharX (**done 2026-11-12**) → library polish (**favorites, tags, sorting and bulk actions done 2026-11-12**).
 
+## M2.5 — Channels and guidance (Complete)
+
+**Goal:** reach the conversation from outside the app window, and give a chat enough structure to be a scene rather than a transcript. Shipped in `0.4.0` on 2026-11-26.
+
+M2.5 is not in the original milestone ladder. It exists because three accepted designs — RFC 0003 layer 1, RFC 0004 and the retrieval work behind #127/#128/#129 — were ready, independent of M3, M5 and M6, and each shipped something usable on its own. Recording them as a milestone keeps the ladder honest rather than leaving released scope with no home in this document.
+
+### Delivered
+
+- **A per-chat director** ([RFC 0003](RFC/0003-guided-roleplay.md), layer 1, #151): standing rules, a speaker mode, the character the person plays kept in the prompt but out of the model's reach, and a line-oriented sentinel block offering options after a reply. Works in a single chat and in a group; a single chat refuses to play its own card. A chat with no `director` key produces the same prompt and the same file it always did.
+- **A Telegram channel** ([RFC 0004](RFC/0004-im-integration.md)): long polling with no public address, one allowlisted owner id, `/chat`, `/new`, `/stop`, `/who`, `/status`, `/provider` and `/help`, replies split on paragraph and sentence boundaries, a persisted poll offset, and Telegram HTML formatting. Private conversations only — a group message is dropped silently, because a reply there would be public.
+- **Generation is transport-neutral**: `generateReply` is an async generator and the SSE route is a thin wrapper, so a second transport runs the same code.
+- **A Telegram export imports as a CatCup chat**, after a scan that asks which participant is you and refuses to flatten a group into one name.
+- **A notification when a reply finishes while the window was out of sight**, and also when a generation fails.
+- **World info aliases** (#127): an **Also matches** list per entry, typed by hand or proposed by the model and kept from a review sheet, stored in `<book>.aliases.json` beside the book rather than inside it — so no entry's identity hash moves and no chat's timed effects detach. The storage choice, its two rejected alternatives and the measurements behind them are recorded in `CHANGELOG.md` and `docs/DATA-FORMATS.md`.
+- **An opt-in lexical (BM25F) retrieval pass** for world info (#126), with its three bounds reachable in Settings → World Info, and a `recall` command that measures whether a book needs aliases or embeddings at all.
+- **Append-only summaries** (`memory.appendOnly`, #129's first step): the prompt carries the newest summaries plus the earliest, and a `chat-recall` command measures what a message index would have surfaced.
+- **Two more request protocols** — OpenAI Responses and Gemini native — and **a self-drawn desktop title bar**.
+- **A landing page in nine languages**, published to `gh-pages` from `site/`.
+- **The adapted code is gone**: phase 3 of [REUSE-ISOLATION.md](REUSE-ISOLATION.md) completed, and no file in the tree carries a `Derived from` header.
+
+### Acceptance criteria
+
+- [x] A chat can carry a director, offers options after a reply, and a chat without one produces an unchanged prompt and file.
+- [x] A Telegram conversation can be bound to a chat, talk to the character, and be stopped mid-reply; a reply started while the window was out of sight notifies on completion.
+- [x] A Telegram export imports as a chat, and a multi-speaker export is refused rather than flattened.
+- [x] Aliases make an entry fire on a second name, survive an edit of the book, and never change an entry's identity hash.
+- [x] The lexical pass only adds candidates: keys, inclusion groups, probability, budget, timed effects and filters behave as before when it is off.
+- [x] `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build` pass.
+
+### Known gaps carried forward
+
+- Story mode ([RFC 0003](RFC/0003-guided-roleplay.md) layer 2) is **blocked on its own design** — its plot distillation has no contract yet — so `chat_metadata.story` stays a reserved key nothing writes. This is the one accepted RFC whose scope is not done, and it is why the director is recorded as layer 1 only.
+- The IM channel is Telegram only, one owner id, one binding per conversation. Discord and Matrix are not planned: neither has a first-party export in this shape.
+- Aliases do not travel in a SillyTavern export, and there is still no embedding-based retrieval (#128 is open; the `recall` measurement exists to decide whether it is worth building).
+- No in-app chat search (#129 remains open beyond the append-only fix).
+
 ## M3 — Scripting and extension compatibility (Planned)
 
 **Goal:** run the parts of the ST scripting/extension ecosystem that are practical, in compatibility layers L2–L4.
@@ -561,3 +599,4 @@ Every user-facing change updates `README.md`, the relevant `docs/` page and `CHA
 - 2026-11-15: Book distillation's second slice landed — sections mode runs end to end, from the upload through the review sheet to a written world info book and linked cards. The run registry is separate from generations because a distill run deliberately survives a closed tab. The third slice closed the same day: the model draft reads the book per chunk, merges the entities in plain code with one batched request for near-identical names, and spends an outline request only where a character or place recurs. All six acceptance criteria are met.
 - 2026-11-24: M6 scoped but not started. RFC 0005 ([#169](https://github.com/BerryUIKI/CatCup-Tavern/issues/169)) and RFC 0006 ([#170](https://github.com/BerryUIKI/CatCup-Tavern/issues/170)) define game mode as three front-end modes over two independent switches — a per-chat director and a per-save game — with a declarative plugin host that carries no code. Blank character card creation ([#168](https://github.com/BerryUIKI/CatCup-Tavern/issues/168)) is the first slice and is not a plugin feature: the app still cannot create a card from nothing — `routes/characters.ts` has no create endpoint and `CharacterEditor` renders only once a card exists. Re-verified against `dev` on 2026-11-24. Native tool calling is deliberately not a dependency; actions ride a sentinel block, whose truncation-tolerance rule is already proven by the shipped director (`apps/server/src/director/choices.ts`, #151).
 - 2026-11-15: The distilled result became usable. The pipeline exports as a prompt-only Claude Skill generated from the runtime's own prompt constants, with a drift test between the two. A card turns into a persona carrying its description, personality, scenario and examples — but not its opening line — and a persona's new optional fields leave every existing one producing the same prompt. A portrait can be drafted from a card with no chat involved, and made the character's picture, including for a JSON card that becomes a PNG one.
+- 2026-11-26: **M2.5 recorded and released as `0.4.0`.** Three accepted designs that had shipped on `main` without a milestone of their own — the director (RFC 0003 layer 1), the Telegram channel (RFC 0004) and the retrieval work behind #127/#128/#129 — plus the two extra request protocols, the self-drawn desktop title bar and the landing page, are now a complete milestone rather than released scope with no home here. Story mode remains the one accepted RFC whose scope is unfinished, and its blocker (a plot distillation with no contract) is written down in M2.5's gaps instead of being left implicit. Phase 3 of `docs/REUSE-ISOLATION.md` also completed in this batch: no file in the tree carries a `Derived from` header.

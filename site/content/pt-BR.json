@@ -28,7 +28,7 @@
         "lede": "Um personagem ou uma sala inteira, com livros de lore, predefinições de prompt, memória contínua, voz e imagens. Cada ficha e cada conversa é um arquivo comum no seu próprio disco. Um servidor atende três formas: uma aba do navegador, sua rede local e um app para Windows.",
         "download": "Baixar para Windows",
         "docs": "Ler a documentação",
-        "meta": "0.3.2 · 16 de novembro de 2026 · Windows, web e rede local",
+        "meta": "0.4.0 · 26 de novembro de 2026 · Windows, web e rede local",
         "demoNote": "Não é uma captura: é a interface funcionando aqui na página. Escreva uma linha e Mira responde.",
         "startOver": "Começar de novo"
     },
