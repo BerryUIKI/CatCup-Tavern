@@ -2,14 +2,9 @@ name: CI
 
 on:
     # Trunk-based: pull requests target `main`, and every push to it is the
-    # trunk moving. There is no integration branch to watch any more.
-    #
-    # `dev` is still listed for one transition only: this file is itself being
-    # changed by a PR based on it, and a trigger that no longer matches its own
-    # base would leave that PR with no checks at all. Remove it once the
-    # migration has landed — nothing else on `dev` needs watching.
+    # trunk moving. There is no integration branch.
     pull_request:
-        branches: [main, dev]
+        branches: [main]
     push:
         branches: [main]
 
