@@ -843,7 +843,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'quickreplies' ? (
                 <QuickReplySettings />
             ) : section === 'regex' ? (
-                <RegexSettings />
+                <RegexSettings registerDraft={registerPanelDraft} />
             ) : section === 'tts' ? (
                 <TtsSettings registerDraft={registerPanelDraft} />
             ) : section === 'images' ? (
