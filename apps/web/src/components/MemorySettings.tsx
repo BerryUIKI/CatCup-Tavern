@@ -4,9 +4,9 @@ import {
     memorySettingsSchema,
 } from '@catcup/shared';
 import { RotateCcw, Save } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 
 import { useSettings, useUpdateSettings } from '../hooks/data';
+import { type RegisterSettingsDraft, useSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Select } from './Select';
 import { Spinner } from './Spinner';
@@ -30,42 +30,35 @@ const ROLES = [
  * The prompt and template are edited as text because they are macro-bearing;
  * the numeric controls are the same knobs the extension exposes.
  */
-export function MemorySettings() {
+export function MemorySettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settings = useSettings().data;
     const updateSettings = useUpdateSettings();
     const pushToast = useAppStore((state) => state.pushToast);
-    const [form, setForm] = useState<MemorySettingsValue>(() => ({
-        ...(settings?.memory ?? memorySettingsSchema.parse({})),
-    }));
-    const editedRef = useRef(false);
+    const {
+        draft: form,
+        dirty,
+        update: set,
+        discard,
+        markSaved,
+    } = useSettingsDraft(settings?.memory ?? null, () => memorySettingsSchema.parse({}));
 
-    // Adopt settings saved elsewhere while this form is untouched, so a stale
-    // tab cannot revert another tab's changes on its next save.
-    useEffect(() => {
-        if (!settings?.memory || editedRef.current) {
-            return;
+    const handleSave = async (): Promise<boolean> => {
+        try {
+            await updateSettings.mutateAsync({ memory: form });
+            markSaved();
+            pushToast('Memory settings saved.', 'success');
+            return true;
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not save memory settings.', 'error');
+            return false;
         }
-        setForm({ ...settings.memory });
-    }, [settings?.memory]);
-
-    const set = <Key extends keyof MemorySettingsValue>(key: Key, value: MemorySettingsValue[Key]) => {
-        editedRef.current = true;
-        setForm((current) => ({ ...current, [key]: value }));
     };
 
-    const handleSave = () => {
-        updateSettings.mutate(
-            { memory: form },
-            {
-                onSuccess: () => {
-                    editedRef.current = false;
-                    pushToast('Memory settings saved.', 'success');
-                },
-                onError: (error) =>
-                    pushToast(error instanceof Error ? error.message : 'Could not save memory settings.', 'error'),
-            },
-        );
-    };
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirty,
+        save: handleSave,
+        discard,
+    });
 
     return (
         <div className="space-y-5 p-5">
@@ -279,8 +272,14 @@ export function MemorySettings() {
                 </label>
             </div>
 
-            <div className="flex justify-end">
-                <button type="button" className="btn-primary" onClick={handleSave} disabled={updateSettings.isPending}>
+            <div className="flex items-center justify-end gap-3">
+                <p className="text-footnote text-muted">{dirty ? 'Unsaved changes.' : 'Saved.'}</p>
+                <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => void handleSave()}
+                    disabled={updateSettings.isPending || !dirty}
+                >
                     {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
                     Save memory settings
                 </button>
