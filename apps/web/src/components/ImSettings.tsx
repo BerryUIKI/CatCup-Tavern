@@ -1,8 +1,9 @@
 import type { ImStatusView } from '@catcup/shared';
 import { MessageCircle, Save } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSettings } from '../hooks/data';
 import { api } from '../lib/api';
+import { type RegisterSettingsDraft, useSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Spinner } from './Spinner';
 
@@ -18,17 +19,24 @@ import { Spinner } from './Spinner';
  * endpoint returns it, so the form shows whether one exists rather than what it
  * is — which is the same contract the provider key field keeps.
  */
-export function ImSettings() {
+export function ImSettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settings = useSettings().data;
     const pushToast = useAppStore((state) => state.pushToast);
 
     const [status, setStatus] = useState<ImStatusView | null>(null);
     const [token, setToken] = useState('');
-    const [ownerId, setOwnerId] = useState('');
-    const [enabled, setEnabled] = useState(false);
-    const [notifyOnReply, setNotifyOnReply] = useState(false);
     const [busy, setBusy] = useState(false);
-    const editedRef = useRef(false);
+    const {
+        draft: form,
+        dirty,
+        update: set,
+        discard,
+        markSaved,
+    } = useSettingsDraft(settings?.im ?? null, () => ({
+        enabled: false,
+        ownerId: '',
+        notifyOnReply: false,
+    }));
 
     useEffect(() => {
         void api
@@ -37,22 +45,7 @@ export function ImSettings() {
             .catch(() => setStatus(null));
     }, []);
 
-    // Adopt settings saved elsewhere while this form is untouched, so a stale
-    // tab cannot revert another tab's change on its next save.
-    useEffect(() => {
-        if (!settings?.im || editedRef.current) {
-            return;
-        }
-        setOwnerId(settings.im.ownerId);
-        setEnabled(settings.im.enabled);
-        setNotifyOnReply(settings.im.notifyOnReply);
-    }, [settings?.im]);
-
-    const touch = () => {
-        editedRef.current = true;
-    };
-
-    const save = async () => {
+    const save = async (): Promise<boolean> => {
         setBusy(true);
         try {
             // The token first: turning the bot on with no token would start
@@ -61,16 +54,27 @@ export function ImSettings() {
                 await api.setImToken(token);
                 setToken('');
             }
-            const result = await api.updateImSettings({ enabled, ownerId, notifyOnReply });
+            const result = await api.updateImSettings(form);
             setStatus(result.status);
-            editedRef.current = false;
+            markSaved();
             pushToast('Bot settings saved.', 'success');
+            return true;
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the bot settings.', 'error');
+            return false;
         } finally {
             setBusy(false);
         }
     };
+
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirty || token.length > 0,
+        save,
+        discard: () => {
+            discard();
+            setToken('');
+        },
+    });
 
     const clearToken = async () => {
         setBusy(true);
@@ -113,10 +117,7 @@ export function ImSettings() {
                         placeholder={status?.hasToken ? 'A token is stored — type to replace it' : '123456:ABC-DEF…'}
                         type="password"
                         value={token}
-                        onChange={(event) => {
-                            touch();
-                            setToken(event.target.value);
-                        }}
+                        onChange={(event) => setToken(event.target.value)}
                     />
                     {status?.hasToken ? (
                         <button
@@ -140,11 +141,8 @@ export function ImSettings() {
                     id="im-owner"
                     className="input-shell font-mono text-xs"
                     placeholder="99999999"
-                    value={ownerId}
-                    onChange={(event) => {
-                        touch();
-                        setOwnerId(event.target.value);
-                    }}
+                    value={form.ownerId}
+                    onChange={(event) => set('ownerId', event.target.value)}
                 />
                 <p className="field-hint">
                     The only account allowed to talk to the bot. Leave it empty to allow nobody — which is not the same
@@ -156,11 +154,8 @@ export function ImSettings() {
                 <input
                     type="checkbox"
                     className="mt-0.5 size-4 shrink-0 accent-amber"
-                    checked={enabled}
-                    onChange={(event) => {
-                        touch();
-                        setEnabled(event.target.checked);
-                    }}
+                    checked={form.enabled}
+                    onChange={(event) => set('enabled', event.target.checked)}
                 />
                 <span>
                     Receive messages
@@ -174,11 +169,8 @@ export function ImSettings() {
                 <input
                     type="checkbox"
                     className="mt-0.5 size-4 shrink-0 accent-amber"
-                    checked={notifyOnReply}
-                    onChange={(event) => {
-                        touch();
-                        setNotifyOnReply(event.target.checked);
-                    }}
+                    checked={form.notifyOnReply}
+                    onChange={(event) => set('notifyOnReply', event.target.checked)}
                 />
                 <span>
                     Tell me when a reply finishes
@@ -199,10 +191,18 @@ export function ImSettings() {
                 </div>
             ) : null}
 
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => void save()}>
-                {busy ? <Spinner size={15} /> : <Save size={15} />}
-                Save
-            </button>
+            <div className="flex items-center justify-end gap-3">
+                <p className="text-footnote text-muted">{dirty || token.length > 0 ? 'Unsaved changes.' : 'Saved.'}</p>
+                <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={busy || !(dirty || token.length > 0)}
+                    onClick={() => void save()}
+                >
+                    {busy ? <Spinner size={15} /> : <Save size={15} />}
+                    Save
+                </button>
+            </div>
         </div>
     );
 }

@@ -839,7 +839,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'memory' ? (
                 <MemorySettings registerDraft={registerPanelDraft} />
             ) : section === 'im' ? (
-                <ImSettings />
+                <ImSettings registerDraft={registerPanelDraft} />
             ) : section === 'quickreplies' ? (
                 <QuickReplySettings />
             ) : section === 'regex' ? (
