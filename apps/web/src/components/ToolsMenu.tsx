@@ -180,7 +180,7 @@ export function ToolsMenu({ items, label = 'Tools' }: ToolsMenuProps) {
                     role="menu"
                     aria-label={label}
                     onKeyDown={onMenuKeyDown}
-                    className="animate-fade-up absolute right-0 top-full z-40 mt-1.5 w-60 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-2xl shadow-black/45"
+                    className="animate-fade-up absolute right-0 top-full z-40 mt-1.5 w-60 overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-float"
                 >
                     {items.map((item, index) => {
                         const Icon = item.icon;
@@ -201,7 +201,7 @@ export function ToolsMenu({ items, label = 'Tools' }: ToolsMenuProps) {
                                         item.disabled
                                             ? 'cursor-not-allowed text-muted opacity-40'
                                             : item.danger
-                                              ? 'text-parchment-dim hover:bg-wine/15 hover:text-wine'
+                                              ? 'text-parchment-dim hover:bg-wine/15 hover:text-danger'
                                               : 'text-parchment-dim hover:bg-surface-2 hover:text-parchment',
                                     )}
                                     onClick={() => run(item)}
@@ -215,7 +215,7 @@ export function ToolsMenu({ items, label = 'Tools' }: ToolsMenuProps) {
                         );
                     })}
                     {activeHint ? (
-                        <p className="mt-1 border-t border-line-soft px-2.5 pb-1 pt-2 text-[11px] leading-relaxed text-muted">
+                        <p className="mt-1 border-t border-line-soft px-2.5 pb-1 pt-2 text-footnote leading-relaxed text-muted">
                             {activeHint}
                         </p>
                     ) : null}

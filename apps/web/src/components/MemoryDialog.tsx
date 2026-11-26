@@ -197,7 +197,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                         placeholder="Summarize the chat to create the first memory, or write one by hand."
                         disabled={!target || busy}
                     />
-                    <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
+                    <div className="mt-1 flex items-center justify-between text-footnote text-muted">
                         <span>{wordCount(draft)} words</span>
                         {memory ? <span>Target {memory.promptWords} words</span> : null}
                     </div>
@@ -214,7 +214,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <button
                         type="button"
-                        className="btn-ghost text-wine"
+                        className="btn-ghost text-danger"
                         onClick={handleClear}
                         disabled={!summary || !target || busy}
                     >

@@ -73,7 +73,7 @@ function compareIds(left: CharacterSummary, right: CharacterSummary): number {
 }
 
 const BULK_BUTTON =
-    'flex items-center justify-center gap-1 rounded-lg border border-line/60 px-2 py-1 text-[11px] text-parchment-dim transition hover:border-amber/40 hover:text-parchment disabled:cursor-not-allowed disabled:opacity-40';
+    'flex items-center justify-center gap-1 rounded-lg border border-line/60 px-2 py-1 text-footnote text-parchment-dim transition hover:border-amber/40 hover:text-parchment disabled:cursor-not-allowed disabled:opacity-40';
 
 interface CharacterLibraryProps {
     characters: CharacterSummary[];
@@ -380,7 +380,7 @@ export function CharacterLibrary({
                         aria-label={favoritesOnly ? 'Show all characters' : 'Show favorites only'}
                         title={favoritesOnly ? 'Show all characters' : 'Show favorites only'}
                         className={cn(
-                            'flex h-[30px] shrink-0 items-center gap-1 rounded-lg border px-2 text-[11px] transition',
+                            'flex h-[30px] shrink-0 items-center gap-1 rounded-lg border px-2 text-footnote transition',
                             favoritesOnly
                                 ? 'border-amber/50 bg-amber/10 text-amber'
                                 : 'border-line/60 text-muted hover:border-line hover:text-parchment',
@@ -427,7 +427,7 @@ export function CharacterLibrary({
                                 aria-pressed={tagFilters.has(tag.key)}
                                 title={`${tag.label} (${tag.count})`}
                                 className={cn(
-                                    'shrink-0 rounded-full border px-2 py-0.5 text-[10px] leading-4 transition',
+                                    'shrink-0 rounded-full border px-2 py-0.5 text-caption leading-4 transition',
                                     tagFilters.has(tag.key)
                                         ? 'border-amber/50 bg-amber/10 text-amber'
                                         : 'border-line/60 text-muted hover:border-line hover:text-parchment-dim',
@@ -444,7 +444,7 @@ export function CharacterLibrary({
                     <ScopeFilterRow value={scope} onChange={setScope} counts={scopeCounts} />
                 ) : null}
 
-                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted/80">
+                <div className="mt-1 flex items-center justify-between gap-2 text-caption text-muted">
                     <span aria-live="polite">
                         {hasFilters
                             ? `${sorted.length} of ${characters.length}`
@@ -459,7 +459,7 @@ export function CharacterLibrary({
 
                 {selecting ? (
                     <div className="mt-1 rounded-xl border border-amber/25 bg-amber/5 p-2">
-                        <div className="flex items-center justify-between gap-2 text-[11px]">
+                        <div className="flex items-center justify-between gap-2 text-footnote">
                             <span className="font-medium text-parchment-dim">{selectedIds.size} selected</span>
                             <div className="flex items-center gap-2">
                                 <button
@@ -520,7 +520,7 @@ export function CharacterLibrary({
                                 type="button"
                                 className={cn(
                                     BULK_BUTTON,
-                                    'col-span-2 text-red-300 hover:border-red-400/40 hover:text-red-200',
+                                    'col-span-2 text-danger hover:border-danger/50 hover:text-danger-strong',
                                 )}
                                 onClick={confirmDelete}
                                 disabled={!actionsReady}
@@ -600,7 +600,7 @@ export function CharacterLibrary({
                                                 />
                                             ) : null}
                                         </span>
-                                        <span className="block truncate text-[11px] text-muted">
+                                        <span className="block truncate text-footnote text-muted">
                                             {character.tags.length > 0
                                                 ? character.tags
                                                       .slice(0, 2)
@@ -705,7 +705,7 @@ export function CharacterLibrary({
                             maxLength={200}
                             emptyHint="No tag matches. Press Enter to add it as typed."
                         />
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mt-1 text-footnote leading-relaxed text-muted">
                             {tagInvalid
                                 ? 'Tags cannot contain commas.'
                                 : 'Case-insensitive; the spelling already on a card is kept.'}

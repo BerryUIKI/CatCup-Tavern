@@ -161,7 +161,7 @@ export function Sidebar({
         <aside
             className={cn(
                 'fixed inset-y-0 left-0 z-40 flex w-[286px] flex-col border-r border-line-soft bg-ink-soft/95 backdrop-blur-xl transition-transform duration-200 md:static md:z-auto md:translate-x-0 md:bg-ink-soft/55',
-                open ? 'translate-x-0 shadow-2xl shadow-black/60' : '-translate-x-full md:translate-x-0',
+                open ? 'translate-x-0 shadow-float' : '-translate-x-full md:translate-x-0',
             )}
             aria-label="Library"
         >
@@ -171,7 +171,7 @@ export function Sidebar({
                     <h1 className="truncate font-display text-lg leading-tight tracking-wide text-parchment">
                         CatCup Tavern
                     </h1>
-                    <p className="text-[11px] text-muted">Stories, served warm.</p>
+                    <p className="text-footnote text-muted">Stories, served warm.</p>
                 </div>
                 <button type="button" className="icon-btn md:hidden" onClick={onClose} aria-label="Close library">
                     <X size={18} />
@@ -325,7 +325,7 @@ export function Sidebar({
                                                     />
                                                 ) : null}
                                             </span>
-                                            <span className="block truncate text-[11px] text-muted">
+                                            <span className="block truncate text-footnote text-muted">
                                                 {group.memberDetails.length}{' '}
                                                 {group.memberDetails.length === 1 ? 'member' : 'members'} ·{' '}
                                                 {ACTIVATION_SHORT[group.activation_strategy] ?? 'Natural'}
@@ -360,7 +360,7 @@ export function Sidebar({
                 />
                 <div className="mb-2 rounded-lg bg-surface/60 px-3 py-2">
                     <div className="flex items-center justify-between gap-2">
-                        <p className="text-[10px] uppercase tracking-[0.14em] text-muted">Active provider</p>
+                        <p className="text-caption uppercase tracking-[0.14em] text-muted">Active provider</p>
                         <span
                             className={cn(
                                 'size-2 shrink-0 rounded-full',

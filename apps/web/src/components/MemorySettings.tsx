@@ -85,7 +85,7 @@ export function MemorySettings() {
                 Update the summary automatically after replies
             </label>
             {form.enabled && form.promptInterval <= 0 && form.promptForceWords <= 0 ? (
-                <p className="text-[11px] text-amber">
+                <p className="text-footnote text-amber">
                     Both update triggers are 0, so automatic updates will not run until one is raised.
                 </p>
             ) : null}
@@ -100,7 +100,7 @@ export function MemorySettings() {
                     />
                     <span>
                         Keep every summary, and never rewrite an older one
-                        <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                        <span className="mt-0.5 block text-footnote leading-relaxed text-muted">
                             Off (the default) is what the other client does: each summary replaces the last, so detail
                             that does not fit the word limit is lost for good. On, each summary covers a settled range
                             and is kept, and the prompt carries the newest plus the opening — a long chat forgets its
@@ -109,7 +109,7 @@ export function MemorySettings() {
                     </span>
                 </label>
                 {form.appendOnly && form.prompt === DEFAULT_MEMORY_PROMPT ? (
-                    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                    <p className="mt-2 text-footnote leading-relaxed text-muted">
                         The stock prompt asks the model to build on the previous summary, which append-only mode does
                         not send. It is swapped for a version that does not; write your own prompt above to override
                         that.
@@ -127,14 +127,14 @@ export function MemorySettings() {
                     value={form.prompt}
                     onChange={(event) => set('prompt', event.target.value)}
                 />
-                <div className="mt-1 flex items-center justify-between text-[11px] text-muted">
+                <div className="mt-1 flex items-center justify-between text-footnote text-muted">
                     <span>
                         Sent to the model. <code>{'{{words}}'}</code> becomes the target length; other macros expand as
                         usual.
                     </span>
                     <button
                         type="button"
-                        className="btn-ghost px-2 py-1 text-[11px]"
+                        className="btn-ghost px-2 py-1 text-footnote"
                         onClick={() => set('prompt', DEFAULT_MEMORY_PROMPT)}
                     >
                         <RotateCcw size={12} />
@@ -171,7 +171,7 @@ export function MemorySettings() {
                         value={form.promptInterval}
                         onChange={(event) => set('promptInterval', Number(event.target.value))}
                     />
-                    <p className="mt-1 text-[11px] text-muted">0 disables the message interval.</p>
+                    <p className="mt-1 text-footnote text-muted">0 disables the message interval.</p>
                 </div>
                 <div>
                     <label className="label-text" htmlFor="memory-force-words">
@@ -186,7 +186,7 @@ export function MemorySettings() {
                         value={form.promptForceWords}
                         onChange={(event) => set('promptForceWords', Number(event.target.value))}
                     />
-                    <p className="mt-1 text-[11px] text-muted">
+                    <p className="mt-1 text-footnote text-muted">
                         0 disables the word trigger. Both triggers may be active.
                     </p>
                 </div>
@@ -203,7 +203,7 @@ export function MemorySettings() {
                         value={form.maxMessages}
                         onChange={(event) => set('maxMessages', Number(event.target.value))}
                     />
-                    <p className="mt-1 text-[11px] text-muted">0 sends as much as the context budget allows.</p>
+                    <p className="mt-1 text-footnote text-muted">0 sends as much as the context budget allows.</p>
                 </div>
             </div>
 
@@ -218,7 +218,7 @@ export function MemorySettings() {
                         value={form.template}
                         onChange={(event) => set('template', event.target.value)}
                     />
-                    <p className="mt-1 text-[11px] text-muted">
+                    <p className="mt-1 text-footnote text-muted">
                         <code>{'{{summary}}'}</code> is replaced with the stored summary.
                     </p>
                 </div>

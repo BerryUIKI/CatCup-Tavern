@@ -266,7 +266,7 @@ export function AliasGenerateDialog({
                                 and the changes go in a file beside the book rather than into it.
                             </p>
                             {estimate && estimate.empty > 0 ? (
-                                <p className="mt-1 text-[11px] text-muted">
+                                <p className="mt-1 text-footnote text-muted">
                                     {estimate.empty} empty {estimate.empty === 1 ? 'entry is' : 'entries are'} skipped,
                                     because there is nothing for the model to read.
                                 </p>
@@ -286,7 +286,7 @@ export function AliasGenerateDialog({
                                 ]}
                             />
                             {!ready || models.length === 0 ? (
-                                <p className="field-hint text-wine">
+                                <p className="field-hint text-danger">
                                     Generating aliases needs an enabled provider with at least one model. Configure one
                                     in Settings → Providers.
                                 </p>
@@ -304,7 +304,7 @@ export function AliasGenerateDialog({
                             />
                             <span>
                                 Include entries that already have aliases
-                                <span className="mt-0.5 block text-[11px] text-muted">
+                                <span className="mt-0.5 block text-footnote text-muted">
                                     Off means only entries with none are asked about, which is what a second pass over a
                                     partly finished book wants.
                                 </span>
@@ -332,14 +332,14 @@ export function AliasGenerateDialog({
                                             />
                                             <span className="truncate text-parchment-dim">{item.label}</span>
                                             {item.proposed && item.proposed.length > 0 ? (
-                                                <span className="ml-auto shrink-0 text-[10px] text-muted">
+                                                <span className="ml-auto shrink-0 text-caption text-muted">
                                                     {item.proposed.length} new
                                                 </span>
                                             ) : null}
                                         </li>
                                     ))}
                                 </ul>
-                                <p className="pt-1 text-[11px] text-muted">
+                                <p className="pt-1 text-footnote text-muted">
                                     {done} of {total} read
                                 </p>
                             </div>
@@ -379,7 +379,7 @@ export function AliasGenerateDialog({
                                 </button>
                             )}
                             {resumable ? (
-                                <p className="text-[11px] text-muted">
+                                <p className="text-footnote text-muted">
                                     Resume keeps every entry that already has an answer; only the rest is asked again.
                                 </p>
                             ) : null}
@@ -403,7 +403,7 @@ export function AliasGenerateDialog({
                             <button className="btn-ghost" onClick={() => setStep('run')} type="button">
                                 Back
                             </button>
-                            <p className="text-[11px] text-muted">
+                            <p className="text-footnote text-muted">
                                 Saved beside the book; the book file is not touched.
                             </p>
                         </div>

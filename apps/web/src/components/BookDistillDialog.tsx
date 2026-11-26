@@ -49,7 +49,7 @@ function Stepper({ step }: { step: Step }) {
                 <li className="flex items-center gap-2" key={value}>
                     <span
                         className={cn(
-                            'flex size-5 items-center justify-center rounded-full text-[10px] tabular-nums',
+                            'flex size-5 items-center justify-center rounded-full text-caption tabular-nums',
                             index === active
                                 ? 'bg-amber text-ink'
                                 : index < active
@@ -320,7 +320,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
 
                         {books.length > 0 ? (
                             <section className="space-y-2">
-                                <h3 className="text-[11px] uppercase tracking-[0.14em] text-muted/80">
+                                <h3 className="text-footnote uppercase tracking-[0.14em] text-muted">
                                     Already uploaded
                                 </h3>
                                 <ul className="space-y-1">
@@ -340,14 +340,14 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                                 type="button"
                                             >
                                                 <span className="truncate">{item.name}</span>
-                                                <span className="ml-2 text-[11px] text-muted">
+                                                <span className="ml-2 text-footnote text-muted">
                                                     {item.sections.length} chapter
                                                     {item.sections.length === 1 ? '' : 's'}
                                                 </span>
                                             </button>
                                             <button
                                                 aria-label={`Delete ${item.name}`}
-                                                className="icon-btn size-7 text-muted hover:text-wine"
+                                                className="icon-btn size-7 text-muted hover:text-danger"
                                                 onClick={() => removeBook.mutate(item.id)}
                                                 type="button"
                                             >
@@ -363,7 +363,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
                                     <p className="text-xs font-medium text-parchment-dim">Distil somewhere else</p>
-                                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                                    <p className="mt-0.5 text-footnote leading-relaxed text-muted">
                                         Download this pipeline as a Claude Skill: the same prompts and output contract,
                                         for a book distilled in Claude Code with no server run.
                                     </p>
@@ -426,7 +426,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                     />
                                     <span className="min-w-0">
                                         <span className="block text-sm text-parchment">{label}</span>
-                                        <span className="block text-[11px] text-muted">{hint}</span>
+                                        <span className="block text-footnote text-muted">{hint}</span>
                                     </span>
                                 </label>
                             ))}
@@ -446,7 +446,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                     ]}
                                 />
                                 {!ready || models.length === 0 ? (
-                                    <p className="field-hint text-wine">
+                                    <p className="field-hint text-danger">
                                         The model draft needs an enabled provider with at least one model. Configure one
                                         in Settings → Providers.
                                     </p>
@@ -477,7 +477,7 @@ export function BookDistillDialog({ open, onClose }: { open: boolean; onClose: (
                                         </li>
                                     ))}
                                 </ul>
-                                <p className="pt-1 text-[11px] text-muted">{chunkSummary}</p>
+                                <p className="pt-1 text-footnote text-muted">{chunkSummary}</p>
                             </div>
                         ) : null}
 

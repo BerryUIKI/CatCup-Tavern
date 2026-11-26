@@ -70,7 +70,7 @@ export function ImageGalleryDialog({ open, onClose, target }: ImageGalleryDialog
                         <Spinner size={20} className="text-muted" />
                     </div>
                 ) : gallery.isError ? (
-                    <p className="text-sm text-wine">
+                    <p className="text-sm text-danger">
                         {errorMessage(gallery.error, 'The gallery could not be loaded.')}
                     </p>
                 ) : images.length === 0 ? (
@@ -98,7 +98,7 @@ export function ImageGalleryDialog({ open, onClose, target }: ImageGalleryDialog
                                     />
                                 </button>
                                 <figcaption className="space-y-2 p-2">
-                                    <p className="line-clamp-2 min-h-8 text-[11px] leading-snug text-muted">
+                                    <p className="line-clamp-2 min-h-8 text-footnote leading-snug text-muted">
                                         {image.prompt || 'No prompt recorded'}
                                     </p>
                                     <div className="flex items-center justify-end gap-1">
@@ -125,7 +125,7 @@ export function ImageGalleryDialog({ open, onClose, target }: ImageGalleryDialog
                                         </button>
                                         <button
                                             type="button"
-                                            className="icon-btn size-7 hover:text-wine"
+                                            className="icon-btn size-7 hover:text-danger"
                                             onClick={() => void handleDelete(image)}
                                             disabled={deleteImage.isPending}
                                             title="Delete"

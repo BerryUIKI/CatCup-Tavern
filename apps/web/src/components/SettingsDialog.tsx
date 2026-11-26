@@ -717,7 +717,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                             </button>
                             <button
                                 type="button"
-                                className="icon-btn size-7 hover:text-wine"
+                                className="icon-btn size-7 hover:text-danger"
                                 onClick={() => void handleDeleteWorld(world.id)}
                                 title="Delete"
                                 aria-label={`Delete ${world.id}`}
@@ -843,7 +843,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                                 <div key={group} role="presentation" className="mb-4 last:mb-0">
                                     <p
                                         role="presentation"
-                                        className="mb-1 px-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted"
+                                        className="mb-1 px-2 text-footnote font-medium uppercase tracking-[0.14em] text-muted"
                                     >
                                         {group}
                                     </p>
@@ -991,7 +991,7 @@ function SliderField({
                 onChange={(event) => onChange(Number(event.target.value))}
                 className="mt-2 w-full accent-amber"
             />
-            <p id={hintId} className="mt-1 text-[11px] leading-relaxed text-muted">
+            <p id={hintId} className="mt-1 text-footnote leading-relaxed text-muted">
                 {hint}
             </p>
         </div>
@@ -1031,7 +1031,7 @@ function NumberField({
                 onChange={(event) => onChange(Number(event.target.value))}
                 className="input-shell"
             />
-            <p id={hintId} className="mt-1 text-[11px] leading-relaxed text-muted">
+            <p id={hintId} className="mt-1 text-footnote leading-relaxed text-muted">
                 {hint}
             </p>
         </div>

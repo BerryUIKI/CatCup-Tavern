@@ -81,16 +81,18 @@ function Row({
                     <span className="flex flex-wrap items-center gap-2">
                         <span className="truncate text-sm text-parchment">{row.label}</span>
                         {row.proposed.length > 0 ? (
-                            <span className="rounded-full bg-sage/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-sage">
+                            <span className="rounded-full bg-sage/20 px-2 py-0.5 text-caption uppercase tracking-[0.12em] text-sage">
                                 {row.proposed.length} new
                             </span>
                         ) : null}
                         {row.existing.length > 0 ? (
-                            <span className="text-[10px] text-muted">{row.existing.length} existing</span>
+                            <span className="text-caption text-muted">{row.existing.length} existing</span>
                         ) : null}
                     </span>
                     {row.proposed.length > 0 ? (
-                        <span className="mt-0.5 block truncate text-[11px] text-muted">{row.proposed.join(', ')}</span>
+                        <span className="mt-0.5 block truncate text-footnote text-muted">
+                            {row.proposed.join(', ')}
+                        </span>
                     ) : null}
                 </button>
                 <button
@@ -106,7 +108,7 @@ function Row({
 
             {open ? (
                 <div className="space-y-2 border-t border-line-soft px-3 py-3">
-                    {row.message ? <p className="text-[11px] text-muted">{row.message}</p> : null}
+                    {row.message ? <p className="text-footnote text-muted">{row.message}</p> : null}
 
                     {row.existing.length > 0 ? (
                         <div>
@@ -114,7 +116,7 @@ function Row({
                             <ul className="mt-1 flex flex-wrap gap-1.5">
                                 {row.existing.map((alias) => (
                                     <li
-                                        className="rounded border border-line bg-surface/60 px-2 py-0.5 font-mono text-[11px] text-parchment-dim"
+                                        className="rounded border border-line bg-surface/60 px-2 py-0.5 font-mono text-footnote text-parchment-dim"
                                         key={alias}
                                     >
                                         {alias}
@@ -135,7 +137,7 @@ function Row({
                                             <button
                                                 aria-pressed={!gone}
                                                 className={cn(
-                                                    'rounded border px-2 py-0.5 font-mono text-[11px] transition',
+                                                    'rounded border px-2 py-0.5 font-mono text-footnote transition',
                                                     gone
                                                         ? 'border-line-soft text-muted line-through'
                                                         : 'border-amber/40 bg-amber/10 text-parchment',
@@ -156,7 +158,7 @@ function Row({
                         </div>
                     ) : null}
 
-                    <p className="text-[11px] text-muted">
+                    <p className="text-footnote text-muted">
                         {row.accepted && kept > row.existing.length
                             ? `This entry would answer to ${kept} names.`
                             : 'This entry would keep the names it already has.'}
@@ -201,7 +203,7 @@ export function AliasReview({
                     <button className="btn-ghost py-1.5 text-xs" onClick={() => setAll(false)} type="button">
                         Keep none
                     </button>
-                    <label className="flex items-center gap-1.5 text-[11px] text-muted">
+                    <label className="flex items-center gap-1.5 text-footnote text-muted">
                         <input
                             checked={onlyKept}
                             className="size-3.5 accent-amber"
@@ -245,7 +247,7 @@ export function AliasReview({
             </ul>
 
             {run.items.some((item) => item.state === 'incomplete' || item.state === 'skipped') ? (
-                <p className="text-[11px] leading-relaxed text-muted">
+                <p className="text-footnote leading-relaxed text-muted">
                     {run.items.filter((item) => item.state === 'incomplete').length} entries could not be read and{' '}
                     {run.items.filter((item) => item.state === 'skipped').length} were skipped. Those rows are left
                     exactly as they are.

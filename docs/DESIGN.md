@@ -127,7 +127,8 @@ carries no focus and is `aria-hidden`.
 ## Colour
 
 The palette lives in the `@theme` block of `apps/web/src/styles.css`. Use the token names, never raw
-hex values in components.
+hex values in components — and never a raw Tailwind palette colour (`text-red-300`), which a skin
+cannot follow.
 
 | Token           | Value     | Use                                          |
 | --------------- | --------- | -------------------------------------------- |
@@ -144,41 +145,68 @@ hex values in components.
 | `amber`         | `#e2a55a` | Primary action, selection, focus, **Active** |
 | `amber-strong`  | `#f3c27a` | Primary hover                                |
 | `ember`         | `#b4652f` | Quotes and small accents                     |
-| `wine`          | `#7e3b3f` | Destructive action, errors                   |
+| `wine`          | `#7e3b3f` | Destructive **fill** — never text            |
+| `danger`        | `#e08585` | Error and destructive **text** (6.8:1)       |
+| `danger-strong` | `#f0a8a8` | Its hover                                    |
 | `sage`          | `#7f9b6d` | Success, stored key                          |
+
+`wine` and `danger` are two roles for one idea, and the split is measured rather than aesthetic:
+`wine` on `surface` is **2.24:1**, so it can fill a strip or a bar but can never carry words. Error
+copy, the icon beside it and a destructive row's hover all use `danger`; `bg-wine/10` and
+`border-wine/30` stay for the surface behind them.
 
 Rules:
 
-- Do not use opacity on `muted` for text (`text-muted/70` fails contrast at 11 px). Use `text-muted`
-  or `.field-hint`. Opacity is for decoration and disabled states only.
+- Do not use opacity on `muted` for text. It was 39 places before the colour pass and every one read
+  under 4.5:1 (`text-muted/70` over `surface` is **3.0:1**). Use `text-muted` or `.field-hint`.
+  Opacity is for decoration and disabled states only.
 - Never communicate state by colour alone. Pair it with a word ("Active", "Disabled", "Key stored")
   or a labelled icon.
 - Focus: `2px` amber ring, `2px` ink offset. The shared `.btn-*`, `.icon-btn` and `.input-shell`
   classes already include it.
 
+### What a colour token may not be used for
+
+Everything a person reads on `surface` clears 4.5:1 except `ember` (4.20) and `wine` (2.24). `ember`
+is allowed only for a quote rule or a two-character accent, never a sentence. `muted` is the floor at
+4.81 and any change to it is a contrast change, not a taste one.
+
 ## Typography
 
-| Role                   | Type           | Size / weight                     |
+Sizes are named in `@theme` and used by name. An arbitrary value (`text-[11px]`) is a size a skin
+cannot reach: the scale moved to `--text-*` tokens for exactly that reason, and 184 arbitrary values
+became four names.
+
+| Role                   | Class          | Size / weight                     |
 | ---------------------- | -------------- | --------------------------------- |
 | Dialog and page titles | `font-display` | 18–20 px, regular                 |
 | Brand                  | `font-display` | 24–30 px, tracking-wide           |
 | Section headings       | `font-sans`    | 14 px, medium, sentence case      |
-| Body                   | `font-sans`    | 14–15 px, line-height 1.6–1.7     |
+| Body                   | `text-body`    | 15 px, line-height 1.625          |
+| Secondary body         | `text-sm`      | 14 px                             |
 | Field labels           | `.label-text`  | 12 px, uppercase, tracking 0.12em |
-| Hints and metadata     | `.field-hint`  | 11 px, `muted`, solid             |
-| Monospace values       | `font-mono`    | 11–12 px (URLs, ids, headers)     |
+| Hints and metadata     | `.field-hint`  | `text-footnote` (11 px), solid    |
+| Small metadata rows    | `text-caption` | 10 px — see the rule below        |
+| Monospace values       | `text-code`    | 13 px (URLs, ids, headers)        |
 
 - Headings and button labels use sentence case. Uppercase is reserved for field labels and small
   navigation group labels.
 - Keep body line length under 80 characters; the chat column is capped at `max-w-4xl`.
-- Do not use 10 px for information a user needs to act on.
+- `text-caption` (10 px) is for a row a person reads _beside_ something else — a timestamp, a count,
+  a swipe index. Do not put information that has to be acted on at that size; use `.field-hint`.
+- Add a size by adding a `--text-*` pair to `@theme`, not by typing a pixel value at the call site.
 
 ## Shape and spacing
 
-- Radius: controls `12px` (`rounded-xl`), panels and dialogs `16px` (`rounded-2xl`), pills full.
-- Spacing scale: 4, 8, 12, 16, 20, 24, 32 px. Settings sections use `24px` between groups.
+- Radius: controls `12px` (`rounded-xl`), panels and dialogs `16px` (`rounded-2xl`), pills full. The
+  values are `--radius-*` tokens, so a skin may change them; write `rounded-xl`, not `rounded-[12px]`.
+- Spacing scale: 4, 8, 12, 16, 20, 24, 32 px. Settings sections use `24px` between groups. Tailwind's
+  spacing multiplier is a variable, so a denser skin moves the whole layout and not one control.
 - Borders are 1 px `line`; dividers inside a panel use `line-soft`.
-- Shadows are reserved for layers that float (dialogs, menus, toasts), not for flat cards.
+- Elevation is three named roles, not Tailwind's seven-step scale: `shadow-card` (an inline editor on
+  a message), `shadow-raised` (the composer), `shadow-float` (dialogs, menus, toasts). They read
+  `--shadow-card` / `--shadow-raised` / `--shadow-float`. Never write `shadow-lg` or
+  `shadow-black/40` — those compile to a frozen literal that a skin cannot move.
 - Avoid stacking every element in the same bordered card. Use spacing and section headings first;
   borders only where they carry meaning.
 

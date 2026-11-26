@@ -830,18 +830,18 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
     const renderPicker = () => (
         <div className="flex min-h-0 flex-1 flex-col">
             <header className="flex shrink-0 items-center gap-3 border-b border-line-soft px-4 py-3 md:px-5">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-amber/25 bg-amber/10 text-[11px] font-semibold tracking-wide text-amber">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-amber/25 bg-amber/10 text-footnote font-semibold tracking-wide text-amber">
                     +
                 </span>
                 <div className="min-w-0 flex-1">
                     <h4 className="truncate text-sm font-medium text-parchment">Add provider</h4>
-                    <p className="truncate text-[11px] text-muted">
+                    <p className="truncate text-footnote text-muted">
                         Start from nothing, or from a service that fills in its endpoint.
                     </p>
                 </div>
             </header>
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-5">
-                <p className="mb-2 text-[10px] uppercase tracking-[0.14em] text-muted">Start from scratch</p>
+                <p className="mb-2 text-caption uppercase tracking-[0.14em] text-muted">Start from scratch</p>
                 <button
                     type="button"
                     onClick={() => chooseTemplate(null)}
@@ -856,13 +856,13 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                             Choose its protocol, enter the request URL and API key yourself. A private gateway, a
                             self-hosted server, or a reseller.
                         </span>
-                        <span className="mt-2 block truncate font-mono text-[11px] text-parchment-dim">
+                        <span className="mt-2 block truncate font-mono text-footnote text-parchment-dim">
                             https://your-endpoint.example/v1
                         </span>
                     </span>
                 </button>
 
-                <p className="mb-2 mt-5 text-[10px] uppercase tracking-[0.14em] text-muted">Or start from a service</p>
+                <p className="mb-2 mt-5 text-caption uppercase tracking-[0.14em] text-muted">Or start from a service</p>
                 <div className="grid gap-2 sm:grid-cols-2">
                     {PROVIDER_TEMPLATES.map((template) => (
                         <button
@@ -872,13 +872,13 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                             className="rounded-xl border border-line bg-surface/50 p-4 text-left transition hover:border-amber/50 hover:bg-surface-2/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
                         >
                             <span className="flex items-center gap-2">
-                                <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-[10px] font-semibold tracking-wide text-parchment-dim">
+                                <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-caption font-semibold tracking-wide text-parchment-dim">
                                     {template.initials}
                                 </span>
                                 <span className="text-sm font-medium text-parchment">{template.label}</span>
                             </span>
                             <span className="mt-2 block text-xs leading-relaxed text-muted">{template.hint}</span>
-                            <span className="mt-2 block truncate font-mono text-[11px] text-parchment-dim">
+                            <span className="mt-2 block truncate font-mono text-footnote text-parchment-dim">
                                 {DEFAULT_BASE_URLS[template.kind]}
                             </span>
                         </button>
@@ -937,7 +937,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 {selected ? (
                                                     <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-amber" />
                                                 ) : null}
-                                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-[10px] font-semibold tracking-wide text-parchment-dim">
+                                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-ink-soft/70 text-caption font-semibold tracking-wide text-parchment-dim">
                                                     {providerInitials(provider.kind)}
                                                 </span>
                                                 <span className="min-w-0 flex-1">
@@ -956,7 +956,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                             <Check size={12} className="shrink-0 text-amber" />
                                                         ) : null}
                                                     </span>
-                                                    <span className="block truncate text-[11px] text-muted">
+                                                    <span className="block truncate text-footnote text-muted">
                                                         {providerSummary(provider.kind, provider.defaultModel)}
                                                     </span>
                                                 </span>
@@ -975,7 +975,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                         />
                                                     ) : null}
                                                     {!provider.enabled ? (
-                                                        <span className="rounded-full border border-line px-1.5 py-0.5 text-[11px] text-muted">
+                                                        <span className="rounded-full border border-line px-1.5 py-0.5 text-footnote text-muted">
                                                             Off
                                                         </span>
                                                     ) : null}
@@ -1058,14 +1058,14 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                             }}
                         >
                             <header className="flex shrink-0 flex-wrap items-center gap-3 border-b border-line-soft px-4 py-3 md:px-5">
-                                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-line bg-ink-soft/70 text-[11px] font-semibold tracking-wide text-parchment-dim">
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-line bg-ink-soft/70 text-footnote font-semibold tracking-wide text-parchment-dim">
                                     {providerInitials(form.kind)}
                                 </span>
                                 <div className="min-w-0 flex-1">
                                     <h4 className="truncate text-sm font-medium text-parchment">
                                         {form.name.trim() || 'New provider'}
                                     </h4>
-                                    <p className="truncate text-[11px] text-muted">
+                                    <p className="truncate text-footnote text-muted">
                                         {providerSummary(form.kind, form.defaultModel)}
                                         {form.models.length > 1 ? ` (+${form.models.length - 1})` : ''}
                                         {!form.enabled ? ' · Disabled' : ''}
@@ -1074,18 +1074,18 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                 </div>
                                 {mode === 'existing' ? (
                                     isActive ? (
-                                        <span className="inline-flex items-center gap-1 rounded-full border border-amber/40 bg-amber/10 px-2 py-1 text-[11px] text-amber">
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-amber/40 bg-amber/10 px-2 py-1 text-footnote text-amber">
                                             <Check size={12} />
                                             Active provider
                                         </span>
                                     ) : (
                                         <div className="flex flex-wrap items-center gap-2">
                                             {!form.enabled ? (
-                                                <span className="text-[11px] text-muted">
+                                                <span className="text-footnote text-muted">
                                                     Enable this provider to use it.
                                                 </span>
                                             ) : dirty ? (
-                                                <span className="text-[11px] text-amber">
+                                                <span className="text-footnote text-amber">
                                                     Save changes to activate.
                                                 </span>
                                             ) : null}
@@ -1165,7 +1165,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 form.baseUrl !== DEFAULT_BASE_URLS[form.kind] ? (
                                                     <button
                                                         type="button"
-                                                        className="inline-flex min-h-8 items-center text-[11px] text-amber/80 transition hover:text-amber"
+                                                        className="inline-flex min-h-8 items-center text-footnote text-amber/80 transition hover:text-amber"
                                                         onClick={() =>
                                                             patchForm(
                                                                 { baseUrl: DEFAULT_BASE_URLS[form.kind] },
@@ -1215,7 +1215,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                                 <button
                                                                     type="button"
                                                                     className={cn(
-                                                                        'inline-flex min-h-7 items-center gap-1 rounded-full border px-2 text-[10px] transition',
+                                                                        'inline-flex min-h-7 items-center gap-1 rounded-full border px-2 text-caption transition',
                                                                         isDefault
                                                                             ? 'border-amber/40 bg-amber/10 text-amber'
                                                                             : 'border-line/70 text-muted hover:border-amber/40 hover:text-parchment-dim',
@@ -1236,7 +1236,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                                 </span>
                                                                 <button
                                                                     type="button"
-                                                                    className="icon-btn size-7 hover:text-wine"
+                                                                    className="icon-btn size-7 hover:text-danger"
                                                                     onClick={() =>
                                                                         patchForm({
                                                                             models: form.models.filter(
@@ -1313,15 +1313,15 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 {willRemoveKey ? (
-                                                    <span className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[10px] text-amber">
+                                                    <span className="rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-caption text-amber">
                                                         Removal pending
                                                     </span>
                                                 ) : typedKey ? (
-                                                    <span className="rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-[10px] text-sage">
+                                                    <span className="rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-caption text-sage">
                                                         New key
                                                     </span>
                                                 ) : storedKey ? (
-                                                    <span className="inline-flex items-center gap-1 rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-[10px] text-sage">
+                                                    <span className="inline-flex items-center gap-1 rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-caption text-sage">
                                                         <KeyRound size={10} />
                                                         Key stored
                                                     </span>
@@ -1363,7 +1363,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             {storedKey && !willRemoveKey ? (
                                                 <button
                                                     type="button"
-                                                    className="inline-flex min-h-8 items-center text-[11px] text-muted transition hover:text-wine"
+                                                    className="inline-flex min-h-8 items-center text-footnote text-muted transition hover:text-danger"
                                                     onClick={() => {
                                                         setRemoveKey(true);
                                                         setApiKey('');
@@ -1374,12 +1374,12 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                             ) : null}
                                             {willRemoveKey ? (
                                                 <>
-                                                    <p className="m-0 text-[11px] text-amber">
+                                                    <p className="m-0 text-footnote text-amber">
                                                         The saved key will be removed when you save.
                                                     </p>
                                                     <button
                                                         type="button"
-                                                        className="inline-flex min-h-8 items-center text-[11px] text-muted transition hover:text-parchment"
+                                                        className="inline-flex min-h-8 items-center text-footnote text-muted transition hover:text-parchment"
                                                         onClick={() => setRemoveKey(false)}
                                                     >
                                                         Undo
@@ -1404,7 +1404,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 aria-hidden="true"
                                             />
                                             Advanced
-                                            <span className="text-[11px] text-muted">
+                                            <span className="text-footnote text-muted">
                                                 {headerCount} custom header{headerCount === 1 ? '' : 's'}
                                             </span>
                                         </summary>
@@ -1439,7 +1439,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                     />
                                                     <button
                                                         type="button"
-                                                        className="icon-btn size-9 hover:text-wine"
+                                                        className="icon-btn size-9 hover:text-danger"
                                                         onClick={() => {
                                                             setForm((current) =>
                                                                 current
@@ -1549,7 +1549,7 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn-ghost hover:border-wine/50 hover:text-wine"
+                                                    className="btn-ghost hover:border-danger/50 hover:text-danger"
                                                     onClick={() => setDeleteOpen(true)}
                                                     disabled={
                                                         deleteProvider.isPending || settings.providers.length <= 1
@@ -1596,7 +1596,10 @@ export function ProviderSettings({ settings, handleRef }: ProviderSettingsProps)
                                     role={currentResult.ok ? 'status' : 'alert'}
                                 >
                                     <span
-                                        className={cn('mt-0.5 shrink-0', currentResult.ok ? 'text-sage' : 'text-wine')}
+                                        className={cn(
+                                            'mt-0.5 shrink-0',
+                                            currentResult.ok ? 'text-sage' : 'text-danger',
+                                        )}
                                     >
                                         {currentResult.ok ? <Check size={14} /> : <X size={14} />}
                                     </span>

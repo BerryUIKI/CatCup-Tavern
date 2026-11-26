@@ -83,7 +83,7 @@ export function ProfileSwitcher({
             >
                 <span className="flex items-center gap-1.5">
                     <Layers size={12} className="shrink-0 text-muted" aria-hidden="true" />
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-muted">Profile</span>
+                    <span className="text-caption uppercase tracking-[0.14em] text-muted">Profile</span>
                     {switching ? <Spinner size={10} className="ml-auto text-muted" /> : null}
                     <ChevronDown
                         size={12}
@@ -97,7 +97,7 @@ export function ProfileSwitcher({
                         className={cn('size-1.5 shrink-0 rounded-full', providerReady ? 'bg-sage' : 'bg-amber/70')}
                         aria-hidden="true"
                     />
-                    <span className="truncate text-[11px] text-muted">{providerLine}</span>
+                    <span className="truncate text-footnote text-muted">{providerLine}</span>
                 </span>
             </button>
 
@@ -107,7 +107,7 @@ export function ProfileSwitcher({
                     id={menuId}
                     role="menu"
                     aria-label="Profiles"
-                    className="absolute bottom-full left-0 z-40 mb-1.5 w-full min-w-[220px] overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-2xl shadow-black/45"
+                    className="absolute bottom-full left-0 z-40 mb-1.5 w-full min-w-[220px] overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-float"
                 >
                     {live.map((profile) => {
                         const isActive = profile.id === activeProfileId;
@@ -133,7 +133,7 @@ export function ProfileSwitcher({
                             >
                                 <span className="min-w-0 flex-1">
                                     <span className="block truncate">{profile.name}</span>
-                                    <span className="block truncate text-[11px] text-muted">
+                                    <span className="block truncate text-footnote text-muted">
                                         {profile.counts.characters} characters · {profile.counts.chats} chats ·{' '}
                                         {profile.counts.books} books
                                     </span>

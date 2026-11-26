@@ -62,7 +62,7 @@ export function Composer({
     return (
         <div className="shrink-0 border-t border-line-soft bg-ink/70 px-3 py-3 backdrop-blur md:px-6">
             <div className="mx-auto w-full max-w-4xl">
-                <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface/85 p-2 shadow-lg shadow-black/25 transition focus-within:border-amber/50 focus-within:ring-2 focus-within:ring-amber/10">
+                <div className="flex items-end gap-2 rounded-2xl border border-line bg-surface/85 p-2 shadow-raised transition focus-within:border-amber/50 focus-within:ring-2 focus-within:ring-amber/10">
                     <TextareaAutosize
                         ref={textareaRef}
                         value={value}
@@ -72,7 +72,7 @@ export function Composer({
                         maxRows={8}
                         placeholder={placeholder}
                         disabled={disabled}
-                        className="max-h-56 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-[15px] leading-relaxed text-parchment outline-none placeholder:text-muted/70 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="max-h-56 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 text-body leading-relaxed text-parchment outline-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Message"
                     />
 
@@ -111,7 +111,7 @@ export function Composer({
                     )}
                 </div>
 
-                <div className="mt-1.5 flex items-center justify-between gap-3 px-1 text-[11px] text-muted/60">
+                <div className="mt-1.5 flex items-center justify-between gap-3 px-1 text-footnote text-muted">
                     <span>Enter to send · Shift+Enter for a new line</span>
                     <span className="hidden sm:inline">Model output can be inaccurate. Characters are fictional.</span>
                 </div>

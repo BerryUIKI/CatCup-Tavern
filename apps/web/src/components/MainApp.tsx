@@ -696,7 +696,7 @@ export function MainApp() {
                             }
                             disabled={createChatMutation.isPending || setGreetingMutation.isPending}
                         >
-                            <div className="mb-1 text-[11px] uppercase tracking-wider text-muted">
+                            <div className="mb-1 text-footnote uppercase tracking-wider text-muted">
                                 {greeting.index === 0 ? 'First message' : `Alternate greeting ${greeting.index}`}
                             </div>
                             <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-relaxed text-parchment-dim">

@@ -378,7 +378,7 @@ export function QuickReplySettings() {
                             className="flex items-center gap-2 rounded-lg border border-line-soft bg-ink/40 px-2.5 py-1.5"
                         >
                             <span className="min-w-0 flex-1 truncate text-sm text-parchment-dim">{link.set}</span>
-                            <label className="flex items-center gap-1.5 text-[11px] text-muted">
+                            <label className="flex items-center gap-1.5 text-footnote text-muted">
                                 <input
                                     type="checkbox"
                                     checked={link.isVisible}
@@ -418,7 +418,7 @@ export function QuickReplySettings() {
                             </button>
                             <button
                                 type="button"
-                                className="icon-btn size-6 hover:text-wine"
+                                className="icon-btn size-6 hover:text-danger"
                                 onClick={() => {
                                     editedLinks.current = true;
                                     setLinks((current) => current.filter((_entry, cursor) => cursor !== index));
@@ -537,7 +537,7 @@ export function QuickReplySettings() {
                                     <span className="truncate">{set.name}</span>
                                     {set.scope === 'shared' ? <SharedBadge /> : null}
                                 </span>
-                                <span className="shrink-0 text-[11px] text-muted">{set.qrList.length}</span>
+                                <span className="shrink-0 text-footnote text-muted">{set.qrList.length}</span>
                             </button>
                         ))}
                     </div>
@@ -556,7 +556,7 @@ export function QuickReplySettings() {
                                         maxLength={120}
                                         onChange={(event) => patchDraft({ name: event.target.value })}
                                     />
-                                    <p className="mt-1 text-[11px] text-muted">
+                                    <p className="mt-1 text-footnote text-muted">
                                         Renaming moves the set's file, because the file is named after the set.
                                     </p>
                                 </div>
@@ -581,7 +581,7 @@ export function QuickReplySettings() {
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn-ghost h-9 px-3 text-xs hover:text-wine"
+                                    className="btn-ghost h-9 px-3 text-xs hover:text-danger"
                                     onClick={() => void handleDelete()}
                                     disabled={deleteSet.isPending}
                                 >
@@ -603,7 +603,7 @@ export function QuickReplySettings() {
                                         placeholder="transparent"
                                         onChange={(event) => patchDraft({ color: event.target.value })}
                                     />
-                                    <p className="mt-1 text-[11px] text-muted">
+                                    <p className="mt-1 text-footnote text-muted">
                                         Any CSS color, or <code>transparent</code> for none.
                                     </p>
                                 </div>
@@ -652,7 +652,7 @@ export function QuickReplySettings() {
                                 <div className="flex items-center justify-between gap-2">
                                     <div>
                                         <h4 className="text-sm font-medium text-parchment">Buttons</h4>
-                                        <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                                        <p className="mt-0.5 text-footnote leading-relaxed text-muted">
                                             Plain text goes into the message box. Start with <code>/send</code>,{' '}
                                             <code>/sys</code> (<code>/nar</code>), <code>/echo</code>,{' '}
                                             <code>/trigger</code>, <code>/continue</code>, <code>/regenerate</code> or{' '}
@@ -679,7 +679,7 @@ export function QuickReplySettings() {
                                             className="rounded-lg border border-line-soft bg-ink/30 p-2.5"
                                         >
                                             <div className="flex items-center gap-1.5">
-                                                <span className="w-7 shrink-0 text-[10px] tabular-nums text-muted">
+                                                <span className="w-7 shrink-0 text-caption tabular-nums text-muted">
                                                     #{item.id}
                                                 </span>
                                                 <input
@@ -691,7 +691,7 @@ export function QuickReplySettings() {
                                                         patchItem(index, { label: event.target.value })
                                                     }
                                                 />
-                                                <label className="flex shrink-0 items-center gap-1 text-[11px] text-muted">
+                                                <label className="flex shrink-0 items-center gap-1 text-footnote text-muted">
                                                     <input
                                                         type="checkbox"
                                                         checked={item.isHidden}
@@ -724,7 +724,7 @@ export function QuickReplySettings() {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="icon-btn size-6 hover:text-wine"
+                                                    className="icon-btn size-6 hover:text-danger"
                                                     onClick={() => removeItem(index)}
                                                     title="Remove"
                                                     aria-label="Remove quick reply"
@@ -752,7 +752,7 @@ export function QuickReplySettings() {
                             </div>
 
                             <div className="flex items-center justify-between gap-2">
-                                <p className="text-[11px] text-muted">{dirty ? 'Unsaved changes.' : 'Saved.'}</p>
+                                <p className="text-footnote text-muted">{dirty ? 'Unsaved changes.' : 'Saved.'}</p>
                                 <button
                                     type="button"
                                     className="btn-primary"

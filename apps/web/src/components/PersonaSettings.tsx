@@ -196,13 +196,13 @@ export function PersonaSettings() {
                                     <p className="flex items-center gap-1.5 truncate text-sm text-parchment">
                                         {persona.name}
                                         {isDefault ? (
-                                            <span className="rounded bg-amber/15 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber">
+                                            <span className="rounded bg-amber/15 px-1.5 py-0.5 text-caption uppercase tracking-wide text-amber">
                                                 Default
                                             </span>
                                         ) : null}
                                         {persona.scope === 'shared' ? <SharedBadge /> : null}
                                     </p>
-                                    <p className="truncate text-[11px] text-muted">
+                                    <p className="truncate text-footnote text-muted">
                                         {persona.description || 'No description'}
                                     </p>
                                 </div>
@@ -248,7 +248,7 @@ export function PersonaSettings() {
                                 </button>
                                 <button
                                     type="button"
-                                    className="icon-btn size-7 hover:text-wine"
+                                    className="icon-btn size-7 hover:text-danger"
                                     onClick={() => void remove(persona)}
                                     disabled={updateSettings.isPending}
                                     aria-label={`Delete ${persona.name}`}
@@ -296,7 +296,7 @@ export function PersonaSettings() {
                                 )
                             }
                         />
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mt-1 text-footnote leading-relaxed text-muted">
                             Available to prompts as {'{{persona}}'}. Keep it short: it is sent with every turn.
                         </p>
                     </div>
@@ -353,7 +353,7 @@ export function PersonaSettings() {
                                         )
                                     }
                                 />
-                                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                                <p className="mt-1 text-footnote leading-relaxed text-muted">
                                     Your own lines, written as <code>{'{{user}}'}</code>. The character answers as{' '}
                                     <code>{'{{char}}'}</code>, so the model learns your voice without taking your seat.
                                 </p>

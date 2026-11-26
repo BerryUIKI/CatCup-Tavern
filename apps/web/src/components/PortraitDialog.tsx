@@ -132,7 +132,7 @@ export function PortraitDialog({ characterId, characterName, onClose }: Portrait
                         onChange={(event) => setPrompt(event.target.value)}
                         placeholder="Appearance, build, face, hair, clothing, expression…"
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         Built from the card's description and personality, not from a chat — so it works before the
                         character has said anything.
                     </p>

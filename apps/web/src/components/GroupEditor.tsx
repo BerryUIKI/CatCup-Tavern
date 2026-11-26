@@ -222,7 +222,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                         onChange={(event) => setName(event.target.value)}
                         placeholder={members.length > 0 ? `Group: ${members.map((m) => m.name).join(', ')}` : 'The Cup'}
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         Leave it empty to name the group after its members.
                     </p>
                 </div>
@@ -243,7 +243,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate text-sm text-parchment">{member.name}</p>
                                                 {member.available ? (
-                                                    <label className="flex items-center gap-1.5 text-[11px] text-muted">
+                                                    <label className="flex items-center gap-1.5 text-footnote text-muted">
                                                         <input
                                                             type="checkbox"
                                                             className="size-3 accent-amber"
@@ -254,7 +254,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                                                         Muted
                                                     </label>
                                                 ) : (
-                                                    <p className="text-[11px] text-wine/90">Card missing</p>
+                                                    <p className="text-footnote text-danger">Card missing</p>
                                                 )}
                                             </div>
                                             <div className="flex flex-col">
@@ -279,7 +279,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                                             </div>
                                             <button
                                                 type="button"
-                                                className="icon-btn size-7 hover:text-wine"
+                                                className="icon-btn size-7 hover:text-danger"
                                                 onClick={() => removeMember(member.fileName)}
                                                 aria-label={`Remove ${member.name}`}
                                             >
@@ -290,7 +290,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                                 </ul>
                             )}
                         </div>
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mt-1 text-footnote leading-relaxed text-muted">
                             Order matters for list mode. Muted members stay in the group but do not reply.
                         </p>
                     </div>
@@ -336,7 +336,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                                                     <span className="block truncate text-sm text-parchment">
                                                         {character.name}
                                                     </span>
-                                                    <span className="block truncate text-[11px] text-muted">
+                                                    <span className="block truncate text-footnote text-muted">
                                                         {character.tags.slice(0, 3).join(' · ') ||
                                                             character.creator ||
                                                             'No tags'}
@@ -375,7 +375,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                             />
                             Allow a member to reply to itself
                         </label>
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mt-1 text-footnote leading-relaxed text-muted">
                             Off by default: the member who spoke last waits for someone else.
                         </p>
                     </div>
@@ -393,7 +393,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                             description: option.hint,
                         }))}
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         {GENERATION_MODE_OPTIONS.find((option) => option.value === generationMode)?.hint}
                     </p>
                 </div>
@@ -431,7 +431,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                         </div>
                     </div>
                 ) : (
-                    <p className="text-[11px] leading-relaxed text-muted">
+                    <p className="text-footnote leading-relaxed text-muted">
                         CatCup generates one reply per turn. Each reply uses the speaking member’s own card.
                     </p>
                 )}
@@ -440,7 +440,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                     {group ? (
                         <button
                             type="button"
-                            className="btn-ghost text-wine/90 hover:border-wine/50"
+                            className="btn-ghost text-danger hover:border-danger/50"
                             onClick={handleDelete}
                             disabled={deleteMutation.isPending || saving}
                         >

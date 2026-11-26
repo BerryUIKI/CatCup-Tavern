@@ -333,7 +333,7 @@ export function TtsSettings() {
                                 maxLength={500}
                                 onChange={(event) => set('baseUrl', event.target.value)}
                             />
-                            <p className="mt-1 text-[11px] text-muted">
+                            <p className="mt-1 text-footnote text-muted">
                                 OpenAI, or a local server exposing <code>/audio/speech</code>.
                             </p>
                         </div>
@@ -410,7 +410,7 @@ export function TtsSettings() {
                                 }}
                             />
                             {hasKey ? (
-                                <label className="mt-1 flex items-center gap-2 text-[11px] text-muted">
+                                <label className="mt-1 flex items-center gap-2 text-footnote text-muted">
                                     <input
                                         type="checkbox"
                                         checked={removeKey}
@@ -426,7 +426,7 @@ export function TtsSettings() {
                                     Remove the saved key
                                 </label>
                             ) : (
-                                <p className="mt-1 text-[11px] text-muted">
+                                <p className="mt-1 text-footnote text-muted">
                                     Stored in <code>data/secrets.json</code>; the browser only learns whether one is
                                     set.
                                 </p>
@@ -445,7 +445,7 @@ export function TtsSettings() {
                             placeholder="e.g. Speak with a warm, unhurried tone."
                             onChange={(event) => set('instructions', event.target.value)}
                         />
-                        <p className="mt-1 text-[11px] text-muted">
+                        <p className="mt-1 text-footnote text-muted">
                             Sent only to models that support it, such as <code>gpt-4o-mini-tts</code>.
                         </p>
                     </div>
@@ -472,13 +472,13 @@ export function TtsSettings() {
                         emptyHint="A voice name the list does not carry can still be typed."
                     />
                 )}
-                <p className="mt-1 text-[11px] text-muted">Used for narrator notes from a quick reply.</p>
+                <p className="mt-1 text-footnote text-muted">Used for narrator notes from a quick reply.</p>
             </div>
 
             <div>
                 <div className="flex items-center justify-between">
                     <span className="label-text mb-0">Character voices</span>
-                    <span className="text-[11px] text-muted">Empty uses the default voice.</span>
+                    <span className="text-footnote text-muted">Empty uses the default voice.</span>
                 </div>
                 <div className="mt-2 max-h-64 space-y-1.5 overflow-y-auto rounded-xl border border-line-soft bg-surface/30 p-2">
                     {characters.length === 0 ? (

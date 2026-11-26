@@ -4,8 +4,13 @@ All notable changes to CatCup Tavern are documented here. The format follows [Ke
 
 ## Unreleased
 
+### Added
+
+- **A readable colour for errors, and a type and elevation scale a theme can move.** Error copy was painted in `wine`, which sits at **2.24:1** on a panel — under every accessibility floor — in 32 places. It now uses a new `danger` token (6.8:1) with `wine` kept for the fill behind it, so a warning reads as text and still looks like a warning. Three shadow roles replace Tailwind's frozen literals (`shadow-card`, `shadow-raised`, `shadow-float`), and the 184 arbitrary font sizes became four named ones (`text-caption`, `text-footnote`, `text-code`, `text-body`). The page glow, the noise layer, the scrollbar, the generated avatar and the brand halo moved from literals to variables. Nothing visible changes in the default theme; what changes is that every one of those can now be reached by a theme file.
+
 ### Changed
 
+- **`text-muted/70` and its two relatives are gone.** Opacity on muted text reads at 3.0:1 where plain `muted` reads 4.81 — `docs/DESIGN.md` had banned it since stage A while 39 places used it. They use `text-muted`. The rule is now checkable rather than aspirational: both the tint and the size it was used at are gone from the tree.
 - **A test that failed at random now has the time it needs.** `auth.test.ts`'s desktop-session cases re-import the whole app for each case, so one of them pays for the tokenizer vocabulary — about 2.5 s alone, and occasionally past the 5 s default beside a full suite on a loaded machine. Two of them timed out in roughly one run in four while this release was being prepared. The describe block now carries a 20 s timeout, the pattern `im/conversation.test.ts` already uses, because the limit was the problem rather than the behaviour.
 
 ### Fixed

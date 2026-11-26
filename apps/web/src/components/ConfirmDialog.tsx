@@ -127,11 +127,11 @@ export function ConfirmDialog({
                 aria-labelledby={titleId}
                 aria-describedby={description ? descriptionId : undefined}
                 tabIndex={-1}
-                className="animate-fade-up relative z-10 w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl shadow-black/40 outline-none sm:p-6"
+                className="animate-fade-up relative z-10 w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-float outline-none sm:p-6"
             >
                 <div className="flex items-start gap-3">
                     {tone === 'danger' ? (
-                        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-wine/15 text-wine">
+                        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-wine/15 text-danger">
                             <AlertTriangle size={18} />
                         </span>
                     ) : null}
@@ -155,7 +155,7 @@ export function ConfirmDialog({
                         <button
                             ref={alternateRef}
                             type="button"
-                            className="btn-ghost hover:border-wine/50 hover:text-wine"
+                            className="btn-ghost hover:border-danger/50 hover:text-danger"
                             onClick={onAlternate}
                             disabled={busy}
                         >

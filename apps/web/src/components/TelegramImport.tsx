@@ -88,7 +88,7 @@ export function TelegramImport() {
                     <MessageSquare className="size-4 text-muted" />
                     From a Telegram chat
                 </p>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted">
+                <p className="mt-1 text-footnote leading-relaxed text-muted">
                     Export the conversation in Telegram Desktop — Settings → Advanced → Export chat history, and choose{' '}
                     <span className="font-mono">JSON</span> — then choose that file. Nothing is sent to Telegram; this
                     reads a file you already have.
@@ -128,13 +128,13 @@ export function TelegramImport() {
                             ] as const
                         ).map(([label, value]) => (
                             <div key={label} className="rounded-lg border border-line-soft bg-surface/60 px-3 py-2">
-                                <dt className="text-[10px] uppercase tracking-[0.14em] text-muted/70">{label}</dt>
+                                <dt className="text-caption uppercase tracking-[0.14em] text-muted">{label}</dt>
                                 <dd className="tabular-nums text-parchment">{value}</dd>
                             </div>
                         ))}
                     </dl>
 
-                    <p className="text-[11px] leading-relaxed text-muted">
+                    <p className="text-footnote leading-relaxed text-muted">
                         {fileName}
                         {scan.title ? ` · “${scan.title}”` : ''}. Service rows, joins and empty messages are not
                         imported.

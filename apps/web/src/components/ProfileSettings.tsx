@@ -136,18 +136,18 @@ export function ProfileSettings() {
                 <p className="flex items-center gap-2 truncate text-sm text-parchment">
                     {profile.name}
                     {profile.active ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-[10px] text-amber">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber/40 bg-amber/10 px-2 py-0.5 text-caption text-amber">
                             <Check size={10} />
                             Active
                         </span>
                     ) : null}
                     {profile.archived ? (
-                        <span className="rounded-full border border-line/70 px-2 py-0.5 text-[10px] text-muted">
+                        <span className="rounded-full border border-line/70 px-2 py-0.5 text-caption text-muted">
                             Archived
                         </span>
                     ) : null}
                 </p>
-                <p className="mt-0.5 truncate text-[11px] text-muted">
+                <p className="mt-0.5 truncate text-footnote text-muted">
                     {profile.archived ? 'Archived' : countsLine(profile)} · {formatSize(profile.sizeBytes)}
                 </p>
             </div>
@@ -170,7 +170,7 @@ export function ProfileSettings() {
                         </button>
                         <button
                             type="button"
-                            className="btn-ghost px-2 py-1 text-xs text-wine/90 hover:border-wine/50"
+                            className="btn-ghost px-2 py-1 text-xs text-danger hover:border-danger/50"
                             onClick={() => setConfirming({ kind: 'delete', profile })}
                         >
                             <Trash2 size={13} />
@@ -225,7 +225,7 @@ export function ProfileSettings() {
             <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line-soft px-4 py-3 md:px-5">
                 <div className="min-w-0">
                     <h4 className="text-sm font-medium text-parchment">Profiles</h4>
-                    <p className="truncate text-[11px] text-muted">
+                    <p className="truncate text-footnote text-muted">
                         A profile is its own cast, lorebooks, presets and settings. The provider list is shared.
                     </p>
                 </div>
@@ -278,7 +278,7 @@ export function ProfileSettings() {
                         />
                         <span>
                             Copy configuration from <strong>{active?.name ?? 'the active profile'}</strong>
-                            <span className="mt-0.5 block text-[11px] text-muted">
+                            <span className="mt-0.5 block text-footnote text-muted">
                                 Settings, regex and personas only — the cast, chats, lorebooks and presets start empty.
                             </span>
                         </span>

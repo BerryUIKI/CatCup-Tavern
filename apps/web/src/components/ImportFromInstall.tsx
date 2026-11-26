@@ -22,7 +22,7 @@ function Counts({ counts }: { counts: { characters: number; chats: number; world
                 ] as const
             ).map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-line-soft bg-surface/60 px-3 py-2">
-                    <dt className="text-[10px] uppercase tracking-[0.14em] text-muted/70">{label}</dt>
+                    <dt className="text-caption uppercase tracking-[0.14em] text-muted">{label}</dt>
                     <dd className="tabular-nums text-parchment">{value}</dd>
                 </div>
             ))}
@@ -161,7 +161,7 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                 Scan
                             </button>
                         </div>
-                        <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mt-1 text-footnote leading-relaxed text-muted">
                             Group chats, backgrounds, themes and the other app&apos;s own settings are not imported.
                         </p>
                     </div>
@@ -169,12 +169,12 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                     {plan ? (
                         <div className="space-y-3 rounded-xl border border-line bg-surface/40 p-4">
                             <Counts counts={plan} />
-                            <p className="text-[11px] leading-relaxed text-muted">
+                            <p className="text-footnote leading-relaxed text-muted">
                                 From {plan.sources.length} folder{plan.sources.length === 1 ? '' : 's'}
                                 {plan.sources.length > 0 ? `: ${plan.sources.join(', ')}` : ''}
                             </p>
                             {plan.errors.length > 0 ? (
-                                <ul className="list-inside list-disc text-xs text-wine">
+                                <ul className="list-inside list-disc text-xs text-danger">
                                     {plan.errors.slice(0, 5).map((error) => (
                                         <li key={error}>{error}</li>
                                     ))}
@@ -199,7 +199,7 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                 </p>
                             ) : null}
                             {result.errors.length > 0 ? (
-                                <ul className="list-inside list-disc text-xs text-wine">
+                                <ul className="list-inside list-disc text-xs text-danger">
                                     {result.errors.slice(0, 5).map((error) => (
                                         <li key={error}>{error}</li>
                                     ))}
@@ -211,7 +211,7 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                     <p className="text-xs font-medium text-parchment-dim">
                                         Give the imported books more names?
                                     </p>
-                                    <p className="mt-0.5 text-[11px] leading-relaxed text-muted">
+                                    <p className="mt-0.5 text-footnote leading-relaxed text-muted">
                                         A book fires when a chat repeats one of its keywords. Asking the active model
                                         for the other names each entry answers to closes the gap where the chat says
                                         something else — and it is cheapest to do now, while the book is still the thing
@@ -219,7 +219,7 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                     </p>
 
                                     {estimating ? (
-                                        <p className="mt-2 flex items-center gap-2 text-[11px] text-muted">
+                                        <p className="mt-2 flex items-center gap-2 text-footnote text-muted">
                                             <Spinner size={12} />
                                             Counting the requests…
                                         </p>
@@ -238,14 +238,14 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                                             {id}
                                                         </span>
                                                         {estimate ? (
-                                                            <span className="shrink-0 text-[11px] text-muted">
+                                                            <span className="shrink-0 text-footnote text-muted">
                                                                 {estimate.requests} request
                                                                 {estimate.requests === 1 ? '' : 's'} · ~
                                                                 {estimate.promptTokens.toLocaleString()} tokens
                                                             </span>
                                                         ) : null}
                                                         <button
-                                                            className="btn-ghost shrink-0 px-2 py-0.5 text-[11px]"
+                                                            className="btn-ghost shrink-0 px-2 py-0.5 text-footnote"
                                                             onClick={() => setGenerating(id)}
                                                             type="button"
                                                         >
@@ -258,7 +258,7 @@ export function ImportFromInstall({ open, onClose }: { open: boolean; onClose: (
                                         </ul>
                                     ) : null}
 
-                                    <p className="mt-1 text-[11px] text-muted/70">
+                                    <p className="mt-1 text-footnote text-muted">
                                         Nothing runs unless you ask, and a large book is a real bill — the count above
                                         is what it would spend.
                                     </p>

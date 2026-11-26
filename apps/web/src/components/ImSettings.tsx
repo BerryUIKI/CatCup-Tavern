@@ -91,13 +91,13 @@ export function ImSettings() {
                 <MessageCircle className="size-4 text-muted" />
                 Talk to a character from Telegram
             </p>
-            <p className="text-[11px] leading-relaxed text-muted">
+            <p className="text-footnote leading-relaxed text-muted">
                 The bot polls Telegram directly — no public address, no webhook, nothing exposed to the network. Only
                 the one user id below can reach it; every other message is ignored without a reply. Message text and
                 replies <strong className="text-parchment-dim">do travel through Telegram</strong> when this is on. See
                 the security page.
             </p>
-            <p className="text-[11px] leading-relaxed text-muted">
+            <p className="text-footnote leading-relaxed text-muted">
                 The owner id is also where notifications go — a private chat with the bot, which works before you have
                 ever messaged it. Leave it empty and there is nowhere to send them.
             </p>
@@ -164,7 +164,7 @@ export function ImSettings() {
                 />
                 <span>
                     Receive messages
-                    <span className="mt-0.5 block text-[11px] text-muted">
+                    <span className="mt-0.5 block text-footnote text-muted">
                         Starts polling when saved, and again on the next start.
                     </span>
                 </span>
@@ -182,7 +182,7 @@ export function ImSettings() {
                 />
                 <span>
                     Tell me when a reply finishes
-                    <span className="mt-0.5 block text-[11px] text-muted">
+                    <span className="mt-0.5 block text-footnote text-muted">
                         Only for a reply you were not watching. Works with receiving off above — a notification needs
                         the token, not the poll loop.
                     </span>
@@ -195,7 +195,7 @@ export function ImSettings() {
                         {status.running ? 'Polling now.' : 'Not polling.'}
                         {status.bot ? ` Connected to @${status.bot.username}.` : ''}
                     </p>
-                    {status.error ? <p className="mt-1 text-wine">{status.error}</p> : null}
+                    {status.error ? <p className="mt-1 text-danger">{status.error}</p> : null}
                 </div>
             ) : null}
 

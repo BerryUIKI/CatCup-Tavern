@@ -157,7 +157,7 @@ function NumberField({
                 onChange={(event) => onChange(Number(event.target.value))}
                 className="input-shell"
             />
-            {hint ? <p className="mt-1 text-[11px] leading-relaxed text-muted/70">{hint}</p> : null}
+            {hint ? <p className="mt-1 text-footnote leading-relaxed text-muted">{hint}</p> : null}
         </div>
     );
 }
@@ -336,7 +336,7 @@ export function ImageSettings() {
                         onChange={(event) => set('baseUrl', event.target.value)}
                         placeholder={BACKEND_DEFAULTS[form.backend]}
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         {isOpenAi
                             ? 'The API root, usually ending in /v1.'
                             : isComfy
@@ -356,7 +356,7 @@ export function ImageSettings() {
                         onChange={(event) => set('model', event.target.value)}
                         placeholder={isOpenAi ? 'gpt-image-1' : isComfy ? 'checkpoint.safetensors' : 'Optional label'}
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         {isOpenAi
                             ? 'Required by the endpoint.'
                             : isComfy
@@ -385,7 +385,7 @@ export function ImageSettings() {
                         }
                         autoComplete="off"
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         {isOpenAi
                             ? 'Sent as a bearer token. Only api.openai.com requires one.'
                             : 'Sent as HTTP Basic credentials, as user:password.'}
@@ -493,12 +493,12 @@ export function ImageSettings() {
                         onChange={(event) => set('comfyWorkflow', event.target.value)}
                         spellCheck={false}
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         Export the workflow from ComfyUI with <strong>Save (API Format)</strong> and paste it here.
                         Placeholders are replaced before the graph is sent: %prompt%, %negative_prompt%, %seed%,
                         %width%, %height%, %steps%, %scale%, %sampler%, %scheduler% and %model%.
                     </p>
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         {comfyPlaceholders.length > 0
                             ? `Placeholders in use: ${comfyPlaceholders.map((name) => `%${name}%`).join(', ')}`
                             : 'No placeholders found; this workflow uses its own fixed values.'}
@@ -516,7 +516,7 @@ export function ImageSettings() {
                     value={form.promptPrefix}
                     onChange={(event) => set('promptPrefix', event.target.value)}
                 />
-                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                <p className="mt-1 text-footnote leading-relaxed text-muted">
                     Added before every prompt, after the comma-separated tags.
                 </p>
             </div>
@@ -545,7 +545,7 @@ export function ImageSettings() {
                     value={form.promptTemplate}
                     onChange={(event) => set('promptTemplate', event.target.value)}
                 />
-                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                <p className="mt-1 text-footnote leading-relaxed text-muted">
                     Sent to the active chat provider when you press “Draft from chat”; it should ask for only visible
                     details.
                 </p>
@@ -561,7 +561,7 @@ export function ImageSettings() {
                     value={form.portraitPromptTemplate}
                     onChange={(event) => set('portraitPromptTemplate', event.target.value)}
                 />
-                <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                <p className="mt-1 text-footnote leading-relaxed text-muted">
                     Sent when you draft a portrait from a character card — the card's description and personality, with
                     no chat involved. It should ask for appearance and bearing, not a scene.
                 </p>

@@ -51,7 +51,7 @@ export function ContextInspector({ open, onClose, characterId, chatId }: Context
                         <Spinner size={22} className="text-muted" />
                     </div>
                 ) : query.isError ? (
-                    <p className="py-10 text-center text-sm text-wine">
+                    <p className="py-10 text-center text-sm text-danger">
                         {query.error instanceof Error ? query.error.message : 'Could not build the context.'}
                     </p>
                 ) : context ? (
@@ -81,14 +81,14 @@ function PromptTab({ context }: { context: ContextPreview }) {
                     key={`${index}-${message.role}`}
                     className="rounded-xl border border-line-soft bg-ink-soft/60"
                 >
-                    <header className="flex items-center justify-between gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider text-muted">
+                    <header className="flex items-center justify-between gap-2 px-3 py-1.5 text-footnote uppercase tracking-wider text-muted">
                         <span>
                             #{index + 1} · {message.role}
                             {message.name ? ` · ${message.name}` : ''}
                         </span>
                         <span>{message.content.length} chars</span>
                     </header>
-                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap px-3 pb-3 font-sans text-[13px] leading-relaxed text-parchment-dim">
+                    <pre className="max-h-64 overflow-auto whitespace-pre-wrap px-3 pb-3 font-sans text-code leading-relaxed text-parchment-dim">
                         {message.content}
                     </pre>
                 </article>
@@ -124,16 +124,16 @@ function MemoryTab({ context }: { context: ContextPreview }) {
             </p>
 
             <section>
-                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">Summary</h3>
-                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-line-soft bg-ink-soft/60 p-3 font-sans text-[13px] leading-relaxed text-parchment-dim">
+                <h3 className="mb-2 text-footnote uppercase tracking-wider text-muted">Summary</h3>
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl border border-line-soft bg-ink-soft/60 p-3 font-sans text-code leading-relaxed text-parchment-dim">
                     {memory.value}
                 </pre>
             </section>
 
             <section>
-                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">Injected text</h3>
+                <h3 className="mb-2 text-footnote uppercase tracking-wider text-muted">Injected text</h3>
                 {memory.injection ? (
-                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-sage/30 bg-sage/5 p-3 font-sans text-[13px] leading-relaxed text-parchment-dim">
+                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl border border-sage/30 bg-sage/5 p-3 font-sans text-code leading-relaxed text-parchment-dim">
                         {memory.injection}
                     </pre>
                 ) : (
@@ -161,7 +161,9 @@ function WorldInfoTab({ context }: { context: ContextPreview }) {
             </p>
 
             <section>
-                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">Activated ({activated.length})</h3>
+                <h3 className="mb-2 text-footnote uppercase tracking-wider text-muted">
+                    Activated ({activated.length})
+                </h3>
                 {activated.length === 0 ? (
                     <p className="text-sm text-muted">No entry fired for this chat.</p>
                 ) : (
@@ -203,12 +205,12 @@ function WorldInfoTab({ context }: { context: ContextPreview }) {
             </section>
 
             <section>
-                <h3 className="mb-2 text-[11px] uppercase tracking-wider text-muted">
+                <h3 className="mb-2 text-footnote uppercase tracking-wider text-muted">
                     Trace ({info.trace.length}, {skipped} skipped)
                 </h3>
                 <div className="overflow-x-auto rounded-xl border border-line-soft">
                     <table className="w-full text-left text-xs">
-                        <thead className="bg-surface/60 text-[10px] uppercase tracking-wider text-muted">
+                        <thead className="bg-surface/60 text-caption uppercase tracking-wider text-muted">
                             <tr>
                                 <th className="px-3 py-2">Entry</th>
                                 <th className="px-3 py-2">Result</th>
@@ -248,7 +250,7 @@ function Bucket({ title, entries }: { title: string; entries: string[] }) {
     }
     return (
         <div className="rounded-xl border border-line-soft bg-ink-soft/50 p-3">
-            <h4 className="mb-1 text-[11px] uppercase tracking-wider text-muted">{title}</h4>
+            <h4 className="mb-1 text-footnote uppercase tracking-wider text-muted">{title}</h4>
             <pre className="max-h-40 overflow-auto whitespace-pre-wrap font-sans text-xs leading-relaxed text-parchment-dim">
                 {entries.join('\n')}
             </pre>
@@ -267,7 +269,7 @@ function BudgetTab({ context }: { context: ContextPreview }) {
             </p>
             <div className="overflow-x-auto rounded-xl border border-line-soft">
                 <table className="w-full text-left text-xs">
-                    <thead className="bg-surface/60 text-[10px] uppercase tracking-wider text-muted">
+                    <thead className="bg-surface/60 text-caption uppercase tracking-wider text-muted">
                         <tr>
                             <th className="px-3 py-2">Slot</th>
                             <th className="px-3 py-2 text-right">Tokens</th>

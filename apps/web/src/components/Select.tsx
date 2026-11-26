@@ -369,7 +369,7 @@ export function Select<T extends string>({
                           aria-label={label}
                           onKeyDown={onListKeyDown}
                           style={{ top: position.top, left: position.left, minWidth: position.width }}
-                          className="animate-fade-up fixed z-[60] max-h-80 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-2xl shadow-black/45"
+                          className="animate-fade-up fixed z-[60] max-h-80 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-float"
                       >
                           {options.map((option, index) => {
                               const isSelected = index === selectedIndex;
@@ -395,7 +395,7 @@ export function Select<T extends string>({
                                       <span className="min-w-0 flex-1">
                                           <span className="block truncate">{option.label}</span>
                                           {option.description ? (
-                                              <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                                              <span className="mt-0.5 block text-footnote leading-relaxed text-muted">
                                                   {option.description}
                                               </span>
                                           ) : null}

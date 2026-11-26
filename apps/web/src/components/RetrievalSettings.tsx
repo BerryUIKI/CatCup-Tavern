@@ -54,7 +54,7 @@ export function RetrievalSettings({ config, onChange, busy }: RetrievalSettingsP
                         />
                         <span className="text-sm leading-snug text-parchment">Match by meaning, not only keywords</span>
                     </label>
-                    <p className="mt-1 pl-6 text-[11px] leading-relaxed text-muted">
+                    <p className="mt-1 pl-6 text-footnote leading-relaxed text-muted">
                         Adds entries whose keywords the chat never used but whose text is on the same subject. It only
                         ever adds — nothing a keyword matched is removed.
                     </p>
@@ -162,7 +162,7 @@ function RangeField({
                 onPointerUp={(event) => commit(Number(event.currentTarget.value))}
                 onBlur={(event) => commit(Number(event.currentTarget.value))}
             />
-            <p id={hintId} className="mt-1 text-[11px] leading-relaxed text-muted">
+            <p id={hintId} className="mt-1 text-footnote leading-relaxed text-muted">
                 {hint}
             </p>
         </div>

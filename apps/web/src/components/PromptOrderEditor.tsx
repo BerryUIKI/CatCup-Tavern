@@ -162,7 +162,7 @@ export function PromptOrderEditor({ presetId }: { presetId: string }) {
                                     <p className="truncate text-sm text-parchment">
                                         {prompt?.name || entry.identifier}
                                     </p>
-                                    <p className="truncate text-[11px] text-muted">
+                                    <p className="truncate text-footnote text-muted">
                                         {entry.identifier}
                                         {prompt?.marker ? ' · marker' : ''}
                                     </p>
