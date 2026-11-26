@@ -133,6 +133,7 @@ A second launch never starts a second server. The single-instance plugin forward
 
 ## Still open
 
+- **The 0.3.2 and 0.4.0 installers cannot update themselves.** Their `latest.json` named a download URL that answers 404 — the manifest was built from the bundler's on-disk file name while `gh release upload` stored it with the spaces replaced by dots. The publish step is fixed (see [Releasing an update](#releasing-an-update)), so the next release's manifest is checked before it is published, but nothing already installed can cross that gap: an app on 0.3.2 or 0.4.0 has to be replaced by a fresh install once, and updates work from then on.
 - **Downloads.** The export buttons are `<a download>` links; WebView2's save behaviour has not been exercised yet.
 - **Session persistence.** The webview keeps cookies in its own profile; confirm a login survives a restart.
 - **Browser speech voices.** WebView2's `speechSynthesis` voice list has not been exercised; if it is empty, use the OpenAI-compatible TTS backend.
@@ -183,6 +184,7 @@ Two details decide whether the workflow takes the signed path, and both have gon
 
 - **The secret must hold the key's content, not a path.** `gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/catcup.key` uploads the file; setting it to the path string produces a non-empty secret that cannot sign, and the build fails rather than skipping.
 - **The stored public key must be the one that pairs with that private key.** A mismatch is silent until an update is attempted: the app downloads the archive, rejects the signature and reports the failure to the user. 0.3.0 and 0.3.1 both shipped without updater artifacts because the secret existed but carried no key, so neither could sign; the pinned key has to be replaced in the same change that re-uploads the secret.
+- **The URL in the manifest has to name the asset as GitHub stored it, not as the bundler wrote it.** `gh release upload` substitutes every character outside `[A-Za-z0-9._-]` with `.`, so the bundler's `CatCup Tavern_1.2.3_x64-setup.exe` is published as `CatCup.Tavern_1.2.3_x64-setup.exe`. Building the manifest URL from the on-disk name therefore produced a signed, well-formed `latest.json` pointing at a 404 — which is exactly as indistinguishable from a working update as the key problems above. **0.3.2 and 0.4.0 both shipped that way.** The publish step now uploads the installer first, reads the stored name back from the release listing, builds the URL from that, and then fetches the URL it just wrote; a release whose manifest does not answer `200` or `206` fails instead of publishing. The comparison applies the same substitution to both names, so it keeps working if `gh` ever stops renaming.
 
 The key currently deployed was generated without a password, so `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is deliberately absent. Adding a password later means re-generating the keypair and replacing both, because a mismatched pair cannot verify.
 

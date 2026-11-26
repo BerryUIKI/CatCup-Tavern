@@ -2,6 +2,18 @@
 
 All notable changes to CatCup Tavern are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). `0.1.0` records the M0 scaffold; `0.2.0` is the first early-access release; `0.2.1` is a compatibility patch; `0.3.0` is the M2 feature release; `0.3.1` adds profiles and book distillation; `0.3.2` asks providers for a request protocol, adds a first-class custom-provider entry and replaces every native dropdown with a CatCup control, and fixes the desktop console window, the Add-model button closing the Providers panel, and Sign out appearing with no password; `0.4.0` adds the Telegram channel, world info aliases and lexical retrieval, append-only summaries, two more request protocols, a self-drawn desktop title bar and the landing page, and completes the removal of the adapted code.
 
+## Unreleased
+
+### Changed
+
+- **A test that failed at random now has the time it needs.** `auth.test.ts`'s desktop-session cases re-import the whole app for each case, so one of them pays for the tokenizer vocabulary — about 2.5 s alone, and occasionally past the 5 s default beside a full suite on a loaded machine. Two of them timed out in roughly one run in four while this release was being prepared. The describe block now carries a 20 s timeout, the pattern `im/conversation.test.ts` already uses, because the limit was the problem rather than the behaviour.
+
+### Fixed
+
+- **Self-update actually works from the next release on.** `0.4.0`'s and `0.3.2`'s `latest.json` each advertised a download URL that answers `404`, so **Check for Updates…** failed on every installed copy and the release page looked fine. The manifest URL was built from the bundler's on-disk name — `CatCup Tavern_0.4.0_x64-setup.exe` — while `gh release upload` substitutes every character outside `[A-Za-z0-9._-]` with `.` and stores `CatCup.Tavern_0.4.0_x64-setup.exe`. The publish step now uploads the installer first, reads the stored name back from the release listing, builds the URL from that, and then fetches the URL it just wrote: a release whose manifest does not answer `200` or `206` fails instead of publishing. Both names get the same substitution before comparing, so the match survives a change in `gh`'s renaming rule either way.
+
+  Nothing already installed can cross that gap. An app on `0.3.2` or `0.4.0` has to be replaced by one fresh install — the `data/` folder is untouched — and updates work from then on. Recorded in `docs/LIMITATIONS.md` and `docs/DESKTOP.md`, and M4's "updates and file associations work" criterion stays open until a release built by the fixed workflow updates an installed app end to end.
+
 ## 0.4.0 — 2026-11-26
 
 ### Added
