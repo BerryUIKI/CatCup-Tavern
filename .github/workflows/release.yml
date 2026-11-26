@@ -186,7 +186,6 @@ jobs:
                       echo "The bundler produced no installer." >&2
                       exit 1
                   fi
-                  assets=("${installers[0]}")
 
                   # Which artifact the updater downloads depends on the Tauri
                   # version. Older bundlers write a separate `*.nsis.zip` archive;
@@ -194,21 +193,69 @@ jobs:
                   # `<installer>.exe.sig`. Both are updatable — the plugin only
                   # needs a URL and a signature — so prefer the archive when
                   # there is one and fall back to the signed installer.
-                  signed=""
+                  archive=""
                   if [ ${#archives[@]} -gt 0 ] && [ -f "${archives[0]}.sig" ]; then
-                      signed="${archives[0]}"
+                      archive="${archives[0]}"
                   elif [ -f "${installers[0]}.sig" ]; then
-                      signed="${installers[0]}"
+                      archive="${installers[0]}"
                   fi
 
-                  # `latest.json` is what an installed app polls. It has to name
-                  # the signed artifact by URL, so it is only written when the
-                  # build was signed.
-                  if [ -n "$signed" ]; then
-                      archive="$signed"
-                      encoded=$(node -p 'encodeURIComponent(process.argv[1])' "$(basename "$archive")")
+                  # `latest.json` is what an installed app polls, and it names the
+                  # signed artifact by URL — so it is only written when the build
+                  # was signed.
+                  #
+                  # The name in that URL is **not** the name on disk. `gh release
+                  # upload` rewrites every character outside `[A-Za-z0-9._-]` to
+                  # `.`, so the bundler's `CatCup Tavern_0.4.0_x64-setup.exe` is
+                  # stored as `CatCup.Tavern_0.4.0_x64-setup.exe`. Building the URL
+                  # from the on-disk name produced a manifest pointing at a 404,
+                  # which an installed app reports as a failed update: 0.3.2 and
+                  # 0.4.0 both shipped that way. The release is therefore uploaded
+                  # first and the stored name read back from the API, rather than
+                  # reimplementing `gh`'s sanitization rule and hoping it holds.
+                  upload=("${installers[0]}")
+                  if [ -n "$archive" ]; then
+                      if [ "$archive" != "${installers[0]}" ]; then
+                          upload+=("$archive")
+                      fi
+                      upload+=("${archive}.sig")
+                  fi
+                  if gh release view "$tag" >/dev/null 2>&1; then
+                      gh release upload "$tag" "${upload[@]}" --clobber
+                  else
+                      gh release create "$tag" "${upload[@]}" \
+                          --title "$title" \
+                          --notes-file "$RUNNER_TEMP/release-notes.md"
+                  fi
+
+                  if [ -n "$archive" ]; then
+                      # The published installer, named as GitHub stored it. The
+                      # on-disk name only picks the right row out of the listing —
+                      # the URL below is built from what the release actually
+                      # lists, so a change in the renaming rule cannot reintroduce
+                      # the 404. Both sides get the same substitution
+                      # (`[^A-Za-z0-9._-]` → `.`), so the match holds whether or
+                      # not `gh` renames at all.
+                      sanitize() { local s="${1//[^A-Za-z0-9._-]/.}"; printf '%s' "$s"; }
+                      want=$(sanitize "$(basename "$archive")")
+                      stored=""
+                      while IFS= read -r name; do
+                          [ -n "$name" ] || continue
+                          [ "$name" = "latest.json" ] && continue
+                          if [ "$(sanitize "$name")" = "$want" ]; then
+                              stored="$name"
+                              break
+                          fi
+                      done < <(gh release view "$tag" --json assets --jq '.assets[].name')
+                      if [ -z "$stored" ]; then
+                          echo "The signed artifact for $(basename "$archive") is not listed on the release." >&2
+                          exit 1
+                      fi
+
+                      encoded=$(node -p 'encodeURIComponent(process.argv[1])' "$stored")
+                      URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${encoded}"
                       VERSION="$version" \
-                      URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag}/${encoded}" \
+                      URL="$URL" \
                       SIGNATURE="$(cat "${archive}.sig")" \
                       NOTES_FILE="$RUNNER_TEMP/section.md" \
                       LATEST_JSON="$RUNNER_TEMP/latest.json" \
@@ -230,21 +277,25 @@ jobs:
                           };
                           fs.writeFileSync(process.env.LATEST_JSON, `${JSON.stringify(manifest, null, 2)}\n`);
                       '
-                      # The installer is already in `assets` when it is the thing
-                      # that was signed; adding it again makes `gh release
-                      # upload` fail on a duplicate asset name.
-                      if [ "$archive" != "${installers[0]}" ]; then
-                          assets+=("$archive")
+
+                      gh release upload "$tag" "$RUNNER_TEMP/latest.json" --clobber
+
+                      # A manifest that 404s is worse than no manifest: every
+                      # installed app reports a failed update and the release page
+                      # looks fine. Fetch the URL the manifest now advertises, the
+                      # same way an app would, and fail the release if it is not
+                      # there.
+                      published=$(gh release view "$tag" --json assets --jq '.assets[] | select(.name == "latest.json") | .url')
+                      if [ -z "$published" ]; then
+                          echo "latest.json was not published." >&2
+                          exit 1
                       fi
-                      assets+=("${archive}.sig" "$RUNNER_TEMP/latest.json")
+                      code=$(curl -sS -o /dev/null -w '%{http_code}' -L -r 0-0 "$URL" || echo "000")
+                      if [ "$code" != "200" ] && [ "$code" != "206" ]; then
+                          echo "latest.json advertises ${URL}, which answers ${code}." >&2
+                          exit 1
+                      fi
+                      echo "latest.json advertises ${URL} (${code})." >> "$GITHUB_STEP_SUMMARY"
                   else
                       echo "No signed updater artifact was produced, so latest.json was not written and this release will not be offered as an update." >> "$GITHUB_STEP_SUMMARY"
-                  fi
-
-                  if gh release view "$tag" >/dev/null 2>&1; then
-                      gh release upload "$tag" "${assets[@]}" --clobber
-                  else
-                      gh release create "$tag" "${assets[@]}" \
-                          --title "$title" \
-                          --notes-file "$RUNNER_TEMP/release-notes.md"
                   fi

@@ -24,7 +24,15 @@ async function boot(desktop: boolean): Promise<{ app: FastifyInstance; root: str
     return { app: await buildApp(), root };
 }
 
-describe('desktop open session', () => {
+/**
+ * Each case re-imports the whole app with a different `CATCUP_DESKTOP`, so the
+ * first one in this file pays for loading the tokenizer vocabulary. Alone that
+ * is about 2.5 s; beside a full suite on a loaded machine it has crept past the
+ * 5 s default and failed at random, which is a timing limit rather than a
+ * regression. The timeout is on the block because either case can be the one
+ * that pays.
+ */
+describe('desktop open session', { timeout: 20_000 }, () => {
     let app: FastifyInstance | null = null;
     let root: string | null = null;
 

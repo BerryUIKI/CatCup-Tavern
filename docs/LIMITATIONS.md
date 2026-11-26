@@ -126,6 +126,7 @@ The notification goes to the **owner id** in Settings → IM, in a private chat 
 - **Downloads and sign-in persistence in the desktop app have not been exercised.**
 - **Phone-sized screens** are not a supported target, and the interface is **English only**.
 - **The installer is unsigned, and signing it is deliberately deferred.** Windows warns once on first run; the update archive itself is signed with CatCup's own key and checked before it installs, so self-update is unaffected by this. A publisher certificate would put a name on that warning, not make the app run where it otherwise would not — see [MILESTONES.md](MILESTONES.md).
+- **A broken update feed on `0.3.2` and `0.4.0` was repaired, not worked around.** Those two releases first shipped an update manifest whose download URL answered `404`, so **Check for Updates…** reported a failed download. Both published manifests were corrected on 2026-11-27 — the URL only; the signature and notes are unchanged — so an installed copy of either version updates normally now, with no reinstall. The publishing workflow is fixed too, so the next release cannot repeat it — see [MILESTONES.md](MILESTONES.md).
 - **LAN traffic is plain HTTP**, including the password. Use a trusted network or a TLS proxy.
 - **Only Windows is released.** The desktop shell builds and packages on macOS and Linux, and CI compiles both on every pull request, but nothing there has been run: an unsigned macOS app is refused by Gatekeeper on any other machine, and the Linux artifacts have not been installed.
 
