@@ -1,8 +1,4 @@
-import {
-    DEFAULT_MEMORY_PROMPT,
-    type MemorySettings as MemorySettingsValue,
-    memorySettingsSchema,
-} from '@catcup/shared';
+import { DEFAULT_MEMORY_PROMPT, memorySettingsSchema } from '@catcup/shared';
 import { RotateCcw, Save } from 'lucide-react';
 
 import { useSettings, useUpdateSettings } from '../hooks/data';

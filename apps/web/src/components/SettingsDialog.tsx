@@ -847,7 +847,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'tts' ? (
                 <TtsSettings />
             ) : section === 'images' ? (
-                <ImageSettings />
+                <ImageSettings registerDraft={registerPanelDraft} />
             ) : (
                 <AboutTab />
             );

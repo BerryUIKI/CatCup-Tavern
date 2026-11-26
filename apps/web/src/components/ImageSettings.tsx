@@ -1,9 +1,10 @@
-import { type ImageBackend, type ImageGenerationSettings, imageGenerationSettingsSchema } from '@catcup/shared';
+import { type ImageBackend, imageGenerationSettingsSchema } from '@catcup/shared';
 import { Save, WandSparkles } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
 import { useSettings, useUpdateSettings } from '../hooks/data';
 import { api } from '../lib/api';
+import { type RegisterSettingsDraft, useSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Combobox } from './Combobox';
 import { Select } from './Select';
@@ -169,35 +170,26 @@ function NumberField({
  * takes `user:password` for HTTP Basic auth; OpenAI-compatible endpoints take
  * a bearer token.
  */
-export function ImageSettings() {
+export function ImageSettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settingsQuery = useSettings();
     const settings = settingsQuery.data;
     const updateSettings = useUpdateSettings();
     const pushToast = useAppStore((state) => state.pushToast);
 
-    const [form, setForm] = useState<ImageGenerationSettings>(() => ({
-        ...(settings?.imageGeneration ?? imageGenerationSettingsSchema.parse({})),
-    }));
+    const {
+        draft: form,
+        dirty,
+        setDraft,
+        update: set,
+        discard,
+        markSaved,
+    } = useSettingsDraft(settings?.imageGeneration ?? null, () => imageGenerationSettingsSchema.parse({}));
     const [apiKey, setApiKey] = useState('');
     const [removeKey, setRemoveKey] = useState(false);
     const [testing, setTesting] = useState(false);
-    const editedRef = useRef(false);
-
-    useEffect(() => {
-        if (!settings?.imageGeneration || editedRef.current) {
-            return;
-        }
-        setForm({ ...settings.imageGeneration });
-    }, [settings?.imageGeneration]);
-
-    const set = <Key extends keyof ImageGenerationSettings>(key: Key, value: ImageGenerationSettings[Key]) => {
-        editedRef.current = true;
-        setForm((current) => ({ ...current, [key]: value }));
-    };
 
     const changeBackend = (backend: ImageBackend) => {
-        editedRef.current = true;
-        setForm((current) => {
+        setDraft((current) => {
             const currentDefault = BACKEND_DEFAULTS[current.backend];
             const nextDefault = BACKEND_DEFAULTS[backend];
             const baseUrl =
@@ -258,16 +250,23 @@ export function ImageSettings() {
         return null;
     };
 
-    const save = async (test: boolean) => {
+    /**
+     * Persist the form.
+     *
+     * `test` is only for the **Save & test** button; the leave guard calls this
+     * without it, because a section switch should not cost a network round trip
+     * to a backend nobody asked to touch.
+     */
+    const save = async (test: boolean): Promise<boolean> => {
         const invalid = validate();
         if (invalid) {
             pushToast(invalid, 'error');
-            return;
+            return false;
         }
 
         try {
             await updateSettings.mutateAsync(payload());
-            editedRef.current = false;
+            markSaved();
             setApiKey('');
             setRemoveKey(false);
             if (test) {
@@ -277,15 +276,34 @@ export function ImageSettings() {
             } else {
                 pushToast('Image generation settings saved.', 'success');
             }
+            return true;
         } catch (error) {
             pushToast(
                 errorMessage(error, test ? 'Could not reach the image backend.' : 'Could not save the settings.'),
                 'error',
             );
+            return false;
         } finally {
             setTesting(false);
         }
     };
+
+    /**
+     * The API key is write-only and lives outside the draft, so it counts as an
+     * unsaved edit too: a typed key that a section switch threw away would look
+     * exactly like a lost password field.
+     */
+    const keyDirty = apiKey.trim().length > 0 || removeKey;
+
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirty || keyDirty,
+        save: () => save(false),
+        discard: () => {
+            discard();
+            setApiKey('');
+            setRemoveKey(false);
+        },
+    });
 
     const hasKey = settings?.imageHasKey ?? false;
     const isOpenAi = form.backend === 'openai-compatible';
@@ -578,6 +596,7 @@ export function ImageSettings() {
             />
 
             <div className="flex flex-wrap items-center justify-end gap-2">
+                <p className="mr-auto text-footnote text-muted">{dirty || keyDirty ? 'Unsaved changes.' : 'Saved.'}</p>
                 <button
                     type="button"
                     className="btn-ghost"
@@ -591,7 +610,7 @@ export function ImageSettings() {
                     type="button"
                     className="btn-primary"
                     onClick={() => void save(false)}
-                    disabled={updateSettings.isPending || testing}
+                    disabled={updateSettings.isPending || testing || !(dirty || keyDirty)}
                 >
                     {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
                     Save
