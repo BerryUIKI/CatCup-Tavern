@@ -28,7 +28,7 @@
         "lede": "Un personaje o una sala entera, con libros de trasfondo, preajustes de prompt, memoria continua, voz e imágenes. Cada ficha y cada chat es un archivo normal en tu propio disco. Un servidor sirve tres formas: una pestaña del navegador, tu red local y una app de Windows.",
         "download": "Descargar para Windows",
         "docs": "Leer la documentación",
-        "meta": "0.3.2 · 16 de noviembre de 2026 · Windows, web y red local",
+        "meta": "0.4.0 · 26 de noviembre de 2026 · Windows, web y red local",
         "demoNote": "Esto no es una captura: es la interfaz, funcionando aquí mismo. Escribe una línea y Mira responde.",
         "startOver": "Empezar de nuevo"
     },

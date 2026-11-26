@@ -28,7 +28,7 @@
         "lede": "Un personnage ou toute une salle, avec livres de lore, préréglages de prompt, mémoire glissante, voix et images. Chaque fiche et chaque discussion est un simple fichier sur votre disque. Un seul serveur sert trois formes : un onglet de navigateur, votre réseau local et une application Windows.",
         "download": "Télécharger pour Windows",
         "docs": "Lire la documentation",
-        "meta": "0.3.2 · 16 novembre 2026 · Windows, web et réseau local",
+        "meta": "0.4.0 · 26 novembre 2026 · Windows, web et réseau local",
         "demoNote": "Ceci n'est pas une capture : c'est l'interface, ici même. Écrivez une ligne et Mira répond.",
         "startOver": "Recommencer"
     },

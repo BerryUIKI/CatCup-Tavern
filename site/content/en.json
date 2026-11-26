@@ -28,7 +28,7 @@
         "lede": "One character or a whole group, with lorebooks, prompt presets, rolling memory, speech and images — every card and every chat an ordinary file on your own disk. One server serves three shapes: a browser tab, your LAN, and a Windows app.",
         "download": "Download for Windows",
         "docs": "Read the docs",
-        "meta": "0.3.2 · 16 November 2026 · Windows, web and LAN",
+        "meta": "0.4.0 · 26 November 2026 · Windows, web and LAN",
         "demoNote": "This is the interface, running on the page. Type a line and Mira answers.",
         "startOver": "Start over"
     },

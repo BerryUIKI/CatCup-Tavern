@@ -48,6 +48,35 @@ jobs:
             - name: Build
               run: pnpm build
 
+            # `pnpm build` proves the bundle compiles, not that it runs. A
+            # workspace package that exports TypeScript source and is missing
+            # from tsup's `noExternal` list compiles cleanly and then throws on
+            # the first import at startup, which no gate here caught until the
+            # 0.4.0 release preparation started the built server by hand.
+            - name: Start the built server
+              run: |
+                  set -euo pipefail
+                  log="$RUNNER_TEMP/server.log"
+                  CATCUP_PORT=0 CATCUP_DATA_DIR="$RUNNER_TEMP/data" \
+                      node apps/server/dist/index.js >"$log" 2>&1 &
+                  pid=$!
+                  for _ in $(seq 1 60); do
+                      if [ -f "$log" ] && grep -q '^CATCUP_READY ' "$log"; then
+                          echo "Server reported ready:"
+                          grep '^CATCUP_READY ' "$log"
+                          kill "$pid"
+                          exit 0
+                      fi
+                      if ! kill -0 "$pid" 2>/dev/null; then
+                          break
+                      fi
+                      sleep 1
+                  done
+                  echo "The built server did not start." >&2
+                  if [ -f "$log" ]; then cat "$log" >&2; fi
+                  kill "$pid" 2>/dev/null || true
+                  exit 1
+
     desktop:
         name: Desktop shell (${{ matrix.os }})
         strategy:

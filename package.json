@@ -1,7 +1,7 @@
 {
     "name": "catcup-tavern",
     "private": true,
-    "version": "0.3.2",
+    "version": "0.4.0",
     "description": "CatCup Tavern — a local-first AI roleplay client for web, LAN and desktop.",
     "license": "AGPL-3.0-only",
     "type": "module",
