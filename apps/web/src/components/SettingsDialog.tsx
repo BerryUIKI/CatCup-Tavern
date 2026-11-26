@@ -835,7 +835,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'worldinfo' ? (
                 renderWorldInfoPanel()
             ) : section === 'persona' ? (
-                <PersonaSettings />
+                <PersonaSettings registerDraft={registerPanelDraft} />
             ) : section === 'memory' ? (
                 <MemorySettings registerDraft={registerPanelDraft} />
             ) : section === 'im' ? (

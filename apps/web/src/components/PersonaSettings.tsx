@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { useCreatePersona, useDeletePersona, useSettings, useUpdatePersona, useUpdateSettings } from '../hooks/data';
 import { cn } from '../lib/cn';
+import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
@@ -15,7 +16,7 @@ import { Spinner } from './Spinner';
  * Deleting the persona a chat pointed at is safe: the chat falls back to the
  * first persona rather than failing to open.
  */
-export function PersonaSettings() {
+export function PersonaSettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settingsQuery = useSettings();
     const updateSettings = useUpdateSettings();
     const createPersona = useCreatePersona();
@@ -29,34 +30,39 @@ export function PersonaSettings() {
 
     const [draft, setDraft] = useState<Persona | null>(null);
     const [creating, setCreating] = useState(false);
+    /** What the open editor started from, so the guard can tell if it changed. */
+    const [draftBaseline, setDraftBaseline] = useState<Persona | null>(null);
+
+    const beginDraft = (next: Persona | null, isNew: boolean) => {
+        setCreating(isNew);
+        setDraft(next);
+        setDraftBaseline(next ? { ...next } : null);
+    };
 
     const startCreate = () => {
-        setCreating(true);
-        setDraft({ id: crypto.randomUUID(), ...DEFAULT_PERSONA });
+        beginDraft({ id: crypto.randomUUID(), ...DEFAULT_PERSONA }, true);
     };
 
     const startEdit = (persona: Persona) => {
-        setCreating(false);
-        setDraft({ ...persona });
+        beginDraft({ ...persona }, false);
     };
 
     const cancel = () => {
-        setCreating(false);
-        setDraft(null);
+        beginDraft(null, false);
     };
 
     const showError = (error: unknown) => {
         pushToast(error instanceof Error ? error.message : 'Could not save the persona.', 'error');
     };
 
-    const save = async () => {
+    const save = async (): Promise<boolean> => {
         if (!draft) {
-            return;
+            return true;
         }
         const name = draft.name.trim();
         if (!name) {
             pushToast('A persona needs a name.', 'error');
-            return;
+            return false;
         }
 
         // A shared persona is written to `shared/personas.json`, a profile one to
@@ -95,10 +101,29 @@ export function PersonaSettings() {
             }
             pushToast('Persona saved.', 'success');
             cancel();
+            return true;
         } catch (error) {
             showError(error);
+            return false;
         }
     };
+
+    /**
+     * An open editor is an unsaved edit.
+     *
+     * Creating counts even before anything is typed, because the row is not in
+     * the list yet — leaving would lose the fact that one was started. Editing
+     * counts only once a field actually differs from what was opened.
+     */
+    const draftDirty =
+        draft !== null &&
+        (creating || (draftBaseline !== null && JSON.stringify(draft) !== JSON.stringify(draftBaseline)));
+
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => draftDirty,
+        save,
+        discard: cancel,
+    });
 
     const remove = async (persona: PersonaView) => {
         if (!window.confirm(`Delete the persona "${persona.name}"? Chats that used it fall back to the default.`)) {
@@ -362,11 +387,12 @@ export function PersonaSettings() {
                     </details>
 
                     <div className="flex items-center gap-2">
+                        <p className="mr-auto text-footnote text-muted">{draftDirty ? 'Unsaved changes.' : 'Saved.'}</p>
                         <button
                             type="button"
                             className="btn-primary"
                             onClick={() => void save()}
-                            disabled={updateSettings.isPending}
+                            disabled={updateSettings.isPending || !draftDirty}
                         >
                             {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
                             Save persona
