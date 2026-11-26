@@ -72,7 +72,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: str
         <div className="relative flex min-h-dvh items-center justify-center px-5 py-10">
             <div className="w-full max-w-md">
                 <div className="mb-8 flex flex-col items-center text-center">
-                    <Logo size={58} className="text-amber drop-shadow-[0_0_24px_rgba(226,165,90,0.28)]" />
+                    <Logo size={58} className="logo-glow text-amber" />
                     <h1 className="mt-4 font-display text-3xl tracking-wide text-parchment">CatCup Tavern</h1>
                     <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
                         A quiet room for stories, characters, and long conversations.
@@ -85,7 +85,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: str
                     {children}
                 </div>
 
-                <p className="mt-5 text-center text-xs text-muted/70">Local-first. API keys stay on the server.</p>
+                <p className="mt-5 text-center text-xs text-muted">Local-first. API keys stay on the server.</p>
             </div>
         </div>
     );
@@ -94,7 +94,7 @@ function AuthShell({ title, subtitle, children }: { title: string; subtitle: str
 export function SplashScreen() {
     return (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-5">
-            <Logo size={64} className="text-amber drop-shadow-[0_0_28px_rgba(226,165,90,0.3)]" />
+            <Logo size={64} className="logo-glow logo-glow-lg text-amber" />
             <Spinner size={20} className="text-muted" />
         </div>
     );
@@ -156,7 +156,7 @@ export function SetupScreen() {
                 </button>
             </form>
 
-            <p className="mt-4 text-xs leading-relaxed text-muted/80">
+            <p className="mt-4 text-xs leading-relaxed text-muted">
                 First-time setup must be completed on the computer running the server. If you plan to use this over LAN,
                 set the password here first.
             </p>
@@ -215,7 +215,7 @@ export function LoginScreen({ openSession = false }: { openSession?: boolean }) 
                 </button>
             </form>
             {openSession ? (
-                <p className="mt-4 text-xs leading-relaxed text-muted/80">
+                <p className="mt-4 text-xs leading-relaxed text-muted">
                     This desktop install normally opens without a password. Sign in here if one was set elsewhere, or
                     restart the app to open directly.
                 </p>

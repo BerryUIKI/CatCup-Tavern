@@ -346,7 +346,7 @@ export function RegexSettings() {
                                     <span className="truncate">{script.scriptName || '(untitled)'}</span>
                                     {script.scope === 'shared' ? <SharedBadge /> : null}
                                 </p>
-                                <p className="truncate text-[11px] text-muted">
+                                <p className="truncate text-footnote text-muted">
                                     {scopeLabel(script)} · {script.placement.length} place
                                     {script.placement.length === 1 ? '' : 's'} · {script.findRegex || 'no pattern'}
                                 </p>
@@ -377,7 +377,7 @@ export function RegexSettings() {
                             </button>
                             <button
                                 type="button"
-                                className="icon-btn size-7 hover:text-wine"
+                                className="icon-btn size-7 hover:text-danger"
                                 onClick={() => void remove(script)}
                                 aria-label={`Delete ${script.scriptName}`}
                             >

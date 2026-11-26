@@ -193,13 +193,13 @@ export function MessageBubble({
                         {message.name || (isUser ? 'You' : isNarrator ? 'System' : characterName)}
                     </span>
                     {message.send_date ? (
-                        <span className="text-[10px] text-muted/60">{formatMessageTime(message.send_date)}</span>
+                        <span className="text-caption text-muted">{formatMessageTime(message.send_date)}</span>
                     ) : null}
                 </header>
 
                 {reasoning ? (
                     <details className="mb-2 w-full rounded-lg border border-line-soft bg-ink-soft/60 px-3 py-2 text-xs text-muted">
-                        <summary className="cursor-pointer select-none text-[11px] uppercase tracking-wider text-muted/80">
+                        <summary className="cursor-pointer select-none text-footnote uppercase tracking-wider text-muted">
                             Reasoning
                         </summary>
                         <div className="mt-2 whitespace-pre-wrap leading-relaxed">{reasoning}</div>
@@ -207,10 +207,10 @@ export function MessageBubble({
                 ) : null}
 
                 {editing ? (
-                    <div className="w-full rounded-2xl border border-amber/40 bg-ink-soft/80 px-3 py-2 shadow-sm">
+                    <div className="w-full rounded-2xl border border-amber/40 bg-ink-soft/80 px-3 py-2 shadow-card">
                         <textarea
                             ref={editRef}
-                            className="input-shell min-h-28 w-full resize-y text-[15px] leading-relaxed"
+                            className="input-shell min-h-28 w-full resize-y text-body leading-relaxed"
                             value={draft}
                             onChange={(event) => setDraft(event.target.value)}
                             onKeyDown={(event) => {
@@ -241,7 +241,7 @@ export function MessageBubble({
                 ) : (
                     <div
                         className={cn(
-                            'w-full rounded-2xl border px-4 py-3 text-[15px] shadow-sm',
+                            'w-full rounded-2xl border px-4 py-3 text-body shadow-card',
                             isNarrator
                                 ? 'border-line/50 bg-ink-soft/50 text-parchment-dim italic'
                                 : isUser
@@ -290,10 +290,10 @@ export function MessageBubble({
                                     />
                                 </button>
                                 {media.length > 1 ? (
-                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/55 px-2 py-1 text-xs text-white">
+                                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-ink/75 px-2 py-1 text-xs text-parchment">
                                         <button
                                             type="button"
-                                            className="icon-btn size-6 text-white"
+                                            className="icon-btn size-6 text-parchment"
                                             onClick={() => setMediaIndex((current) => Math.max(0, current - 1))}
                                             disabled={mediaIndex <= 0}
                                             aria-label="Previous image"
@@ -305,7 +305,7 @@ export function MessageBubble({
                                         </span>
                                         <button
                                             type="button"
-                                            className="icon-btn size-6 text-white"
+                                            className="icon-btn size-6 text-parchment"
                                             onClick={() =>
                                                 setMediaIndex((current) => Math.min(media.length - 1, current + 1))
                                             }
@@ -339,7 +339,7 @@ export function MessageBubble({
                                 >
                                     <ChevronLeft size={14} />
                                 </button>
-                                <span className="min-w-8 text-center text-[10px] tabular-nums text-muted">
+                                <span className="min-w-8 text-center text-caption tabular-nums text-muted">
                                     {Math.min(swipeId + 1, swipes.length)}/{swipes.length}
                                 </span>
                                 <button
@@ -430,7 +430,7 @@ export function MessageBubble({
                         {onDelete ? (
                             <button
                                 type="button"
-                                className="icon-btn size-7 hover:text-wine"
+                                className="icon-btn size-7 hover:text-danger"
                                 onClick={onDelete}
                                 disabled={disabled}
                                 title="Delete message"
@@ -461,7 +461,7 @@ export function StreamingBubble({ name, avatarUrl, text, reasoning, streaming }:
             <div className="flex min-w-0 max-w-[min(760px,86%)] flex-col items-start">
                 <header className="mb-1 flex items-center gap-2 px-1 text-xs">
                     <span className="font-medium text-parchment-dim">{name}</span>
-                    <span className="text-[10px] text-muted/60">{streaming ? 'writing…' : 'just now'}</span>
+                    <span className="text-caption text-muted">{streaming ? 'writing…' : 'just now'}</span>
                 </header>
 
                 {reasoning ? (
@@ -469,14 +469,14 @@ export function StreamingBubble({ name, avatarUrl, text, reasoning, streaming }:
                         open
                         className="mb-2 w-full rounded-lg border border-line-soft bg-ink-soft/60 px-3 py-2 text-xs text-muted"
                     >
-                        <summary className="cursor-pointer select-none text-[11px] uppercase tracking-wider text-muted/80">
+                        <summary className="cursor-pointer select-none text-footnote uppercase tracking-wider text-muted">
                             Reasoning
                         </summary>
                         <div className="mt-2 whitespace-pre-wrap leading-relaxed">{reasoning}</div>
                     </details>
                 ) : null}
 
-                <div className="w-full rounded-2xl border border-line/80 bg-surface/85 px-4 py-3 text-[15px] text-parchment shadow-sm">
+                <div className="w-full rounded-2xl border border-line/80 bg-surface/85 px-4 py-3 text-body text-parchment shadow-card">
                     {text ? <MarkdownText text={text} /> : <span className="text-muted">…</span>}
                     {streaming ? <span className="streaming-caret" /> : null}
                 </div>

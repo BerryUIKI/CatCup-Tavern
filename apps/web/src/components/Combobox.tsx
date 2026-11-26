@@ -283,7 +283,7 @@ export function Combobox({
                           role="listbox"
                           aria-label="Suggested model ids"
                           style={{ top: position.top, left: position.left, minWidth: position.width }}
-                          className="animate-fade-up fixed z-[60] max-h-64 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-2xl shadow-black/45"
+                          className="animate-fade-up fixed z-[60] max-h-64 overflow-y-auto rounded-xl border border-line bg-surface p-1.5 shadow-float"
                       >
                           {matches.length === 0 ? (
                               <p id={hintId} className="px-2.5 py-2 text-xs leading-relaxed text-muted">
@@ -319,7 +319,7 @@ export function Combobox({
                                       <span className="min-w-0 flex-1">
                                           <span className="block truncate font-mono text-xs">{option.value}</span>
                                           {option.label && option.label !== option.value ? (
-                                              <span className="mt-0.5 block truncate text-[11px] text-muted">
+                                              <span className="mt-0.5 block truncate text-footnote text-muted">
                                                   {option.label}
                                               </span>
                                           ) : null}

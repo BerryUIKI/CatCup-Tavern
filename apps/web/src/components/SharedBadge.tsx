@@ -14,7 +14,7 @@ export function SharedBadge({ className }: { className?: string }) {
     return (
         <span
             className={cn(
-                'inline-flex shrink-0 items-center gap-1 rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-[10px] text-sage',
+                'inline-flex shrink-0 items-center gap-1 rounded-full border border-sage/40 bg-sage/10 px-2 py-0.5 text-caption text-sage',
                 className,
             )}
             title="Reusable in every profile"
@@ -34,7 +34,7 @@ export function SharedBadge({ className }: { className?: string }) {
 export function ShadowedNote({ className }: { className?: string }) {
     return (
         <span
-            className={cn('text-[10px] text-muted', className)}
+            className={cn('text-caption text-muted', className)}
             title="A shared item with the same name is hidden by this one"
         >
             hides a shared one

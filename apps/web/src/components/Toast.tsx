@@ -7,7 +7,7 @@ const TONE_STYLES: Record<ToastTone, string> = {
     info: 'border-line bg-surface text-parchment',
     success: 'border-sage/40 bg-sage/10 text-parchment',
     warning: 'border-amber/50 bg-amber/10 text-parchment',
-    error: 'border-wine/60 bg-wine/15 text-parchment',
+    error: 'border-danger/40 bg-wine/15 text-parchment',
 };
 
 const TONE_ICONS: Record<ToastTone, typeof Info> = {
@@ -33,7 +33,7 @@ export function ToastViewport() {
                     <div
                         key={toast.id}
                         className={cn(
-                            'animate-fade-up pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-xl shadow-black/40',
+                            'animate-fade-up pointer-events-auto flex items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-float',
                             TONE_STYLES[toast.tone],
                         )}
                         role="status"
@@ -45,7 +45,7 @@ export function ToastViewport() {
                                 toast.tone === 'success'
                                     ? 'text-sage'
                                     : toast.tone === 'error'
-                                      ? 'text-wine'
+                                      ? 'text-danger'
                                       : toast.tone === 'warning'
                                         ? 'text-amber'
                                         : 'text-muted',

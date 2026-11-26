@@ -180,7 +180,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
         <div>
             <span className="label-text">{label}</span>
             {children}
-            {hint ? <p className="mt-1 text-[11px] leading-relaxed text-muted/70">{hint}</p> : null}
+            {hint ? <p className="mt-1 text-footnote leading-relaxed text-muted">{hint}</p> : null}
         </div>
     );
 }
@@ -366,7 +366,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
     if (worldQuery.isError) {
         return (
             <div className="space-y-3 p-5">
-                <p className="text-sm text-wine">Could not load the book.</p>
+                <p className="text-sm text-danger">Could not load the book.</p>
                 <button type="button" className="btn-ghost" onClick={onClose}>
                     <ArrowLeft size={15} />
                     Back to the book list
@@ -445,7 +445,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                             >
                                                 {entryTitle(entry)}
                                             </span>
-                                            <span className="block truncate text-[10px] text-muted">
+                                            <span className="block truncate text-caption text-muted">
                                                 {entry.constant ? 'constant · ' : ''}
                                                 {POSITION_LABELS[entry.position] ?? `position ${entry.position}`}
                                                 {' · order '}
@@ -508,7 +508,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                         {item.label}
                                     </button>
                                 ))}
-                                <span className="ml-auto pr-1 text-[10px] text-muted">uid {selected.uid}</span>
+                                <span className="ml-auto pr-1 text-caption text-muted">uid {selected.uid}</span>
                             </div>
 
                             {section === 'content' ? (
@@ -885,7 +885,7 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn-ghost hover:text-wine"
+                                    className="btn-ghost hover:text-danger"
                                     onClick={() => void removeEntry(selected)}
                                     disabled={deleteEntry.isPending}
                                 >

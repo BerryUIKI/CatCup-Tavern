@@ -170,7 +170,7 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
                         onChange={(event) => setPrompt(event.target.value)}
                         placeholder="A knight in a candle-lit tavern, rain at the window…"
                     />
-                    <p className="mt-1 text-[11px] leading-relaxed text-muted/70">
+                    <p className="mt-1 text-footnote leading-relaxed text-muted">
                         The configured prompt prefix is added automatically. Editing the prompt after a draft is
                         encouraged.
                     </p>
@@ -239,7 +239,7 @@ export function ImageGenerationDialog({ target, messageIndex, onClose }: ImageGe
                     </button>
                 )}
 
-                <p className="text-[11px] leading-relaxed text-muted/70">
+                <p className="text-footnote leading-relaxed text-muted">
                     Generated images stay in the gallery even when you close this window without inserting them.
                 </p>
             </div>

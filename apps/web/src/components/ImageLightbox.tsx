@@ -90,7 +90,7 @@ export function ImageLightbox({ image, onClose }: { image: LightboxImage | null;
             <img
                 src={galleryImageUrl(image.url)}
                 alt={image.title || 'Generated image'}
-                className="relative z-10 max-h-[85dvh] max-w-[92vw] rounded-lg object-contain shadow-2xl"
+                className="relative z-10 max-h-[85dvh] max-w-[92vw] rounded-lg object-contain shadow-float"
             />
             {image.title ? (
                 <p className="relative z-10 max-w-[92vw] text-center text-xs leading-relaxed text-parchment-dim">

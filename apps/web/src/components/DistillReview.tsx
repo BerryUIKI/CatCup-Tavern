@@ -29,7 +29,7 @@ function ConfidenceMark({ confidence }: { confidence: 'high' | 'low' }) {
     return (
         <span
             className={cn(
-                'shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.12em]',
+                'shrink-0 rounded-full px-2 py-0.5 text-caption uppercase tracking-[0.12em]',
                 confidence === 'high' ? 'bg-sage/20 text-sage' : 'bg-surface-3 text-muted',
             )}
         >
@@ -383,7 +383,7 @@ export function ReviewSheet({
 
                     {groups.map(([chapter, indexes]) => (
                         <section key={chapter} className="space-y-2">
-                            <h4 className="text-[11px] uppercase tracking-[0.14em] text-muted/80">{chapter}</h4>
+                            <h4 className="text-footnote uppercase tracking-[0.14em] text-muted">{chapter}</h4>
                             <ul className="space-y-2">
                                 {indexes.map((index) => {
                                     const entry = draft.entries[index];
@@ -400,7 +400,7 @@ export function ReviewSheet({
                                                 <>
                                                     <ConfidenceMark confidence={entry.confidence} />
                                                     {selected.has(index) ? (
-                                                        <span className="text-[10px] text-amber">selected</span>
+                                                        <span className="text-caption text-amber">selected</span>
                                                     ) : null}
                                                 </>
                                             }
@@ -445,7 +445,7 @@ export function ReviewSheet({
                                         <>
                                             <ConfidenceMark confidence={character.confidence} />
                                             {character.aliases.length > 0 ? (
-                                                <span className="truncate text-[11px] text-muted">
+                                                <span className="truncate text-footnote text-muted">
                                                     also {character.aliases.join(', ')}
                                                 </span>
                                             ) : null}

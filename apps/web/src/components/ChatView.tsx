@@ -753,7 +753,7 @@ export function ChatView({
                         </div>
                     ) : chatQuery.isError ? (
                         <EmptyState
-                            icon={<X size={30} className="text-wine" />}
+                            icon={<X size={30} className="text-danger" />}
                             title="This chat could not be opened"
                             description={chatQuery.error instanceof Error ? chatQuery.error.message : 'Unknown error'}
                             action={

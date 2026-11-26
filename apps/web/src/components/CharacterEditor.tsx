@@ -113,7 +113,7 @@ function Field({
                     onChange={(event) => onChange(event.target.value)}
                 />
             )}
-            {hint ? <p className="mt-1 text-[11px] leading-relaxed text-muted/70">{hint}</p> : null}
+            {hint ? <p className="mt-1 text-footnote leading-relaxed text-muted">{hint}</p> : null}
         </div>
     );
 }
@@ -234,7 +234,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                         <CharacterAvatar name={character.card.name} src={character.avatarUrl} size={48} />
                         <div className="min-w-0 flex-1">
                             <p className="truncate text-sm text-parchment">{character.fileName}</p>
-                            <p className="text-[11px] text-muted">
+                            <p className="text-footnote text-muted">
                                 {character.spec.toUpperCase()} · {character.format.toUpperCase()}
                             </p>
                         </div>
@@ -288,7 +288,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                         ) : null}
                         <button
                             type="button"
-                            className="btn-ghost hover:text-wine"
+                            className="btn-ghost hover:text-danger"
                             onClick={() => void remove()}
                             disabled={deleteCharacterMutation.isPending}
                         >
@@ -365,7 +365,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                     />
                     <div>
                         <span className="label-text">Alternate greetings</span>
-                        <p className="mb-1 text-[11px] leading-relaxed text-muted/70">
+                        <p className="mb-1 text-footnote leading-relaxed text-muted">
                             Each one is offered when starting a chat. They are separate entries, so a greeting that
                             spans paragraphs stays one greeting.
                         </p>
@@ -386,7 +386,7 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
                                     />
                                     <button
                                         type="button"
-                                        className="icon-btn mt-1 size-7 shrink-0 hover:text-wine"
+                                        className="icon-btn mt-1 size-7 shrink-0 hover:text-danger"
                                         onClick={() =>
                                             setDraft((current) =>
                                                 current

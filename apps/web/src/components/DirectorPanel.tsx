@@ -153,7 +153,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                     />
                     <span>
                         Run this chat as a scene
-                        <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                        <span className="mt-0.5 block text-footnote leading-relaxed text-muted">
                             Off by default. A chat with the director off behaves exactly as it always did — the settings
                             below are kept but not used.
                         </span>
@@ -167,7 +167,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                     </p>
                 ) : null}
 
-                {error ? <p className="text-xs text-wine">{error}</p> : null}
+                {error ? <p className="text-xs text-danger">{error}</p> : null}
 
                 <div className="flex items-center gap-1 border-b border-line-soft pb-2" role="tablist">
                     {(
@@ -248,7 +248,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                             </div>
                         </div>
 
-                        <p className="text-[11px] leading-relaxed text-muted">
+                        <p className="text-footnote leading-relaxed text-muted">
                             {SPEAKER_MODES.find((mode) => mode.value === form.speakerMode)?.hint}
                         </p>
 
@@ -261,7 +261,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                             />
                             <span>
                                 Offer options after each reply
-                                <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                                <span className="mt-0.5 block text-footnote leading-relaxed text-muted">
                                     Two to four buttons under the reply. Clicking one sends it as your message; ignoring
                                     them leaves the composer fully usable. A reply with no options is a normal outcome,
                                     not a failure.
@@ -273,7 +273,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
 
                 {tab === 'cast' ? (
                     <div className="space-y-3">
-                        <p className="text-[11px] leading-relaxed text-muted">
+                        <p className="text-footnote leading-relaxed text-muted">
                             The characters you play. They stay in the prompt so the model knows who they are, and the
                             model is told never to write their dialogue or decisions.
                         </p>
@@ -319,7 +319,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                                                 <UserRound size={13} className="shrink-0 text-muted" />
                                                 <span className="truncate">{member.name}</span>
                                                 {refused ? (
-                                                    <span className="ml-auto shrink-0 text-[10px] text-muted">
+                                                    <span className="ml-auto shrink-0 text-caption text-muted">
                                                         this chat’s own card
                                                     </span>
                                                 ) : null}
@@ -331,7 +331,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
                         )}
 
                         {!isGroup && cast.some((member) => member.id === ownCharacterId) ? (
-                            <p className="text-[11px] leading-relaxed text-amber/90">
+                            <p className="text-footnote leading-relaxed text-amber/90">
                                 A single chat cannot play its own character: the prompt tells the model to be that
                                 character, so also forbidding it would contradict itself. Put the cast in a group chat,
                                 or keep this card as the narrator and play someone the world book describes.

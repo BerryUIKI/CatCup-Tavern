@@ -4,9 +4,30 @@ import { LoginScreen, SetupScreen, SplashScreen } from './components/AuthScreens
 import { MainApp } from './components/MainApp';
 import { useAuthStatus } from './hooks/data';
 
+/**
+ * Keep the browser's chrome colour in step with the page.
+ *
+ * `index.html` carries the tavern's ink so the address bar matches on first
+ * paint; reading the token afterwards means a skin that moves `--color-ink`
+ * does not leave the old colour behind in the title bar.
+ */
+function useThemeColor() {
+    useEffect(() => {
+        const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+        if (!meta) {
+            return;
+        }
+        const ink = getComputedStyle(document.documentElement).getPropertyValue('--color-ink').trim();
+        if (ink) {
+            meta.content = ink;
+        }
+    }, []);
+}
+
 export default function App() {
     const auth = useAuthStatus();
     const { refetch } = auth;
+    useThemeColor();
 
     useEffect(() => {
         const onUnauthorized = () => {

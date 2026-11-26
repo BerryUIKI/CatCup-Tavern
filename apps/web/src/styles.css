@@ -17,6 +17,37 @@
     --color-wine: #7e3b3f;
     --color-sage: #7f9b6d;
 
+    /*
+     * `wine` is a fill: 2.2:1 on `surface`, so it can never be the colour of
+     * text. These two are the readable pair — `danger` for the words, and
+     * `danger` at low alpha for the strip behind them. Anything a person has
+     * to *read* as a warning uses `danger`, never `wine`.
+     */
+    --color-danger: #e08585;
+    --color-danger-strong: #f0a8a8;
+
+    /*
+     * Text sizes. `text-footnote` is the 11px hint role that was written as an
+     * arbitrary value 141 times; `text-caption` is the 10px metadata row. A
+     * skin that changes the type scale can only reach these if they are named
+     * here rather than typed at the call site.
+     */
+    --text-caption: 0.625rem;
+    --text-caption--line-height: 0.875rem;
+    --text-footnote: 0.6875rem;
+    --text-footnote--line-height: 1rem;
+    --text-code: 0.8125rem;
+    --text-code--line-height: 1.5;
+    --text-body: 0.9375rem;
+    --text-body--line-height: 1.625;
+
+    /*
+     * Shadow roles. Tailwind bakes a `@theme --shadow-*` value into the
+     * utility as a literal, so a skin cannot reach it — these are declared in
+     * the base layer instead, as three ordinary variables that the `.shadow-*`
+     * component classes read. They are the app's whole elevation: cards,
+     * raised controls, floating layers.
+     */
     --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
     --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
@@ -25,6 +56,43 @@
 @layer base {
     :root {
         color-scheme: dark;
+
+        /*
+         * The atmosphere is painted from these, not from literals in `body`,
+         * so a skin can replace the glow, the vignette and the noise without
+         * reaching into a rule. Values are the tavern's own; `--glow-*` take a
+         * colour and an opacity so a light skin can drop them to `0`.
+         */
+        --page-top: #0f0b09;
+        --page-bottom: #0b0806;
+        --glow-a: rgba(226, 165, 90, 0.1);
+        --glow-b: rgba(126, 59, 63, 0.12);
+        --grain-opacity: 0.028;
+
+        /* Text a message paints itself with, beyond the shared palette. */
+        --md-em: #f5d7ad;
+        --md-strong: #ffe2b8;
+        --md-code-surface: rgba(0, 0, 0, 0.35);
+        --md-pre-surface: #120d0a;
+
+        --scrollbar-thumb: #3a2b20;
+        --scrollbar-thumb-hover: #55402e;
+        --selection-surface: rgba(226, 165, 90, 0.3);
+        --selection-text: #fff7ea;
+
+        /* The generated fallback avatar's saturation and lightness, in %.
+           Its hue is computed from the name, so these are all a skin needs. */
+        --avatar-sat: 46%;
+        --avatar-light: 62%;
+
+        /* The halo behind the brand mark on the sign-in and splash screens. */
+        --logo-glow: rgba(226, 165, 90, 0.3);
+
+        /* Elevation, in three roles rather than Tailwind's seven-step scale.
+           A skin can flatten them, soften them or drop them entirely. */
+        --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+        --shadow-raised: 0 10px 15px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -4px rgba(0, 0, 0, 0.25);
+        --shadow-float: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
     }
 
     html,
@@ -39,9 +107,9 @@
         color: var(--color-parchment);
         background-color: var(--color-ink);
         background-image:
-            radial-gradient(1200px 800px at 18% -10%, rgba(226, 165, 90, 0.1), transparent 60%),
-            radial-gradient(1000px 700px at 95% 108%, rgba(126, 59, 63, 0.12), transparent 62%),
-            linear-gradient(180deg, #0f0b09 0%, #0b0806 100%);
+            radial-gradient(1200px 800px at 18% -10%, var(--glow-a), transparent 60%),
+            radial-gradient(1000px 700px at 95% 108%, var(--glow-b), transparent 62%),
+            linear-gradient(180deg, var(--page-top) 0%, var(--page-bottom) 100%);
         -webkit-font-smoothing: antialiased;
         text-rendering: optimizeLegibility;
     }
@@ -52,7 +120,7 @@
         inset: 0;
         z-index: 50;
         pointer-events: none;
-        opacity: 0.028;
+        opacity: var(--grain-opacity);
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
@@ -61,8 +129,8 @@
     }
 
     ::selection {
-        background: rgba(226, 165, 90, 0.3);
-        color: #fff7ea;
+        background: var(--selection-surface);
+        color: var(--selection-text);
     }
 
     button,
@@ -82,14 +150,14 @@
     }
 
     ::-webkit-scrollbar-thumb {
-        background: #3a2b20;
+        background: var(--scrollbar-thumb);
         border-radius: 999px;
         border: 2px solid transparent;
         background-clip: padding-box;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-        background: #55402e;
+        background: var(--scrollbar-thumb-hover);
         border: 2px solid transparent;
         background-clip: padding-box;
     }
@@ -97,7 +165,7 @@
 
 @layer components {
     .input-shell {
-        @apply w-full rounded-xl border border-line bg-ink-soft/80 px-3.5 py-2.5 text-sm text-parchment outline-none transition placeholder:text-muted/70 focus:border-amber/60 focus:ring-2 focus:ring-amber/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink;
+        @apply w-full rounded-xl border border-line bg-ink-soft/80 px-3.5 py-2.5 text-sm text-parchment outline-none transition placeholder:text-muted focus:border-amber/60 focus:ring-2 focus:ring-amber/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber/60 focus-visible:ring-offset-2 focus-visible:ring-offset-ink;
     }
 
     .btn-primary {
@@ -117,11 +185,42 @@
     }
 
     .field-hint {
-        @apply mt-1.5 text-[11px] leading-relaxed text-muted;
+        @apply mt-1.5 text-footnote leading-relaxed text-muted;
     }
 
     .tavern-panel {
-        @apply rounded-2xl border border-line bg-surface/80 shadow-2xl shadow-black/35;
+        @apply rounded-2xl border border-line bg-surface/80;
+        box-shadow: var(--shadow-float);
+    }
+
+    /*
+     * Elevation. Ordinary classes rather than `@theme` entries, because a
+     * theme value is compiled into the utility as a literal and a skin could
+     * not reach it; these read the variables above.
+     */
+    .shadow-card {
+        box-shadow: var(--shadow-card);
+    }
+
+    .shadow-raised {
+        box-shadow: var(--shadow-raised);
+    }
+
+    .shadow-float {
+        box-shadow: var(--shadow-float);
+    }
+
+    /*
+     * The brand mark's halo on the sign-in and splash screens. Colour and
+     * spread are tokens: a light skin sets `--logo-glow` to `transparent`, and
+     * a skin that wants a different accent moves the colour with it.
+     */
+    .logo-glow {
+        filter: drop-shadow(0 0 24px var(--logo-glow));
+    }
+
+    .logo-glow-lg {
+        filter: drop-shadow(0 0 28px var(--logo-glow));
     }
 }
 
@@ -189,11 +288,11 @@
 }
 
 .message-markdown em {
-    color: #f5d7ad;
+    color: var(--md-em);
 }
 
 .message-markdown strong {
-    color: #ffe2b8;
+    color: var(--md-strong);
     font-weight: 600;
 }
 
@@ -211,7 +310,7 @@
     padding: 0.1em 0.35em;
     border: 1px solid var(--color-line-soft);
     border-radius: 4px;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--md-code-surface);
 }
 
 .message-markdown pre {
@@ -219,7 +318,7 @@
     padding: 0.9rem 1rem;
     border: 1px solid var(--color-line-soft);
     border-radius: 10px;
-    background: #120d0a;
+    background: var(--md-pre-surface);
     overflow-x: auto;
 }
 

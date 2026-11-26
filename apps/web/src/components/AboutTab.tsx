@@ -54,7 +54,7 @@ export function AboutTab() {
                     is early-access software: it does what is listed on the left well, and it does not pretend to do the
                     rest.
                 </p>
-                <p className="mt-2 text-xs text-muted/80">
+                <p className="mt-2 text-xs text-muted">
                     Version{' '}
                     {health.isLoading ? (
                         <Spinner size={11} className="inline text-muted" />
@@ -85,7 +85,7 @@ export function AboutTab() {
                 </div>
             </div>
 
-            <p className="text-[11px] leading-relaxed text-muted/70">
+            <p className="text-footnote leading-relaxed text-muted">
                 Your data stays in the server’s data folder: cards, chats, lorebooks, presets and regex scripts are
                 plain JSON and JSONL files you can copy out at any time. API keys never leave the server.
             </p>
@@ -202,7 +202,7 @@ function PasswordPanel() {
             </div>
             {message ? (
                 <p
-                    className={message.kind === 'ok' ? 'mt-2 text-xs text-sage' : 'mt-2 text-xs text-wine'}
+                    className={message.kind === 'ok' ? 'mt-2 text-xs text-sage' : 'mt-2 text-xs text-danger'}
                     role={message.kind === 'ok' ? 'status' : 'alert'}
                 >
                     {message.text}

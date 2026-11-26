@@ -41,7 +41,7 @@ export function ScopeFilterRow({
                 return (
                     <label
                         className={cn(
-                            'cursor-pointer rounded-full border px-2 py-0.5 text-[10px] transition',
+                            'cursor-pointer rounded-full border px-2 py-0.5 text-caption transition',
                             value === option.value
                                 ? 'border-amber/50 bg-amber/15 text-amber'
                                 : 'border-line/70 text-muted hover:text-parchment',
