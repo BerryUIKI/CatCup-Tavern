@@ -18,6 +18,7 @@ import {
     useUpdateSettings,
 } from '../hooks/data';
 import { api } from '../lib/api';
+import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
@@ -56,7 +57,7 @@ function errorMessage(error: unknown, fallback: string): string {
  * (icons, auto-execution flags, context-menu links) are carried through the
  * save untouched.
  */
-export function QuickReplySettings() {
+export function QuickReplySettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settings = useSettings().data;
     const updateSettings = useUpdateSettings();
     const setsQuery = useQuickReplies();
@@ -205,13 +206,13 @@ export function QuickReplySettings() {
         }
     };
 
-    const handleSave = async () => {
+    const handleSave = async (): Promise<boolean> => {
         if (!draft) {
-            return;
+            return true;
         }
         if (!draft.name.trim()) {
             pushToast('The set needs a name.', 'error');
-            return;
+            return false;
         }
         const { id, ...body } = draft;
         const version = editVersion.current;
@@ -238,10 +239,29 @@ export function QuickReplySettings() {
                 setDraft((current) => (current && current.id === savedId ? { ...current, id: set.id } : current));
             }
             pushToast('Quick reply set saved.', 'success');
+            return true;
         } catch (error) {
             pushToast(errorMessage(error, 'Could not save the quick reply set.'), 'error');
+            return false;
         }
     };
+
+    /**
+     * An edited set is an unsaved edit.
+     *
+     * `dirty` already exists here and is maintained by every mutation path, so
+     * it is the answer rather than a second comparison. Switching sets inside
+     * the panel keeps its own browser prompt; this is the section-switch case.
+     */
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirty,
+        save: handleSave,
+        discard: () => {
+            const next = sets.find((set) => set.id === selectedId) ?? null;
+            setDirty(false);
+            setDraft(next ? cloneSet(next) : null);
+        },
+    });
 
     /** Move this set between the profile and the shared scope. */
     const handleShare = async () => {

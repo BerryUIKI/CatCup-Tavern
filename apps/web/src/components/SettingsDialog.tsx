@@ -841,7 +841,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'im' ? (
                 <ImSettings registerDraft={registerPanelDraft} />
             ) : section === 'quickreplies' ? (
-                <QuickReplySettings />
+                <QuickReplySettings registerDraft={registerPanelDraft} />
             ) : section === 'regex' ? (
                 <RegexSettings registerDraft={registerPanelDraft} />
             ) : section === 'tts' ? (
