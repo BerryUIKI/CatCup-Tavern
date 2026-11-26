@@ -845,7 +845,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'regex' ? (
                 <RegexSettings />
             ) : section === 'tts' ? (
-                <TtsSettings />
+                <TtsSettings registerDraft={registerPanelDraft} />
             ) : section === 'images' ? (
                 <ImageSettings registerDraft={registerPanelDraft} />
             ) : (

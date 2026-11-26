@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCharacters, useSettings, useUpdateSettings } from '../hooks/data';
 import { useSystemVoices } from '../hooks/useTts';
 import { api } from '../lib/api';
+import { type RegisterSettingsDraft, useSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Combobox } from './Combobox';
 import { Select } from './Select';
@@ -73,7 +74,7 @@ async function previewRemote(form: TtsSettingsValue, audioRef?: { current: HTMLA
  * replacement, and never receives the saved value. "Save & test" persists the
  * form first because the server speaks with the stored configuration.
  */
-export function TtsSettings() {
+export function TtsSettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const settingsQuery = useSettings();
     const settings = settingsQuery.data;
     const updateSettings = useUpdateSettings();
@@ -81,14 +82,18 @@ export function TtsSettings() {
     const pushToast = useAppStore((state) => state.pushToast);
     const voices = useSystemVoices();
 
-    const [form, setForm] = useState<TtsSettingsValue>(() => ({
-        ...(settings?.tts ?? ttsSettingsSchema.parse({})),
-    }));
+    const {
+        draft: form,
+        dirty,
+        setDraft,
+        update: setField,
+        discard,
+        markSaved,
+    } = useSettingsDraft(settings?.tts ?? null, () => ttsSettingsSchema.parse({}));
     const [apiKey, setApiKey] = useState('');
     const [removeKey, setRemoveKey] = useState(false);
     const [previewing, setPreviewing] = useState(false);
     const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-    const editedRef = useRef(false);
 
     // Leaving the tab or dialog must not leave the test voice talking.
     useEffect(
@@ -103,21 +108,12 @@ export function TtsSettings() {
         [],
     );
 
-    useEffect(() => {
-        if (!settings?.tts || editedRef.current) {
-            return;
-        }
-        setForm({ ...settings.tts });
-    }, [settings?.tts]);
-
     const set = <Key extends keyof TtsSettingsValue>(key: Key, value: TtsSettingsValue[Key]) => {
-        editedRef.current = true;
-        setForm((current) => ({ ...current, [key]: value }));
+        setField(key, value);
     };
 
     const setCharacterVoice = (characterId: string, value: string) => {
-        editedRef.current = true;
-        setForm((current) => {
+        setDraft((current) => {
             const next = { ...current.characterVoices };
             if (value.trim()) {
                 next[characterId] = value.trim();
@@ -154,21 +150,23 @@ export function TtsSettings() {
         return null;
     };
 
-    const handleSave = () => {
+    const handleSave = async (): Promise<boolean> => {
         const invalid = validateForm();
         if (invalid) {
             pushToast(invalid, 'error');
-            return;
+            return false;
         }
-        updateSettings.mutate(payload(), {
-            onSuccess: () => {
-                editedRef.current = false;
-                setApiKey('');
-                setRemoveKey(false);
-                pushToast('Text-to-speech settings saved.', 'success');
-            },
-            onError: (error) => pushToast(errorMessage(error, 'Could not save the TTS settings.'), 'error'),
-        });
+        try {
+            await updateSettings.mutateAsync(payload());
+            markSaved();
+            setApiKey('');
+            setRemoveKey(false);
+            pushToast('Text-to-speech settings saved.', 'success');
+            return true;
+        } catch (error) {
+            pushToast(errorMessage(error, 'Could not save the TTS settings.'), 'error');
+            return false;
+        }
     };
 
     const handleTest = async () => {
@@ -184,7 +182,7 @@ export function TtsSettings() {
         setPreviewing(true);
         try {
             await updateSettings.mutateAsync(payload());
-            editedRef.current = false;
+            markSaved();
             setApiKey('');
             setRemoveKey(false);
             if (form.backend === 'system') {
@@ -198,6 +196,19 @@ export function TtsSettings() {
             setPreviewing(false);
         }
     };
+
+    /** A typed key or a pending removal is an unsaved edit the draft cannot see. */
+    const keyDirty = apiKey.trim().length > 0 || removeKey;
+
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirty || keyDirty,
+        save: handleSave,
+        discard: () => {
+            discard();
+            setApiKey('');
+            setRemoveKey(false);
+        },
+    });
 
     const hasKey = settings?.ttsHasKey ?? false;
     const systemVoices = form.backend === 'system';
@@ -402,7 +413,6 @@ export function TtsSettings() {
                                 placeholder={hasKey ? 'A key is saved; enter a new one to replace it' : 'API key'}
                                 value={apiKey}
                                 onChange={(event) => {
-                                    editedRef.current = true;
                                     setApiKey(event.target.value);
                                     if (event.target.value) {
                                         setRemoveKey(false);
@@ -415,7 +425,6 @@ export function TtsSettings() {
                                         type="checkbox"
                                         checked={removeKey}
                                         onChange={(event) => {
-                                            editedRef.current = true;
                                             setRemoveKey(event.target.checked);
                                             if (event.target.checked) {
                                                 setApiKey('');
@@ -547,7 +556,8 @@ export function TtsSettings() {
                 </div>
             </div>
 
-            <div className="flex justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
+                <p className="mr-auto text-footnote text-muted">{dirty || keyDirty ? 'Unsaved changes.' : 'Saved.'}</p>
                 <button
                     type="button"
                     className="btn-ghost"
@@ -560,8 +570,8 @@ export function TtsSettings() {
                 <button
                     type="button"
                     className="btn-primary"
-                    onClick={handleSave}
-                    disabled={updateSettings.isPending || previewing}
+                    onClick={() => void handleSave()}
+                    disabled={updateSettings.isPending || previewing || !(dirty || keyDirty)}
                 >
                     {updateSettings.isPending ? <Spinner size={15} /> : <Save size={15} />}
                     Save TTS settings
