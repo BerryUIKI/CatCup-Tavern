@@ -667,7 +667,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
             {settings?.activePresetId ? (
                 <div className="border-t border-line-soft pt-4">
-                    <PromptOrderEditor key={settings.activePresetId} presetId={settings.activePresetId} />
+                    <PromptOrderEditor
+                        key={settings.activePresetId}
+                        presetId={settings.activePresetId}
+                        registerDraft={registerPanelDraft}
+                    />
                 </div>
             ) : null}
         </div>
@@ -831,7 +835,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'prompts' ? (
                 renderPromptsPanel()
             ) : section === 'worldinfo' && editingBookId ? (
-                <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
+                <WorldInfoEditor
+                    bookId={editingBookId}
+                    onClose={() => setEditingBookId(null)}
+                    registerDraft={registerPanelDraft}
+                />
             ) : section === 'worldinfo' ? (
                 renderWorldInfoPanel()
             ) : section === 'persona' ? (

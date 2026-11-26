@@ -1,8 +1,9 @@
 import { GLOBAL_PROMPT_ORDER_ID, type PromptEntry, type PromptOrder, type PromptOrderEntry } from '@catcup/shared';
 import { ArrowDown, ArrowUp, Save } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { usePreset, useUpdatePreset } from '../hooks/data';
+import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Select } from './Select';
 import { Spinner } from './Spinner';
@@ -19,13 +20,21 @@ interface Draft {
  * they work with a keyboard and a screen reader, and they cannot drop an entry
  * into a slot the user did not intend.
  */
-export function PromptOrderEditor({ presetId }: { presetId: string }) {
+export function PromptOrderEditor({
+    presetId,
+    registerDraft,
+}: {
+    presetId: string;
+    registerDraft?: RegisterSettingsDraft;
+}) {
     const presetQuery = usePreset(presetId);
     const updatePreset = useUpdatePreset(presetId);
     const pushToast = useAppStore((state) => state.pushToast);
 
     const [draft, setDraft] = useState<Draft | null>(null);
     const loadedRef = useRef(false);
+    /** What the editor loaded, so the guard can tell a move from a load. */
+    const [baseline, setBaseline] = useState<Draft | null>(null);
 
     useEffect(() => {
         if (loadedRef.current) {
@@ -42,8 +51,49 @@ export function PromptOrderEditor({ presetId }: { presetId: string }) {
         const list =
             orders.find((candidate) => String(candidate.character_id) === String(GLOBAL_PROMPT_ORDER_ID)) ?? orders[0];
 
-        setDraft({ prompts, order: list?.order ?? [] });
+        const loaded = { prompts, order: list?.order ?? [] };
+        setDraft(loaded);
+        setBaseline(loaded);
     }, [presetQuery.data]);
+
+    const draftRef = useRef(draft);
+    draftRef.current = draft;
+
+    /**
+     * Save, defined above the early returns so the registration below is not a
+     * conditional hook call — the editor returns a spinner while it loads.
+     */
+    const save = useCallback(async (): Promise<boolean> => {
+        const current = draftRef.current;
+        if (!current) {
+            return true;
+        }
+        try {
+            await updatePreset.mutateAsync({
+                prompts: current.prompts,
+                prompt_order: [{ character_id: GLOBAL_PROMPT_ORDER_ID, order: current.order }],
+            });
+            setBaseline(current);
+            pushToast('Prompt order saved.', 'success');
+            return true;
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not save the prompt order.', 'error');
+            return false;
+        }
+    }, [updatePreset, pushToast]);
+
+    /**
+     * A moved, toggled or reordered entry is an unsaved edit.
+     *
+     * Nothing else in Settings told the person that this editor has a Save
+     * button — the arrows apply locally and look final — so a section switch
+     * was the quietest way to lose a whole reorder.
+     */
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => Boolean(draft && baseline && JSON.stringify(draft) !== JSON.stringify(baseline)),
+        save,
+        discard: () => setDraft((current) => baseline ?? current),
+    });
 
     if (presetQuery.isLoading || !draft) {
         return (
@@ -100,18 +150,6 @@ export function PromptOrderEditor({ presetId }: { presetId: string }) {
                   }
                 : current,
         );
-    };
-
-    const save = async () => {
-        try {
-            await updatePreset.mutateAsync({
-                prompts: draft.prompts,
-                prompt_order: [{ character_id: GLOBAL_PROMPT_ORDER_ID, order: draft.order }],
-            });
-            pushToast('Prompt order saved.', 'success');
-        } catch (error) {
-            pushToast(error instanceof Error ? error.message : 'Could not save the prompt order.', 'error');
-        }
     };
 
     return (
