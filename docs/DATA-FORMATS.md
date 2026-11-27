@@ -226,7 +226,9 @@ A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes
 - **`scope`** is `app` (the whole window) or `surface` (only content the app wraps). A pack's embedded skins are always `surface`, so a game cannot restyle Settings.
 - **`colorScheme`** is `dark` or `light`. Nothing reads it yet; it is what lets the app follow the OS later.
 - **`css`** and **`assets`** are not read yet. RFC 0007 defines them and the validator that refuses rather than sanitises.
-- Stored as `ui.skinId` in the profile's `settings.json` — the **id**, not the values, so an edited skin file still reaches the theme. An id that no longer resolves shows the built-in palette and says so.
+- **Installed at `data/profiles/<profile>/skins/<id>.json`**, one file per skin, stored as the manifest that arrived rather than flattened into settings. Editing a skin's file therefore reaches the theme on the next load, and removing one is removing one file. A file that no longer validates is skipped when the list is read; its bytes stay, so the author can see what they wrote.
+- Stored as `ui.skinId` in the profile's `settings.json` — the **id**, not the values, so an edited skin file still reaches the theme. An id that no longer resolves clears the skin and shows the built-in palette; **Settings → Appearance** says so.
+- Routes: `GET /api/skins`, `GET /api/skins/:id`, `PUT /api/skins/:id` (body `{ "manifest": … }`, and the manifest's `id` must equal the one in the path), `DELETE /api/skins/:id` → `{ removed: boolean }`.
 
 ### Writing cards back
 
