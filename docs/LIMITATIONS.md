@@ -11,6 +11,7 @@ This page describes the repository as it stands, which is what `0.4.0` ships. Ea
 - Import character cards one at a time or in a batch — PNG with V2 or V3 metadata, JSON, CharX packages with their assets, and CatCup's own `.catcup` packages — from the library's import button, or by dropping the files anywhere on the window.
 - Point at a whole SillyTavern user folder and copy its **characters, chats, world info and OpenAI presets** in one action, after a scan shows what was found.
 - Export cards back to PNG, JSON, CharX or `.catcup`, and presets, world info and regex scripts back to JSON.
+- **Create a character from nothing** — **New character** asks for a name and an optional first message, gives the card a placeholder portrait from its initials, and opens it in the editor for the rest.
 
 **Chatting**
 

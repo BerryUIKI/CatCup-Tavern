@@ -212,6 +212,11 @@ export interface SampleCharacterResponse {
     created: boolean;
 }
 
+/** A card created from nothing; the response carries its full detail so the editor can open it. */
+export interface CreateCharacterResponse {
+    character: CharacterDetail;
+}
+
 export interface ModelsResponse {
     models: ModelInfo[];
 }

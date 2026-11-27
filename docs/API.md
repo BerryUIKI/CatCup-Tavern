@@ -296,6 +296,24 @@ Deletes the card file. Chats are not deleted automatically. Response: `{ "ok": t
 
 Adds the bundled sample character, so a fresh install has someone to talk to. Response: `{ "character": CharacterDetail, "created": boolean }` — running it twice returns the copy that is already there with `created: false` instead of making a second one.
 
+### `POST /api/characters`
+
+Creates a card from nothing (issue #168). `?scope=shared` writes to the shared scope; absent, the profile.
+
+The body is the editor's field set with a required `name` — the same fields `PATCH /api/characters/:id` accepts, because creating a card is writing the first patch to one that does not exist yet:
+
+```json
+{ "name": "Wren Halloway", "first_mes": "The map was already open when you came in.", "tags": ["coast"] }
+```
+
+Only `name` is required, and a field that is absent is left absent rather than written as an empty string. An unknown field is refused with its name, as on the patch.
+
+The card is written as `characters/<name>.png` with a generated placeholder portrait — a hue from the name, its initials, and the app's own border — so it is visible in the library's grid from the first moment. If the picture cannot be drawn the card is written as `.json` instead; refusing to create one over a drawing failure would be worse than a card with no image.
+
+A name already in use **in either scope** gets a numeric suffix (`Wren Halloway (2)`) and never overwrites. Both scopes participate, unlike an import, because an id has to be free everywhere: `GET` prefers the profile's copy, so a new card sharing a shared card's id would make the shared one unreachable.
+
+Response `201` is `{ "character": CharacterDetail }` — the whole card, not a summary, so the client can open the editor on it without a second fetch.
+
 ## Chats
 
 Chat IDs are JSONL file names without `.jsonl`. Message indexes are zero-based and do not include the header line.

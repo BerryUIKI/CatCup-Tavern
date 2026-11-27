@@ -34,6 +34,7 @@ import { GroupChatView } from './GroupChatView';
 import { GroupEditor } from './GroupEditor';
 import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
+import { NewCharacterDialog } from './NewCharacterDialog';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
 import { SkinApplier } from './SkinApplier';
@@ -93,6 +94,7 @@ export function MainApp() {
     const [groupEditor, setGroupEditor] = useState<GroupEditorState>(null);
     const [greetingMode, setGreetingMode] = useState<'new' | 'switch' | null>(null);
     const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+    const [newCharacterOpen, setNewCharacterOpen] = useState(false);
     const [importFromInstallOpen, setImportFromInstallOpen] = useState(false);
     const [distillOpen, setDistillOpen] = useState(false);
 
@@ -594,6 +596,7 @@ export function MainApp() {
                 onDistillBook={() => setDistillOpen(true)}
                 onAddSample={() => handleAddSample()}
                 addingSample={addSampleMutation.isPending}
+                onNewCharacter={() => setNewCharacterOpen(true)}
                 onImport={(files) => void handleImport(files)}
                 importing={importMutation.isPending}
                 providers={settings?.providers ?? []}
@@ -660,6 +663,15 @@ export function MainApp() {
             <BookDistillDialog open={distillOpen} onClose={() => setDistillOpen(false)} />
 
             <CharacterEditor characterId={editingCharacterId} onClose={() => setEditingCharacterId(null)} />
+            <NewCharacterDialog
+                // A fresh mount per opening, so the draft never survives a cancel.
+                key={newCharacterOpen ? 'open' : 'closed'}
+                open={newCharacterOpen}
+                onClose={() => setNewCharacterOpen(false)}
+                // The card exists at this point; the editor is where its other
+                // twelve fields are filled in, so creation hands straight over.
+                onCreated={(id) => setEditingCharacterId(id)}
+            />
 
             <GroupEditor
                 open={groupEditor !== null}

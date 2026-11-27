@@ -506,14 +506,14 @@ The full list lives in RFC 0005 and RFC 0006. The exit criteria for the mileston
 - [ ] An action block is stripped from stored text, and one bad line changes no state.
 - [ ] A game with no chat in it runs its curriculum with no provider configured.
 - [ ] A chat exports to a reviewed manuscript as Markdown and EPUB.
-- [ ] A character card can be created from nothing in the app (#168).
+- [ ] A character card can be created from nothing in the app (#168). **Done 2026-11-28** — created, opened in the editor, exported to PNG and re-imported with every field intact; a duplicate name gets a suffix rather than overwriting.
 - [ ] `docs/API.md`, `docs/DATA-FORMATS.md`, `docs/LIMITATIONS.md`, `docs/SECURITY.md` and `CHANGELOG.md` are updated.
 
 ### Sequencing
 
 Slices are ordered so each one ships something usable, and so the state layer exists before anything writes to it. The numbers are PR groups, not releases.
 
-1. **Blank card creation** (#168) — independent of everything below, and the smallest thing in the milestone. Ships as a release of its own.
+1. **Blank card creation** (#168) — independent of everything below, and the smallest thing in the milestone. Ships as a release of its own. **Done 2026-11-28:** `POST /api/characters`, a generated placeholder portrait, **New character** in the library and the empty state, and the editor opening on the new card. Two front-end facts this settles for the slices after it: a card can exist without a file arriving, and the authoring surfaces can write one.
 2. **Plugin format, loader and install** — `.catcup` parsing with its `format` discriminator, `formatVersion` and `engine.min` checks, install/uninstall, and the Games tab listing what is installed. Nothing renders yet.
 3. **State, saves and checkpoints** — `games/<gameId>/`, the state write path, automatic checkpoints and the eviction ring.
 4. **Views and the Games surface** — `entity_list`, `entity_detail`, `gallery`, `progress`, `schedule`, `meter`, `feed`, `wardrobe`. A pack becomes browsable.

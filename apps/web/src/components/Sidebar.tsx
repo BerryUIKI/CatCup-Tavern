@@ -1,5 +1,5 @@
 import type { CharacterSummary, GroupView, ProfileSummary, ProviderPublic } from '@catcup/shared';
-import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, Users, X } from 'lucide-react';
+import { BookOpen, FolderInput, LogOut, Pencil, Search, Settings2, Upload, UserPlus, Users, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
@@ -36,6 +36,8 @@ interface SidebarProps {
     onDistillBook: () => void;
     onAddSample: () => void;
     addingSample: boolean;
+    /** Open the New character dialog, from the toolbar and from the empty state. */
+    onNewCharacter: () => void;
     onImport: (files: File[]) => void;
     importing: boolean;
     providers: ProviderPublic[];
@@ -92,6 +94,7 @@ export function Sidebar({
     onDistillBook,
     onAddSample,
     addingSample,
+    onNewCharacter,
     onImport,
     importing,
     providers,
@@ -202,15 +205,25 @@ export function Sidebar({
 
             {libraryTab === 'characters' ? (
                 <div className="px-3 pb-3">
-                    <button
-                        type="button"
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line px-3 py-2.5 text-sm text-muted transition hover:border-amber/50 hover:text-parchment disabled:cursor-not-allowed disabled:opacity-50"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={importing}
-                    >
-                        {importing ? <Spinner size={15} /> : <Upload size={16} />}
-                        {importing ? 'Importing…' : 'Import character card'}
-                    </button>
+                    <div className="flex gap-1.5">
+                        <button
+                            type="button"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-line px-3 py-2.5 text-sm text-muted transition hover:border-amber/50 hover:text-parchment disabled:cursor-not-allowed disabled:opacity-50"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={importing}
+                        >
+                            {importing ? <Spinner size={15} /> : <Upload size={16} />}
+                            {importing ? 'Importing…' : 'Import'}
+                        </button>
+                        <button
+                            type="button"
+                            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-dashed border-line px-3 py-2.5 text-sm text-muted transition hover:border-amber/50 hover:text-parchment"
+                            onClick={onNewCharacter}
+                        >
+                            <UserPlus size={16} />
+                            New
+                        </button>
+                    </div>
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -268,6 +281,7 @@ export function Sidebar({
                         onBulkDelete={onBulkDelete}
                         onAddSample={onAddSample}
                         addingSample={addingSample}
+                        onNewCharacter={onNewCharacter}
                         busy={libraryBusy}
                     />
                 ) : groupsLoading ? (

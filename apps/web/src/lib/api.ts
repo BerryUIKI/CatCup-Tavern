@@ -6,6 +6,7 @@ import type {
     AuthStatus,
     CharacterBulkRequest,
     CharacterBulkResponse,
+    CharacterCreateRequest,
     CharacterDetail,
     CharacterExportFormat,
     CharacterPatch,
@@ -14,6 +15,7 @@ import type {
     ChatMessage,
     ChatSummary,
     ContextPreview,
+    CreateCharacterResponse,
     DirectorCast,
     DirectorConfig,
     DirectorConfigPatch,
@@ -514,6 +516,11 @@ export const api = {
             });
         },
         sample: () => request<SampleCharacterResponse>('/characters/sample', { method: 'POST' }),
+        create: (body: CharacterCreateRequest, scope?: ItemScope) =>
+            request<CreateCharacterResponse>(`/characters${scopeQuery(scope)}`, {
+                method: 'POST',
+                body: JSON.stringify(body),
+            }),
         lorebook: (id: string) =>
             request<{ world: WorldDetail; character: CharacterDetail; created: boolean }>(
                 `/characters/${encodeURIComponent(id)}/lorebook`,
