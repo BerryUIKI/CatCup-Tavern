@@ -52,6 +52,17 @@ Third-party material included or depended on:
    Licensed under the MIT License.
    Runtime dependency used for the OpenAI-family token counts.
 
+5. Inter and Newsreader (web fonts)
+   apps/web/public/fonts/{inter-latin,inter-latin-ext,newsreader-latin}.woff2
+   Inter, Copyright (C) The Inter Project Authors (https://github.com/rsms/inter)
+   Newsreader, Copyright (C) The Newsreader Project Authors
+   (https://github.com/productiontype/Newsreader)
+   Both licensed under the SIL Open Font License, version 1.1
+   (https://openfontlicense.org). The font files are redistributed unmodified,
+   as latin and latin-ext woff2 subsets, and are not sold on their own. The
+   reserved font names are unchanged, which the OFL permits for unmodified
+   redistribution; a fork that modifies a file must rename it.
+
 SillyTavern and RisuAI were read while this project was written, and
 `docs/REUSE.md` §2 and §3 record what was read and what came of it. Reading an
 implementation is not the same as copying one, and the value of that record is

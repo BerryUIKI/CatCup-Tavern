@@ -172,6 +172,27 @@ export async function buildApp(): Promise<FastifyInstance> {
         await app.register(fastifyStatic, {
             root: webDist,
             prefix: '/',
+            /**
+             * Fonts and icons are content-addressed by name and never change in
+             * place, so a browser may keep them for a year. Everything else —
+             * `index.html` above all — must be revalidated, or an app that
+             * updated itself keeps loading the previous build's shell.
+             *
+             * The build's hashed assets under `/assets/` are handled by the
+             * second rule; a plain `public/` file such as a font is not hashed,
+             * which is why it is named here rather than folded into one rule.
+             */
+            setHeaders: (response, filePath) => {
+                if (filePath.endsWith('.woff2') || filePath.endsWith('.ico') || filePath.endsWith('.png')) {
+                    response.header('Cache-Control', 'public, max-age=31536000, immutable');
+                    return;
+                }
+                if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+                    response.header('Cache-Control', 'public, max-age=31536000, immutable');
+                    return;
+                }
+                response.header('Cache-Control', 'no-cache');
+            },
         });
         app.setNotFoundHandler((request, reply) => {
             if (request.url.startsWith('/api/')) {
