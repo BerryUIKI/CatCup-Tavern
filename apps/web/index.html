@@ -9,6 +9,14 @@
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <!--
+            Preload the two faces the first paint needs. Without this the
+            browser discovers them from the stylesheet, so the first frame
+            renders in the fallback and swaps — which on this app means the
+            brand and every dialog title visibly change font after load.
+        -->
+        <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+        <link rel="preload" href="/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin />
     </head>
     <body>
         <div id="root"></div>

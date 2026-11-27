@@ -180,6 +180,31 @@ Sizes are named in `@theme` and used by name. An arbitrary value (`text-[11px]`)
 cannot reach: the scale moved to `--text-*` tokens for exactly that reason, and 184 arbitrary values
 became four names.
 
+**The faces are bundled, not named.** `Inter` and `Newsreader` ship as woff2 in
+`apps/web/public/fonts` with an `@font-face` in `styles.css`, latin and latin-ext subsets only.
+Before that, the stack began with `"Inter"` and nothing ever loaded it, so the app rendered in Segoe
+UI on Windows and the system UI font on macOS — the same markup, two different products. A theme
+cannot change a typeface the app does not carry, which is why the files matter to the skin work and
+not only to how it looks today.
+
+| Face         | Role             | Stack                                                                    |
+| ------------ | ---------------- | ------------------------------------------------------------------------ |
+| `Inter`      | `--font-sans`    | body, controls, labels, hints                                            |
+| `Newsreader` | `--font-display` | brand, dialog and page titles, the character name in a message header    |
+| system mono  | `--font-mono`    | ids, URLs, headers — a monospace face is a property of the OS, not brand |
+
+- **Latin only, for now.** The subsets carry ASCII, Latin-1 and the accented Latin a European name
+  needs; a locale added in M5 brings its own subset rather than a font that already has it.
+- **A skin may swap a face** by shipping a woff2 and setting `--font-sans` or `--font-display`. The
+  extension is `woff2` and nothing else, so a theme file cannot smuggle in a format the browser
+  handles differently.
+- `index.html` preloads the two latin files. Without that the browser discovers them from the
+  stylesheet, so the first frame renders in the fallback and the brand visibly changes font after
+  load.
+- The server sends `Cache-Control: immutable` for fonts and `/assets/` and `no-cache` for everything
+  else, so a font downloads once and `index.html` is always revalidated — belt and braces for an app
+  that updates itself.
+
 | Role                   | Class          | Size / weight                     |
 | ---------------------- | -------------- | --------------------------------- |
 | Dialog and page titles | `font-display` | 18–20 px, regular                 |
