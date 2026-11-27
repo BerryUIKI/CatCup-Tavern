@@ -6,6 +6,7 @@ import { isRecord, type SkinManifest, skinManifestSchema } from '@catcup/shared'
 import { readJsonFile, readTextFile, writeJsonFile, writeTextFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
 import { paths } from './paths.js';
+import { removeSkinAssets, type SkinAsset, writeSkinAssets } from './skinAssets.js';
 
 /**
  * Installed skins, one loose file each, in a folder beside the profile.
@@ -105,7 +106,11 @@ export async function getSkin(id: string): Promise<SkinManifest | null> {
  * that can speak HTTP, and a manifest is the one thing a skin's whole behaviour
  * is derived from.
  */
-export async function installSkin(manifest: unknown, css?: string | null): Promise<SkinManifest> {
+export async function installSkin(
+    manifest: unknown,
+    css?: string | null,
+    assets: SkinAsset[] = [],
+): Promise<SkinManifest> {
     const parsed = skinManifestSchema.parse(manifest);
     await withFileLock(skinFile(parsed.id), async () => {
         await writeJsonFile(skinFile(parsed.id), parsed);
@@ -119,6 +124,7 @@ export async function installSkin(manifest: unknown, css?: string | null): Promi
         } else {
             await rm(sheet, { force: true });
         }
+        await writeSkinAssets(parsed.id, assets);
     });
     return parsed;
 }
@@ -135,6 +141,7 @@ export async function removeSkin(id: string): Promise<boolean> {
         try {
             await rm(file);
             await rm(skinCssFile(id), { force: true });
+            await removeSkinAssets(id);
             return true;
         } catch (error) {
             if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

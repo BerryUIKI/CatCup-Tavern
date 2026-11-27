@@ -251,7 +251,11 @@ A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes
   - 64 KB maximum, and balanced braces, reported with a line number.
 
   The loader **wraps the sheet in `[data-skin]` itself** rather than trusting the file to be scoped, so a selector naming `html` or `:root` cannot reach outside. A top-level `@media` is lifted out and re-wrapped, not nested inside a selector. The stored sheet is served at `GET /api/skins/:id/css` and loaded as a `<link>`.
-- **`assets`** is not read yet.
+- **`assets`** names a `media/index.json` listing the files the skin carries. Three types, because those are the three a skin can use: `image`, `audio`, `font`.
+  - Every entry needs `type` and `path`; a type outside the three is refused, and so is a file the archive does not contain.
+  - A content type the host cannot speak (anything outside `png`, `jpg`, `webp`, `gif`, `avif`, `svg`, `ogg`, `mp3`, `wav`, `flac`, `woff2`) is refused at install — a browser left to guess, with `nosniff` on, guesses wrong.
+  - Served read-only at `GET /api/skins/:id/media/*`. **The served set is the index, not the folder**: a file dropped in by hand is not a way in, and a path that escapes answers 404.
+  - A `tokens.font` value that is a file path is declared as an `@font-face` from the skin's own media route, under a family derived from the skin and asset ids (`CatCupSkin-<skin>-<asset>`), so it cannot collide with a built-in face. The token resolves to that family with a generic fallback behind it.
 
 - **Installed at `data/profiles/<profile>/skins/<id>.json`**, one file per skin, stored as the manifest that arrived rather than flattened into settings. Editing a skin's file therefore reaches the theme on the next load, and removing one is removing one file. A file that no longer validates is skipped when the list is read; its bytes stay, so the author can see what they wrote.
 - Stored as `ui.skinId` in the profile's `settings.json` — the **id**, not the values, so an edited skin file still reaches the theme. An id that no longer resolves clears the skin and shows the built-in palette; **Settings → Appearance** says so.

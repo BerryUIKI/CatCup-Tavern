@@ -116,7 +116,16 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
     // applier reads, not a second copy that could drift.
     useEffect(() => {
         if (skinsQuery.data) {
-            setInstalled(skinsQuery.data.skins.map(toInstalledSkin));
+            setInstalled(
+                skinsQuery.data.skins.map((manifest) =>
+                    toInstalledSkin(
+                        manifest,
+                        // The server sends path → family; the browser only has
+                        // to look the token's path up in it.
+                        (manifest as SkinManifest & { fonts?: Record<string, string> }).fonts ?? {},
+                    ),
+                ),
+            );
         }
     }, [skinsQuery.data, setInstalled]);
 

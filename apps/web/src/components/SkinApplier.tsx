@@ -1,3 +1,4 @@
+import type { SkinManifest } from '@catcup/shared';
 import { useEffect } from 'react';
 
 import { useSettings, useSkins } from '../hooks/data';
@@ -30,7 +31,11 @@ export function SkinApplier() {
         // A selected id that no longer resolves clears the skin rather than
         // leaving the last one applied — the panel says why, and the window is
         // never a theme nobody chose.
-        applySkin(manifest ? toInstalledSkin(manifest) : null);
+        applySkin(
+            manifest
+                ? toInstalledSkin(manifest, (manifest as SkinManifest & { fonts?: Record<string, string> }).fonts ?? {})
+                : null,
+        );
     }, [settings, skins]);
 
     return null;
