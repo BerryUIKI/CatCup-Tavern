@@ -148,8 +148,31 @@ flowchart LR
 | No audit log                         | Harder to investigate incidents          | Optional later                       |
 | Rate limits only on auth             | Abuse of generation endpoints            | Add provider/generation limits       |
 | Single user                          | No per-user isolation                    | Explicitly out of scope for v1       |
-| No CSP configuration                 | XSS impact is not further constrained    | Add headers in M5                    |
 | No built-in TLS                      | LAN traffic is plaintext                 | Reverse proxy/VPN                    |
+
+## Content security policy
+
+The desktop shell carries a CSP in `apps/desktop/src-tauri/tauri.conf.json`. It was `null` until 2026-11-27, which meant the webview enforced nothing.
+
+```
+default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:; font-src 'self'; media-src 'self' blob:;
+connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
+```
+
+**What each allowance is for**, so a later tightening knows what it would break:
+
+| Directive                    | Why it is not stricter                                                                                                                                                                               |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `script-src 'unsafe-inline'` | React renders no inline script, but the shell injects its IPC bootstrap; Tauri's own nonce mechanism is the eventual fix, not a hand-written nonce                                                   |
+| `style-src 'unsafe-inline'`  | A skin is applied as a `<style>` element (`store/skin.ts`), and Tailwind ships a stylesheet whose values are set inline by the runtime                                                               |
+| `img-src data: blob:`        | The page's noise layer is a `data:` SVG; TTS and image previews are `blob:` objects                                                                                                                  |
+| `media-src blob:`            | A speech preview is an audio `blob:`                                                                                                                                                                 |
+| `connect-src 'self'`         | The window is served by the sidecar over loopback, so `'self'` is that origin. Nothing else should reach the network — a pack or a skin that tried would be refused here, not only by our own parser |
+
+**The reason this is load-bearing rather than tidy:** a skin's stylesheet is validated to forbid remote `url()`, and that rule is only a boundary if the runtime backs it up. With `"csp": null`, one gap in the validator would have been a silent beacon to a third party. The CSP makes "no request leaves the machine" a property of the webview. See [RFC 0007](RFC/0007-skins-and-packs.md).
+
+**Not yet covered by a CSP:** the web and LAN shapes, where the page is served by Fastify and no policy is sent. There is no XSS sink today — every message is rendered through `react-markdown` with `skipHtml`, and no component uses `dangerouslySetInnerHTML` — but a header is cheap and belongs in the same M5 hardening pass.
 
 ## Operational checklist
 
