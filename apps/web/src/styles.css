@@ -90,6 +90,25 @@
     --text-body--line-height: 1.625;
 
     /*
+     * Radius, restated rather than inherited. Tailwind defines these too, so
+     * the app renders identically — but a `@theme` value that only Tailwind
+     * declares is a value a skin cannot see, and the skin format lists radius
+     * as something a theme may move. Declaring them here is what makes
+     * `--radius-xl` part of the app's own token set rather than Tailwind's.
+     */
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --radius-2xl: 1rem;
+
+    /*
+     * The spacing scale's base, restated for the same reason. Every `px-4`,
+     * `gap-2` and `size-9` in the app is `calc(var(--spacing) * N)`, so this
+     * one number sets the interface's density — and a skin that cannot name it
+     * cannot move it.
+     */
+    --spacing: 0.25rem;
+
+    /*
      * Shadow roles. Tailwind bakes a `@theme --shadow-*` value into the
      * utility as a literal, so a skin cannot reach it — these are declared in
      * the base layer instead, as three ordinary variables that the `.shadow-*`
