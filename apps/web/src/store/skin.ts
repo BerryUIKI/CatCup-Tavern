@@ -114,7 +114,7 @@ export function applySkin(skin: InstalledSkin | null): void {
 }
 
 /** Turn a parsed manifest into the shape the list and the applier use. */
-export function toInstalledSkin(manifest: SkinManifest): InstalledSkin {
+export function toInstalledSkin(manifest: SkinManifest, fontAssets: Record<string, string> = {}): InstalledSkin {
     return {
         id: manifest.id,
         name: manifest.name,
@@ -122,7 +122,13 @@ export function toInstalledSkin(manifest: SkinManifest): InstalledSkin {
         scope: manifest.scope,
         colorScheme: manifest.colorScheme,
         hasCss: Boolean(manifest.css),
-        properties: skinCustomProperties(manifest),
+        // A font token that names a file becomes the family the server's
+        // `@font-face` declares, so `--font-display` points at a face the
+        // document has actually been told about. `fontAssets` maps an archive
+        // path to that family, and is empty for a manifest read on its own —
+        // which is why a path token falls back to being skipped rather than
+        // silently emitting a family nothing declares.
+        properties: skinCustomProperties(manifest, fontAssets),
     };
 }
 

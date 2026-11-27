@@ -198,13 +198,57 @@ export function unknownTokenNames(tokens: Record<string, Record<string, string> 
 }
 
 /**
+ * Turn a `font` token into a CSS family list.
+ *
+ * The format lets a font token be either a family stack (`"Newsreader", serif`)
+ * or a path inside the pack (`media/display.woff2`). A path cannot be written
+ * into `--font-display` directly — CSS wants a family name there, and the file
+ * needs an `@font-face` — so the loader does two things: it emits the
+ * `@font-face` from the skin's media route, and the token becomes the family
+ * name the face was declared under. That name is derived from the asset id so a
+ * skin cannot collide with a built-in face.
+ */
+export function isFontPath(value: string): boolean {
+    return /\.(woff2?|otf|ttf)$/i.test(value.trim());
+}
+
+/** The CSS family name a skin's font asset is declared under. */
+export function skinFontFamily(skinId: string, assetId: string): string {
+    // A quoted family name the app's own stack cannot accidentally match, and
+    // one a stylesheet can reference without thinking about escaping.
+    return `CatCupSkin-${skinId}-${assetId}`;
+}
+
+/**
+ * The `@font-face` rules for a skin's font assets.
+ *
+ * Every one points at the media route, so the browser fetches from the skin's
+ * own folder and nowhere else. `font-display: swap` matches the app's own faces:
+ * a skin that made text invisible while a font loaded would be worse than the
+ * fallback it replaced.
+ */
+export function skinFontFaces(skinId: string, fonts: { id: string; path: string }[]): string {
+    return fonts
+        .map(
+            (font) =>
+                `@font-face { font-family: "${skinFontFamily(skinId, font.id)}"; src: url("/api/skins/${encodeURIComponent(
+                    skinId,
+                )}/media/${font.path}") format("woff2"); font-display: swap; }`,
+        )
+        .join(String.fromCharCode(10));
+}
+
+/**
  * Flatten a manifest's tokens into the custom properties a browser will see.
  *
  * A token set to an empty string is skipped rather than emitted: `--color-x:`
  * would clear the value and inherit nothing, which makes an interface that
  * looks broken in a way the skin author cannot see in their file.
  */
-export function skinCustomProperties(manifest: { tokens?: Record<string, unknown> }): Record<string, string> {
+export function skinCustomProperties(
+    manifest: { tokens?: Record<string, unknown> },
+    fontAssets: Record<string, string> = {},
+): Record<string, string> {
     const properties: Record<string, string> = {};
     const tokens = manifest.tokens ?? {};
 
@@ -219,9 +263,22 @@ export function skinCustomProperties(manifest: { tokens?: Record<string, unknown
             continue;
         }
         for (const [name, value] of Object.entries(members as Record<string, unknown>)) {
-            if (typeof value === 'string' && value.trim()) {
-                properties[skinTokenVariable(group as SkinTokenGroup, name)] = value.trim();
+            if (typeof value !== 'string' || !value.trim()) {
+                continue;
             }
+            const trimmed = value.trim();
+            // A font token that is a file path becomes the family name the
+            // loader declared for it; anything else is a stack and is written
+            // as it stands.
+            if (group === 'font' && isFontPath(trimmed)) {
+                const asset = fontAssets[trimmed.replace(/^\.?\//, '')];
+                if (asset) {
+                    properties[skinTokenVariable('font', name)] =
+                        `"${asset}", ${trimmed.includes('serif') ? 'serif' : 'sans-serif'}`;
+                }
+                continue;
+            }
+            properties[skinTokenVariable(group as SkinTokenGroup, name)] = trimmed;
         }
     }
 

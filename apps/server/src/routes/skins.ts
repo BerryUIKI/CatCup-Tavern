@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
 import { looksLikeArchive, parsePack } from '../packs/catcup.js';
+import { declaredAssetPaths, declaredFontFamilies, readSkinAsset } from '../storage/skinAssets.js';
 import { getSkin, installSkin, listSkins, readSkinCssFile, removeSkin } from '../storage/skins.js';
 
 const idParams = z.object({ id: z.string().min(1).max(160) });
@@ -16,7 +17,23 @@ const idParams = z.object({ id: z.string().min(1).max(160) });
  * review sheet shows exactly what this route will accept.
  */
 export async function registerSkinRoutes(app: FastifyInstance): Promise<void> {
-    app.get('/api/skins', async () => ({ skins: await listSkins() }));
+    /**
+     * Installed skins.
+     *
+     * `fonts` maps an archive path to the family the server declared for it.
+     * The client needs that to turn a `tokens.font` path into a family name,
+     * and it cannot work it out alone: the asset ids live in the media index,
+     * which is only in the archive the server read. One map here is cheaper
+     * than sending the whole index and rebuilding the same mapping twice.
+     */
+    app.get('/api/skins', async () => {
+        const skins = await listSkins();
+        return {
+            skins: await Promise.all(
+                skins.map(async (skin) => ({ ...skin, fonts: await declaredFontFamilies(skin.id) })),
+            ),
+        };
+    });
 
     /**
      * The skin's checked stylesheet.
@@ -32,6 +49,29 @@ export async function registerSkinRoutes(app: FastifyInstance): Promise<void> {
             throw notFound();
         }
         return reply.type('text/css; charset=utf-8').send(css);
+    });
+
+    /**
+     * A skin's own files, read-only.
+     *
+     * Only what the install wrote is reachable: the served set is the media
+     * index, not the folder, so a file dropped in by hand is not a way in. A
+     * path that escapes answers 404 rather than 403 — a caller is not entitled
+     * to learn what else is on the disk.
+     */
+    app.get('/api/skins/:id/media/*', async (request, reply) => {
+        const { id } = idParams.parse(request.params);
+        const rest = (request.params as Record<string, string>)['*'] ?? '';
+        const declared = await declaredAssetPaths(id);
+        const asset = await readSkinAsset(id, declared, rest);
+        if (!asset) {
+            throw notFound();
+        }
+        return reply
+            .header('Cache-Control', 'private, max-age=3600')
+            .header('X-Content-Type-Options', 'nosniff')
+            .type(asset.contentType)
+            .send(asset.data);
     });
 
     app.get('/api/skins/:id', async (request) => {
@@ -107,7 +147,7 @@ export async function registerSkinRoutes(app: FastifyInstance): Promise<void> {
                     if (pack.kind !== 'skin') {
                         throw badRequest('That package is not a skin');
                     }
-                    return { skin: await installSkin(pack.manifest, pack.css), fileName };
+                    return { skin: await installSkin(pack.manifest, pack.css, pack.assets), fileName };
                 }
 
                 let raw: unknown;

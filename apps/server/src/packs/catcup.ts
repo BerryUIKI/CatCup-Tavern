@@ -1,5 +1,12 @@
-import { checkSkinCss, isRecord, rewriteSkinUrls, type SkinManifest, skinManifestSchema } from '@catcup/shared';
-
+import {
+    checkSkinCss,
+    isRecord,
+    rewriteSkinUrls,
+    type SkinManifest,
+    skinFontFaces,
+    skinManifestSchema,
+} from '@catcup/shared';
+import { readSkinAssets, type SkinAsset } from '../storage/skinAssets.js';
 import { type ArchiveEntry, entryText, findEntry, readArchive } from './archive.js';
 
 /**
@@ -49,6 +56,8 @@ export interface ParsedSkinPack {
     manifest: SkinManifest;
     /** The checked stylesheet, already scoped — or `null` when the skin ships none. */
     css: string | null;
+    /** The assets the skin declares, read and type-checked. */
+    assets: SkinAsset[];
     /** Every entry this reader validated, so a later feature can read CSS or fonts. */
     entries: ArchiveEntry[];
 }
@@ -145,8 +154,18 @@ export function parsePack(buffer: Buffer | Uint8Array): ParsedPack {
         // says a `css` file is part of the skin, so a sheet that is refused is
         // a package that will not install, and the person hears about it while
         // the file they picked is still in front of them.
-        const css = readSkinCss(parsed.data, entries);
-        return { kind: 'skin', header, manifest: parsed.data, css, entries };
+        // Assets are read and type-checked here for the same reason the
+        // stylesheet is: a package that names a file it does not carry should
+        // be refused while the person still has the file they picked.
+        const assets = readSkinAssets(parsed.data, entries);
+        return {
+            kind: 'skin',
+            header,
+            manifest: parsed.data,
+            css: readSkinCss(parsed.data, entries, assets),
+            assets,
+            entries,
+        };
     }
 
     // `catcup.card` is the legacy layout: a `card.json` this build already
@@ -165,7 +184,7 @@ export function parsePack(buffer: Buffer | Uint8Array): ParsedPack {
  * A refusal is thrown with the file, line and reason, so the message an author
  * gets names the thing they have to change.
  */
-function readSkinCss(manifest: SkinManifest, entries: ArchiveEntry[]): string | null {
+function readSkinCss(manifest: SkinManifest, entries: ArchiveEntry[], assets: SkinAsset[]): string | null {
     if (!manifest.css) {
         return null;
     }
@@ -183,7 +202,12 @@ function readSkinCss(manifest: SkinManifest, entries: ArchiveEntry[]): string | 
     if (!result.scoped) {
         return null;
     }
-    return rewriteSkinUrls(result.scoped, manifest.id);
+    // A font the skin carries needs an `@font-face`, and the face has to be
+    // emitted next to the rules that use it — the browser will not apply a
+    // family it has never been told about.
+    const fonts = assets.filter((asset) => asset.type === 'font').map((asset) => ({ id: asset.id, path: asset.path }));
+    const faces = fonts.length > 0 ? skinFontFaces(manifest.id, fonts) : '';
+    return [faces, rewriteSkinUrls(result.scoped, manifest.id)].filter(Boolean).join(String.fromCharCode(10));
 }
 
 /** Whether a buffer starts like a ZIP, so a wrong file is refused before parsing. */

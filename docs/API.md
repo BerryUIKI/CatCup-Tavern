@@ -1879,6 +1879,8 @@ A skin is a manifest in the `catcup.skin` format; [DATA-FORMATS.md](DATA-FORMATS
 | `PUT`    | `/api/skins/:id` | `{ manifest: SkinManifest }` | `{ skin }`                  |
 | `DELETE` | `/api/skins/:id` | —                            | `{ removed: boolean }`      |
 
+`GET /api/skins` returns each skin with a `fonts` map — archive path to the CSS family name the server declared for it — so the client can turn a `tokens.font` path into a family without the media index. `GET /api/skins/:id/media/*` serves only what the install declared; anything else, including a path that escapes the folder, answers 404.
+
 `POST /api/skins/import` accepts a `.catcup` holding a `catcup.skin` manifest, or a bare `manifest.json`. It decides which by the ZIP signature rather than the file name, so an archive renamed to `.json` still works. A package of another format, an unreadable archive or a missing manifest answers **400 with the reason**, not a 500: those are request problems, and the message is the one written for the person holding the file.
 
 `PUT` validates the manifest with the same schema the client uses, so the review sheet shows exactly what the route will accept, and refuses a manifest whose `id` differs from the one in the path — otherwise a request could write one skin's values under another's name and the selection would point at the wrong file. An unknown manifest field is preserved rather than stripped: [RFC 0007](RFC/0007-skins-and-packs.md) promises that a newer format survives an older host.
