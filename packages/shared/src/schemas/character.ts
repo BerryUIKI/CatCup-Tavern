@@ -127,6 +127,25 @@ export const characterPatchSchema = z
 /** Where a card keeps its model choice; SillyTavern preserves it as unknown. */
 export const CATCUP_MODEL_EXTENSION = 'catcup_model';
 
+/**
+ * What creating a card from nothing needs.
+ *
+ * Deliberately the same field set as `characterPatchSchema`, because creating is
+ * writing the first patch to a card that does not exist yet: a field the editor
+ * can set is a field creation can set, and the two cannot drift about what a
+ * card holds. `name` is the only one required, and it is the only thing the
+ * server needs to give the file a name.
+ *
+ * `.strict()` for the same reason as the patch: a typo in a creation request
+ * should be an error naming the field, not a silently dropped value.
+ */
+export const characterCreateSchema = characterPatchSchema
+    .extend({
+        name: z.string().trim().min(1).max(200),
+    })
+    .strict();
+export type CharacterCreateRequest = z.infer<typeof characterCreateSchema>;
+
 /** A character id: a file name without path traversal. */
 export const characterIdSchema = z
     .string()

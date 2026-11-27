@@ -11,6 +11,7 @@ import {
     StarOff,
     Tag,
     Trash2,
+    UserPlus,
     UserRound,
     X,
 } from 'lucide-react';
@@ -99,6 +100,8 @@ interface CharacterLibraryProps {
     onBulkDelete: (ids: string[]) => void;
     onAddSample: () => void;
     addingSample: boolean;
+    /** Open the New character dialog; the empty state offers it beside the sample. */
+    onNewCharacter: () => void;
     /** A favorite or bulk mutation is in flight; library actions wait for it. */
     busy: boolean;
 }
@@ -126,6 +129,7 @@ export function CharacterLibrary({
     onBulkDelete,
     onAddSample,
     addingSample,
+    onNewCharacter,
     busy,
 }: CharacterLibraryProps) {
     const [sort, setSort] = useState<SortKey>(() => {
@@ -354,11 +358,17 @@ export function CharacterLibrary({
                     draggable={false}
                     className="mx-auto mb-4 w-52"
                 />
-                <p>No characters yet. Import a PNG, JSON or CharX card to open the first door.</p>
-                <button type="button" className="btn-ghost mx-auto mt-3" onClick={onAddSample} disabled={addingSample}>
-                    {addingSample ? <Spinner size={15} /> : <Sparkles size={15} />}
-                    Add the sample character
-                </button>
+                <p>No characters yet. Create one here, or import a PNG, JSON or CharX card to open the first door.</p>
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                    <button type="button" className="btn-primary" onClick={onNewCharacter}>
+                        <UserPlus size={15} />
+                        New character
+                    </button>
+                    <button type="button" className="btn-ghost" onClick={onAddSample} disabled={addingSample}>
+                        {addingSample ? <Spinner size={15} /> : <Sparkles size={15} />}
+                        Add the sample character
+                    </button>
+                </div>
             </div>
         );
     }

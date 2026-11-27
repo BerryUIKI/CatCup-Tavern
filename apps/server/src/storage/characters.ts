@@ -9,7 +9,13 @@ import {
     readFavorite,
     writePngCard,
 } from '@catcup/compat-st';
-import type { CharacterDetail, CharacterPatch, CharacterSummary, ItemScope } from '@catcup/shared';
+import type {
+    CharacterCreateRequest,
+    CharacterDetail,
+    CharacterPatch,
+    CharacterSummary,
+    ItemScope,
+} from '@catcup/shared';
 import { isRecord } from '@catcup/shared';
 import writeFileAtomic from 'write-file-atomic';
 import { readCharacterModel } from '../cards/model.js';
@@ -238,6 +244,66 @@ export async function getCharacterFile(id: string): Promise<{ filePath: string; 
     }
     const detail = await loadCharacterFile(found.filePath, found.fileName, found.scope);
     return detail ? { filePath: found.filePath, detail } : null;
+}
+
+/**
+ * Store a card that starts in the app.
+ *
+ * Separate from `importCharacter` because the two answer a different question.
+ * An import has a file and asks "where does this go"; a creation has a buffer
+ * built from a name and asks "what do I call it", which is the one thing an
+ * import never has to decide.
+ *
+ * What the two share is the rule that matters: a name already in use gets a
+ * numeric suffix rather than overwriting. Creation checks *both* scopes, where
+ * an import checks only the one it writes to — an id has to be free everywhere,
+ * because `getCharacter` prefers the profile's copy and a new card sharing a
+ * shared card's id would make the shared one silently unreachable.
+ */
+export async function createCharacter(
+    request: CharacterCreateRequest,
+    buffer: Buffer,
+    scope: ItemScope = 'profile',
+): Promise<CharacterDetail> {
+    const directory = scope === 'shared' ? paths.sharedCharacters : paths.characters;
+    const baseName = safeFileName(request.name, 'character');
+
+    const taken = new Set(
+        (
+            await Promise.all(
+                [paths.characters, paths.sharedCharacters].map((folder) =>
+                    readdir(folder, { withFileTypes: true }).catch(() => []),
+                ),
+            )
+        )
+            .flat()
+            .filter((entry) => entry.isFile())
+            .map((entry) => entry.name.toLowerCase()),
+    );
+
+    let stem = baseName;
+    let index = 2;
+    // Both sides lowercased: a folder on Windows may already hold `ash.png` for
+    // a stem of `Ash`, and comparing the raw stem to a lowercased set would miss
+    // it and overwrite the card.
+    while (taken.has(`${stem}.png`.toLowerCase()) || taken.has(`${stem}.json`.toLowerCase())) {
+        stem = `${baseName} (${index})`;
+        index += 1;
+    }
+
+    // The extension follows the bytes, not a caller's claim: a PNG signature is
+    // the first thing `parseCardBuffer` will look for, and a `.png` file holding
+    // JSON would fail to load rather than fall back.
+    const fileName = buffer[0] === 0x89 ? `${stem}.png` : `${stem}.json`;
+    const target = resolveInside(directory, fileName);
+    await withFileLock(target, () => writeFileAtomic(target, buffer, { mode: 0o644 }));
+    cache.delete(cacheKey(scope, fileName));
+
+    const detail = await loadCharacterFile(target, fileName, scope);
+    if (!detail) {
+        throw new Error('The new card could not be read back');
+    }
+    return detail;
 }
 
 /**

@@ -6,6 +6,7 @@ import {
     type CharacterDetail,
     type CharacterSummary,
     characterBulkRequestSchema,
+    characterCreateSchema,
     characterFavoriteRequestSchema,
     characterIdSchema,
     characterPatchSchema,
@@ -16,10 +17,12 @@ import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { assetPath } from '../assets.js';
 import { buildCharx, parseCharx } from '../cards/charx.js';
+import { newCardJson, newCardPng } from '../cards/created.js';
 import { config } from '../config.js';
 import { badRequest, internal, notFound } from '../http/errors.js';
 import { readCharacterAssets, storeCharacterAssets } from '../storage/characterAssets.js';
 import {
+    createCharacter,
     deleteCharacter,
     getCharacterFile,
     importCharacter,
@@ -280,6 +283,39 @@ export async function registerCharacterRoutes(app: FastifyInstance): Promise<voi
             .header('Content-Type', 'application/json; charset=utf-8')
             .header('Content-Disposition', `attachment; filename="${safeName}.json"`)
             .send(`${JSON.stringify(payload, null, 4)}\n`);
+    });
+
+    /**
+     * Create a card from nothing, and return it open-able in the editor.
+     *
+     * The body is `characterCreateSchema`, which is `characterPatchSchema` with
+     * a required `name` — so the fields creation accepts are exactly the fields
+     * the editor can set, and a payload the importer would reject is rejected
+     * here with the field named. `name` is the only field a card needs to exist.
+     *
+     * The picture is generated: `cards/created.ts` paints the same empty-state
+     * tile the interface draws for a card with no portrait, so a new card is
+     * visible in a grid of images from the first moment. A `.json` card is the
+     * fallback if the PNG cannot be written — a card without a picture is still
+     * a card, and refusing to create one over a drawing failure would be worse.
+     */
+    app.post('/api/characters', async (request, reply) => {
+        const body = characterCreateSchema.parse(request.body ?? {});
+        const scope = importScope(request.query);
+
+        let buffer: Buffer;
+        try {
+            buffer = await newCardPng(body);
+        } catch (error) {
+            request.log.warn({ err: error }, 'Placeholder avatar could not be drawn; creating a JSON card instead');
+            buffer = newCardJson(body);
+        }
+
+        reply.code(201);
+        // The whole detail, not a summary: the client opens the editor on this
+        // card straight away, and caching a detail-shaped object without its
+        // `card` would make the editor read fields that are not there.
+        return { character: await createCharacter(body, buffer, scope) };
     });
 
     /**

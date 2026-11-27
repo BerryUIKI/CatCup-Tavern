@@ -2,6 +2,7 @@ import type {
     AuthStatus,
     CharacterBulkRequest,
     CharacterBulkResponse,
+    CharacterCreateRequest,
     CharacterPatch,
     CharacterSummary,
     ChatDetail,
@@ -198,6 +199,27 @@ export function useAddSampleCharacter() {
         mutationFn: () => api.characters.sample(),
         onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+        },
+    });
+}
+
+/**
+ * Create a card from nothing.
+ *
+ * The response carries the whole card, so the caller can open the editor on it
+ * without a second fetch. The library is invalidated for the same reason an
+ * import invalidates it: a new card can resolve a group member a group lists as
+ * missing.
+ */
+export function useCreateCharacter() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (variables: { body: CharacterCreateRequest; scope?: ItemScope }) =>
+            api.characters.create(variables.body, variables.scope),
+        onSuccess: (data) => {
+            queryClient.setQueryData(queryKeys.character(data.character.id), data.character);
+            void queryClient.invalidateQueries({ queryKey: queryKeys.characters });
+            void queryClient.invalidateQueries({ queryKey: queryKeys.groups });
         },
     });
 }
