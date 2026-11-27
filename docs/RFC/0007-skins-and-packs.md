@@ -278,7 +278,12 @@ Declared in the pack because a save is a file a person can read and a pack can b
 
 Three types, because those are the three the host renders. Every id is verified present **at install**, so a missing file fails the install rather than the first task that needed it.
 
-**Serving.** `GET /api/packs/:packId/media/*` reads from that one pack's folder through `resolveInside` (`apps/server/src/storage/paths.ts`) — the helper the image route and character assets already use. Read-only: no upload, no write, no delete. A path escaping the folder answers **404**, not 403: a pack is not entitled to learn what else is on the disk.
+**Serving.** `GET /api/skins/:id/media/*` reads from that one skin's folder through `resolveInside` (`apps/server/src/storage/paths.ts`) — the helper the image route and character assets already use. Read-only: no upload, no write, no delete. A path escaping the folder answers **404**, not 403: a pack is not entitled to learn what else is on the disk.
+
+**Shipped 2026-11-28** for `catcup.skin`: `storage/skinAssets.ts`, the media route, and `@font-face` emission for a `tokens.font` path. Two rules were tightened while implementing it, both recorded in that file:
+
+- **The served set is the media index, not the folder.** A file dropped in by hand is not a way in, and the declaration is written before the assets so a crash halfway through leaves a folder the host will not serve rather than one it half-trusts.
+- **A content type the host cannot speak fails the install.** With `nosniff` on, a browser left to guess from an unknown extension guesses wrong, and the failure arrives as a broken image with no reason attached.
 
 ## The install path
 
