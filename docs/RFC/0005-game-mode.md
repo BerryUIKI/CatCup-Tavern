@@ -99,10 +99,10 @@ What it costs: no custom UI logic. That is handled by the view types below, and 
 
 ## The plugin format
 
-A plugin is a ZIP with a manifest and its content. `.catcupgame` is the extension; the container is the same one `.catcup` and `.charx` already use, so the existing ZIP reader and its entry limits apply unchanged.
+A plugin is a ZIP with a manifest and its content. **The extension is `.catcup`**, the same container every CatCup-owned file uses, and `manifest.json`'s `"format": "catcup.game"` is what makes it a game rather than a card or a skin. [RFC 0007](0007-skins-and-packs.md) owns that container, its shared header, the discriminator and the install path; this document owns what a game does. The existing ZIP reader and its entry limits apply unchanged.
 
 ```
-my-game.catcupgame
+my-game.catcup
 ├─ manifest.json
 ├─ state.json           state keys, types and defaults
 ├─ tools.json           the primitives this plugin uses
@@ -352,7 +352,7 @@ A person who is licensed to redistribute a given pack can install it; what they 
 
 ### Plugin host
 
-- [ ] A `.catcupgame` package installs, lists, and uninstalls from the app.
+- [ ] A `.catcup` package with `"format": "catcup.game"` installs, lists, and uninstalls from the app.
 - [ ] `formatVersion` and `engine.min` are checked on install; an incompatible pack is refused with both versions named.
 - [ ] Every media id in `media/index.json` is verified present at install, and a missing one fails the install rather than the first task.
 - [ ] `media/**` is served read-only from one plugin's folder, and a path escaping that folder is rejected.

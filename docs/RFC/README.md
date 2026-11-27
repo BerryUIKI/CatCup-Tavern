@@ -10,6 +10,7 @@ Proposals for features that are large enough to need agreement before code. An R
 | [0004](0004-im-integration.md)    | Talk to a character from an IM client (Telegram first) | —                                                             | Accepted                                    |
 | [0005](0005-game-mode.md)         | Game mode: three modes, a declarative plugin host      | [#169](https://github.com/BerryUIKI/CatCup-Tavern/issues/169) | Proposed                                    |
 | [0006](0006-workspaces.md)        | Workspaces: writing, authoring, developer panel        | [#170](https://github.com/BerryUIKI/CatCup-Tavern/issues/170) | Proposed                                    |
+| [0007](0007-skins-and-packs.md)   | One container: `.catcup`, discriminated by manifest    | —                                                             | Proposed                                    |
 
 ## How an RFC moves
 
@@ -21,7 +22,7 @@ An accepted RFC keeps its review questions as decided sections rather than delet
 
 An accepted RFC is not a spec to copy blindly: the milestones document remains the source of truth for scope and acceptance criteria, and the docs under `docs/` remain the source of truth for what shipped.
 
-## Open questions across both
+## Open questions across 0005 and 0006
 
 Both proposals touch `data/settings.json` and the provider configuration from #76. They can be built in either order, but:
 
