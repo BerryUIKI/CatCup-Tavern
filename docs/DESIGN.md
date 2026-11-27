@@ -355,9 +355,19 @@ back first.
 - Dangerous confirmations focus the safe action (Keep / Cancel) by default.
 - Dialog titles are sentence case and name the object: "Delete Custom provider?" not "Are you sure?".
 - Descriptions say what is removed and what stops working, in one or two sentences.
+- **Never `window.confirm`.** It blocks the thread, draws the operating system's dialog and sits
+  outside every design token — on Windows a white system box in the middle of a dark panel, and no
+  skin can reach it. Call `confirm({...})` from `store/confirm.ts` instead: a promise the caller
+  awaits, drawn by the single `ConfirmHost` beside the toast viewport. It reads
+  `if (!(await confirm({...}))) return;` at the call site, so a guard costs no component state and a
+  confirmation looks the same whether it started from a menu, a panel or a row button. The queue is
+  serial, so two requests in the same tick appear one after the other rather than on top of each
+  other.
 - `ConfirmDialog` is also the confirmation for chat and message deletion. The character and group
-  chat views replaced `window.confirm` in stage B, so a destructive chat action is never a browser
-  prompt and keyboard focus is trapped and restored like every other layer.
+  chat views replaced `window.confirm` in stage B, and the last fourteen call sites went in the
+  foundations pass: character and bulk delete, group delete, image, summary, persona, quick reply
+  set, regex script, world info book and entry, the two discard guards and making an item shared.
+  `grep -r "window.confirm" apps/web/src` returns only the comment explaining why not.
 
 ### Menus
 
