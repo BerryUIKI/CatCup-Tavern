@@ -4,6 +4,7 @@
 import { mutateCardPayload, normalizeCard, type ParsedCard } from '@catcup/compat-st';
 import { isRecord } from '@catcup/shared';
 import { strFromU8, strToU8, unzipSync, type Zippable, zipSync } from 'fflate';
+import { MAX_CARD_BYTES, MAX_ENTRIES, MAX_ENTRY_BYTES, MAX_PATH_LENGTH, MAX_TOTAL_BYTES } from '../packs/archive.js';
 import { safeFileName } from '../storage/paths.js';
 
 /**
@@ -21,12 +22,6 @@ import { safeFileName } from '../storage/paths.js';
  * says how big its contents claim to be, so every check runs on the bytes that
  * actually arrived, after extraction and again per entry.
  */
-
-const MAX_ENTRIES = 200;
-const MAX_ENTRY_BYTES = 25 * 1024 * 1024;
-const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
-const MAX_CARD_BYTES = 10 * 1024 * 1024;
-const MAX_PATH_LENGTH = 400;
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const RESERVED_SEGMENT = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;

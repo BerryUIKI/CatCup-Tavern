@@ -34,6 +34,7 @@ import { registerQuickReplyRoutes } from './routes/quickReplies.js';
 import { registerRegexRoutes } from './routes/regex.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerSharedRoutes } from './routes/shared.js';
+import { registerSkinRoutes } from './routes/skins.js';
 import { registerTtsRoutes } from './routes/tts.js';
 import { registerWorldRoutes } from './routes/worlds.js';
 import { prepareDataFolder } from './storage/bootstrap.js';
@@ -166,6 +167,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     await registerGenerateRoutes(app);
     await registerGroupGenerateRoutes(app);
     await registerMemoryRoutes(app);
+    await registerSkinRoutes(app);
 
     const webDist = path.resolve(import.meta.dirname, '../../web/dist');
     if (existsSync(webDist)) {

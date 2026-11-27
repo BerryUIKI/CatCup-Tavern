@@ -2,7 +2,7 @@ import { checkSkin, SKIN_CONTRAST_PAIRS, type SkinManifest, skinManifestSchema }
 import { AlertTriangle, Check, Paintbrush, RotateCcw, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useSettings, useUpdateSettings } from '../hooks/data';
+import { useImportSkin, useInstallSkin, useRemoveSkin, useSettings, useSkins, useUpdateSettings } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
@@ -25,22 +25,39 @@ interface PendingSkin {
     installed: InstalledSkin;
     warnings: { foreground: string; background: string; ratio: number }[];
     unreadable: string[];
+    /** The file to upload, when the manifest came out of an archive. */
+    kind?: 'manifest' | 'archive';
+    file?: File;
 }
 
 /**
  * Read a `.json` skin the way the container will read a `.catcup`.
  *
- * The archive reader does not exist yet, so this accepts the manifest file
- * itself — the same shape, with the same validation, so nothing about this path
- * has to change when the container lands. It is deliberately strict about the
- * extension: a person who picks a `.catcup` here should be told the loader is
- * not ready, not have it silently treated as JSON.
+ * Two shapes arrive here. A bare `manifest.json` is read and validated in the
+ * browser, so the review sheet can show its tokens and warnings before a single
+ * byte is sent. A `.catcup` is a ZIP, which the browser cannot open — the server
+ * reads it, so the file is uploaded and the review sheet appears once it has.
+ *
+ * The browser's copy of the schema is the same one the server validates with,
+ * so a manifest refused here would be refused there, and the two paths cannot
+ * drift about what a skin is.
  */
 async function readSkinFile(file: File): Promise<PendingSkin> {
-    if (!/\.json$/i.test(file.name)) {
-        throw new Error(
-            'Pick a skin’s manifest.json for now. A .catcup skin package is read by the container loader, which is not built yet.',
-        );
+    // A `.catcup` is a ZIP: the manifest is inside it and only the server can
+    // read one. The review sheet still needs the manifest to show what will be
+    // installed, so an archive is previewed after the upload rather than
+    // before — `kind` says which happened.
+    if (/\.catcup$/i.test(file.name)) {
+        return {
+            kind: 'archive',
+            fileName: file.name,
+            file,
+            // Filled in by the caller once the server has read the archive.
+            manifest: {} as SkinManifest,
+            installed: { id: '', name: file.name, scope: 'app', colorScheme: 'dark', properties: {} },
+            warnings: [],
+            unreadable: [],
+        };
     }
 
     const text = await file.text();
@@ -67,6 +84,7 @@ async function readSkinFile(file: File): Promise<PendingSkin> {
     const installed = toInstalledSkin(parsed.data);
     const check = checkSkin(parsed.data.tokens, SKIN_CONTRAST_PAIRS);
     return {
+        kind: 'manifest',
         fileName: file.name,
         manifest: parsed.data,
         installed,
@@ -79,6 +97,10 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
     const settings = useSettings().data;
     const updateSettings = useUpdateSettings();
     const pushToast = useAppStore((state) => state.pushToast);
+    const skinsQuery = useSkins();
+    const importSkin = useImportSkin();
+    const installSkin = useInstallSkin();
+    const removeSkin = useRemoveSkin();
     const installed = useSkinStore((state) => state.installed);
     const setInstalled = useSkinStore((state) => state.setInstalled);
     const active = useSkinStore((state) => state.active);
@@ -89,13 +111,20 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
 
     const activeId = settings?.ui.skinId ?? '';
 
-    // The applied skin is whatever the settings name, resolved against what is
-    // installed. A name that no longer resolves is the built-in theme plus one
-    // line saying so — never a broken interface.
+    // The server is the source of truth: a skin is installed once and survives
+    // a reload, a restart and a profile switch. The store is a mirror the
+    // applier reads, not a second copy that could drift.
     useEffect(() => {
-        const chosen = installed.find((skin) => skin.id === activeId) ?? null;
-        setActive(chosen);
-        applySkin(chosen);
+        if (skinsQuery.data) {
+            setInstalled(skinsQuery.data.skins.map(toInstalledSkin));
+        }
+    }, [skinsQuery.data, setInstalled]);
+
+    // The mirror the list draws from. Applying the skin is `SkinApplier`'s job,
+    // at the app root: an effect here would only run while Settings is open,
+    // which is exactly the bug the root component exists to avoid.
+    useEffect(() => {
+        setActive(installed.find((skin) => skin.id === activeId) ?? null);
     }, [activeId, installed, setActive]);
 
     const missingReference = activeId !== '' && active === null;
@@ -114,18 +143,36 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
         if (!pending) {
             return;
         }
-        const next = [...installed.filter((skin) => skin.id !== pending.installed.id), pending.installed];
-        setInstalled(next);
-        setPending(null);
-        await choose(pending.installed);
+        try {
+            // An archive is read and stored by the server in one step; a bare
+            // manifest was already validated here, so it is sent as-is. Both
+            // end in the same stored file, because the route validates either.
+            const skin = pending.file
+                ? (await importSkin.mutateAsync(pending.file)).skin
+                : (await installSkin.mutateAsync(pending.manifest)).skin;
+            setPending(null);
+            await choose(toInstalledSkin(skin));
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not install the skin.', 'error');
+        }
     };
 
+    /**
+     * Removing the active skin clears the selection first, then the file.
+     *
+     * The other order would leave `ui.skinId` naming a skin that no longer
+     * exists for as long as the two requests are apart — which is exactly the
+     * state the panel draws a warning about.
+     */
     const remove = async (skin: InstalledSkin) => {
-        setInstalled(installed.filter((item) => item.id !== skin.id));
-        if (active?.id === skin.id) {
-            await choose(null);
-        } else {
+        try {
+            if (active?.id === skin.id) {
+                await choose(null);
+            }
+            await removeSkin.mutateAsync(skin.id);
             pushToast(`${skin.name} was removed.`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not remove the skin.', 'error');
         }
     };
 
@@ -268,13 +315,17 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
                         onClick={() => fileRef.current?.click()}
                         disabled={reading}
                     >
-                        {reading ? <Spinner size={15} /> : <Upload size={15} />}
+                        {reading || importSkin.isPending || installSkin.isPending ? (
+                            <Spinner size={15} />
+                        ) : (
+                            <Upload size={15} />
+                        )}
                         Install a skin…
                     </button>
                     <input
                         ref={fileRef}
                         type="file"
-                        accept=".json,application/json"
+                        accept=".catcup,.json,application/json"
                         className="hidden"
                         onChange={(event) => {
                             const file = event.target.files?.[0];

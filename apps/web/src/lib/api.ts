@@ -60,6 +60,7 @@ import type {
     SettingsResponse,
     SharedItemActionResult,
     SharedItemKind,
+    SkinManifest,
     SummarizeResponse,
     SummaryRecord,
     TelegramScanView,
@@ -287,6 +288,29 @@ export const api = {
             );
             return data.context;
         },
+    },
+    skins: {
+        list: () => request<{ skins: SkinManifest[] }>('/skins'),
+        /**
+         * Install from a file the person picked.
+         *
+         * A `.catcup` or a bare `manifest.json` — the server decides which by
+         * looking at the bytes, so the client does not have to.
+         */
+        import: (file: File) => {
+            const form = new FormData();
+            form.append('file', file, file.name);
+            return request<{ skin: SkinManifest; fileName: string }>('/skins/import', {
+                method: 'POST',
+                body: form,
+            });
+        },
+        install: (manifest: SkinManifest) =>
+            request<{ skin: SkinManifest }>(`/skins/${encodeURIComponent(manifest.id)}`, {
+                method: 'PUT',
+                body: JSON.stringify({ manifest }),
+            }),
+        remove: (id: string) => request<{ removed: boolean }>(`/skins/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     },
     regex: {
         list: () => request<{ scripts: RegexScriptView[] }>('/regex'),

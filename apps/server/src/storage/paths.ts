@@ -92,6 +92,16 @@ export const paths = {
     get personas(): string {
         return inside('personas.json');
     },
+    /**
+     * Installed skins, one JSON manifest each.
+     *
+     * Under the profile so a person can have different skins per data scope —
+     * the same rule characters and presets follow — and so an archived profile
+     * does not leave a skin applied to a scope that no longer selects it.
+     */
+    get skins(): string {
+        return inside('skins');
+    },
     /** The active profile's configuration. */
     get settings(): string {
         return inside('settings.json');

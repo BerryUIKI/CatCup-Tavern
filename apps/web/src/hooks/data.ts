@@ -23,6 +23,7 @@ import type {
     SettingsPatch,
     SettingsResponse,
     SharedItemKind,
+    SkinManifest,
     WorldDetail,
     WorldInfoEntryPatch,
 } from '@catcup/shared';
@@ -47,6 +48,7 @@ export const queryKeys = {
     world: (id: string | null) => ['world', id] as const,
     worldAliases: (id: string | null) => ['worldAliases', id] as const,
     aliasRuns: (id: string | null) => ['aliasRuns', id] as const,
+    skins: ['skins'] as const,
     regex: ['regex'] as const,
     quickReplies: ['quickReplies'] as const,
     images: (folder: string) => ['images', folder] as const,
@@ -768,6 +770,40 @@ export function useClearMemory() {
 
 export function useRegexScripts() {
     return useQuery({ queryKey: queryKeys.regex, queryFn: api.regex.list });
+}
+
+export function useSkins() {
+    return useQuery({ queryKey: queryKeys.skins, queryFn: api.skins.list });
+}
+
+export function useInstallSkin() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (manifest: SkinManifest) => api.skins.install(manifest),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.skins });
+        },
+    });
+}
+
+export function useImportSkin() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (file: File) => api.skins.import(file),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.skins });
+        },
+    });
+}
+
+export function useRemoveSkin() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.skins.remove(id),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.skins });
+        },
+    });
 }
 
 export function useQuickReplies() {
