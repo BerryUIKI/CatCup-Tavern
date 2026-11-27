@@ -786,6 +786,16 @@ export function useInstallSkin() {
     });
 }
 
+export function useImportSkin() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (file: File) => api.skins.import(file),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: queryKeys.skins });
+        },
+    });
+}
+
 export function useRemoveSkin() {
     const queryClient = useQueryClient();
     return useMutation({
