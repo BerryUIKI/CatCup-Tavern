@@ -60,6 +60,7 @@ import type {
     SettingsResponse,
     SharedItemActionResult,
     SharedItemKind,
+    SkinManifest,
     SummarizeResponse,
     SummaryRecord,
     TelegramScanView,
@@ -287,6 +288,15 @@ export const api = {
             );
             return data.context;
         },
+    },
+    skins: {
+        list: () => request<{ skins: SkinManifest[] }>('/skins'),
+        install: (manifest: SkinManifest) =>
+            request<{ skin: SkinManifest }>(`/skins/${encodeURIComponent(manifest.id)}`, {
+                method: 'PUT',
+                body: JSON.stringify({ manifest }),
+            }),
+        remove: (id: string) => request<{ removed: boolean }>(`/skins/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     },
     regex: {
         list: () => request<{ scripts: RegexScriptView[] }>('/regex'),

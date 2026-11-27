@@ -36,6 +36,7 @@ import { ImportFromInstall } from './ImportFromInstall';
 import { Modal } from './Modal';
 import { SettingsDialog } from './SettingsDialog';
 import { Sidebar } from './Sidebar';
+import { SkinApplier } from './SkinApplier';
 import { TitleBar } from './TitleBar';
 import { ToastViewport } from './Toast';
 
@@ -717,6 +718,7 @@ export function MainApp() {
                 </div>
             ) : null}
 
+            <SkinApplier />
             <ConfirmHost />
             <ToastViewport />
         </div>

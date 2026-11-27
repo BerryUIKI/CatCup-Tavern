@@ -2,7 +2,7 @@ import { checkSkin, SKIN_CONTRAST_PAIRS, type SkinManifest, skinManifestSchema }
 import { AlertTriangle, Check, Paintbrush, RotateCcw, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useSettings, useUpdateSettings } from '../hooks/data';
+import { useInstallSkin, useRemoveSkin, useSettings, useSkins, useUpdateSettings } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
@@ -79,6 +79,9 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
     const settings = useSettings().data;
     const updateSettings = useUpdateSettings();
     const pushToast = useAppStore((state) => state.pushToast);
+    const skinsQuery = useSkins();
+    const installSkin = useInstallSkin();
+    const removeSkin = useRemoveSkin();
     const installed = useSkinStore((state) => state.installed);
     const setInstalled = useSkinStore((state) => state.setInstalled);
     const active = useSkinStore((state) => state.active);
@@ -89,13 +92,20 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
 
     const activeId = settings?.ui.skinId ?? '';
 
-    // The applied skin is whatever the settings name, resolved against what is
-    // installed. A name that no longer resolves is the built-in theme plus one
-    // line saying so — never a broken interface.
+    // The server is the source of truth: a skin is installed once and survives
+    // a reload, a restart and a profile switch. The store is a mirror the
+    // applier reads, not a second copy that could drift.
     useEffect(() => {
-        const chosen = installed.find((skin) => skin.id === activeId) ?? null;
-        setActive(chosen);
-        applySkin(chosen);
+        if (skinsQuery.data) {
+            setInstalled(skinsQuery.data.skins.map(toInstalledSkin));
+        }
+    }, [skinsQuery.data, setInstalled]);
+
+    // The mirror the list draws from. Applying the skin is `SkinApplier`'s job,
+    // at the app root: an effect here would only run while Settings is open,
+    // which is exactly the bug the root component exists to avoid.
+    useEffect(() => {
+        setActive(installed.find((skin) => skin.id === activeId) ?? null);
     }, [activeId, installed, setActive]);
 
     const missingReference = activeId !== '' && active === null;
@@ -114,18 +124,31 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
         if (!pending) {
             return;
         }
-        const next = [...installed.filter((skin) => skin.id !== pending.installed.id), pending.installed];
-        setInstalled(next);
-        setPending(null);
-        await choose(pending.installed);
+        try {
+            await installSkin.mutateAsync(pending.manifest);
+            setPending(null);
+            await choose(toInstalledSkin(pending.manifest));
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not install the skin.', 'error');
+        }
     };
 
+    /**
+     * Removing the active skin clears the selection first, then the file.
+     *
+     * The other order would leave `ui.skinId` naming a skin that no longer
+     * exists for as long as the two requests are apart — which is exactly the
+     * state the panel draws a warning about.
+     */
     const remove = async (skin: InstalledSkin) => {
-        setInstalled(installed.filter((item) => item.id !== skin.id));
-        if (active?.id === skin.id) {
-            await choose(null);
-        } else {
+        try {
+            if (active?.id === skin.id) {
+                await choose(null);
+            }
+            await removeSkin.mutateAsync(skin.id);
             pushToast(`${skin.name} was removed.`, 'success');
+        } catch (error) {
+            pushToast(error instanceof Error ? error.message : 'Could not remove the skin.', 'error');
         }
     };
 
@@ -268,7 +291,7 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
                         onClick={() => fileRef.current?.click()}
                         disabled={reading}
                     >
-                        {reading ? <Spinner size={15} /> : <Upload size={15} />}
+                        {reading || installSkin.isPending ? <Spinner size={15} /> : <Upload size={15} />}
                         Install a skin…
                     </button>
                     <input
