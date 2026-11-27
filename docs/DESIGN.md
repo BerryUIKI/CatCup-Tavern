@@ -111,8 +111,11 @@ carries no focus and is `aria-hidden`.
 - Every section has a fixed header (icon, title, one-sentence description) and a scrolling body.
 - The Providers panel is master–detail: the provider list appears at 1024 px and wider; below that a
   provider `Select` sits above the form, each row naming the provider's service and default model.
-- Panels that save with a button keep a sticky footer. Panels that apply immediately (toggles) say so
-  through their layout, not a fake save bar.
+- Panels that save with a button keep their action row with the form — the section body scrolls and
+  the dirty state is beside the button, so the two are never on different screens. The Providers
+  panel is the one exception: it is a master–detail layout whose footer is pinned, because its form
+  is taller than the panel. Panels that apply immediately (toggles) say so through their layout, not
+  a fake save bar.
 
 ![Settings → Providers at desktop width](images/settings-providers.jpg)
 
@@ -269,8 +272,21 @@ components instead.
 - The section header does not scroll; the body does. Only the Providers panel pins its footer —
   other panels scroll their action row with the form.
 - The Providers footer carries the save action, the test action and the dirty state.
-- A three-way leave guard protects unsaved provider and Generation edits: **Save and continue**,
-  **Discard changes**, **Keep editing** (focused by default).
+- **Every panel that saves with a button registers a `SettingsDraftHandle`** —
+  `isDirty` / `save` / `discard` — with the dialog that hosts it (`lib/settingsDraft.ts`). The guard
+  reads the registered set, not a list of section names: it once knew Providers and Generation and
+  silently dropped the rest.
+- A three-way leave guard covers any unsaved edit: **Save and continue**, **Discard changes**,
+  **Keep editing** (focused by default). It fires on a section switch and on closing the dialog.
+- A panel shows its own dirty state next to its Save button, in the same words everywhere —
+  "Unsaved changes." / "Saved." — and disables Save while clean. A form that never says whether it
+  is dirty is a form whose edits get lost.
+- **A form field is a draft, not state.** If a field can be edited and saved, it is a draft with a
+  baseline; `useSettingsDraft` gives it one. The one exception is a panel that applies each change
+  immediately, which must say so by its layout rather than by a Save button it does not have.
+- An editor that opens over a list (an entry, a script, a persona, a prompt order) is a dirty draft
+  while it is open, and its `discard` returns it to what it opened with. A new row that has not been
+  typed into is the one case that does not count.
 
 ### Review sheets
 
@@ -389,7 +405,10 @@ back first.
    description.
 2. Give the panel a fixed header and its own scrolling body; use the existing panel components as the
    pattern.
-3. If the panel edits saved configuration, add a dirty state and a leave guard.
+3. If the panel edits saved configuration, hold the form in `useSettingsDraft` and register a
+   `SettingsDraftHandle` with `registerDraft`, which the dialog passes to every panel. The leave
+   guard follows from that; a panel that forgets to register is a panel whose edits a section switch
+   will still destroy.
 4. Check the section at 1280, 900 and 390 px, with the keyboard, and in the settings select on
    narrow screens.
 5. Update this page if the section introduces a new pattern.

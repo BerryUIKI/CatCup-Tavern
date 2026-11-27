@@ -21,7 +21,7 @@ import {
     Volume2,
     Zap,
 } from 'lucide-react';
-import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useId, useRef, useState } from 'react';
+import { type KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 
 import {
     useDeletePreset,
@@ -37,6 +37,7 @@ import {
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
+import type { SettingsDraftHandle } from '../lib/settingsDraft';
 import { type SettingsSectionId, useAppStore } from '../store/app';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -207,6 +208,23 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     const presetFileRef = useRef<HTMLInputElement>(null);
     const worldFileRef = useRef<HTMLInputElement>(null);
 
+    /**
+     * Every panel draft on screen, not just one known by name.
+     *
+     * A section holds one panel at a time, but a panel can hold a nested draft
+     * (the library and the entry editor, the preset list and its order editor),
+     * so this is a set rather than a slot. It is a ref because it is read at the
+     * moment of navigating and never drawn: the panel's own Save button shows
+     * its dirty state, and the guard only has to answer yes or no.
+     */
+    const drafts = useRef(new Set<SettingsDraftHandle>());
+    const registerPanelDraft = useCallback((handle: SettingsDraftHandle) => {
+        drafts.current.add(handle);
+        return () => {
+            drafts.current.delete(handle);
+        };
+    }, []);
+
     const activeSection = SECTIONS.find((item) => item.id === section) ?? SECTIONS[0];
     const ActiveSectionIcon = activeSection?.icon ?? Server;
     const generationDirty =
@@ -237,7 +255,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     }, [open, settings, requestedSection]);
 
     const providerIsDirty = () => section === 'providers' && (providerRef.current?.isDirty() ?? false);
-    const hasUnsavedChanges = () => providerIsDirty() || generationDirty;
+    const hasUnsavedChanges = () => providerIsDirty() || generationDirty || dirtyPanelDrafts().length > 0;
 
     const requestSection = (next: SettingsSectionId) => {
         if (next === section) {
@@ -259,6 +277,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         onClose();
     };
 
+    /** Registered drafts that currently hold edits the person has not saved. */
+    const dirtyPanelDrafts = () => Array.from(drafts.current).filter((handle) => handle.isDirty());
+
     const finishLeave = (discard: boolean) => {
         const pending = pendingLeave;
         setPendingLeave(null);
@@ -271,6 +292,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             }
             if (section === 'generation' && settings) {
                 setGenerationForm({ ...settings.generation });
+            }
+            for (const handle of dirtyPanelDrafts()) {
+                handle.discard();
             }
         }
         if (pending.type === 'close') {
@@ -295,9 +319,30 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         }
     };
 
+    /**
+     * Save everything the guard is holding before moving on.
+     *
+     * A section holds a single panel, so in practice at most one of these has
+     * edits; the loop is there because a panel may hold a nested draft and
+     * because a future panel could register more than once. One failure keeps
+     * the dialog open on that panel, so its inline error stays readable.
+     */
     const saveAndLeave = async () => {
         setLeaveBusy(true);
-        const saved = section === 'generation' ? await saveGeneration() : (providerRef.current?.save() ?? true);
+        let saved = true;
+        if (section === 'generation') {
+            saved = await saveGeneration();
+        } else if (section === 'providers') {
+            saved = (await providerRef.current?.save()) ?? true;
+        }
+        if (saved) {
+            for (const handle of dirtyPanelDrafts()) {
+                saved = await handle.save();
+                if (!saved) {
+                    break;
+                }
+            }
+        }
         setLeaveBusy(false);
         if (saved) {
             finishLeave(false);
@@ -622,7 +667,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
             {settings?.activePresetId ? (
                 <div className="border-t border-line-soft pt-4">
-                    <PromptOrderEditor key={settings.activePresetId} presetId={settings.activePresetId} />
+                    <PromptOrderEditor
+                        key={settings.activePresetId}
+                        presetId={settings.activePresetId}
+                        registerDraft={registerPanelDraft}
+                    />
                 </div>
             ) : null}
         </div>
@@ -786,23 +835,27 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             ) : section === 'prompts' ? (
                 renderPromptsPanel()
             ) : section === 'worldinfo' && editingBookId ? (
-                <WorldInfoEditor bookId={editingBookId} onClose={() => setEditingBookId(null)} />
+                <WorldInfoEditor
+                    bookId={editingBookId}
+                    onClose={() => setEditingBookId(null)}
+                    registerDraft={registerPanelDraft}
+                />
             ) : section === 'worldinfo' ? (
                 renderWorldInfoPanel()
             ) : section === 'persona' ? (
-                <PersonaSettings />
+                <PersonaSettings registerDraft={registerPanelDraft} />
             ) : section === 'memory' ? (
-                <MemorySettings />
+                <MemorySettings registerDraft={registerPanelDraft} />
             ) : section === 'im' ? (
-                <ImSettings />
+                <ImSettings registerDraft={registerPanelDraft} />
             ) : section === 'quickreplies' ? (
-                <QuickReplySettings />
+                <QuickReplySettings registerDraft={registerPanelDraft} />
             ) : section === 'regex' ? (
-                <RegexSettings />
+                <RegexSettings registerDraft={registerPanelDraft} />
             ) : section === 'tts' ? (
-                <TtsSettings />
+                <TtsSettings registerDraft={registerPanelDraft} />
             ) : section === 'images' ? (
-                <ImageSettings />
+                <ImageSettings registerDraft={registerPanelDraft} />
             ) : (
                 <AboutTab />
             );

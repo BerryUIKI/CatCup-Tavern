@@ -21,6 +21,7 @@ import {
     useWorldAliases,
 } from '../hooks/data';
 import { cn } from '../lib/cn';
+import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { AliasChips } from './AliasChips';
 import { AliasGenerateDialog } from './AliasGenerateDialog';
@@ -202,7 +203,15 @@ const SECTIONS: { id: Section; label: string }[] = [
  * unpredictable on a slow host. The list marks unsaved work, and switching away
  * from a dirty entry asks first.
  */
-export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: () => void }) {
+export function WorldInfoEditor({
+    bookId,
+    onClose,
+    registerDraft,
+}: {
+    bookId: string;
+    onClose: () => void;
+    registerDraft?: RegisterSettingsDraft;
+}) {
     const worldQuery = useWorld(bookId);
     const createEntry = useCreateWorldEntry(bookId);
     const duplicateEntry = useDuplicateWorldEntry(bookId);
@@ -276,18 +285,36 @@ export function WorldInfoEditor({ bookId, onClose }: { bookId: string; onClose: 
         setSelectedUid(uid);
     };
 
-    const save = async () => {
+    const save = async (): Promise<boolean> => {
         if (!selected || !draft) {
-            return;
+            return true;
         }
         try {
             await updateEntry.mutateAsync({ uid: selected.uid, patch: toPatch(draft) });
             dirtyRef.current = false;
             pushToast('Entry saved.', 'success');
+            return true;
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the entry.', 'error');
+            return false;
         }
     };
+
+    /**
+     * An edited entry is an unsaved edit.
+     *
+     * The panel already guards a *change of entry* with its own prompt, because
+     * that is a visible move to another row. Closing Settings is not a visible
+     * move, so it goes through the dialog's guard instead.
+     */
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => dirtyRef.current,
+        save,
+        discard: () => {
+            dirtyRef.current = false;
+            setDraft(selected ? toDraft(selected) : null);
+        },
+    });
 
     const addEntry = async () => {
         if (!confirmDiscard()) {

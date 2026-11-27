@@ -19,6 +19,7 @@ import {
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { cn } from '../lib/cn';
+import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
@@ -131,7 +132,7 @@ function scopeLabel(script: RegexScript): string {
  * The list order is behaviour, not cosmetics: scripts run top to bottom and
  * each sees the previous one's output, so reordering is offered explicitly.
  */
-export function RegexSettings() {
+export function RegexSettings({ registerDraft }: { registerDraft?: RegisterSettingsDraft }) {
     const scriptsQuery = useRegexScripts();
     const createScript = useCreateRegexScript();
     const updateScript = useUpdateRegexScript();
@@ -145,19 +146,24 @@ export function RegexSettings() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
     const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
+    /** What the open editor started from, so the guard can tell if it changed. */
+    const [baseline, setBaseline] = useState<Draft>(EMPTY_DRAFT);
     const [testInput, setTestInput] = useState('');
 
     const startCreate = () => {
         setCreating(true);
         setEditingId(null);
         setDraft(EMPTY_DRAFT);
+        setBaseline(EMPTY_DRAFT);
         setTestInput('');
     };
 
     const startEdit = (script: RegexScript) => {
+        const next = toDraft(script);
         setCreating(false);
         setEditingId(script.id);
-        setDraft(toDraft(script));
+        setDraft(next);
+        setBaseline(next);
         setTestInput('');
     };
 
@@ -166,11 +172,11 @@ export function RegexSettings() {
         setEditingId(null);
     };
 
-    const save = async () => {
+    const save = async (): Promise<boolean> => {
         const patch = toPatch(draft);
         if (patch.placement && patch.placement.length === 0) {
             pushToast('Pick at least one place this script should apply.', 'error');
-            return;
+            return false;
         }
         try {
             if (editingId) {
@@ -180,10 +186,27 @@ export function RegexSettings() {
             }
             pushToast('Regex script saved.', 'success');
             cancel();
+            return true;
         } catch (error) {
             pushToast(error instanceof Error ? error.message : 'Could not save the script.', 'error');
+            return false;
         }
     };
+
+    /**
+     * An open script editor is an unsaved edit.
+     *
+     * `creating` with an untouched draft does not count: an empty new script
+     * is the same shape as the list it came from, so nothing is lost by
+     * leaving. Editing counts once a field differs from what was opened.
+     */
+    const draftDirty = (creating || editingId !== null) && JSON.stringify(draft) !== JSON.stringify(baseline);
+
+    useSettingsDraftHandle(registerDraft, {
+        isDirty: () => draftDirty,
+        save,
+        discard: cancel,
+    });
 
     /** Move this rule between the profile's list and the shared one. */
     const share = async (script: RegexScript) => {
@@ -580,6 +603,7 @@ export function RegexSettings() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <p className="mr-auto text-footnote text-muted">{draftDirty ? 'Unsaved changes.' : 'Saved.'}</p>
                         <button
                             type="button"
                             className="btn-primary"
