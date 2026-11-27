@@ -17,9 +17,9 @@
         "@catcup/compat-st": "workspace:*",
         "@catcup/shared": "workspace:*",
         "@fastify/cookie": "^11.1.5",
-        "@fastify/multipart": "^10.1.8",
-        "@fastify/rate-limit": "^11.2.2",
-        "@fastify/static": "^10.1.10",
+        "@fastify/multipart": "^10.1.9",
+        "@fastify/rate-limit": "^11.3.0",
+        "@fastify/static": "^10.1.12",
         "dotenv": "^18.0.10",
         "fastify": "^5.12.8",
         "fflate": "^0.8.3",
@@ -40,6 +40,6 @@
         "tsup": "^9.0.0",
         "tsx": "^4.23.15",
         "typescript": "^7.0.2",
-        "vitest": "^5.1.0"
+        "vitest": "^5.1.1"
     }
 }
