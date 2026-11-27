@@ -1867,3 +1867,16 @@ The bot's own commands are not API routes — they are handled inside the Telegr
 - The API is not versioned yet. Clients should tolerate additive fields.
 - Static SPA files are public; the API is protected. Do not expose the API without the password.
 - See [SECURITY.md](SECURITY.md) for the full auth and secret model and [PROVIDERS.md](PROVIDERS.md) for adapter details.
+
+## Skins
+
+A skin is a manifest in the `catcup.skin` format; [DATA-FORMATS.md](DATA-FORMATS.md#skins) lists its fields.
+
+| Method   | Path             | Body                         | Returns                     |
+| -------- | ---------------- | ---------------------------- | --------------------------- |
+| `GET`    | `/api/skins`     | —                            | `{ skins: SkinManifest[] }` |
+| `GET`    | `/api/skins/:id` | —                            | `{ skin: SkinManifest }`    |
+| `PUT`    | `/api/skins/:id` | `{ manifest: SkinManifest }` | `{ skin }`                  |
+| `DELETE` | `/api/skins/:id` | —                            | `{ removed: boolean }`      |
+
+`PUT` validates the manifest with the same schema the client uses, so the review sheet shows exactly what the route will accept, and refuses a manifest whose `id` differs from the one in the path — otherwise a request could write one skin's values under another's name and the selection would point at the wrong file. An unknown manifest field is preserved rather than stripped: [RFC 0007](RFC/0007-skins-and-packs.md) promises that a newer format survives an older host.
