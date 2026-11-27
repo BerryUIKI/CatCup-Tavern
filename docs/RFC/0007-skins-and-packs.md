@@ -200,6 +200,8 @@ A refusal is reported as a line-numbered error in the review sheet and the insta
 
 A pack's embedded skins are always `surface`. Only a user-installed skin may be `app`.
 
+**Shipped 2026-11-28** for `catcup.skin`, as `SkinSurface` in `apps/web/src/components/`. One guard came out of implementing it: a surface skin must not be written to `ui.skinId`, because the root applier sets that on `:root` and would leak into the area the scope protects. The Appearance panel previews one instead, and its list row says `scoped to a view` rather than offering **Use**. The general case — a game view hosting a pack's skin, with the person's own choice winning where it applies — waits for M6, which is the first thing that has a view to put one in.
+
 ### Precedence
 
 ```
