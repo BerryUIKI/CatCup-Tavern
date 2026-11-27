@@ -20,6 +20,7 @@ import {
 import { api } from '../lib/api';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
@@ -90,7 +91,17 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
         setSelectedId(id);
     }, []);
 
-    const confirmDiscard = () => !dirty || window.confirm('Discard the unsaved changes to this quick reply set?');
+    const confirmDiscard = async () => {
+        if (!dirty) {
+            return true;
+        }
+        return confirm({
+            title: 'Discard the changes to this set?',
+            description: 'The buttons you edited are not saved; the set goes back to its stored version.',
+            confirmLabel: 'Discard changes',
+            tone: 'danger',
+        });
+    };
 
     // Adopt settings saved elsewhere while this form is untouched.
     useEffect(() => {
@@ -119,11 +130,11 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
 
     const available = sets.filter((set) => !links.some((link) => link.set === set.name));
 
-    const selectSet = (id: string) => {
+    const selectSet = async (id: string) => {
         if (id === selectedId) {
             return;
         }
-        if (!confirmDiscard()) {
+        if (!(await confirmDiscard())) {
             return;
         }
         const next = sets.find((set) => set.id === id) ?? null;
@@ -187,7 +198,7 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
             return;
         }
         const name = newName.trim();
-        if (!name || !confirmDiscard()) {
+        if (!name || !(await confirmDiscard())) {
             return;
         }
         creatingRef.current = true;
@@ -287,7 +298,13 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
         if (!draft) {
             return;
         }
-        if (!window.confirm(`Delete the quick reply set "${draft.name}"?`)) {
+        const confirmed = await confirm({
+            title: `Delete the quick reply set "${draft.name}"?`,
+            description: 'Its buttons are removed. A chat that linked the set simply stops showing it.',
+            confirmLabel: 'Delete set',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         // The links use the stored name; the draft may hold an unsaved rename.
@@ -307,7 +324,7 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
     };
 
     const handleImport = async (file: File) => {
-        if (importingRef.current || importSet.isPending || !confirmDiscard()) {
+        if (importingRef.current || importSet.isPending || !(await confirmDiscard())) {
             return;
         }
         importingRef.current = true;
@@ -546,7 +563,7 @@ export function QuickReplySettings({ registerDraft }: { registerDraft?: Register
                             <button
                                 key={set.id}
                                 type="button"
-                                onClick={() => selectSet(set.id)}
+                                onClick={() => void selectSet(set.id)}
                                 className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
                                     set.id === selectedId
                                         ? 'bg-amber/10 text-parchment'

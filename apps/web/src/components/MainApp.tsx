@@ -29,6 +29,7 @@ import { useAppStore } from '../store/app';
 import { BookDistillDialog } from './BookDistillDialog';
 import { CharacterEditor } from './CharacterEditor';
 import { ChatView } from './ChatView';
+import { ConfirmHost } from './ConfirmHost';
 import { GroupChatView } from './GroupChatView';
 import { GroupEditor } from './GroupEditor';
 import { ImportFromInstall } from './ImportFromInstall';
@@ -716,6 +717,7 @@ export function MainApp() {
                 </div>
             ) : null}
 
+            <ConfirmHost />
             <ToastViewport />
         </div>
     );

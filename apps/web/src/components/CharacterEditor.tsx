@@ -11,6 +11,7 @@ import {
 } from '../hooks/data';
 import { api } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
 import { PortraitDialog } from './PortraitDialog';
@@ -189,11 +190,14 @@ export function CharacterEditor({ characterId, onClose }: { characterId: string 
         if (!character) {
             return;
         }
-        if (
-            !window.confirm(
-                `Delete "${character.name}"? The card file is removed; chats stay on disk but no longer appear in the library.`,
-            )
-        ) {
+        const confirmed = await confirm({
+            title: `Delete ${character.name}?`,
+            description:
+                'The card file is removed. Its chats stay on disk but no longer appear in the library, and the file cannot be recovered from here.',
+            confirmLabel: 'Delete character',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {

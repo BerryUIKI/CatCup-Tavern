@@ -21,6 +21,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { Select } from './Select';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
@@ -228,7 +229,14 @@ export function RegexSettings({ registerDraft }: { registerDraft?: RegisterSetti
     };
 
     const remove = async (script: RegexScript) => {
-        if (!window.confirm(`Delete the regex script "${script.scriptName || 'untitled'}"?`)) {
+        const confirmed = await confirm({
+            title: `Delete the script "${script.scriptName || 'Untitled'}"?`,
+            description:
+                'It stops applying the next time a message is displayed. Messages already rewritten by it keep the stored text.',
+            confirmLabel: 'Delete script',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {

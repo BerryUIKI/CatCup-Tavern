@@ -11,6 +11,7 @@ import { Check, Loader2, UserRound } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '../lib/cn';
+import { confirm } from '../store/confirm';
 import { Modal } from './Modal';
 import { Select } from './Select';
 
@@ -112,9 +113,17 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
     };
 
     /** Ask before losing a half-written rule, the same guard the editor uses. */
-    const close = (): void => {
-        if (dirtyRef.current && !window.confirm('Discard the changes to this scene?')) {
-            return;
+    const close = async (): Promise<void> => {
+        if (dirtyRef.current) {
+            const confirmed = await confirm({
+                title: 'Discard the changes to this scene?',
+                description: 'The director settings you have edited are not saved.',
+                confirmLabel: 'Discard changes',
+                tone: 'danger',
+            });
+            if (!confirmed) {
+                return;
+            }
         }
         onClose();
     };
@@ -142,7 +151,7 @@ export function DirectorPanel({ open, onClose, load, save, ownCharacterId }: Dir
     };
 
     return (
-        <Modal open={open} onClose={close} title="Director" widthClassName="max-w-2xl">
+        <Modal open={open} onClose={() => void close()} title="Director" widthClassName="max-w-2xl">
             <div className="space-y-4 p-5">
                 <label className="flex items-start gap-2 text-sm text-parchment-dim">
                     <input

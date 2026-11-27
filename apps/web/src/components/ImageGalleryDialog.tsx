@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { type ImageChatTarget, imageScope, useAttachImage, useDeleteImage, useImageGallery } from '../hooks/useImages';
 import { galleryImageUrl } from '../lib/api';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { ImageLightbox, type LightboxImage } from './ImageLightbox';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
@@ -49,7 +50,14 @@ export function ImageGalleryDialog({ open, onClose, target }: ImageGalleryDialog
     };
 
     const handleDelete = async (image: GeneratedImage) => {
-        if (!window.confirm('Delete this image? Messages that already show it will keep a broken reference.')) {
+        const confirmed = await confirm({
+            title: 'Delete this image?',
+            description:
+                'It is removed from the gallery. A message that already shows it keeps the reference and will render a gap.',
+            confirmLabel: 'Delete image',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {

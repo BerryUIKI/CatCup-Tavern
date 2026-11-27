@@ -17,6 +17,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '../lib/cn';
+import { confirm } from '../store/confirm';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Combobox } from './Combobox';
 import { Modal } from './Modal';
@@ -315,16 +316,19 @@ export function CharacterLibrary({
         setTagDraft('');
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (selectedIds.size === 0) {
             return;
         }
         const count = selectedIds.size;
-        if (
-            !window.confirm(
-                `Delete ${count} ${count === 1 ? 'character' : 'characters'}? Their card files and CharX assets are removed; chats stay on disk but no longer appear in the library. This cannot be undone.`,
-            )
-        ) {
+        const confirmed = await confirm({
+            title: `Delete ${count} ${count === 1 ? 'character' : 'characters'}?`,
+            description:
+                'Their card files and any CharX assets are removed. Chats stay on disk but no longer appear in the library, and this cannot be undone.',
+            confirmLabel: count === 1 ? 'Delete character' : `Delete ${count} characters`,
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         onBulkDelete([...selectedIds]);
@@ -522,7 +526,7 @@ export function CharacterLibrary({
                                     BULK_BUTTON,
                                     'col-span-2 text-danger hover:border-danger/50 hover:text-danger-strong',
                                 )}
-                                onClick={confirmDelete}
+                                onClick={() => void confirmDelete()}
                                 disabled={!actionsReady}
                             >
                                 <Trash2 size={12} aria-hidden="true" />
