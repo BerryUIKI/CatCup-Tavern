@@ -199,6 +199,26 @@ CatCup imports both as a normal character:
 
 **Compatibility, while the container is being built.** The bytes a `?format=catcup` export writes are a `.charx` layout with a different extension — a `.catcup` renamed to `.charx` still opens in RisuAI and the reverse — and an archive with no `manifest.json` is imported as a card. That is the migration path RFC 0007 promises: nothing on disk has to be converted, and the manifest is written from the first export after the loader lands.
 
+## The `.catcup` container
+
+Every CatCup-owned file is a `.catcup`, and `manifest.json` at the archive root says which kind. The extension never decides; the manifest does.
+
+| `format`                                                | What it is                                  | Read by this build                          |
+| ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------- |
+| `catcup.skin`                                           | appearance: tokens, one optional stylesheet | **yes**                                     |
+| `catcup.card`                                           | one character card and its assets           | recognised, and routed to the card importer |
+| `catcup.game`                                           | a game ([RFC 0005](RFC/0005-game-mode.md))  | no — refused by name                        |
+| `catcup.world`, `catcup.preset`, `catcup.collection`, … | reserved                                    | no                                          |
+
+- **Shared header**, validated before anything else is read: `format`, `formatVersion`, `id`, `name`, `version`, `namespace`, `engine.min`, `author`, `license`, `preview`. `formatVersion` is the compatibility contract — a version this build has never published is refused rather than half-read, and the message names the formats it does read.
+- **Only `manifest.json` is read first**, capped at 10 MB, and the rest of the archive is not interpreted until the header validates. A 60 MB package with a broken manifest costs one entry rather than sixty.
+- **The archive limits are shared** with `.charx`: 200 entries, 25 MB per entry, 60 MB total, 400-character paths, no absolute paths and no `..`. An archive past a limit is refused outright rather than returned missing files it will later be accused of not having.
+- **An entry whose path tries to escape is dropped, not fatal.** A package may legitimately carry a file for another tool; a reader that needs a dropped file says it is missing, which is a message an author can act on.
+- **Unknown manifest fields are preserved**, so a newer format survives an older host.
+- **A file before this format** — a `.catcup` from an earlier release, with no `manifest.json` — is still imported as a character card by the library's import button. The skin installer recognises it and says so rather than reporting an unknown format.
+
+`POST /api/skins/import` takes either a `.catcup` or a bare `manifest.json`. It decides by the **ZIP signature, not the extension**: an archive renamed to `.json` is read as an archive, and JSON renamed to `.catcup` is read as JSON.
+
 ## Skins
 
 A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes `manifest.json` inside a `.catcup` when the container loader lands; the schema does not change.
