@@ -26,5 +26,6 @@ export * from './schemas/skin.js';
 export * from './schemas/tts.js';
 export * from './schemas/worldinfo.js';
 export * from './skins/contrast.js';
+export * from './skins/css.js';
 export * from './tts.js';
 export * from './utils.js';

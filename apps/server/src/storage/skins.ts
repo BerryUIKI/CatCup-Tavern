@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { isRecord, type SkinManifest, skinManifestSchema } from '@catcup/shared';
 
-import { readJsonFile, writeJsonFile } from './jsonFile.js';
+import { readJsonFile, readTextFile, writeJsonFile, writeTextFile } from './jsonFile.js';
 import { withFileLock } from './mutex.js';
 import { paths } from './paths.js';
 
@@ -25,10 +25,34 @@ function skinFile(id: string): string {
     // it non-empty; `assertSimpleName` is not used here because a skin id may
     // carry a space and this is a directory we create rather than one a caller
     // navigates. The traversal check is the same one every storage path uses.
-    if (!id || id === '.' || id === '..' || id.includes('\0') || /[\\/]/.test(id)) {
+    if (!isValidSkinId(id)) {
         throw new Error('Invalid skin id');
     }
     return path.join(paths.skins, `${id}.json`);
+}
+
+function isValidSkinId(id: string): boolean {
+    if (!id || id === '.' || id === '..') {
+        return false;
+    }
+    for (const character of id) {
+        const code = character.codePointAt(0) ?? 0;
+        // A control character or a path separator would let an id address
+        // something other than the one file it names.
+        if (code < 0x20 || code === 0x7f || character === '/' || character === String.fromCharCode(92)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function skinCssFile(id: string): string {
+    // Same validation as `skinFile`, for the same reason: this is a path built
+    // from a manifest, not one a caller navigates.
+    if (!isValidSkinId(id)) {
+        throw new Error('Invalid skin id');
+    }
+    return path.join(paths.skins, `${id}.css`);
 }
 
 /** Every installed skin, newest write last, skipping any file that will not parse. */
@@ -81,12 +105,27 @@ export async function getSkin(id: string): Promise<SkinManifest | null> {
  * that can speak HTTP, and a manifest is the one thing a skin's whole behaviour
  * is derived from.
  */
-export async function installSkin(manifest: unknown): Promise<SkinManifest> {
+export async function installSkin(manifest: unknown, css?: string | null): Promise<SkinManifest> {
     const parsed = skinManifestSchema.parse(manifest);
     await withFileLock(skinFile(parsed.id), async () => {
         await writeJsonFile(skinFile(parsed.id), parsed);
+        // The stylesheet lives beside the manifest rather than inside it: it is
+        // a document the browser inserts, not data the app reads, and putting a
+        // whole sheet in a JSON string would make the manifest unreadable by the
+        // person editing it.
+        const sheet = skinCssFile(parsed.id);
+        if (css) {
+            await writeTextFile(sheet, css);
+        } else {
+            await rm(sheet, { force: true });
+        }
     });
     return parsed;
+}
+
+/** The checked, scoped stylesheet of an installed skin, or `null`. */
+export async function readSkinCssFile(id: string): Promise<string | null> {
+    return readTextFile(skinCssFile(id));
 }
 
 /** Remove a skin's file. Returns whether there was one. */
@@ -95,6 +134,7 @@ export async function removeSkin(id: string): Promise<boolean> {
     return withFileLock(file, async () => {
         try {
             await rm(file);
+            await rm(skinCssFile(id), { force: true });
             return true;
         } catch (error) {
             if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

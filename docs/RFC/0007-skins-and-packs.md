@@ -181,6 +181,8 @@ A pack may ship **one** stylesheet, and the validator **refuses** rather than sa
 
 A refusal is reported as a line-numbered error in the review sheet and the install fails. A pack we cannot verify is not rewritten into one we can.
 
+**Shipped 2026-11-28** for `catcup.skin`: `checkSkinCss` and `scopedCss` in `packages/shared/src/skins/css.ts`, wired through the pack reader. One rule was added while implementing it, because a naive scope wrap produces CSS no browser reads: **a top-level `@media` is lifted out and re-wrapped around the scope** rather than nested inside a selector. A skin that names a `css` file the archive does not contain is also refused — otherwise it installs and silently looks like the built-in theme.
+
 **What CSS can and cannot do here.**
 
 - It cannot run code. No browser runs JavaScript from CSS, and `expression()` is long dead.

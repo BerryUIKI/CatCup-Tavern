@@ -54,7 +54,7 @@ async function readSkinFile(file: File): Promise<PendingSkin> {
             file,
             // Filled in by the caller once the server has read the archive.
             manifest: {} as SkinManifest,
-            installed: { id: '', name: file.name, scope: 'app', colorScheme: 'dark', properties: {} },
+            installed: { id: '', name: file.name, scope: 'app', colorScheme: 'dark', hasCss: false, properties: {} },
             warnings: [],
             unreadable: [],
         };
