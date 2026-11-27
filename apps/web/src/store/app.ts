@@ -18,6 +18,7 @@ export type SettingsSectionId =
     | 'profiles'
     | 'tts'
     | 'images'
+    | 'appearance'
     | 'about';
 
 export interface ToastItem {

@@ -122,7 +122,7 @@ describe('skinCustomProperties', () => {
 });
 
 describe('skinManifestSchema', () => {
-    const base = { format: 'catcup.skin', formatVersion: 1 };
+    const base = { format: 'catcup.skin', formatVersion: 1, id: 'grimoire', name: 'Grimoire' };
 
     it('defaults scope to app and colorScheme to dark', () => {
         const parsed = skinManifestSchema.parse(base);
@@ -149,7 +149,9 @@ describe('skinManifestSchema', () => {
     });
 
     it('refuses a format this schema does not own', () => {
-        expect(skinManifestSchema.safeParse({ format: 'catcup.game', formatVersion: 1 }).success).toBe(false);
+        expect(
+            skinManifestSchema.safeParse({ format: 'catcup.game', formatVersion: 1, id: 'x', name: 'X' }).success,
+        ).toBe(false);
     });
 
     it('keeps an unknown top-level field, which is how a newer format stays readable', () => {

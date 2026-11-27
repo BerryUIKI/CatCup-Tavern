@@ -164,6 +164,20 @@ export type SkinScope = z.infer<typeof skinScopeSchema>;
 export const skinManifestSchema = z.looseObject({
     format: z.literal('catcup.skin'),
     formatVersion: z.literal(1),
+    // The shared header, repeated here so a manifest can be validated on its
+    // own. The container validates the same fields before this schema runs;
+    // declaring them twice is what lets the Appearance panel read one file
+    // without a pack, and both go through this schema so they cannot diverge.
+    id: z.string().min(1).max(120),
+    name: z.string().min(1).max(200),
+    version: z.string().max(60).default('1.0.0'),
+    namespace: z.string().max(40).optional(),
+    engine: z
+        .object({ min: z.string().max(40).optional() })
+        .loose()
+        .optional(),
+    author: z.string().max(200).optional(),
+    license: z.string().max(500).optional(),
     /** `dark` or `light`; a light skin is what lets the app follow the OS later. */
     colorScheme: z.enum(['dark', 'light']).default('dark'),
     /** `app` restyles the window; `surface` only the element the app wraps content in. */

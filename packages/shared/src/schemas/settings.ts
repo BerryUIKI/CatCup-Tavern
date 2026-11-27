@@ -94,13 +94,25 @@ export const LEGACY_PERSONA_ID = 'default';
 export const uiSettingsSchema = z.object({
     /** Reserved for future i18n; the UI is English-only for now. */
     language: z.string().default('en'),
+    /** The built-in theme's name — always `tavern-dark`; kept for round-tripping. */
     theme: z.string().default('tavern-dark'),
+    /**
+     * The id of the skin applied to the window, or empty for the built-in theme.
+     *
+     * An id rather than the skin itself: a skin is a file a person installs, and
+     * copying its values into `settings.json` would mean an edit to the file no
+     * longer reached the theme. An id that no longer resolves falls back to the
+     * built-in palette and says so, which is the same rule every other broken
+     * reference in this app follows.
+     */
+    skinId: z.string().default(''),
 });
 export type UiSettings = z.infer<typeof uiSettingsSchema>;
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
     language: 'en',
     theme: 'tavern-dark',
+    skinId: '',
 };
 
 /**

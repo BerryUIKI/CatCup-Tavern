@@ -29,6 +29,7 @@ describe('shared schemas', () => {
         expect(settings.imageGeneration.scheduler).toBe('normal');
         expect(settings.imageGeneration.comfyWorkflow).toContain('"%prompt%"');
         expect(DEFAULT_UI_SETTINGS.theme).toBe('tavern-dark');
+        expect(DEFAULT_UI_SETTINGS.skinId).toBe('');
     });
 
     it('fills character card defaults', () => {
