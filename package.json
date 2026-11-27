@@ -15,8 +15,9 @@
         "start": "node apps/server/dist/index.js",
         "typecheck": "pnpm -r --if-present typecheck",
         "test": "pnpm -r --if-present test",
-        "lint": "biome check .",
+        "lint": "biome check . && node scripts/check-nul.mjs",
         "lint:fix": "biome check --write .",
+        "lint:nul": "node scripts/check-nul.mjs",
         "format": "biome format --write .",
         "icons": "node scripts/export-icons.mjs",
         "site": "node scripts/build-site.mjs"
