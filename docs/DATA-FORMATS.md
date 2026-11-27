@@ -245,7 +245,14 @@ A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes
 - **A token value cannot contain `{`, `}`, `;`, `url()` or markup.** The value is emitted as `--name: <value>`, so a value carrying a brace would end the declaration it is written into.
 - **`scope`** is `app` (the whole window) or `surface` (only content the app wraps). A pack's embedded skins are always `surface`, so a game cannot restyle Settings.
 - **`colorScheme`** is `dark` or `light`. Nothing reads it yet; it is what lets the app follow the OS later.
-- **`css`** and **`assets`** are not read yet. RFC 0007 defines them and the validator that refuses rather than sanitises.
+- **`css`** names one stylesheet, checked when the package is read and **refused** if it cannot be verified:
+  - no `@import`, `@namespace` or `@font-face` — the last is a way around the `url()` rule, so a font goes in `tokens.font` as a path;
+  - every `url()` must be a `data:` URL or a path relative to the skin's own media, which the loader rewrites to `/api/skins/<id>/media/…`; anything absolute — `https:`, `//host`, `/path`, `file:` — is refused, because those are the forms that leave the machine;
+  - 64 KB maximum, and balanced braces, reported with a line number.
+
+  The loader **wraps the sheet in `[data-skin]` itself** rather than trusting the file to be scoped, so a selector naming `html` or `:root` cannot reach outside. A top-level `@media` is lifted out and re-wrapped, not nested inside a selector. The stored sheet is served at `GET /api/skins/:id/css` and loaded as a `<link>`.
+- **`assets`** is not read yet.
+
 - **Installed at `data/profiles/<profile>/skins/<id>.json`**, one file per skin, stored as the manifest that arrived rather than flattened into settings. Editing a skin's file therefore reaches the theme on the next load, and removing one is removing one file. A file that no longer validates is skipped when the list is read; its bytes stay, so the author can see what they wrote.
 - Stored as `ui.skinId` in the profile's `settings.json` — the **id**, not the values, so an edited skin file still reaches the theme. An id that no longer resolves clears the skin and shows the built-in palette; **Settings → Appearance** says so.
 - Routes: `GET /api/skins`, `GET /api/skins/:id`, `PUT /api/skins/:id` (body `{ "manifest": … }`, and the manifest's `id` must equal the one in the path), `DELETE /api/skins/:id` → `{ removed: boolean }`.

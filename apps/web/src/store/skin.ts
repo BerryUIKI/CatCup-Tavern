@@ -20,6 +20,8 @@ export interface InstalledSkin {
     /** `app` restyles the window; `surface` waits for a host to scope it. */
     scope: SkinManifest['scope'];
     colorScheme: SkinManifest['colorScheme'];
+    /** Whether the package carried a stylesheet, so the applier knows to link it. */
+    hasCss: boolean;
     /** Flattened `--name` → value, ready to write. */
     properties: Record<string, string>;
 }
@@ -40,8 +42,12 @@ export const useSkinStore = create<SkinState>((set) => ({
     setInstalled: (skins) => set({ installed: skins }),
 }));
 
-/** The element a skin's properties are written onto. */
+/** The `<style>` a skin's token properties are written into. */
 const ROOT_ID = 'catcup-skin';
+/** The `<link>` a skin's checked stylesheet is loaded through. */
+const CSS_ID = 'catcup-skin-css';
+/** The attribute the server's scoped stylesheet selects on. */
+export const SKIN_SCOPE_ATTRIBUTE = 'data-skin';
 
 /**
  * Write a skin's properties, or clear them for the built-in theme.
@@ -56,25 +62,54 @@ const ROOT_ID = 'catcup-skin';
  * source order, so this needs no `!important` and no cooperation from Tailwind.
  */
 export function applySkin(skin: InstalledSkin | null): void {
-    const existing = document.getElementById(ROOT_ID);
-    if (!skin || Object.keys(skin.properties).length === 0) {
-        existing?.remove();
+    const tokens = document.getElementById(ROOT_ID);
+    const sheet = document.getElementById(CSS_ID);
+
+    if (!skin) {
+        tokens?.remove();
+        // A `<link>` is enough to undo: the browser drops the rules with it.
+        sheet?.remove();
+        document.documentElement.removeAttribute(SKIN_SCOPE_ATTRIBUTE);
         return;
     }
 
-    const declarations = Object.entries(skin.properties)
-        .map(([property, value]) => `${property}: ${value};`)
-        .join('\n    ');
+    // The attribute the server-written stylesheet is scoped to. It sits on the
+    // root because an `app`-scope skin covers the window; a `surface` skin is
+    // applied by whatever host scoped it, not by this function.
+    document.documentElement.setAttribute(SKIN_SCOPE_ATTRIBUTE, skin.id);
 
-    const style = existing ?? document.createElement('style');
-    style.id = ROOT_ID;
-    // A skin's values are validated by `skinManifestSchema` before they reach
-    // here — no braces, no semicolons, no `url()` — so this cannot close the
-    // rule it is written into. The check is restated in the type, not trusted.
-    style.textContent = `:root {\n    ${declarations}\n}`;
+    if (Object.keys(skin.properties).length === 0) {
+        tokens?.remove();
+    } else {
+        const declarations = Object.entries(skin.properties)
+            .map(([property, value]) => `${property}: ${value};`)
+            .join('\n    ');
 
-    if (!existing) {
-        document.head.appendChild(style);
+        const style = tokens ?? document.createElement('style');
+        style.id = ROOT_ID;
+        // A skin's values are validated by `skinManifestSchema` before they
+        // reach here — no braces, no semicolons, no `url()` — so this cannot
+        // close the rule it is written into. The check is restated in the type,
+        // not trusted.
+        style.textContent = `:root {\n    ${declarations}\n}`;
+        if (!tokens) {
+            document.head.appendChild(style);
+        }
+    }
+
+    // The stylesheet is a `<link>`, not inlined text: the server already checked
+    // and scoped it, and injecting the same rules through `textContent` would be
+    // a second place deciding what CSS the document gets.
+    if (skin.hasCss) {
+        const link = sheet instanceof HTMLLinkElement ? sheet : document.createElement('link');
+        link.id = CSS_ID;
+        link.rel = 'stylesheet';
+        link.href = `/api/skins/${encodeURIComponent(skin.id)}/css`;
+        if (!sheet) {
+            document.head.appendChild(link);
+        }
+    } else {
+        sheet?.remove();
     }
 }
 
@@ -86,6 +121,7 @@ export function toInstalledSkin(manifest: SkinManifest): InstalledSkin {
         ...(manifest.description ? { description: manifest.description } : {}),
         scope: manifest.scope,
         colorScheme: manifest.colorScheme,
+        hasCss: Boolean(manifest.css),
         properties: skinCustomProperties(manifest),
     };
 }

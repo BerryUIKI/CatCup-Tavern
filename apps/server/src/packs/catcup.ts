@@ -1,4 +1,4 @@
-import { isRecord, type SkinManifest, skinManifestSchema } from '@catcup/shared';
+import { checkSkinCss, isRecord, rewriteSkinUrls, type SkinManifest, skinManifestSchema } from '@catcup/shared';
 
 import { type ArchiveEntry, entryText, findEntry, readArchive } from './archive.js';
 
@@ -47,6 +47,8 @@ export interface ParsedSkinPack {
     kind: 'skin';
     header: PackHeader;
     manifest: SkinManifest;
+    /** The checked stylesheet, already scoped — or `null` when the skin ships none. */
+    css: string | null;
     /** Every entry this reader validated, so a later feature can read CSS or fonts. */
     entries: ArchiveEntry[];
 }
@@ -139,7 +141,12 @@ export function parsePack(buffer: Buffer | Uint8Array): ParsedPack {
             const where = issue?.path.join('.') || 'manifest';
             throw new Error(`manifest.json ${where}: ${issue?.message ?? 'is not valid'}`);
         }
-        return { kind: 'skin', header, manifest: parsed.data, entries };
+        // A stylesheet is checked here rather than at install: the manifest
+        // says a `css` file is part of the skin, so a sheet that is refused is
+        // a package that will not install, and the person hears about it while
+        // the file they picked is still in front of them.
+        const css = readSkinCss(parsed.data, entries);
+        return { kind: 'skin', header, manifest: parsed.data, css, entries };
     }
 
     // `catcup.card` is the legacy layout: a `card.json` this build already
@@ -148,6 +155,35 @@ export function parsePack(buffer: Buffer | Uint8Array): ParsedPack {
     throw new Error(
         'This is a character card package. Open it from the library’s Import button instead of the skin installer.',
     );
+}
+
+/**
+ * Read and check a skin's stylesheet.
+ *
+ * Returns what goes into the document — scoped and with its relative `url()`s
+ * pointed at this skin's own media route — or `null` when the skin ships none.
+ * A refusal is thrown with the file, line and reason, so the message an author
+ * gets names the thing they have to change.
+ */
+function readSkinCss(manifest: SkinManifest, entries: ArchiveEntry[]): string | null {
+    if (!manifest.css) {
+        return null;
+    }
+    const entry = findEntry(entries, manifest.css);
+    if (!entry) {
+        throw new Error(`The skin names "${manifest.css}" as its stylesheet, but the package does not contain it.`);
+    }
+
+    const result = checkSkinCss(entryText(entry));
+    if (result.problems.length > 0) {
+        const first = result.problems[0];
+        const more = result.problems.length > 1 ? ` (and ${result.problems.length - 1} more)` : '';
+        throw new Error(`${manifest.css}, line ${first?.line ?? 1}: ${first?.message ?? 'is not valid CSS'}${more}`);
+    }
+    if (!result.scoped) {
+        return null;
+    }
+    return rewriteSkinUrls(result.scoped, manifest.id);
 }
 
 /** Whether a buffer starts like a ZIP, so a wrong file is refused before parsing. */

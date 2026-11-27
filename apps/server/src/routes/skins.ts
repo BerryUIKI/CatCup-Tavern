@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { badRequest, notFound } from '../http/errors.js';
 import { looksLikeArchive, parsePack } from '../packs/catcup.js';
-import { getSkin, installSkin, listSkins, removeSkin } from '../storage/skins.js';
+import { getSkin, installSkin, listSkins, readSkinCssFile, removeSkin } from '../storage/skins.js';
 
 const idParams = z.object({ id: z.string().min(1).max(160) });
 
@@ -17,6 +17,22 @@ const idParams = z.object({ id: z.string().min(1).max(160) });
  */
 export async function registerSkinRoutes(app: FastifyInstance): Promise<void> {
     app.get('/api/skins', async () => ({ skins: await listSkins() }));
+
+    /**
+     * The skin's checked stylesheet.
+     *
+     * Served rather than embedded in the manifest so the sheet is a document the
+     * person can read and a browser can cache, and so the manifest stays
+     * editable by hand. 404 when the skin ships none.
+     */
+    app.get('/api/skins/:id/css', async (request, reply) => {
+        const { id } = idParams.parse(request.params);
+        const css = await readSkinCssFile(id);
+        if (css === null) {
+            throw notFound();
+        }
+        return reply.type('text/css; charset=utf-8').send(css);
+    });
 
     app.get('/api/skins/:id', async (request) => {
         const { id } = idParams.parse(request.params);
@@ -91,7 +107,7 @@ export async function registerSkinRoutes(app: FastifyInstance): Promise<void> {
                     if (pack.kind !== 'skin') {
                         throw badRequest('That package is not a skin');
                     }
-                    return { skin: await installSkin(pack.manifest), fileName };
+                    return { skin: await installSkin(pack.manifest, pack.css), fileName };
                 }
 
                 let raw: unknown;
