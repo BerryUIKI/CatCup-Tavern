@@ -243,7 +243,8 @@ A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes
 
 - **`tokens` is a whitelist.** Every name it may carry is in `packages/shared/src/schemas/skin.ts`, grouped as `color`, `radius`, `font`, `text`, `shadow` and `other`, plus a top-level `spacing`. A name outside the list is refused at install, naming it.
 - **A token value cannot contain `{`, `}`, `;`, `url()` or markup.** The value is emitted as `--name: <value>`, so a value carrying a brace would end the declaration it is written into.
-- **`scope`** is `app` (the whole window) or `surface` (only content the app wraps). A pack's embedded skins are always `surface`, so a game cannot restyle Settings.
+- **`scope`** is `app` (the whole window) or `surface` (only content the app wraps around it). A pack's embedded skins are always `surface`, so a game cannot restyle Settings.
+  - A `surface` skin **cannot be the window skin**: choosing one does not write it to `ui.skinId`, because that value is set on `:root` and would leak into exactly the surface the scope exists to protect. **Settings → Appearance** shows it in a preview box instead (`SkinSurface`), and a view that wants it wraps its own content in the same component.
 - **`colorScheme`** is `dark` or `light`. Nothing reads it yet; it is what lets the app follow the OS later.
 - **`css`** names one stylesheet, checked when the package is read and **refused** if it cannot be verified:
   - no `@import`, `@namespace` or `@font-face` — the last is a way around the `url()` rule, so a font goes in `tokens.font` as a path;
