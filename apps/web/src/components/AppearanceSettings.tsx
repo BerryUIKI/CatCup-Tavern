@@ -1,12 +1,12 @@
 import { checkSkin, SKIN_CONTRAST_PAIRS, type SkinManifest, skinManifestSchema } from '@catcup/shared';
 import { AlertTriangle, Check, Paintbrush, RotateCcw, Upload } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-
 import { useImportSkin, useInstallSkin, useRemoveSkin, useSettings, useSkins, useUpdateSettings } from '../hooks/data';
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
 import { applySkin, type InstalledSkin, toInstalledSkin, useSkinStore } from '../store/skin';
+import { SkinSurface } from './SkinSurface';
 import { Spinner } from './Spinner';
 
 /**
@@ -107,6 +107,8 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
     const setActive = useSkinStore((state) => state.setActive);
     const fileRef = useRef<HTMLInputElement>(null);
     const [pending, setPending] = useState<PendingSkin | null>(null);
+    /** A surface skin shown in the preview box, not applied to the window. */
+    const [preview, setPreview] = useState<InstalledSkin | null>(null);
     const [reading, setReading] = useState(false);
 
     const activeId = settings?.ui.skinId ?? '';
@@ -140,7 +142,16 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
     const sorted = useMemo(() => [...installed].sort((a, b) => a.name.localeCompare(b.name)), [installed]);
 
     const choose = async (skin: InstalledSkin | null) => {
+        if (skin && skin.scope === 'surface') {
+            // A surface skin cannot be the window's skin: it would be written
+            // to `ui.skinId`, read by `SkinApplier`, and set on `:root` — which
+            // is exactly the leak `surface` exists to prevent. It is previewed
+            // here instead, and a host that wants it scopes its own view.
+            setPreview(skin);
+            return;
+        }
         try {
+            setPreview(null);
             await updateSettings.mutateAsync({ ui: { skinId: skin?.id ?? '' } });
             pushToast(skin ? `${skin.name} is now the active skin.` : 'Back to the built-in theme.', 'success');
         } catch (error) {
@@ -288,6 +299,7 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
                                     <p className="truncate text-sm text-parchment">{skin.name}</p>
                                     <p className="truncate text-footnote text-muted">
                                         {skin.description ?? `${skin.colorScheme} theme`}
+                                        {skin.scope === 'surface' ? ' · scoped to a view' : ''}
                                     </p>
                                 </div>
                                 {isActive ? (
@@ -302,7 +314,7 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
                                         onClick={() => void choose(skin)}
                                         disabled={updateSettings.isPending}
                                     >
-                                        Use
+                                        {skin.scope === 'surface' ? 'Preview' : 'Use'}
                                     </button>
                                 )}
                                 <button
@@ -358,6 +370,37 @@ export function AppearanceSettings({ registerDraft }: { registerDraft?: Register
                     ) : null}
                 </div>
             </section>
+
+            {preview ? (
+                <section aria-labelledby="skin-preview-heading">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                        <h3 id="skin-preview-heading" className="text-sm font-medium text-parchment">
+                            Preview — {preview.name}
+                        </h3>
+                        <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setPreview(null)}>
+                            Close preview
+                        </button>
+                    </div>
+                    <p className="mb-2 text-footnote leading-relaxed text-muted">
+                        This skin is scoped to a surface rather than the window, so it is shown here and applied by
+                        whatever view asks for it. Nothing outside this box changes.
+                    </p>
+                    <SkinSurface skin={preview} className="rounded-xl border border-line bg-surface p-4">
+                        <p className="font-display text-lg text-parchment">{preview.name}</p>
+                        <p className="mt-1 text-sm text-parchment-dim">
+                            Body text sits on the skin&rsquo;s own surface, inside its own type scale.
+                        </p>
+                        <div className="mt-3 flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber px-3 py-1.5 text-sm font-semibold text-ink">
+                                A primary action
+                            </span>
+                            <span className="rounded-lg border border-line px-3 py-1.5 text-sm text-parchment-dim">
+                                A secondary one
+                            </span>
+                        </div>
+                    </SkinSurface>
+                </section>
+            ) : null}
 
             {pending ? (
                 <section
