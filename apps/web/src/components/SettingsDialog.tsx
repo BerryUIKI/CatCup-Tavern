@@ -10,6 +10,7 @@ import {
     Layers,
     ListOrdered,
     MessageCircle,
+    Paintbrush,
     Pencil,
     Regex,
     Save,
@@ -41,6 +42,7 @@ import type { SettingsDraftHandle } from '../lib/settingsDraft';
 import { type SettingsSectionId, useAppStore } from '../store/app';
 import { confirm } from '../store/confirm';
 import { AboutTab } from './AboutTab';
+import { AppearanceSettings } from './AppearanceSettings';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
 import { ImSettings } from './ImSettings';
@@ -155,6 +157,13 @@ const SECTIONS: SettingsSection[] = [
         icon: ImagePlus,
         group: 'Media',
         description: 'Generate illustrations through a local or hosted image backend.',
+    },
+    {
+        id: 'appearance',
+        label: 'Appearance',
+        icon: Paintbrush,
+        group: 'About',
+        description: 'The skin this profile shows the interface in.',
     },
     {
         id: 'about',
@@ -866,6 +875,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
                 <TtsSettings registerDraft={registerPanelDraft} />
             ) : section === 'images' ? (
                 <ImageSettings registerDraft={registerPanelDraft} />
+            ) : section === 'appearance' ? (
+                <AppearanceSettings registerDraft={registerPanelDraft} />
             ) : (
                 <AboutTab />
             );

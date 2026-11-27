@@ -185,7 +185,9 @@ The library's creation sort reads `data.creation_date` (Unix seconds), then a ro
 
 ### CharX and CatCup packages
 
-A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`. `.catcup` is CatCup's own name for the same container: identical layout, different extension. A `.catcup` is a `.charx` renamed, so either app opens either file, and CatCup parses both with the same code.
+A `.charx` file is RisuAI's ZIP package: a V3 `card.json`, `assets/**` files, and optionally `module.risum`.
+
+A **`.catcup`** is CatCup's own container. [RFC 0007](RFC/0007-skins-and-packs.md) settles it as the single extension for everything CatCup owns, with `manifest.json` at the archive root saying which kind it is. Today it holds a character card; skins and game packs follow.
 
 CatCup imports both as a normal character:
 
@@ -193,7 +195,38 @@ CatCup imports both as a normal character:
 - Every safe `assets/**` entry is written under `data/character-assets/<character id>/` with its archive-relative path. CatCup does not display these files yet; they are kept so an export can include them.
 - `module.risum` and root files other than `card.json` are skipped. `.charx` embedded-JPEG files (`charxJpeg`) are not recognized.
 
-`GET /api/characters/:id/export?format=charx|catcup` writes a V3 `card.json` and the stored assets, with the extension the caller asked for — the bytes are identical. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
+`GET /api/characters/:id/export?format=charx|catcup` writes a V3 `card.json` and the stored assets. A PNG card contributes its image as the icon asset (reusing the existing icon path when the package had one), so an imported package round-trips. `data.character-assets` can be backed up together with the rest of `data/`.
+
+**Compatibility, while the container is being built.** The bytes a `?format=catcup` export writes are a `.charx` layout with a different extension — a `.catcup` renamed to `.charx` still opens in RisuAI and the reverse — and an archive with no `manifest.json` is imported as a card. That is the migration path RFC 0007 promises: nothing on disk has to be converted, and the manifest is written from the first export after the loader lands.
+
+## Skins
+
+A skin is a JSON manifest today, read by **Settings → Appearance**. It becomes `manifest.json` inside a `.catcup` when the container loader lands; the schema does not change.
+
+```jsonc
+{
+    "format": "catcup.skin",
+    "formatVersion": 1,
+    "id": "grimoire-night",
+    "name": "Grimoire Night",
+    "version": "1.0.0",
+    "colorScheme": "dark",
+    "scope": "app",
+    "description": "Cool ink and old gold, for reading late.",
+    "tokens": {
+        "color": { "surface": "#16161f", "amber": "#c9a227" },
+        "radius": { "xl": "8px" },
+        "spacing": "0.24rem"
+    }
+}
+```
+
+- **`tokens` is a whitelist.** Every name it may carry is in `packages/shared/src/schemas/skin.ts`, grouped as `color`, `radius`, `font`, `text`, `shadow` and `other`, plus a top-level `spacing`. A name outside the list is refused at install, naming it.
+- **A token value cannot contain `{`, `}`, `;`, `url()` or markup.** The value is emitted as `--name: <value>`, so a value carrying a brace would end the declaration it is written into.
+- **`scope`** is `app` (the whole window) or `surface` (only content the app wraps). A pack's embedded skins are always `surface`, so a game cannot restyle Settings.
+- **`colorScheme`** is `dark` or `light`. Nothing reads it yet; it is what lets the app follow the OS later.
+- **`css`** and **`assets`** are not read yet. RFC 0007 defines them and the validator that refuses rather than sanitises.
+- Stored as `ui.skinId` in the profile's `settings.json` — the **id**, not the values, so an edited skin file still reaches the theme. An id that no longer resolves shows the built-in palette and says so.
 
 ### Writing cards back
 

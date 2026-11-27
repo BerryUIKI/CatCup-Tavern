@@ -174,6 +174,37 @@ Everything a person reads on `surface` clears 4.5:1 except `ember` (4.20) and `w
 is allowed only for a quote rule or a two-character accent, never a sentence. `muted` is the floor at
 4.81 and any change to it is a contrast change, not a taste one.
 
+## Skins
+
+Everything above is the **built-in theme**: one palette, one type scale, one radius. A skin replaces
+any part of it and nothing else — there is no per-skin component, no conditional in the interface and
+no path where a skin changes behaviour.
+
+The contract is the **token list**. `packages/shared/src/schemas/skin.ts` names every custom property
+a skin may set, and a test fails if that list and `styles.css` disagree by one entry. Adding a painted
+token means adding it in both places.
+
+### Rules a skin work must keep
+
+- **A token is a name in the whitelist or it is refused.** Not ignored — refused, at install, with the
+  name in the message. An author who types `--color-surfce` should hear about it, not stare at a
+  surface that stayed dark.
+- **Design with tokens, not literals.** A colour typed as `#...` in a component is a value no skin can
+  reach. The same goes for `shadow-lg` and `text-[11px]`, which compile to frozen literals; use
+  `shadow-float` and `text-footnote`. This is why those roles exist.
+- **Spacing and radius are variables, so density is a skin decision.** `--spacing` multiplies every
+  `calc()` in the layout and `--radius-*` is restated in `@theme` rather than inherited from Tailwind,
+  so both can be moved.
+- **A skin warns, it does not block.** `checkSkin` measures the pairs the interface actually paints
+  and lists every one under 4.5:1 — worst first — and the install proceeds. A person may want a
+  deliberately low-contrast skin; what the warning prevents is an author shipping one by accident,
+  which is what this app's own palette did with `wine` for two years.
+- **The reset is never skinned.** Settings → Appearance is reachable at any time, and
+  **Preview the built-in theme** clears the applied skin without changing what is saved.
+
+See [RFC 0007](RFC/0007-skins-and-packs.md) for the file format, the CSS rules and the security
+boundary.
+
 ## Typography
 
 Sizes are named in `@theme` and used by name. An arbitrary value (`text-[11px]`) is a size a skin
