@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useCreateGroup, useDeleteGroup, useUpdateGroup } from '../hooks/data';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { CharacterAvatar } from './CharacterAvatar';
 import { Modal } from './Modal';
 import { Select } from './Select';
@@ -187,15 +188,18 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
         );
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!group) {
             return;
         }
-        if (
-            !window.confirm(
-                'Delete this group and every chat in it? The character cards are not touched, but group chats cannot be recovered.',
-            )
-        ) {
+        const confirmed = await confirm({
+            title: 'Delete this group?',
+            description:
+                'Every chat in the group is removed with it, and they cannot be recovered. The character cards themselves are not touched.',
+            confirmLabel: 'Delete group',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         deleteMutation.mutate(group.id, {
@@ -441,7 +445,7 @@ export function GroupEditor({ open, group, characters, onClose, onSaved, onDelet
                         <button
                             type="button"
                             className="btn-ghost text-danger hover:border-danger/50"
-                            onClick={handleDelete}
+                            onClick={() => void handleDelete()}
                             disabled={deleteMutation.isPending || saving}
                         >
                             {deleteMutation.isPending ? <Spinner size={14} /> : <Trash2 size={14} />}

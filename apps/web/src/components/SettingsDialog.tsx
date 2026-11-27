@@ -39,6 +39,7 @@ import { api } from '../lib/api';
 import { cn } from '../lib/cn';
 import type { SettingsDraftHandle } from '../lib/settingsDraft';
 import { type SettingsSectionId, useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { AboutTab } from './AboutTab';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ImageSettings } from './ImageSettings';
@@ -445,7 +446,14 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     };
 
     const handleDeleteWorld = async (id: string) => {
-        if (!window.confirm(`Delete the world info book "${id}"? This cannot be undone.`)) {
+        const confirmed = await confirm({
+            title: `Delete the book "${id}"?`,
+            description:
+                'The file is removed from this profile. Chats that linked it keep working; they simply stop finding its entries.',
+            confirmLabel: 'Delete book',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {
@@ -471,9 +479,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
     ) => {
         const target = item.scope === 'shared' ? 'profile' : 'shared';
         if (target === 'shared' && profiles.length > 1) {
-            const confirmed = window.confirm(
-                `"${label}" becomes visible in every profile on this machine (${profiles.length} profiles). Continue?`,
-            );
+            const confirmed = await confirm({
+                title: `Make "${label}" shared?`,
+                description: `It becomes visible in every profile on this machine — ${profiles.length} of them — and each can use it from then on.`,
+                confirmLabel: 'Make shared',
+            });
             if (!confirmed) {
                 return;
             }

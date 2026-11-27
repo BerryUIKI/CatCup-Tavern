@@ -6,6 +6,7 @@ import { useCreatePersona, useDeletePersona, useSettings, useUpdatePersona, useU
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { SharedBadge } from './SharedBadge';
 import { Spinner } from './Spinner';
 
@@ -126,7 +127,13 @@ export function PersonaSettings({ registerDraft }: { registerDraft?: RegisterSet
     });
 
     const remove = async (persona: PersonaView) => {
-        if (!window.confirm(`Delete the persona "${persona.name}"? Chats that used it fall back to the default.`)) {
+        const confirmed = await confirm({
+            title: `Delete the persona "${persona.name}"?`,
+            description: 'Chats that spoke as this persona fall back to the default one. Their messages are unchanged.',
+            confirmLabel: 'Delete persona',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {

@@ -23,6 +23,7 @@ import {
 import { cn } from '../lib/cn';
 import { type RegisterSettingsDraft, useSettingsDraftHandle } from '../lib/settingsDraft';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { AliasChips } from './AliasChips';
 import { AliasGenerateDialog } from './AliasGenerateDialog';
 import { Select } from './Select';
@@ -273,13 +274,23 @@ export function WorldInfoEditor({
     };
 
     /** Every action that refreshes the book must not silently drop a draft. */
-    const confirmDiscard = () => !dirtyRef.current || window.confirm('Discard the unsaved changes to this entry?');
+    const confirmDiscard = async () => {
+        if (!dirtyRef.current) {
+            return true;
+        }
+        return confirm({
+            title: 'Discard the changes to this entry?',
+            description: 'The fields you edited are not saved; the entry goes back to its stored version.',
+            confirmLabel: 'Discard changes',
+            tone: 'danger',
+        });
+    };
 
-    const select = (uid: number) => {
+    const select = async (uid: number) => {
         if (uid === selectedUid) {
             return;
         }
-        if (!confirmDiscard()) {
+        if (!(await confirmDiscard())) {
             return;
         }
         setSelectedUid(uid);
@@ -317,7 +328,7 @@ export function WorldInfoEditor({
     });
 
     const addEntry = async () => {
-        if (!confirmDiscard()) {
+        if (!(await confirmDiscard())) {
             return;
         }
         try {
@@ -331,7 +342,7 @@ export function WorldInfoEditor({
     };
 
     const copyEntry = async (entry: WorldInfoEntryView) => {
-        if (!confirmDiscard()) {
+        if (!(await confirmDiscard())) {
             return;
         }
         try {
@@ -345,10 +356,16 @@ export function WorldInfoEditor({
     };
 
     const removeEntry = async (entry: WorldInfoEntryView) => {
-        if (entry.uid !== selectedUid && !confirmDiscard()) {
+        if (entry.uid !== selectedUid && !(await confirmDiscard())) {
             return;
         }
-        if (!window.confirm(`Delete the entry "${entryTitle(entry)}"? This cannot be undone.`)) {
+        const confirmed = await confirm({
+            title: `Delete the entry "${entryTitle(entry)}"?`,
+            description: 'It is removed from the book on disk, and cannot be recovered from here.',
+            confirmLabel: 'Delete entry',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         try {
@@ -364,7 +381,7 @@ export function WorldInfoEditor({
 
     const move = async (index: number, delta: number) => {
         const target = index + delta;
-        if (target < 0 || target >= entries.length || !confirmDiscard()) {
+        if (target < 0 || target >= entries.length || !(await confirmDiscard())) {
             return;
         }
         const uids = entries.map((entry) => entry.uid);
@@ -462,7 +479,7 @@ export function WorldInfoEditor({
                                         <button
                                             type="button"
                                             className="min-w-0 flex-1 text-left"
-                                            onClick={() => select(entry.uid)}
+                                            onClick={() => void select(entry.uid)}
                                         >
                                             <span
                                                 className={cn(

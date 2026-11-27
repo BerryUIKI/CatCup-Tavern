@@ -12,6 +12,7 @@ import {
     useSummarizeMemory,
 } from '../hooks/data';
 import { useAppStore } from '../store/app';
+import { confirm } from '../store/confirm';
 import { Modal } from './Modal';
 import { Spinner } from './Spinner';
 
@@ -143,11 +144,17 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
         );
     };
 
-    const handleClear = () => {
+    const handleClear = async () => {
         if (!target) {
             return;
         }
-        if (!window.confirm('Delete the stored summary? This cannot be undone.')) {
+        const confirmed = await confirm({
+            title: 'Delete the stored summary?',
+            description: 'It is removed from the chat file and cannot be undone; the summary before it takes over.',
+            confirmLabel: 'Delete summary',
+            tone: 'danger',
+        });
+        if (!confirmed) {
             return;
         }
         clear.mutate(target, {
@@ -215,7 +222,7 @@ export function MemoryDialog({ open, onClose, target, messages, title }: MemoryD
                     <button
                         type="button"
                         className="btn-ghost text-danger"
-                        onClick={handleClear}
+                        onClick={() => void handleClear()}
                         disabled={!summary || !target || busy}
                     >
                         {clear.isPending ? <Spinner size={15} /> : <Eraser size={15} />}
